@@ -1,0 +1,78 @@
+import { translate } from "i18n"
+import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
+
+/** The main map's replay panel, created on first use. */
+export function ensureMapReplayPanel(controller) {
+  controller.replayPanel ||= new ReplayPanel({
+    controller,
+    map: controller.map,
+    timezone: controller.timezoneValue,
+    markerLayer: () => controller.layerManager?.getLayer("replayMarker"),
+    loadPoints: async () => {
+      await controller.mapDataManager.ensurePointsLoaded()
+      return controller._getLoadedPoints()
+    },
+    onPlayStateChange: updateTrackReplayButton,
+    getPhotos: () => {
+      const layer = controller.layerManager?.getLayer("photos")
+      const features = layer?.visible ? layer.data?.features : null
+      return features?.length ? features.map(featureToPhoto) : []
+    },
+    onReplayPhotosActive: (active) => {
+      const layer = controller.layerManager?.getLayer("photos")
+      if (!layer) return
+      if (active) {
+        controller._photosWasVisible = layer.visible
+        layer.hide()
+      } else if (controller._photosWasVisible) {
+        layer.show()
+      }
+    },
+  })
+  return controller.replayPanel
+}
+
+/**
+ * The timeline's track Replay button: pause a running replay, resume an open
+ * one, or open the panel at the track's day and start minute.
+ */
+export async function replayTrackFrom(controller, trackStart) {
+  const panel = ensureMapReplayPanel(controller)
+
+  if (panel.isPlaying) {
+    panel.stopPlayback()
+    return
+  }
+
+  const isVisible = !controller.replayPanelTarget.classList.contains("hidden")
+  if (isVisible && panel.manager?.hasData()) {
+    panel.startPlayback()
+    return
+  }
+
+  if (!trackStart) return
+  const trackDate = new Date(trackStart)
+  if (Number.isNaN(trackDate.getTime())) return
+
+  await panel.ensureOpen()
+  if (!panel.manager?.hasData()) return
+
+  const pad = (value) => String(value).padStart(2, "0")
+  panel.goToDay(
+    `${trackDate.getFullYear()}-${pad(trackDate.getMonth() + 1)}-${pad(trackDate.getDate())}`,
+  )
+  panel.setMinute(trackDate.getHours() * 60 + trackDate.getMinutes())
+  panel.startPlayback()
+}
+
+function updateTrackReplayButton(playing) {
+  const playIcon = document.getElementById("track-replay-play-icon")
+  const pauseIcon = document.getElementById("track-replay-pause-icon")
+  const label = document.getElementById("track-replay-label")
+  if (!playIcon || !pauseIcon || !label) return
+
+  playIcon.classList.toggle("hidden", playing)
+  pauseIcon.classList.toggle("hidden", !playing)
+  label.textContent = translate(playing ? "replay.pause" : "replay.replay")
+}

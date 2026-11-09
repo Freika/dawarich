@@ -4,11 +4,9 @@ import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
 import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
 import { ReplayHost } from "maps_maplibre/managers/replay_host"
-import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
-import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
@@ -30,6 +28,7 @@ import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
 import { LoadingBadge } from "./maplibre/loading_badge"
 import { MapDataManager } from "./maplibre/map_data_manager"
 import { MapInitializer } from "./maplibre/map_initializer"
+import { ensureMapReplayPanel, replayTrackFrom } from "./maplibre/map_replay"
 import { PlacesManager } from "./maplibre/places_manager"
 import { SettingsController } from "./maplibre/settings_manager"
 import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
@@ -191,68 +190,30 @@ export default class extends ReplayHost {
     consumeCreatePlaceLink(this.placesManager)
     this.layerVisibilityManager = new LayerVisibilityManager(this)
 
-    // Listen for tab changes to trigger timeline feed loading via Turbo Frame
-    this.boundHandleTabChanged = this.handleTabChanged.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "map-panel:tab-changed",
-      this.boundHandleTabChanged,
-    )
-
     this.timelineBridge.connect(this.cleanup)
 
     this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
       SettingsManager.getSetting("tracksEnabled"),
     )
 
-    // SPA date-range change from the Timeline calendar — refetch all enabled
-    // layers for the new start/end without tearing down the map instance.
-    this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:date-navigated",
-      this.boundHandleDateNavigated,
-    )
-
     // Initialize search manager
     this.initializeSearch()
 
-    // Listen for visit and place creation/update events
-    this.boundHandleVisitCreated = this.visitsManager.handleVisitCreated.bind(
-      this.visitsManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "visit:created",
-      this.boundHandleVisitCreated,
-    )
-
-    this.boundHandleVisitUpdated = this.visitsManager.handleVisitUpdated.bind(
-      this.visitsManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "visit:updated",
-      this.boundHandleVisitUpdated,
-    )
-
-    this.boundHandlePlaceCreated = this.placesManager.handlePlaceCreated.bind(
-      this.placesManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "place:created",
-      this.boundHandlePlaceCreated,
-    )
-
-    this.boundHandlePlaceUpdated = this.placesManager.handlePlaceUpdated.bind(
-      this.placesManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "place:updated",
-      this.boundHandlePlaceUpdated,
-    )
+    const documentEvents = {
+      // Tab changes load the timeline feed through its Turbo Frame.
+      "map-panel:tab-changed": (e) => this.handleTabChanged(e),
+      // A Timeline calendar range change refetches every enabled layer
+      // without tearing down the map instance.
+      "timeline-feed:date-navigated": (e) =>
+        this.handleTimelineDateNavigated(e),
+      "visit:created": (e) => this.visitsManager.handleVisitCreated(e),
+      "visit:updated": (e) => this.visitsManager.handleVisitUpdated(e),
+      "place:created": (e) => this.placesManager.handlePlaceCreated(e),
+      "place:updated": (e) => this.placesManager.handlePlaceUpdated(e),
+    }
+    for (const [name, handler] of Object.entries(documentEvents)) {
+      this.cleanup.addEventListener(document, name, handler)
+    }
 
     const [serverStartDate, serverEndDate] = [
       this.startDateValue,
@@ -891,71 +852,14 @@ export default class extends ReplayHost {
     }
   }
 
-  _ensureReplayPanel() {
-    if (this.replayPanel) return
-    this.replayPanel = new ReplayPanel({
-      controller: this,
-      map: this.map,
-      timezone: this.timezoneValue,
-      markerLayer: () => this.layerManager?.getLayer("replayMarker"),
-      loadPoints: async () => {
-        await this.mapDataManager.ensurePointsLoaded()
-        return this._getLoadedPoints()
-      },
-      onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
-      getPhotos: () => {
-        const layer = this.layerManager?.getLayer("photos")
-        const features = layer?.visible ? layer.data?.features : null
-        return features?.length ? features.map(featureToPhoto) : []
-      },
-      onReplayPhotosActive: (active) => {
-        const layer = this.layerManager?.getLayer("photos")
-        if (!layer) return
-        if (active) {
-          this._photosWasVisible = layer.visible
-          layer.hide()
-        } else if (this._photosWasVisible) {
-          layer.show()
-        }
-      },
-    })
-  }
-
   async toggleReplay() {
     if (!this.hasReplayPanelTarget) return
-    this._ensureReplayPanel()
-    await this.replayPanel.toggle()
+    await ensureMapReplayPanel(this).toggle()
   }
 
-  async replayTrack(event) {
+  replayTrack(event) {
     if (!this.hasReplayPanelTarget) return
-    this._ensureReplayPanel()
-
-    if (this.replayPanel.isPlaying) {
-      this.replayPanel.stopPlayback()
-      return
-    }
-
-    const isVisible = !this.replayPanelTarget.classList.contains("hidden")
-    if (isVisible && this.replayPanel.manager?.hasData()) {
-      this.replayPanel.startPlayback()
-      return
-    }
-
-    const trackStart = event.currentTarget.dataset.trackStart
-    if (!trackStart) return
-    const trackDate = new Date(trackStart)
-    if (Number.isNaN(trackDate.getTime())) return
-
-    await this.replayPanel.ensureOpen()
-    if (!this.replayPanel.manager?.hasData()) return
-
-    const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
-    this.replayPanel.goToDay(targetDay)
-
-    const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
-    this.replayPanel.setMinute(startMinute)
-    this.replayPanel.startPlayback()
+    return replayTrackFrom(this, event.currentTarget.dataset.trackStart)
   }
 
   async toggleTrackPoints(event) {
@@ -976,22 +880,5 @@ export default class extends ReplayHost {
 
     const pointsSource = this.map?.getSource("points-source")
     return pointsSource?.serialize?.()?.data?.features || []
-  }
-
-  _updateTrackReplayButton(playing) {
-    const playIcon = document.getElementById("track-replay-play-icon")
-    const pauseIcon = document.getElementById("track-replay-pause-icon")
-    const label = document.getElementById("track-replay-label")
-    if (!playIcon || !pauseIcon || !label) return
-
-    if (playing) {
-      playIcon.classList.add("hidden")
-      pauseIcon.classList.remove("hidden")
-      label.textContent = translate("replay.pause")
-    } else {
-      playIcon.classList.remove("hidden")
-      pauseIcon.classList.add("hidden")
-      label.textContent = translate("replay.replay")
-    }
   }
 }
