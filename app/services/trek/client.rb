@@ -65,7 +65,8 @@ module Trek
 
       raise Error.new("TREK request failed with HTTP #{response.code}", status: response.code)
     rescue Integrations::Transport::Error => e
-      raise Error.new("TREK request failed with HTTP #{e.status}", status: e.status) if e.status
+      # Only a refused redirect carries a status here; its message says which URL to save.
+      raise Error.new("TREK request failed with HTTP #{e.status}. #{e.message}", status: e.status) if e.status
       raise Error, "TREK URL was rejected: #{e.message}" if e.blocked? || e.unresolvable?
 
       raise Error, "TREK connection failed: #{e.message}#{skip_ssl_hint(e)}"

@@ -22,6 +22,18 @@ RSpec.describe Trek::Client do
     expect(client.trips).to eq([{ 'id' => 12, 'title' => 'Tuscany' }])
   end
 
+  it 'sends credentials embedded in the base URL as basic auth, in place of the Bearer token' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    proxied = instance_double(TripSource, base_url: 'https://gate:secret@trek.example.test', api_key: 'trek_test_key',
+                                          skip_ssl_verification: false)
+    request = stub_request(:get, 'https://trek.example.test/api/v1/trips')
+              .with(basic_auth: %w[gate secret]).to_return(status: 200, body: { trips: [] }.to_json)
+
+    described_class.new(proxied).trips
+
+    expect(request).to have_been_requested
+  end
+
   it 'refuses a base URL that resolves to a blocked address without sending a request' do
     stub_host_addresses('trek.example.test', '169.254.169.254')
     request = stub_request(:get, 'https://trek.example.test/api/v1/trips')
@@ -41,7 +53,8 @@ RSpec.describe Trek::Client do
       .to_return(status: 302, headers: { 'Location' => 'https://elsewhere.test/' })
 
     expect { client.trips }
-      .to raise_error(Trek::Client::Error, 'TREK request failed with HTTP 302') { |error|
+      .to raise_error(Trek::Client::Error,
+                      /\ATREK request failed with HTTP 302\. .*elsewhere\.test.*final URL/) { |error|
         expect(error.status).to eq(302)
       }
   end
