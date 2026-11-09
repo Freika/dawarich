@@ -5,8 +5,12 @@ import { LoadingBadge } from "controllers/maps/maplibre/loading_badge"
 function classes() {
   const set = new Set()
   return {
-    add: (...names) => names.forEach((n) => set.add(n)),
-    remove: (...names) => names.forEach((n) => set.delete(n)),
+    add: (...names) => {
+      for (const n of names) set.add(n)
+    },
+    remove: (...names) => {
+      for (const n of names) set.delete(n)
+    },
     contains: (name) => set.has(name),
   }
 }
