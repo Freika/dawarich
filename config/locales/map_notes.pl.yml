@@ -1,0 +1,26 @@
+pl:
+  notes:
+    flash:
+      saved: Notatka zapisana
+      deleted: Notatka usunięta
+      pick_a_point_on_the_map: Wybierz punkt na mapie dla tej notatki
+    form:
+      note: Notatka
+      what_happened_here: Co się tu wydarzyło?
+      when: Kiedy
+      delete: Usuń
+      delete_this_note: Usunąć tę notatkę?
+      cancel: Anuluj
+      save: Zapisz
+  map:
+    maplibre:
+      note_modal:
+        map_note: Notatka na mapie
+      settings_panel:
+        notes: Notatki
+        show_your_map_notes: Pokazuje notatki napisane przez ciebie na mapie
+        add_note: Dodaj notatkę
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Kliknij na mapie, aby umieścić notatkę. Esc, aby anulować.
+      failed_to_load_notes: Nie udało się wczytać notatek

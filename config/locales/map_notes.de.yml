@@ -1,0 +1,26 @@
+de:
+  notes:
+    flash:
+      saved: Notiz gespeichert
+      deleted: Notiz gelöscht
+      pick_a_point_on_the_map: Wähle einen Punkt auf der Karte für diese Notiz
+    form:
+      note: Notiz
+      what_happened_here: Was ist hier passiert?
+      when: Wann
+      delete: Löschen
+      delete_this_note: Diese Notiz löschen?
+      cancel: Abbrechen
+      save: Speichern
+  map:
+    maplibre:
+      note_modal:
+        map_note: Kartennotiz
+      settings_panel:
+        notes: Notizen
+        show_your_map_notes: Zeigt die Notizen, die du auf der Karte geschrieben hast
+        add_note: Notiz hinzufügen
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Klicke auf die Karte, um eine Notiz zu setzen. Esc zum Abbrechen.
+      failed_to_load_notes: Notizen konnten nicht geladen werden

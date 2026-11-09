@@ -29,6 +29,7 @@ import { LayerManager } from "./maplibre/layer_manager"
 import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
 import { MapDataManager } from "./maplibre/map_data_manager"
 import { MapInitializer } from "./maplibre/map_initializer"
+import { NotesManager } from "./maplibre/notes_manager"
 import { PlacesManager } from "./maplibre/places_manager"
 import { SettingsController } from "./maplibre/settings_manager"
 import { VisitsManager } from "./maplibre/visits_manager"
@@ -88,6 +89,7 @@ export default class extends Controller {
     "anomaliesToggle",
     "familyToggle",
     "flightsToggle",
+    "notesToggle",
     "tracksToggle",
     // Globe projection
     "globeToggle",
@@ -204,6 +206,7 @@ export default class extends Controller {
       this.visitsManager.attachViewportRefetch()
     }
     this.placesManager = new PlacesManager(this)
+    this.notesManager = new NotesManager(this)
     this.placePanel = new PlacePanelBridge(this)
     consumeCreatePlaceLink(this.placesManager)
     this.layerVisibilityManager = new LayerVisibilityManager(this)
@@ -375,6 +378,7 @@ export default class extends Controller {
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.notesManager?.destroy()
     this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
@@ -497,6 +501,7 @@ export default class extends Controller {
   async loadMapData(options = {}) {
     this.rangeStatistics?.setUnit(this.settings?.distance_unit || "km")
     this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
+    this.notesManager?.reload()
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
@@ -1346,6 +1351,14 @@ export default class extends Controller {
   }
   startCreatePlace() {
     return this.placesManager.startCreatePlace()
+  }
+
+  startCreateNote() {
+    return this.notesManager.startCreate()
+  }
+
+  toggleNotes(event) {
+    return this.notesManager.toggle(event)
   }
 
   // Routes Manager methods

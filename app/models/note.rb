@@ -57,12 +57,13 @@ class Note < ApplicationRecord
     self.noted_at = val.to_date.to_datetime.noon
   end
 
+  # Before the first validation a new note only holds the coordinates it was given.
   def latitude
-    lonlat&.y
+    lonlat&.y || @latitude
   end
 
   def longitude
-    lonlat&.x
+    lonlat&.x || @longitude
   end
 
   def latitude=(val)

@@ -78,6 +78,8 @@
                      label: t('.places'), description: t('.show_your_saved_places') %>
           <%= render 'map/maplibre/layer_tile', target: 'photosToggle', action: 'togglePhotos', icon_name: 'image',
                      label: t('.photos'), description: t('.show_geotagged_photos') %>
+          <%= render 'map/maplibre/layer_tile', target: 'notesToggle', action: 'toggleNotes', icon_name: 'square-pen',
+                     label: t('.notes'), description: t('.show_your_map_notes'), testid: 'notes-toggle' %>
           <%= render 'map/maplibre/layer_tile', target: 'heatmapToggle', action: 'toggleHeatmap', icon_name: 'flame', pro: true,
                      label: t('.heatmap'), description: t('.show_density_heatmap') %>
           <%= render 'map/maplibre/layer_tile', target: 'hexagonsToggle', action: 'toggleHexagons', icon_name: 'hexagon', pro: true,
@@ -920,6 +922,14 @@
                     data-action="click->maps--maplibre#startCreatePlace">
               <%= icon 'map-pin-plus' %>
               <span class="text-xs"><%= t('.create_place') %></span>
+            </button>
+
+            <button type="button"
+                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
+                    data-action="click->maps--maplibre#startCreateNote"
+                    data-testid="add-note-button">
+              <%= icon 'square-pen' %>
+              <span class="text-xs"><%= t('.add_note') %></span>
             </button>
 
             <button type="button"

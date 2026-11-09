@@ -1,0 +1,26 @@
+es:
+  notes:
+    flash:
+      saved: Nota guardada
+      deleted: Nota eliminada
+      pick_a_point_on_the_map: Elige un punto en el mapa para esta nota
+    form:
+      note: Nota
+      what_happened_here: ¿Qué pasó aquí?
+      when: Cuándo
+      delete: Eliminar
+      delete_this_note: ¿Eliminar esta nota?
+      cancel: Cancelar
+      save: Guardar
+  map:
+    maplibre:
+      note_modal:
+        map_note: Nota en el mapa
+      settings_panel:
+        notes: Notas
+        show_your_map_notes: Muestra las notas que escribiste en el mapa
+        add_note: Añadir nota
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Haz clic en el mapa para colocar una nota. Esc para cancelar.
+      failed_to_load_notes: No se pudieron cargar las notas

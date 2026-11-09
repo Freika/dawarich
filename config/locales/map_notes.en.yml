@@ -1,0 +1,26 @@
+en:
+  notes:
+    flash:
+      saved: Note saved
+      deleted: Note deleted
+      pick_a_point_on_the_map: Pick a point on the map for this note
+    form:
+      note: Note
+      what_happened_here: What happened here?
+      when: When
+      delete: Delete
+      delete_this_note: Delete this note?
+      cancel: Cancel
+      save: Save
+  map:
+    maplibre:
+      note_modal:
+        map_note: Map note
+      settings_panel:
+        notes: Notes
+        show_your_map_notes: Show the notes you wrote on the map
+        add_note: Add note
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Click on the map to place a note. Esc to cancel.
+      failed_to_load_notes: Failed to load notes

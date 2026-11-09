@@ -480,6 +480,25 @@ export class ApiClient {
   }
 
   /**
+   * Fetch the map notes describing a moment in the date range.
+   * @returns {Promise<Array>} notes
+   */
+  async fetchNotes({ start_at, end_at }) {
+    const params = new URLSearchParams({ standalone: "true", start_at, end_at })
+
+    maskPrivacyZones(params)
+    const response = await fetch(`${this.baseURL}/notes?${params}`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch notes: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /**
    * Fetch tracks for a single page
    * @param {Object} options - { start_at, end_at, page, per_page }
    * @returns {Promise<Object>} { features, currentPage, totalPages, totalCount }

@@ -77,6 +77,7 @@ export class SettingsController {
       tracksToggle: "tracksEnabled",
       flightsToggle: "flightsEnabled",
       anomaliesToggle: "anomaliesEnabled",
+      notesToggle: "notesEnabled",
     }
 
     // The server decides which layers Lite users cannot persist; point

@@ -1,0 +1,26 @@
+ca:
+  notes:
+    flash:
+      saved: Nota desada
+      deleted: Nota suprimida
+      pick_a_point_on_the_map: Tria un punt al mapa per a aquesta nota
+    form:
+      note: Nota
+      what_happened_here: Què va passar aquí?
+      when: Quan
+      delete: Suprimeix
+      delete_this_note: Vols suprimir aquesta nota?
+      cancel: Cancel·la
+      save: Desa
+  map:
+    maplibre:
+      note_modal:
+        map_note: Nota al mapa
+      settings_panel:
+        notes: Notes
+        show_your_map_notes: Mostra les notes que has escrit al mapa
+        add_note: Afegeix una nota
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Fes clic al mapa per col·locar una nota. Esc per cancel·lar.
+      failed_to_load_notes: No s'han pogut carregar les notes

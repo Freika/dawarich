@@ -1,0 +1,26 @@
+zh:
+  notes:
+    flash:
+      saved: 笔记已保存
+      deleted: 笔记已删除
+      pick_a_point_on_the_map: 请在地图上为这条笔记选择一个位置
+    form:
+      note: 笔记
+      what_happened_here: 这里发生了什么？
+      when: 时间
+      delete: 删除
+      delete_this_note: 删除这条笔记？
+      cancel: 取消
+      save: 保存
+  map:
+    maplibre:
+      note_modal:
+        map_note: 地图笔记
+      settings_panel:
+        notes: 笔记
+        show_your_map_notes: 显示你在地图上写下的笔记
+        add_note: 添加笔记
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: 点击地图放置笔记。按 Esc 取消。
+      failed_to_load_notes: 笔记加载失败
