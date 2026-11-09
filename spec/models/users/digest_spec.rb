@@ -395,15 +395,6 @@ RSpec.describe Users::Digest, type: :model do
         expect(digest.sharing_settings['expiration']).to be_nil
       end
     end
-
-    describe '#generate_new_sharing_uuid!' do
-      it 'generates a new UUID' do
-        old_uuid = digest.sharing_uuid
-        digest.generate_new_sharing_uuid!
-
-        expect(digest.sharing_uuid).not_to eq(old_uuid)
-      end
-    end
   end
 
   describe 'DistanceConvertible' do

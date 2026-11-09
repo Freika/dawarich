@@ -275,20 +275,4 @@ module Distanceable
       0
     end
   end
-
-  private
-
-  def extract_point(point)
-    case point
-    when Array
-      unless point.length == 2
-        raise ArgumentError,
-              'Coordinates array must contain exactly 2 elements [latitude, longitude]'
-      end
-
-      RGeo::Geographic.spherical_factory(srid: 4326).point(point[1], point[0])
-    when self.class
-      point.lonlat
-    end
-  end
 end

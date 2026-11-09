@@ -5,6 +5,8 @@ class Api::V1::VisitsController < ApiController
   BATCH_VISIT_ATTRIBUTES = %i[name status latitude longitude started_at ended_at].freeze
   ADDRESS_ATTRIBUTES = %i[street house_number postcode city country].freeze
 
+  rescue_from Visits::ResolvePlaceSelection::Invalid, with: :render_invalid_place_selection
+
   def index
     visits = Visits::Finder.new(current_api_user, params, privacy_zone_masker: map_read_masker).call
     visits = map_read_masker.mask_visits(visits)
@@ -43,8 +45,6 @@ class Api::V1::VisitsController < ApiController
       error_message = service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit')
       render json: { error: error_message }, status: :unprocessable_content
     end
-  rescue Visits::ResolvePlaceSelection::Invalid => e
-    render_invalid_place_selection(e)
   end
 
   def update
@@ -54,8 +54,6 @@ class Api::V1::VisitsController < ApiController
     visit = update_visit(visit, attributes: attributes)
 
     render json: serialize_visit(visit)
-  rescue Visits::ResolvePlaceSelection::Invalid => e
-    render_invalid_place_selection(e)
   end
 
   def merge
@@ -209,13 +207,8 @@ class Api::V1::VisitsController < ApiController
     end
   end
 
-  def merge_params
-    params.permit(visit_ids: [])
-  end
-
-  def update_visit(visit, attributes: visit_params.to_h)
+  def update_visit(visit, attributes:)
     attributes = attributes.except('latitude', 'longitude')
-    attributes['area_id'] = nil if attributes['place_id'].present?
     attributes['name'] = attributes['name'].presence if attributes.key?('name')
     attributes.delete('name') if visit.name.blank? && attributes['name'] == visit.display_name
     attributes['name'] = nil if attributes['place_id'].present? && attributes['name'].present? &&

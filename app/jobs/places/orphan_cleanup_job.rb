@@ -23,9 +23,7 @@ class Places::OrphanCleanupJob < ApplicationJob
   private
 
   def delete_batch(user_id)
-    Place.transaction do
-      victim_ids = Place.orphaned.where(user_id: user_id).limit(BATCH).pluck(:id)
-      victim_ids.empty? ? 0 : Place.delete_orphans(victim_ids)
-    end
+    victim_ids = Place.orphaned.where(user_id: user_id).limit(BATCH).pluck(:id)
+    victim_ids.empty? ? 0 : Place.delete_orphans(victim_ids)
   end
 end

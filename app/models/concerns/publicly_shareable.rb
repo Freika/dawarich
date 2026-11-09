@@ -33,10 +33,6 @@ module PubliclyShareable
     sharing_enabled? && !sharing_expired?
   end
 
-  def generate_new_sharing_uuid!
-    update!(sharing_uuid: SecureRandom.uuid)
-  end
-
   def enable_sharing!(expiration: self.class::DEFAULT_SHARING_EXPIRATION)
     expiration = '24h' unless SHARING_DURATIONS.key?(expiration)
 

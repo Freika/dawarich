@@ -9,18 +9,7 @@ class Trips::CalculateDistanceJob < Trips::CalculationStepJob
     trip.calculate_distance
     trip.save!
 
-    broadcast_update(trip, distance_unit)
+    broadcast_section(trip, distance_unit, 'distance')
     Trips::CalculateAllJob.tally_completion(trip_id, run_token)
-  end
-
-  private
-
-  def broadcast_update(trip, distance_unit)
-    Turbo::StreamsChannel.broadcast_update_to(
-      trip,
-      target: 'trip_distance',
-      partial: 'trips/distance',
-      locals: { trip: trip, distance_unit: distance_unit }
-    )
   end
 end

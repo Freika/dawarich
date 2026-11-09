@@ -16,4 +16,15 @@ class Trips::CalculationStepJob < ApplicationJob
     Rails.logger.warn("#{job.class.name} discarded trip_id=#{trip_id}: #{error.class}: #{error.message}")
     Trips::CalculateAllJob.tally_completion(trip_id, job.arguments[job.class::RUN_TOKEN_INDEX], error: true)
   end
+
+  private
+
+  def broadcast_section(trip, distance_unit, section)
+    Turbo::StreamsChannel.broadcast_update_to(
+      trip,
+      target: "trip_#{section}",
+      partial: "trips/#{section}",
+      locals: { trip: trip, distance_unit: distance_unit }
+    )
+  end
 end

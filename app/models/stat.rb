@@ -148,8 +148,4 @@ class Stat < ApplicationRecord
       user_id: user.id
     ).call
   end
-
-  def user_timezone
-    user.timezone.presence || Time.zone.name
-  end
 end

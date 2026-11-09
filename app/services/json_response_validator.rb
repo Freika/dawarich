@@ -8,11 +8,12 @@ class JsonResponseValidator
       return { success: false, error: I18n.t("#{self::I18N_SCOPE}.request_failed_code", code: response.code) }
     end
 
-    unless json_content_type?(response)
-      content_type = response.headers['content-type'] || response.headers['Content-Type'] || 'unknown'
+    content_type = response.headers['content-type'] || response.headers['Content-Type']
+    unless content_type.to_s.include?('application/json')
       logger.error("#{self::PROVIDER} returned non-JSON response: #{response.code} #{truncate_body(response.body)}")
       return { success: false,
-               error: I18n.t("#{self::I18N_SCOPE}.expected_json_got_content_type", content_type: content_type) }
+               error: I18n.t("#{self::I18N_SCOPE}.expected_json_got_content_type",
+                             content_type: content_type || 'unknown') }
     end
 
     { success: true, data: JSON.parse(response.body) }
@@ -20,11 +21,6 @@ class JsonResponseValidator
     logger.error("#{self::PROVIDER} JSON parse error: #{e.message}")
     logger.error("Response body: #{truncate_body(response.body)}")
     { success: false, error: I18n.t("#{self::I18N_SCOPE}.invalid_json_response") }
-  end
-
-  private_class_method def self.json_content_type?(response)
-    content_type = response.headers['content-type'] || response.headers['Content-Type'] || ''
-    content_type.include?('application/json')
   end
 
   private_class_method def self.truncate_body(body, max_length: 1000)
