@@ -133,14 +133,6 @@ class Users::Digest < ApplicationRecord
     year_over_year['distance_change_percent']
   end
 
-  def yoy_countries_change
-    year_over_year['countries_change']
-  end
-
-  def yoy_cities_change
-    year_over_year['cities_change']
-  end
-
   def previous_year
     year_over_year['previous_year']
   end
@@ -199,10 +191,6 @@ class Users::Digest < ApplicationRecord
     year_over_year['countries_change'] if monthly?
   end
 
-  def mom_cities_change
-    year_over_year['cities_change'] if monthly?
-  end
-
   # Travel patterns accessors
   def time_of_day_distribution
     travel_patterns['time_of_day'] || {}
@@ -212,20 +200,8 @@ class Users::Digest < ApplicationRecord
     travel_patterns['seasonality'] || {}
   end
 
-  def day_of_week_distances
-    weekly_pattern
-  end
-
   def activity_breakdown
     travel_patterns['activity_breakdown'] || {}
-  end
-
-  def previous_month_value
-    year_over_year['previous_month'] if monthly?
-  end
-
-  def previous_month_year
-    year_over_year['previous_year'] if monthly?
   end
 
   def month_name

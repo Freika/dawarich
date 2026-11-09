@@ -248,10 +248,6 @@ class Api::V1::VisitsController < ApiController
     params.permit(visit_ids: [])
   end
 
-  def bulk_update_params
-    params.permit(:status, visit_ids: [])
-  end
-
   def update_visit(visit, attributes: visit_params.to_h)
     attributes = attributes.except('latitude', 'longitude')
     attributes['area_id'] = nil if attributes['place_id'].present?

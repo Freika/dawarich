@@ -132,30 +132,4 @@ export class MapInitializer {
 
     return map
   }
-
-  /**
-   * Fit map to bounds of GeoJSON features
-   * @param {maplibregl.Map} map - The map instance
-   * @param {Object} geojson - GeoJSON FeatureCollection
-   * @param {Object} options - Fit bounds options
-   */
-  static fitToBounds(map, geojson, options = {}) {
-    const { padding = 50, maxZoom = 15 } = options
-
-    if (!geojson?.features?.length) {
-      console.warn("[MapInitializer] No features to fit bounds to")
-      return
-    }
-
-    const coordinates = geojson.features.map((f) => f.geometry.coordinates)
-
-    const bounds = coordinates.reduce((bounds, coord) => {
-      return bounds.extend(coord)
-    }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]))
-
-    map.fitBounds(bounds, {
-      padding,
-      maxZoom,
-    })
-  }
 }

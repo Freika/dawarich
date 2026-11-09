@@ -621,13 +621,6 @@ export default class extends Controller {
   }
 
   /**
-   * Hide loading indicator (alias for hideProgress)
-   */
-  hideLoading() {
-    this.hideProgress()
-  }
-
-  /**
    * Update loading counts badge
    */
   updateLoadingCounts({ counts, isComplete }) {
@@ -1099,12 +1092,6 @@ export default class extends Controller {
     }
     if (this.map.getLayer(layerId)) {
       this.map.setPaintProperty(layerId, property, value)
-    }
-  }
-
-  _safeSetLayout(layerId, property, value) {
-    if (this.map.getLayer(layerId)) {
-      this.map.setLayoutProperty(layerId, property, value)
     }
   }
 
@@ -1683,23 +1670,6 @@ export default class extends Controller {
   }
 
   /**
-   * Handle edit action from info display
-   */
-  handleEdit(event) {
-    const button = event.currentTarget
-    const id = button.dataset.id
-    const entityType = button.dataset.entityType
-
-    switch (entityType) {
-      case "visit":
-        this.openVisitModal(id)
-        break
-      default:
-        console.warn("[Maps V2] Unknown entity type:", entityType)
-    }
-  }
-
-  /**
    * Handle delete action from info display
    */
   handleDelete(event) {
@@ -1715,36 +1685,6 @@ export default class extends Controller {
         return deletePlace(this, id)
       default:
         console.warn("[Maps V2] Unknown entity type for delete:", entityType)
-    }
-  }
-
-  /**
-   * Open visit edit modal
-   */
-  async openVisitModal(visitId) {
-    try {
-      // Fetch visit details
-      const response = await fetch(`/api/v1/visits/${visitId}`, {
-        headers: {
-          Authorization: `Bearer ${this.apiKeyValue}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch visit: ${response.status}`)
-      }
-
-      const visit = await response.json()
-
-      // Trigger visit edit event
-      const event = new CustomEvent("visit:edit", {
-        detail: { visit },
-        bubbles: true,
-      })
-      document.dispatchEvent(event)
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_load_visit_details"))
     }
   }
 
@@ -1783,10 +1723,6 @@ export default class extends Controller {
     } catch (_error) {
       Toast.error(translate("messages.failed_to_mark_point_valid"))
     }
-  }
-
-  openPlace(event) {
-    this.placePanel.open(event.currentTarget.dataset.id)
   }
 
   switchToToolsTab() {

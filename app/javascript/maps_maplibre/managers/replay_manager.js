@@ -126,35 +126,6 @@ export class ReplayManager {
   }
 
   /**
-   * Get array of minute ranges that have data
-   * Each range is { start: number, end: number }
-   * Used for rendering data density on scrubber
-   * @returns {Array} Array of {start, end} objects
-   */
-  getDataRanges() {
-    if (this.minutesWithData.size === 0) return []
-
-    const sortedMinutes = Array.from(this.minutesWithData).sort((a, b) => a - b)
-    const ranges = []
-    let rangeStart = sortedMinutes[0]
-    let rangeEnd = sortedMinutes[0]
-
-    for (let i = 1; i < sortedMinutes.length; i++) {
-      const minute = sortedMinutes[i]
-      // If gap is more than 5 minutes, start a new range
-      if (minute - rangeEnd > 5) {
-        ranges.push({ start: rangeStart, end: rangeEnd })
-        rangeStart = minute
-      }
-      rangeEnd = minute
-    }
-    // Push the last range
-    ranges.push({ start: rangeStart, end: rangeEnd })
-
-    return ranges
-  }
-
-  /**
    * Get data density for scrubber visualization (0-1 values per segment)
    * @param {number} segments - Number of segments to divide the day into
    * @returns {Array} Array of density values (0-1)
@@ -266,32 +237,6 @@ export class ReplayManager {
    */
   getPointCountAtMinute(minute) {
     return this.getPointsAtMinute(minute).length
-  }
-
-  /**
-   * Pin a point (lock selection)
-   * @param {Object} point - Point to pin
-   */
-  pinPoint(point) {
-    this.pinnedPoint = point
-    this.onStateChange({ type: "pin", point })
-  }
-
-  /**
-   * Unpin current point
-   */
-  unpinPoint() {
-    this.pinnedPoint = null
-    this.cycleIndex = 0
-    this.onStateChange({ type: "unpin" })
-  }
-
-  /**
-   * Check if a point is currently pinned
-   * @returns {boolean}
-   */
-  isPinned() {
-    return this.pinnedPoint !== null
   }
 
   /**
@@ -416,16 +361,6 @@ export class ReplayManager {
   }
 
   /**
-   * Get total points on current day
-   * @returns {number}
-   */
-  getCurrentDayPointCount() {
-    const day = this.getCurrentDay()
-    if (!day) return 0
-    return this.pointsByDay[day]?.length || 0
-  }
-
-  /**
    * Format minute of day to time string
    * @param {number} minute - Minute of day (0-1439)
    * @returns {string} Time string like '08:30'
@@ -437,106 +372,6 @@ export class ReplayManager {
         timeZone: "UTC",
       },
     )
-  }
-
-  /**
-   * Find transportation mode emoji for a point by matching its timestamp to track time ranges
-   * @param {Object} point - Point object with timestamp
-   * @param {Object} tracksGeoJSON - GeoJSON FeatureCollection of tracks
-   * @returns {string|null} Emoji for transportation mode, or null if not found
-   */
-  static findTransportationEmoji(point, tracksGeoJSON) {
-    if (!tracksGeoJSON?.features?.length) return null
-
-    const timestamp = ReplayManager._getTimestampStatic(point)
-    if (!timestamp) return null
-
-    const pointTime = ReplayManager._parseTimestampStatic(timestamp)
-    if (!pointTime) return null
-
-    // Convert pointTime to seconds for segment matching
-    const pointTimeSec = Math.floor(pointTime / 1000)
-
-    for (const track of tracksGeoJSON.features) {
-      const startAt = track.properties?.start_at
-      const endAt = track.properties?.end_at
-
-      if (startAt && endAt) {
-        const trackStart = new Date(startAt).getTime()
-        const trackEnd = new Date(endAt).getTime()
-
-        if (pointTime >= trackStart && pointTime <= trackEnd) {
-          // Try per-segment matching first (mode_timeline has start_time/end_time in unix seconds)
-          const modeTimeline = track.properties?.mode_timeline
-          if (modeTimeline?.length) {
-            for (const seg of modeTimeline) {
-              if (
-                pointTimeSec >= seg.start_time &&
-                pointTimeSec <= seg.end_time
-              ) {
-                return seg.emoji || null
-              }
-            }
-
-            // Nearest-segment fallback: find last segment whose start_time <= pointTime
-            let nearest = null
-            for (const seg of modeTimeline) {
-              if (seg.start_time <= pointTimeSec) {
-                nearest = seg
-              }
-            }
-            if (nearest?.emoji) return nearest.emoji
-          }
-
-          // Fall back to track-level dominant mode
-          return track.properties.dominant_mode_emoji || null
-        }
-      }
-    }
-    return null
-  }
-
-  /**
-   * Static version of _getTimestamp for use in static methods
-   * @private
-   */
-  static _getTimestampStatic(point) {
-    // Handle GeoJSON feature format
-    if (point.properties?.timestamp) {
-      return point.properties.timestamp
-    }
-    // Handle raw point format
-    if (point.timestamp) {
-      return point.timestamp
-    }
-    return null
-  }
-
-  /**
-   * Static version of _parseTimestamp for use in static methods
-   * Returns timestamp as milliseconds
-   * @private
-   */
-  static _parseTimestampStatic(timestamp) {
-    if (!timestamp) return null
-
-    // Handle ISO 8601 string
-    if (typeof timestamp === "string") {
-      const date = new Date(timestamp)
-      return Number.isNaN(date.getTime()) ? null : date.getTime()
-    }
-
-    // Handle Unix timestamp
-    if (typeof timestamp === "number") {
-      // Unix timestamp in seconds (< year 2286 in seconds)
-      if (timestamp < 10000000000) {
-        return timestamp * 1000
-      }
-      // Unix timestamp in milliseconds
-      return timestamp
-    }
-
-    return null
   }
 
   // Private helpers

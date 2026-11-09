@@ -512,14 +512,6 @@ export default class extends Controller {
     this.applyVisibility()
   }
 
-  deselectVisit() {
-    this.selectedVisitId = null
-    for (const el of this.element.querySelectorAll(".visit-row--selected")) {
-      el.classList.remove("visit-row--selected")
-    }
-    document.dispatchEvent(new CustomEvent("timeline-feed:visit-deselected"))
-  }
-
   // ---------- Journey entries (track segments between visits) ----------
   toggleTrackInfo(event) {
     const target = event.currentTarget

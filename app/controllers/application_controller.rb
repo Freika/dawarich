@@ -107,12 +107,6 @@ class ApplicationController < ActionController::Base
     redirect_to root_path, notice: I18n.t('controllers.application.your_account_is_not_active'), status: :see_other
   end
 
-  def authenticate_non_self_hosted!
-    return unless DawarichSettings.self_hosted?
-
-    user_not_authorized
-  end
-
   def after_sign_in_path_for(resource)
     invitation_path = pending_invitation_path_for(resource)
     return invitation_path if invitation_path

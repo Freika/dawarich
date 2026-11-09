@@ -60,10 +60,6 @@ module Calculateable
     calculated_distance_meters.round
   end
 
-  def track_model?
-    instance_of?(Track)
-  end
-
   def save_if_changed!
     save! if changed?
   end

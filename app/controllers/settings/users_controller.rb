@@ -215,15 +215,6 @@ class Settings::UsersController < ApplicationController
     "#{basename}_#{timestamp}#{extension}"
   end
 
-  def validate_archive_file(archive_file)
-    unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
-           File.extname(archive_file.original_filename).downcase == '.zip'
-
-      redirect_to edit_user_registration_path,
-                  alert: I18n.t('controllers.settings.users.please_upload_a_valid_zip_file') and return
-    end
-  end
-
   def validate_blob_file_type(blob)
     unless ['application/zip', 'application/x-zip-compressed'].include?(blob.content_type) ||
            File.extname(blob.filename.to_s).downcase == '.zip'

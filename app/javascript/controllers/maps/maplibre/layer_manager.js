@@ -200,17 +200,6 @@ export class LayerManager {
   }
 
   /**
-   * Toggle layer visibility
-   */
-  toggleLayer(layerName) {
-    const layer = this.getLayer(layerName)
-    if (!layer) return null
-
-    layer.toggle()
-    return layer.visible
-  }
-
-  /**
    * Get layer instance
    */
   getLayer(layerName) {

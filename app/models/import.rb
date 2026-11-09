@@ -61,10 +61,6 @@ class Import < ApplicationRecord
     Users::ImportDataJob.perform_later(id)
   end
 
-  def reverse_geocoded_points_count
-    points.reverse_geocoded.count
-  end
-
   def years_and_months_tracked
     quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
     points
@@ -141,10 +137,6 @@ class Import < ApplicationRecord
     Time.zone.parse(started_at.to_s) <= EXTRACTION_STALE_AFTER.ago
   rescue ArgumentError, TypeError
     false
-  end
-
-  def trust_source_for_extraction?
-    additional_data_extraction.dig('options', 'trust_source') != false
   end
 
   # Two rapid submissions both pass the extraction policy before either

@@ -493,32 +493,6 @@ export class EventHandlers {
   }
 
   /**
-   * Show track info panel with basic info (segments loaded separately)
-   * @private
-   */
-  _showTrackInfoPanel(properties) {
-    const distanceUnit = this.controller.settings.distance_unit || "km"
-    const durationMinutes = Math.floor((properties.duration || 0) / 60)
-    const trackDistanceKm = (properties.distance || 0) / 1000
-
-    // Build content using template - data comes from our own trusted backend
-    const content = this._buildTrackInfoContent(
-      properties,
-      distanceUnit,
-      durationMinutes,
-      trackDistanceKm,
-    )
-
-    this.controller.showInfo(
-      translate("map_info.track_number", { id: properties.id }),
-      content,
-    )
-
-    // Set up the show points toggle handler (uses event delegation)
-    this._setupTrackPointsToggle()
-  }
-
-  /**
    * Build track info panel HTML content
    * Note: Data comes from our own backend API, not user input
    * @private
@@ -614,24 +588,6 @@ export class EventHandlers {
   clearPointSelection() {
     this._clearTrackPointsLayer()
     this._setMainPointsOpacity(1.0)
-  }
-
-  /**
-   * Set up the track points toggle handler using event delegation
-   * Uses delegation on info panel container to reliably catch toggle changes
-   * regardless of DOM timing
-   */
-  _setupTrackPointsToggle() {
-    // Only set up delegation once
-    if (this._infoPanelDelegationSetup) return
-
-    const infoDisplay = this.controller.infoDisplayTarget
-    if (!infoDisplay) return
-
-    // Use event delegation - listen for changes on the container
-    infoDisplay.addEventListener("change", this._boundTrackPointsToggleChange)
-
-    this._infoPanelDelegationSetup = true
   }
 
   async _handleTrackPointsToggleChange(event) {
@@ -769,63 +725,6 @@ export class EventHandlers {
       marker.remove()
     }
     this.trackMarkers = []
-  }
-
-  /**
-   * Update track segment markers when track geometry changes
-   * Called after track recalculation to move emoji markers to new positions
-   * @param {Object} feature - The updated track GeoJSON feature
-   */
-  updateTrackMarkers(feature) {
-    if (!this.selectedTrackFeature) return
-    if (feature?.geometry?.type !== "LineString") return
-
-    // Parse segments from feature properties
-    let segments = []
-    try {
-      const props = feature.properties || {}
-      segments =
-        typeof props.segments === "string"
-          ? JSON.parse(props.segments)
-          : props.segments || []
-    } catch (err) {
-      console.warn("Failed to parse track segments for marker update:", err)
-      return
-    }
-
-    const trackId = feature.properties?.id
-    this._createTrackSegmentMarkers(trackId, feature, segments)
-  }
-
-  /**
-   * Zoom the map to fit a specific segment's bounds
-   * @param {Object} segment - Segment data with start_index and end_index
-   */
-  _zoomToSegment(segment) {
-    if (!this.selectedTrackFeature || !segment) return
-
-    const coords = this.selectedTrackFeature.geometry?.coordinates
-    if (!coords || coords.length < 2) return
-
-    const startIdx = Math.max(0, segment.start_index || 0)
-    const endIdx = Math.min(coords.length - 1, segment.end_index || startIdx)
-
-    // Extract coordinates for this segment
-    const segmentCoords = coords.slice(startIdx, endIdx + 1)
-    if (segmentCoords.length < 1) return
-
-    // Build bounds from segment coordinates
-    const bounds = new maplibregl.LngLatBounds()
-    segmentCoords.forEach((coord) => {
-      bounds.extend(coord)
-    })
-
-    // Fit map to segment bounds
-    this.map.fitBounds(bounds, {
-      padding: 80,
-      maxZoom: 17,
-      duration: 500,
-    })
   }
 
   /**

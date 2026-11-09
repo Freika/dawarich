@@ -131,18 +131,6 @@ class Tracks::SessionManager
     completed_chunks >= session_data['total_chunks']
   end
 
-  # Get progress percentage
-  def progress_percentage
-    session_data = get_session_data
-    return 0 unless session_data
-
-    total = session_data['total_chunks']
-    return 100 if total.zero?
-
-    completed = counter_value('completed_chunks')
-    (completed.to_f / total * 100).round(2)
-  end
-
   # Delete session
   def cleanup_session
     Rails.cache.delete(cache_key)
@@ -156,19 +144,6 @@ class Tracks::SessionManager
     # Create session for user
     def create_for_user(user_id, metadata = {})
       new(user_id).create_session(metadata)
-    end
-
-    # Find session by user and session ID
-    def find_session(user_id, session_id)
-      manager = new(user_id, session_id)
-      manager.session_exists? ? manager : nil
-    end
-
-    # Cleanup expired sessions (automatic with Rails cache TTL)
-    def cleanup_expired_sessions
-      # With Rails cache, expired keys are automatically cleaned up
-      # This method exists for compatibility but is essentially a no-op
-      true
     end
   end
 
