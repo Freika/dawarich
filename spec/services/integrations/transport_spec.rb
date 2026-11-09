@@ -233,6 +233,16 @@ RSpec.describe Integrations::Transport do
       expect(described_class.request(:get, 'http://api.test/cached').code).to eq(304)
     end
 
+    it 'sends non-string header values as text and leaves out nil ones' do
+      request = stub_request(:get, 'http://api.test/')
+                .with { |req| req.headers['X-Api-Key'] == '12345' && !req.headers.key?('X-Empty') }
+                .to_return(json_ok)
+
+      described_class.request(:get, 'http://api.test/', headers: { 'x-api-key' => 12_345, 'x-empty' => nil })
+
+      expect(request).to have_been_requested
+    end
+
     it 'refuses a header value with a line break without echoing it' do
       request = stub_request(:get, 'http://api.test/')
 

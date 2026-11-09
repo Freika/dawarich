@@ -119,8 +119,9 @@ module Integrations
 
     # Opens a connection to the first validated address that accepts one, so a
     # host with an unreachable first record (often an unrouted AAAA) still
-    # connects. Only the connect is retried: once a connection exists the
-    # request is sent exactly once.
+    # connects. Only the connect moves on to another address: once a connection
+    # exists the request stays on it. (Net::HTTP itself still repeats an
+    # idempotent request once after a timeout or reset, as it did under HTTParty.)
     def connect(uri, addresses, &)
       http = open_connection(uri, addresses)
       yield http
@@ -154,7 +155,7 @@ module Integrations
     end
 
     def build_request(uri)
-      request = @request_class.new(uri.request_uri, @headers.transform_keys(&:to_s))
+      request = @request_class.new(uri.request_uri, @headers.compact.to_h { |name, value| [name.to_s, value.to_s] })
       request.body = @body if @body
       # Same precedence HTTParty had: credentials in the URL win over a
       # caller's Authorization header (a homelab reverse proxy in front).
