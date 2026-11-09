@@ -327,15 +327,13 @@ status: :see_other
     redirect_to root_path, alert: I18n.t('controllers.application.your_account_has_been_deleted')
   end
 
-  def set_user_time_zone(&block)
-    if current_user
-      timezone = current_user.timezone
-      Time.use_zone(timezone, &block)
-    else
-      yield
-    end
-  rescue ArgumentError
-    yield
+  def set_user_time_zone(&)
+    zone = Time.find_zone(time_zone_owner&.timezone)
+    zone ? Time.use_zone(zone, &) : yield
+  end
+
+  def time_zone_owner
+    current_user
   end
 
   def apply_date_time_preferences(&)

@@ -20,15 +20,8 @@ class ApiController < ApplicationController
     I18n.with_locale(I18n.default_locale, &block)
   end
 
-  def set_user_time_zone(&block)
-    if current_api_user
-      timezone = current_api_user.timezone
-      Time.use_zone(timezone, &block)
-    else
-      yield
-    end
-  rescue ArgumentError
-    yield
+  def time_zone_owner
+    current_api_user
   end
 
   def record_not_found
