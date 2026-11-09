@@ -246,10 +246,16 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     ),
     "utf8",
   )
-  const withoutImports = controllerSource.replace(
-    /^import[\s\S]*?from "[^"]+";?\n/gm,
-    "",
+  const stripImports = (code) =>
+    code.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const formSyncSource = await readFile(
+    new URL(
+      "../../app/javascript/controllers/maps/maplibre/settings_form_sync.js",
+      import.meta.url,
+    ),
+    "utf8",
   )
+  const withoutImports = `${stripImports(formSyncSource).replace(/^export /gm, "")}\n${stripImports(controllerSource)}`
   globalThis.__settingsManagerTestDouble = settingsManager
   globalThis.__settingsManagerToast = overrides.Toast ?? {
     error() {},
