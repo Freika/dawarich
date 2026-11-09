@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class Immich::RequestPhotos
-  include SslConfigurable
   include DayBoundable
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
@@ -34,15 +33,10 @@ class Immich::RequestPhotos
 
     # TODO: Handle pagination using nextPage
     while page <= max_pages
-      response = HTTParty.post(
-        immich_api_base_url,
-        http_options_with_ssl(
-          @user, :immich, {
-            headers: headers,
-            body: request_body(page).to_json,
-            timeout: 10
-          }
-        )
+      response = Integrations::Transport.request(
+        :post, immich_api_base_url,
+        headers: headers, body: request_body(page).to_json,
+        skip_ssl_verification: user.safe_settings.immich_skip_ssl_verification
       )
 
       result = Immich::ResponseValidator.validate_and_parse(response)

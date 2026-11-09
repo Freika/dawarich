@@ -116,3 +116,24 @@ RSpec.describe Immich::EnrichPhotos do
     end
   end
 end
+
+RSpec.describe Immich::EnrichPhotos, 'request safety' do
+  let(:user) { create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' }) }
+
+  it 'escapes the asset id in the request path' do
+    request = stub_request(:put, 'http://immich.app/api/assets/..%2Fadmin')
+              .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+    described_class.new(user, [{ 'immich_asset_id' => '../admin', 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+
+    expect(request).to have_been_requested
+  end
+
+  it 'names the underlying failure, not the transport, when the connection fails' do
+    stub_request(:put, 'http://immich.app/api/assets/uuid-1').to_raise(Errno::ECONNREFUSED)
+
+    result = described_class.new(user, [{ 'immich_asset_id' => 'uuid-1', 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+
+    expect(result[:errors].first[:error]).to include('Errno::ECONNREFUSED')
+  end
+end

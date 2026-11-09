@@ -25,5 +25,17 @@ module Photos
     def self.retryable?(error)
       RETRYABLE.any? { |klass| error.is_a?(klass) }
     end
+
+    def self.certificate?(error)
+      error.is_a?(OpenSSL::SSL::SSLError) ||
+        (error.is_a?(Integrations::Transport::Error) && error.certificate?)
+    end
+
+    # The class a user-facing message should name: what actually went wrong,
+    # not the transport that reported it.
+    def self.cause_name(error)
+      underlying = error.is_a?(Integrations::Transport::Error) ? error.cause : nil
+      (underlying || error).class.name
+    end
   end
 end

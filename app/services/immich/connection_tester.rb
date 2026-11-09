@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Immich::ConnectionTester
-  include SslConfigurable
-
   attr_reader :url, :api_key, :skip_ssl_verification
 
   def initialize(url, api_key, skip_ssl_verification: false)
@@ -23,7 +21,7 @@ error: I18n.t('services.immich.connection_tester.immich_api_key_is_missing') }
 
     test_connection
   rescue *Photos::ConnectionErrors::HANDLED => e
-    { success: false, reason: e.is_a?(OpenSSL::SSL::SSLError) ? 'certificate' : 'unreachable',
+    { success: false, reason: Photos::ConnectionErrors.certificate?(e) ? 'certificate' : 'unreachable',
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.message) }
   end
 
@@ -47,35 +45,20 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
   end
 
   def search_metadata
-    HTTParty.post(
-      "#{url}/api/search/metadata",
-      http_options_with_ssl_flag(
-        skip_ssl_verification, {
-          headers: {
-            'x-api-key' => api_key,
-            'accept' => 'application/json',
-            'Content-Type' => 'application/json'
-          },
-          body: {
-            takenAfter: Time.current.beginning_of_day.iso8601,
-            size: 1,
-            page: 1,
-            order: 'asc',
-            withExif: true
-          }.to_json,
-        timeout: 10
-        }
-      )
+    Integrations::Transport.request(
+      :post, "#{url}/api/search/metadata",
+      headers: { 'x-api-key' => api_key, 'accept' => 'application/json', 'Content-Type' => 'application/json' },
+      body: { takenAfter: Time.current.beginning_of_day.iso8601, size: 1, page: 1, order: 'asc',
+              withExif: true }.to_json,
+      skip_ssl_verification:
     )
   end
 
   def test_thumbnail_access(asset_id)
-    response = HTTParty.get(
-      "#{url}/api/assets/#{asset_id}/thumbnail?size=preview",
-      http_options_with_ssl_flag(skip_ssl_verification, {
-                                   headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
-        timeout: 10
-                                 })
+    response = Integrations::Transport.request(
+      :get, "#{url}/api/assets/#{ERB::Util.url_encode(asset_id)}/thumbnail?size=preview",
+      headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
+      skip_ssl_verification:
     )
 
     if response.success?
