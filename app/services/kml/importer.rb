@@ -107,13 +107,27 @@ class Kml::Importer
     Zip::File.open_buffer(StringIO.new(kmz_content)) do |zip|
       zip.each do |entry|
         if kml_entry?(entry)
-          kml_content = entry.get_input_stream.read
+          kml_content = read_capped(entry)
           break
         end
       end
     end
 
     kml_content
+  end
+
+  # Bound the inner .kml inflate so a KMZ (which can skip the dispatcher's
+  # zip-magic check and reach this path) cannot expand unbounded into memory.
+  def read_capped(entry)
+    max = ENV.fetch('ZIP_MAX_EXTRACTED_SIZE', 2.gigabytes).to_i
+    buffer = +''
+    entry.get_input_stream do |stream|
+      while (chunk = stream.read(8192))
+        buffer << chunk
+        raise "KMZ inner entry too large (max #{max} bytes)" if buffer.bytesize > max
+      end
+    end
+    buffer
   end
 
   def kml_entry?(entry)

@@ -33,6 +33,7 @@ module UrlValidatable
   # target on either deployment topology.
   ALWAYS_BLOCKED_RANGES = [
     IPAddr.new('0.0.0.0/8'),           # invalid / "this network"
+    IPAddr.new('::/128'),              # IPv6 unspecified (routes to localhost on connect)
     IPAddr.new('169.254.169.254/32'),  # cloud metadata (AWS / GCP / OpenStack)
     IPAddr.new('224.0.0.0/4'),         # IPv4 multicast
     IPAddr.new('240.0.0.0/4'),         # IPv4 reserved

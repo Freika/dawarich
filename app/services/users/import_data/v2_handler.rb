@@ -98,7 +98,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      settings_data = Oj.load(line)
+      settings_data = Oj.load(line, mode: :strict)
       Users::ImportData::Settings.new(user, settings_data).call
       import_stats[:settings_updated] = true
       break # Only one line expected
@@ -126,7 +126,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      batch << Oj.load(line)
+      batch << Oj.load(line, mode: :strict)
       if batch.size >= BATCH_SIZE
         places_created = Users::ImportData::Places.new(user, batch).call.to_i
         import_stats[:places_created] += places_created
@@ -302,7 +302,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      batch << Oj.load(line)
+      batch << Oj.load(line, mode: :strict)
       if batch.size >= BATCH_SIZE
         import_visits_batch(batch)
         batch = []
@@ -335,7 +335,7 @@ class Users::ImportData::V2Handler
           line = line.strip
           next if line.blank?
 
-          importer.add(Oj.load(line))
+          importer.add(Oj.load(line, mode: :strict))
         end
         import_stats[:points_created] = importer.finalize.to_i
       end
@@ -353,7 +353,7 @@ class Users::ImportData::V2Handler
         line = line.strip
         next if line.blank?
 
-        importer.add(Oj.load(line))
+        importer.add(Oj.load(line, mode: :strict))
       end
 
       Rails.logger.debug "Processed points from #{relative_path}"
@@ -377,7 +377,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      data << Oj.load(line)
+      data << Oj.load(line, mode: :strict)
     end
     data
   end

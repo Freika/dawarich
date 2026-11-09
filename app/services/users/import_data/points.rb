@@ -207,7 +207,15 @@ class Users::ImportData::Points
       'import_reference',
       'country_info',
       'visit_reference',
-      'country'
+      'country',
+      # Never trust archive-supplied identity/foreign keys: they are resolved from
+      # *_reference hashes below, so a raw id here would point at another tenant's
+      # rows. Mirrors the visits importer, which already strips these.
+      'id',
+      'visit_id',
+      'import_id',
+      'track_id',
+      'raw_data_archive_id'
     )
 
     ensure_lonlat_field(attributes, point_data)

@@ -16,10 +16,13 @@ class Photos::Thumbnail
 
     unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
 
+    # follow_redirects: false — a save-time-validated host must not be able to
+    # redirect this server-side fetch into blocked/internal address space (SSRF).
     HTTParty.get(
       request_url,
       http_options_with_ssl(@user, source_type, {
-                              headers: headers
+                              headers: headers,
+                              follow_redirects: false
                             })
     )
   end
