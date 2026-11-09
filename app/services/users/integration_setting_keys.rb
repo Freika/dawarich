@@ -27,7 +27,8 @@ module Users
       uri.user = nil
       uri.to_s
     rescue URI::InvalidURIError
-      url
+      # Unparsable, but still not allowed to carry credentials out.
+      url.sub(%r{//[^/]*@}, '//')
     end
 
     # Settings safe to write to an archive: no secret keys, no credentials in URLs.
