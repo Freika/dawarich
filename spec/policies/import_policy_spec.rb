@@ -66,6 +66,8 @@ RSpec.describe ImportPolicy, type: :policy do
         create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
       end
 
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
       it 'denies access to new imports form — gates must not diverge from create' do
         policy = ImportPolicy.new(user, Import.new)
 
@@ -105,6 +107,8 @@ RSpec.describe ImportPolicy, type: :policy do
       let(:user) do
         create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
       end
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
       it 'denies import creation — matches authenticate_active_user!' do
         policy = ImportPolicy.new(user, Import.new)

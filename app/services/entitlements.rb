@@ -36,6 +36,13 @@ class Entitlements
     @user.family? && (@user.active_until&.future? || false)
   end
 
+  # Whether the account may write: web, API and imports all ask this.
+  def in_good_standing?
+    return false unless @user.active? || @user.trial?
+
+    self_hosted? || @user.active_until&.future? || false
+  end
+
   def can_create_family?
     self_hosted? || @user.family?
   end

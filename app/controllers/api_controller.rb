@@ -142,19 +142,16 @@ class ApiController < ApplicationController
       return false
     end
 
-    if current_api_user.inactive?
-      render json: { error: I18n.t('controllers.api.user_account_is_not_active') }, status: :unauthorized
+    return true if current_api_user.in_good_standing?
 
-      return false
-    end
+    error = if current_api_user.inactive?
+              I18n.t('controllers.api.user_account_is_not_active')
+            else
+              I18n.t('controllers.api.user_subscription_is_not_active')
+            end
+    render json: { error: error }, status: :unauthorized
 
-    if current_api_user.active_until&.past?
-      render json: { error: I18n.t('controllers.api.user_subscription_is_not_active') }, status: :unauthorized
-
-      return false
-    end
-
-    true
+    false
   end
 
   def current_api_user
