@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { formatNumber, formatTime, translate } from "i18n"
+import { formatNumber, translate } from "i18n"
 import { deletePlace } from "maps_maplibre/components/place_actions"
 import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
@@ -24,6 +24,7 @@ import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
 import { EventHandlers } from "./maplibre/event_handlers"
+import { FamilyManager } from "./maplibre/family_manager"
 import { FilterManager } from "./maplibre/filter_manager"
 import { LayerManager } from "./maplibre/layer_manager"
 import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
@@ -163,6 +164,7 @@ export default class extends Controller {
 
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
+    this.familyManager = new FamilyManager(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
 
@@ -367,7 +369,7 @@ export default class extends Controller {
   disconnect() {
     this._disconnected = true
     this.rangeStatistics?.destroy()
-    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this.familyManager?.disconnect()
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
@@ -516,7 +518,7 @@ export default class extends Controller {
     this._clearDayHighlight()
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
-    this.debouncedLoadFamilyHistory()
+    this.familyManager.debouncedLoadHistory()
   }
 
   /**
@@ -557,7 +559,7 @@ export default class extends Controller {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
     this.refreshTimelineFeedIfActive?.()
-    this.debouncedLoadFamilyHistory?.()
+    this.familyManager.debouncedLoadHistory()
   }
 
   /**
@@ -578,11 +580,6 @@ export default class extends Controller {
       endValue,
       treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
     }
-  }
-
-  debouncedLoadFamilyHistory() {
-    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
-    this._familyHistoryTimer = setTimeout(() => this.loadFamilyHistory(), 300)
   }
 
   /**
@@ -647,7 +644,7 @@ export default class extends Controller {
 
     // Append family count if family layer is enabled
     if (this.settings?.familyEnabled && counts.family === undefined) {
-      const familyCount = this._familyMemberCount || 0
+      const familyCount = this.familyManager.memberCount
       parts.push(
         translate("loading_sources.family", {
           count: familyCount,
@@ -1366,242 +1363,12 @@ export default class extends Controller {
     return this.layerVisibilityManager.toggleFamily(event)
   }
 
-  // Family Members methods
-  async loadFamilyMembers() {
-    try {
-      this.showProgress()
-      this.updateLoadingCounts({
-        counts: { family: 0 },
-        isComplete: false,
-      })
-
-      const response = await fetch("/api/v1/families/locations", {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKeyValue}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          Toast.info(translate("messages.family_feature_not_available"))
-          this.updateLoadingCounts({
-            counts: { family: 0 },
-            isComplete: true,
-          })
-          return
-        }
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const locations = data.locations || []
-
-      // Update family layer with locations
-      const familyLayer = this.layerManager.getLayer("family")
-      if (familyLayer) {
-        familyLayer.loadMembers(locations)
-      }
-
-      // Update family count in badge
-      this._familyMemberCount = locations.length
-      this.updateLoadingCounts({
-        counts: { family: locations.length },
-        isComplete: true,
-      })
-
-      // Render family members list
-      this.renderFamilyMembersList(locations)
-
-      Toast.success(
-        translate("family.loaded_members", { count: locations.length }),
-      )
-
-      // Load history polylines
-      this.loadFamilyHistory()
-    } catch (error) {
-      console.error("[Maps V2] Failed to load family members:", error)
-      Toast.error(translate("messages.failed_to_load_family_members"))
-    }
-  }
-
-  async loadFamilyHistory() {
-    try {
-      const startAt = this.startDateValue
-      const endAt = this.endDateValue
-      if (!startAt || !endAt) return
-
-      const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
-      const response = await fetch(
-        `/api/v1/families/locations/history?${params}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKeyValue}`,
-          },
-        },
-      )
-
-      if (!response.ok) return
-
-      const data = await response.json()
-      const members = data.members || []
-
-      const familyLayer = this.layerManager.getLayer("family")
-      if (familyLayer) {
-        if (members.length > 0) {
-          // Assign colors consistent with member markers
-          for (const member of members) {
-            member.color = this.getFamilyMemberColor(member.user_id)
-          }
-          familyLayer.loadMemberHistory(members)
-        } else {
-          familyLayer.clearHistory()
-        }
-      }
-
-      // Update member info lines with sharing_since data
-      this._familyHistoryData = members
-      this.updateFamilyInfoLines(members)
-    } catch (error) {
-      console.error("[Maps V2] Failed to load family history:", error)
-    }
-  }
-
-  updateFamilyInfoLines(historyMembers) {
-    if (!this.hasFamilyMembersContainerTarget) return
-
-    for (const member of historyMembers) {
-      const infoEl = this.familyMembersContainerTarget.querySelector(
-        `[data-member-info="${member.user_id}"]`,
-      )
-      if (!infoEl || !member.sharing_since) continue
-
-      const sharingDate = new Date(member.sharing_since)
-      const daysSharing = Math.min(
-        365,
-        Math.floor(
-          (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
-        ),
-      )
-      const formattedDate = sharingDate.toLocaleDateString(
-        document.documentElement.lang || undefined,
-        {
-          month: "short",
-          day: "numeric",
-        },
-      )
-
-      infoEl.textContent = translate("family.sharing_since", {
-        date: formattedDate,
-        count: daysSharing,
-      })
-    }
-  }
-
-  renderFamilyMembersList(locations) {
-    if (!this.hasFamilyMembersContainerTarget) return
-
-    const container = this.familyMembersContainerTarget
-
-    if (locations.length === 0) {
-      container.innerHTML = `<p class="text-xs text-base-content/60">${translate("family.none_sharing")}</p>`
-      return
-    }
-
-    container.replaceChildren(
-      ...locations.map((location) => {
-        const emailInitial =
-          (location.name || location.email)?.charAt(0)?.toUpperCase() || "?"
-        const color = this.getFamilyMemberColor(location.user_id)
-        const timeZone = this.timezoneValue || "UTC"
-        const lastSeenDay = new Date(location.updated_at).toLocaleDateString(
-          document.documentElement.lang || undefined,
-          { timeZone, month: "short", day: "numeric" },
-        )
-        const lastSeen = `${lastSeenDay} ${formatTime(location.updated_at, { timeZone })}`
-
-        const row = document.createElement("div")
-        row.className =
-          "flex items-center gap-2 p-2 hover:bg-base-200 rounded-lg cursor-pointer transition-colors"
-        row.dataset.action = "click->maps--maplibre#centerOnFamilyMember"
-        row.dataset.memberId = location.user_id
-
-        const avatar = document.createElement("div")
-        Object.assign(avatar.style, {
-          backgroundColor: color,
-          color: "white",
-          borderRadius: "50%",
-          width: "24px",
-          height: "24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: "bold",
-          flexShrink: "0",
-        })
-        avatar.textContent = emailInitial
-
-        const info = document.createElement("div")
-        info.className = "flex-1 min-w-0"
-
-        const emailDiv = document.createElement("div")
-        emailDiv.className = "text-sm font-medium truncate"
-        emailDiv.textContent =
-          location.name || location.email || translate("common.unknown")
-
-        const timeDiv = document.createElement("div")
-        timeDiv.className = "text-xs text-base-content/60"
-        timeDiv.textContent = lastSeen
-
-        const statusDiv = document.createElement("div")
-        statusDiv.className = "text-xs text-info/70"
-        statusDiv.dataset.memberInfo = location.user_id
-
-        info.append(emailDiv)
-        if (location.address) {
-          const addressDiv = document.createElement("div")
-          addressDiv.className = "text-xs text-base-content/70 truncate"
-          addressDiv.title = location.address
-          addressDiv.textContent = location.address
-          info.append(addressDiv)
-        }
-        info.append(timeDiv, statusDiv)
-        row.append(avatar, info)
-        return row
-      }),
-    )
-  }
-
-  getFamilyMemberColor(userId) {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#ec4899",
-    ]
-    // Use user ID to get consistent color
-    const hash = userId
-      .toString()
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return colors[hash % colors.length]
+  loadFamilyMembers() {
+    return this.familyManager.loadMembers()
   }
 
   centerOnFamilyMember(event) {
-    const memberId = event.currentTarget.dataset.memberId
-    if (!memberId) return
-
-    const familyLayer = this.layerManager.getLayer("family")
-    if (familyLayer) {
-      familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success(translate("messages.centered_on_family_member"))
-    }
+    return this.familyManager.centerOnMember(event)
   }
 
   // Info Display methods

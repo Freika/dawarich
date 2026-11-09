@@ -118,7 +118,7 @@ async function exercise(initial, zone) {
     },
     _clearDayHighlight() {},
     refreshTimelineFeedIfActive() {},
-    debouncedLoadFamilyHistory() {},
+    familyManager: { debouncedLoadHistory() {} },
   })
   const navigationRequests = []
   const element = { id: "maps-maplibre-container" }

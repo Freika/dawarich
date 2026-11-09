@@ -14,7 +14,7 @@ const UNMASKED = new Set([
   "app/javascript/maps_maplibre/components/visit_place_search.js#fetchResults",
   "app/javascript/controllers/public_stat_map_controller.js#loadStaticHexagons",
   "app/javascript/maps_maplibre/services/location_search_service.js#fetchSuggestions",
-  "app/javascript/controllers/maps/maplibre_controller.js#loadFamilyHistory",
+  "app/javascript/controllers/maps/maplibre/family_manager.js#loadHistory",
 ])
 
 async function jsFiles(dir) {
