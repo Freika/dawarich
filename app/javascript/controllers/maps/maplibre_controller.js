@@ -401,9 +401,6 @@ export default class extends Controller {
     this.webglErrorTarget.classList.remove("hidden")
   }
 
-  /**
-   * Initialize MapLibre map
-   */
   async loadViewSettings() {
     await this.settingsController.loadSettings()
     // A city card opens the map with fog on for this view only; the copy
@@ -1215,8 +1212,6 @@ export default class extends Controller {
     return null
   }
 
-  // ===== Delegated Methods to Managers =====
-
   // Settings Controller methods
   updateMapStyle(event) {
     return this.settingsController.updateMapStyle(event)
@@ -1731,8 +1726,6 @@ export default class extends Controller {
       panelController.switchToTab("tools")
     }
   }
-
-  // ===== Replay (delegates to the reusable ReplayPanel) =====
 
   _ensureReplayPanel() {
     if (this.replayPanel) return

@@ -15,9 +15,6 @@ import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
- * Handles map interaction events (clicks, info display)
- */
-/**
  * Format the coordinates a feature carries in its properties. Returns null when
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
@@ -275,9 +272,6 @@ export class EventHandlers {
     )
   }
 
-  /**
-   * Handle photo click
-   */
   handlePhotoClick(e) {
     const feature = e.features[0]
     const properties = feature.properties
@@ -292,9 +286,6 @@ export class EventHandlers {
     this.controller.showInfo(translate("map_info.photo"), content)
   }
 
-  /**
-   * Handle place click
-   */
   handlePlaceClick(e) {
     this.controller.placePanel.open(e.features[0].properties.id)
   }
@@ -548,9 +539,6 @@ export class EventHandlers {
     `
   }
 
-  /**
-   * Clear track selection
-   */
   clearTrackSelection({ preserveEditor = false } = {}) {
     if (!this.selectedTrackFeature) return
 

@@ -312,9 +312,6 @@ export class VisitsManager {
     this._viewportListenerAttached = false
   }
 
-  /**
-   * Search visits
-   */
   searchVisits(event) {
     const searchTerm = event.target.value.toLowerCase()
     const visitsLayer = this.layerManager.getLayer("visits")
@@ -391,9 +388,6 @@ export class VisitsManager {
     this.createVisitArmed = false
   }
 
-  /**
-   * Open visit creation modal
-   */
   openVisitCreationModal(lat, lng, draft = null) {
     const modalElement = document.querySelector(
       '[data-controller="visit-creation-v2"]',

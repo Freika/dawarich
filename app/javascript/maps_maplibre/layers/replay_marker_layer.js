@@ -117,9 +117,6 @@ export class ReplayMarkerLayer extends BaseLayer {
     }
   }
 
-  /**
-   * Hide the marker
-   */
   hideMarker() {
     this._removeEmojiMarker()
     this.hide()

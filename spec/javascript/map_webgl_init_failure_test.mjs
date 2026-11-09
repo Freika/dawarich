@@ -11,7 +11,7 @@ const source = await readFile(
 )
 
 const start = source.indexOf("  async initializeMap() {")
-const end = source.indexOf("  /**\n   * Initialize API client", start)
+const end = source.indexOf("  initializeAPI() {", start)
 const initializeMapSource = source.slice(start, end)
 
 async function buildController(initialize) {
@@ -66,7 +66,7 @@ test("rethrows map initialization errors that are not about the GPU", async () =
 
 const lifecycleStart = source.indexOf("  disconnect() {")
 const lifecycleEnd = source.indexOf(
-  "  /**\n   * Initialize MapLibre map",
+  "  async loadViewSettings() {",
   lifecycleStart,
 )
 const lifecycleSource = source.slice(lifecycleStart, lifecycleEnd)

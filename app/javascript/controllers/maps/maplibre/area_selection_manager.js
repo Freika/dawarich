@@ -548,9 +548,6 @@ export class AreaSelectionManager {
     }
   }
 
-  /**
-   * Cancel area selection
-   */
   cancelAreaSelection() {
     if (this.selectionLayer) {
       this.selectionLayer.disableSelectionMode()
@@ -692,9 +689,6 @@ export class AreaSelectionManager {
     }
   }
 
-  /**
-   * Delete selected points
-   */
   async deleteSelectedPoints() {
     if (this.deletingPoints) return
 

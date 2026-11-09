@@ -14,9 +14,6 @@ function cachePartitioner(value) {
   return (hash >>> 0).toString(16)
 }
 
-/**
- * Read-only vector-tile points layer for parity/performance validation.
- */
 export class PointsMvtLayer extends BaseLayer {
   // Ten minutes in a cell contributes a heatmap weight of one.
   static HEATMAP_DWELL_REFERENCE_SECONDS = 600

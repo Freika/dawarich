@@ -65,7 +65,6 @@ export class MapDataManager {
     try {
       this.layerManager.updatePointTileRange(startDate, endDate)
 
-      // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers(
         {
           visitsGeoJSON: EMPTY_GEOJSON,
@@ -92,7 +91,6 @@ export class MapDataManager {
         }
       }
 
-      // 2. Fetch data with incremental callbacks
       data = await this.dataLoader.fetchMapData(startDate, endDate, {
         viewportBounds,
         onUpdate: showLoading
@@ -113,19 +111,17 @@ export class MapDataManager {
       })
       if (!isCurrent()) return null
 
-      // 3. Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
-      // 4. Store data for replay and other features
       this.lastLoadedData = data
       this.applyFlightMask()
 
-      // 5. Show upsell banner for Lite users when searching outside the 12-month window
+      // Show upsell banner for Lite users when searching outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
         this._showDataWindowBanner()
       }
 
-      // 6. Fit bounds if requested.
+      // Fit bounds if requested.
       if (fitBounds) {
         const historyBounds = await historyBoundsPromise
         if (isCurrent()) {
@@ -140,7 +136,7 @@ export class MapDataManager {
       }
       if (!isCurrent()) return null
 
-      // 7. Reload hexagons if currently visible — they own their own fetch
+      // Reload hexagons if currently visible — they own their own fetch
       // pipeline (raw points + h3 aggregation), so they need a date-range
       // reload separate from the main data flow.
       const hexagonLayer = this.layerManager.getLayer("hexagons")
@@ -152,7 +148,7 @@ export class MapDataManager {
           })
       }
 
-      // 8. Reload fog hexagons if fog is visible — same reasoning: they own
+      // Reload fog hexagons if fog is visible — same reasoning: they own
       // their own fetch pipeline.
       this.layerManager.getLayer("fog")?.reloadHexagons()
 
