@@ -49,6 +49,13 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  def self.unique_name(original_name)
+    return original_name unless exists?(name: original_name)
+
+    extension = File.extname(original_name)
+    "#{File.basename(original_name, extension)}_#{Time.current.strftime('%Y%m%d_%H%M%S')}#{extension}"
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!

@@ -8,7 +8,7 @@
     </div>
     <div class="flex flex-wrap gap-2 min-w-0">
       <%= link_to t('places.management.duplicates'), places_path(view: 'duplicates'), class: 'btn btn-sm h-auto py-2', data: { testid: 'possible-duplicates' } %>
-      <span data-testid="create-place"><%= link_to t('places.management.create'), new_place_path(place_list_context), class: 'btn btn-primary btn-sm h-auto py-2', data: { testid: 'new-place' } %></span>
+      <span data-testid="create-place"><%= link_to t('places.management.create'), new_place_path(place_list_params), class: 'btn btn-primary btn-sm h-auto py-2', data: { testid: 'new-place' } %></span>
     </div>
   </div>
 

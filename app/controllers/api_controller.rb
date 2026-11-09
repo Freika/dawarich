@@ -105,12 +105,6 @@ class ApiController < ApplicationController
     }, status: :forbidden
   end
 
-  # Returns points scoped to the user's plan data window.
-  # Delegates to PlanScopable concern on User model.
-  def scoped_points(user = current_api_user)
-    user.scoped_points
-  end
-
   # Applies the 12-month plan window to any point relation.
   # Use this when scoping points that don't start from user.points (e.g. track.points).
   def apply_plan_scope(relation, user = current_api_user)

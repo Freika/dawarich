@@ -35,7 +35,7 @@ class Api::V1::ImportsController < ApiController
     end
 
     uploaded_file = params[:file]
-    import_name = generate_unique_import_name(uploaded_file.original_filename)
+    import_name = current_api_user.imports.unique_name(uploaded_file.original_filename)
 
     import = current_api_user.imports.build(name: import_name)
     import.file.attach(
@@ -59,15 +59,6 @@ class Api::V1::ImportsController < ApiController
   end
 
   private
-
-  def generate_unique_import_name(original_name)
-    return original_name unless current_api_user.imports.exists?(name: original_name)
-
-    basename = File.basename(original_name, File.extname(original_name))
-    extension = File.extname(original_name)
-    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    "#{basename}_#{timestamp}#{extension}"
-  end
 
   def validate_file_type
     return unless params[:file].is_a?(ActionDispatch::Http::UploadedFile)

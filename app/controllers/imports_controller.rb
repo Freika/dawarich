@@ -159,7 +159,7 @@ status: :unprocessable_content and return
     original_filename = verified_original_filename(blob, descriptor)
     mark_client_wrapped(blob, original_filename.present?) if descriptor.key?('client_wrapped')
 
-    import_name = generate_unique_import_name(original_filename || blob.filename.to_s)
+    import_name = current_user.imports.unique_name(original_filename || blob.filename.to_s)
     import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
@@ -191,18 +191,6 @@ status: :unprocessable_content and return
     metadata = blob.metadata.merge(CLIENT_WRAPPED_METADATA_KEY => wrapped)
     metadata[ORIGINAL_FILENAME_METADATA_KEY] = blob.filename.to_s.delete_suffix('.zip') if wrapped
     blob.update!(metadata:)
-  end
-
-  def generate_unique_import_name(original_name)
-    return original_name unless current_user.imports.exists?(name: original_name)
-
-    # Extract filename and extension
-    basename = File.basename(original_name, File.extname(original_name))
-    extension = File.extname(original_name)
-
-    # Add current datetime
-    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    "#{basename}_#{timestamp}#{extension}"
   end
 
   def validate_points_limit

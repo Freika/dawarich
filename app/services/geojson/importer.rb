@@ -4,7 +4,6 @@ class Geojson::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
-  include PointValidation
 
   BATCH_SIZE = 1000
   attr_reader :import, :user_id, :file_path

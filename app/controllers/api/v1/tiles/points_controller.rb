@@ -42,7 +42,7 @@ class Api::V1::Tiles::PointsController < ApiController
 
   def filtered_points
     # Parity with the classic points layer — anomalies render in their own layer.
-    scope = tile_privacy_masker.mask_points(scoped_points.without_raw_data.not_anomaly)
+    scope = tile_privacy_masker.mask_points(current_api_user.scoped_points.without_raw_data.not_anomaly)
     scope = scope.where(import_id: params[:import_id]) if params[:import_id].present?
 
     # No range = whole-account scan at low zoom; the statement timeout caps the
