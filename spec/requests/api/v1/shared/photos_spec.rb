@@ -65,8 +65,20 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
       expect(JSON.parse(response.body).first['taken_at']).to eq('2026-04-02T13:30:00Z')
     end
 
+    it 'answers 404 when the photo server cannot be reached' do
+      allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'asset-1').and_call_original
+      owner.update!(settings: owner.settings.merge('immich_url' => 'https://immich.example.com',
+                                                   'immich_api_key' => 'key'))
+      upstream = stub_request(:get, 'https://immich.example.com/api/assets/asset-1/thumbnail?size=preview').to_timeout
+
+      get "/api/v1/shared/#{link.id}/photos/asset-1/thumbnail", params: { source: 'immich' }
+
+      expect(response).to have_http_status(:not_found)
+      expect(upstream).to have_been_requested
+    end
+
     it 'serves thumbnails for photos belonging to the trip' do
-      upstream = instance_double(HTTParty::Response, success?: true, body: 'jpeg-bytes')
+      upstream = Integrations::Transport::Response.new(200, 'jpeg-bytes', nil)
       allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'asset-1').and_return(
         instance_double(Photos::Thumbnail, call: upstream)
       )

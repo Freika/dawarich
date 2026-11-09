@@ -5,7 +5,6 @@
 # release of Photoprism.
 
 class Photoprism::RequestPhotos
-  include SslConfigurable
   include DayBoundable
 
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
@@ -65,15 +64,10 @@ class Photoprism::RequestPhotos
   end
 
   def fetch_page(offset)
-    response = HTTParty.get(
-      photoprism_api_base_url,
-      http_options_with_ssl(
-        @user, :photoprism, {
-          headers: headers,
-          query: request_params(offset),
-          timeout: 10
-        }
-      )
+    response = Integrations::Transport.request(
+      :get, photoprism_api_base_url,
+      headers: headers, query: request_params(offset),
+      skip_ssl_verification: user.safe_settings.photoprism_skip_ssl_verification
     )
 
     result = Photoprism::ResponseValidator.validate_and_parse(response)

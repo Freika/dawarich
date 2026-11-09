@@ -37,7 +37,7 @@ RSpec.describe 'Public trip photo galleries beyond the map marker limit', type: 
   end
 
   it 'authorizes thumbnails after the first hundred map markers' do
-    upstream = instance_double(HTTParty::Response, success?: true, body: 'jpeg-bytes')
+    upstream = Integrations::Transport::Response.new(200, 'jpeg-bytes', nil)
     allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'later-photo').and_return(
       instance_double(Photos::Thumbnail, call: upstream)
     )
@@ -59,7 +59,7 @@ RSpec.describe 'Public trip photo galleries beyond the map marker limit', type: 
     allow(Rails).to receive(:cache).and_return(cache)
     old_key = "shared_link/#{link.id}/photo_ids/#{Digest::MD5.hexdigest([].to_s)}"
     cache.write(old_key, ['immich:early-0'], expires_in: 10.minutes)
-    upstream = instance_double(HTTParty::Response, success?: true, body: 'jpeg-bytes')
+    upstream = Integrations::Transport::Response.new(200, 'jpeg-bytes', nil)
     allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'later-photo').and_return(
       instance_double(Photos::Thumbnail, call: upstream)
     )
