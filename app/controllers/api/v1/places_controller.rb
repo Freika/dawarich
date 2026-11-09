@@ -217,15 +217,12 @@ module Api
       end
 
       def add_tags
-        return if tag_ids.empty?
-
         tags = current_api_user.tags.where(id: tag_ids)
         @place.tags << tags
       end
 
       def set_tags
-        tag_ids_param = Array(params.dig(:place, :tag_ids)).compact
-        tags = current_api_user.tags.where(id: tag_ids_param)
+        tags = current_api_user.tags.where(id: tag_ids)
         @place.tags = tags
       end
 

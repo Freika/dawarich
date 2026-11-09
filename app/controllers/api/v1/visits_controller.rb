@@ -31,22 +31,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def create
-    attributes = create_visit_params.to_h
-    if attributes[:place_id].present? && attributes[:area_id].present?
-      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
-                    status: :unprocessable_content
-    end
-
-    if attributes[:area_id].present?
-      area = current_api_user.areas.find_by(id: attributes[:area_id])
-      unless area
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
-                      status: :unprocessable_content
-      end
-
-      attributes['place_id'] = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area).id
-      attributes['area_id'] = nil
-    end
+    attributes = Visits::ResolvePlaceSelection.new(current_api_user).call(create_visit_params.to_h)
 
     service = Visits::Create.new(current_api_user, attributes)
 
@@ -58,41 +43,19 @@ class Api::V1::VisitsController < ApiController
       error_message = service.errors || I18n.t('controllers.api.v1.visits.failed_to_create_visit')
       render json: { error: error_message }, status: :unprocessable_content
     end
+  rescue Visits::ResolvePlaceSelection::Invalid => e
+    render_invalid_place_selection(e)
   end
 
   def update
     visit = current_api_user.scoped_visits.find(params[:id])
-    attributes = visit_params.to_h
-
-    if attributes[:place_id].present? && attributes[:area_id].present?
-      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
-                    status: :unprocessable_content
-    end
-
-    if attributes[:place_id].present?
-      place = current_api_user.places.find_by(id: attributes[:place_id]) ||
-              visit.suggested_places.find_by(id: attributes[:place_id])
-      if place.nil?
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_place') },
-                      status: :unprocessable_content
-      end
-    end
-
-    if attributes[:area_id].present?
-      area = current_api_user.areas.find_by(id: attributes[:area_id])
-      if area.nil?
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
-                      status: :unprocessable_content
-      end
-
-      mapped_place = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area)
-      attributes['place_id'] = mapped_place.id
-      attributes['area_id'] = nil
-    end
+    attributes = Visits::ResolvePlaceSelection.new(current_api_user, visit: visit).call(visit_params.to_h)
 
     visit = update_visit(visit, attributes: attributes)
 
     render json: serialize_visit(visit)
+  rescue Visits::ResolvePlaceSelection::Invalid => e
+    render_invalid_place_selection(e)
   end
 
   def merge
@@ -192,6 +155,10 @@ class Api::V1::VisitsController < ApiController
   end
 
   private
+
+  def render_invalid_place_selection(error)
+    render json: { error: I18n.t("controllers.api.v1.visits.#{error.reason}") }, status: :unprocessable_content
+  end
 
   def visit_point_centers(visits)
     ids = visits.select { |visit| visit.place.nil? && visit.area.nil? }.map(&:id)

@@ -9,6 +9,13 @@ module Places
         @conflicts = conflicts
         super('Visits with the same start time prevent this Place merge')
       end
+
+      def user_message
+        conflict = conflicts.first
+        I18n.t('controllers.places.merge_visit_conflict', first_id: conflict[:survivor_id],
+                                                          second_id: conflict[:duplicate_id],
+                                                          started_at: I18n.l(conflict[:started_at], format: :long))
+      end
     end
 
     def initialize(user:, survivor:, duplicate:)

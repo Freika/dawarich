@@ -101,27 +101,7 @@ class VisitsController < ApplicationController
       params_to_update[:name] = stripped.empty? ? nil : stripped
     end
 
-    if params_to_update[:place_id].present? && params_to_update[:area_id].present?
-      return render_unprocessable(I18n.t('controllers.visits.conflicting_place_and_area'))
-    end
-
-    if params_to_update[:area_id].present?
-      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
-
-      mapped_place = Places::LegacyAreaAdapter.new(user: current_user).resolve(selected_area)
-      params_to_update[:place_id] = mapped_place.id
-      params_to_update[:area_id] = nil
-    end
-
-    if params_to_update[:place_id].present?
-      raw_place_id = params_to_update[:place_id]
-      allowed = current_user.places.where(id: raw_place_id).exists? ||
-                @visit.suggested_places.where(id: raw_place_id).exists?
-      return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
-
-      params_to_update[:area_id] = nil
-    end
+    params_to_update = Visits::ResolvePlaceSelection.new(current_user, visit: @visit).call(params_to_update)
 
     if params_to_update[:place_id].present?
       update_visit_label_from_place(params_to_update[:place_id])
@@ -155,6 +135,8 @@ class VisitsController < ApplicationController
         end
       end
     end
+  rescue Visits::ResolvePlaceSelection::Invalid => e
+    render_unprocessable(I18n.t("controllers.visits.#{e.reason}"))
   end
 
   def destroy

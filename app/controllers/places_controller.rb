@@ -95,7 +95,6 @@ class PlacesController < ApplicationController
         end
       end
     else
-      prepare_drawer
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [drawer_stream, stream_flash(:error, @place.errors.full_messages.join(', '))],
@@ -179,18 +178,11 @@ class PlacesController < ApplicationController
       end
     end
   rescue Places::Merge::VisitConflict => e
-    conflict = e.conflicts.first
-    message = I18n.t(
-      'controllers.places.merge_visit_conflict',
-      first_id: conflict[:survivor_id],
-      second_id: conflict[:duplicate_id],
-      started_at: I18n.l(conflict[:started_at], format: :long)
-    )
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, message), status: :unprocessable_content
+        render turbo_stream: stream_flash(:error, e.user_message), status: :unprocessable_content
       end
-      format.html { redirect_to places_url, alert: message, status: :see_other }
+      format.html { redirect_to places_url, alert: e.user_message, status: :see_other }
     end
   end
 
