@@ -15,6 +15,57 @@ function dateRange(start_at, end_at) {
   return start_at && end_at ? { start_at, end_at } : {}
 }
 
+/**
+ * Fetches pages 2..totalPages, maxConcurrent at a time.
+ * @returns {Promise<Array>} Every item, in page order
+ */
+async function fetchRemainingPages({
+  firstItems,
+  totalPages,
+  maxConcurrent,
+  fetchItems,
+  onBatchDone = null,
+}) {
+  const results = [{ page: 1, items: firstItems }]
+  const itemsInPageOrder = () =>
+    [...results].sort((a, b) => a.page - b.page).flatMap((r) => r.items)
+
+  for (let start = 2; start <= totalPages; start += maxConcurrent) {
+    const last = Math.min(start + maxConcurrent - 1, totalPages)
+    const pages = Array.from({ length: last - start + 1 }, (_, i) => start + i)
+    const batch = await Promise.all(
+      pages.map((page) => fetchItems(page).then((items) => ({ page, items }))),
+    )
+    results.push(...batch)
+    onBatchDone?.(results.length, itemsInPageOrder)
+  }
+
+  return itemsInPageOrder()
+}
+
+/** Fetches one page at a time until the server reports the last one. */
+async function fetchPagesInOrder(fetchPage, onProgress) {
+  const allItems = []
+  let page = 1
+  let totalPages = 1
+
+  do {
+    const result = await fetchPage(page)
+    allItems.push(...result.items)
+    totalPages = result.totalPages
+    page++
+
+    onProgress?.({
+      loaded: allItems.length,
+      currentPage: result.currentPage,
+      totalPages,
+      progress: totalPages > 0 ? result.currentPage / totalPages : 1.0,
+    })
+  } while (page <= totalPages)
+
+  return allItems
+}
+
 export class ApiClient {
   constructor(apiKey, importId = null) {
     this.apiKey = apiKey
@@ -177,10 +228,6 @@ export class ApiClient {
       return { points: firstPage.points, totalPointsInRange }
     }
 
-    // Initialize results array with first page
-    const pageResults = [{ page: 1, points: firstPage.points }]
-    let completedPages = 1
-
     // Report first page completed
     if (onProgress) {
       onProgress({
@@ -194,53 +241,26 @@ export class ApiClient {
       onBatch(firstPage.points)
     }
 
-    // Create array of remaining page numbers
-    const remainingPages = Array.from(
-      { length: totalPages - 1 },
-      (_, i) => i + 2,
-    )
-
-    // Process pages in batches of maxConcurrent
-    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
-      const batch = remainingPages.slice(i, i + maxConcurrent)
-
-      // Fetch batch in parallel
-      const batchPromises = batch.map((page) =>
+    const points = await fetchRemainingPages({
+      firstItems: firstPage.points,
+      totalPages,
+      maxConcurrent,
+      fetchItems: (page) =>
         this.fetchPoints({ start_at, end_at, page, per_page: 1000 }).then(
-          (result) => ({ page, points: result.points }),
+          (result) => result.points,
         ),
-      )
-
-      const batchResults = await Promise.all(batchPromises)
-      pageResults.push(...batchResults)
-      completedPages += batchResults.length
-
-      // Call progress callback after each batch
-      if (onProgress) {
-        const progress = totalPages > 0 ? completedPages / totalPages : 1.0
-        onProgress({
-          loaded: pageResults.reduce((sum, r) => sum + r.points.length, 0),
+      onBatchDone: (completedPages, loadedItems) => {
+        onProgress?.({
+          loaded: loadedItems().length,
           currentPage: completedPages,
           totalPages,
-          progress,
+          progress: totalPages > 0 ? completedPages / totalPages : 1.0,
         })
-      }
+        onBatch?.(loadedItems())
+      },
+    })
 
-      // Call batch callback with all accumulated points so far (sorted)
-      if (onBatch) {
-        const sorted = [...pageResults].sort((a, b) => a.page - b.page)
-        onBatch(sorted.flatMap((r) => r.points))
-      }
-    }
-
-    // Sort by page number to ensure correct order
-    pageResults.sort((a, b) => a.page - b.page)
-
-    // Flatten into single array
-    return {
-      points: pageResults.flatMap((r) => r.points),
-      totalPointsInRange,
-    }
+    return { points, totalPointsInRange }
   }
 
   /**
@@ -315,42 +335,20 @@ export class ApiClient {
     ne_lng,
     onProgress = null,
   }) {
-    const allVisits = []
-    let page = 1
-    let totalPages = 1
-
-    do {
-      const {
-        visits,
-        currentPage,
-        totalPages: total,
-      } = await this.fetchVisitsPage({
-        start_at,
-        end_at,
-        page,
-        per_page: 500,
-        sw_lat,
-        sw_lng,
-        ne_lat,
-        ne_lng,
-      })
-
-      allVisits.push(...visits)
-      totalPages = total
-      page++
-
-      if (onProgress) {
-        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
-        onProgress({
-          loaded: allVisits.length,
-          currentPage,
-          totalPages,
-          progress,
-        })
-      }
-    } while (page <= totalPages)
-
-    return allVisits
+    return fetchPagesInOrder(
+      (page) =>
+        this.fetchVisitsPage({
+          start_at,
+          end_at,
+          page,
+          per_page: 500,
+          sw_lat,
+          sw_lng,
+          ne_lat,
+          ne_lng,
+        }).then((result) => ({ ...result, items: result.visits })),
+      onProgress,
+    )
   }
 
   /**
@@ -415,33 +413,13 @@ export class ApiClient {
       return [...active, ...archived]
     }
 
-    const allPlaces = []
-    let page = 1
-    let totalPages = 1
-
-    do {
-      const {
-        places,
-        currentPage,
-        totalPages: total,
-      } = await this.fetchPlacesPage({ tag_ids, page, per_page: 500, filter })
-
-      allPlaces.push(...places)
-      totalPages = total
-      page++
-
-      if (onProgress) {
-        const progress = totalPages > 0 ? currentPage / totalPages : 1.0
-        onProgress({
-          loaded: allPlaces.length,
-          currentPage,
-          totalPages,
-          progress,
-        })
-      }
-    } while (page <= totalPages)
-
-    return allPlaces
+    return fetchPagesInOrder(
+      (page) =>
+        this.fetchPlacesPage({ tag_ids, page, per_page: 500, filter }).then(
+          (result) => ({ ...result, items: result.places }),
+        ),
+      onProgress,
+    )
   }
 
   /**
@@ -557,56 +535,23 @@ export class ApiClient {
       }
     }
 
-    // Initialize results array with first page
-    const pageResults = [{ page: 1, features: firstPage.features }]
-    let completedPages = 1
+    onBatch?.(firstPage.features.length)
 
-    if (onBatch) {
-      onBatch(firstPage.features.length)
-    }
-
-    // Create array of remaining page numbers
-    const remainingPages = Array.from(
-      { length: totalPages - 1 },
-      (_, i) => i + 2,
-    )
-
-    // Process pages in batches of maxConcurrent
-    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
-      const batch = remainingPages.slice(i, i + maxConcurrent)
-
-      // Fetch batch in parallel
-      const batchPromises = batch.map((page) =>
+    const features = await fetchRemainingPages({
+      firstItems: firstPage.features,
+      totalPages,
+      maxConcurrent,
+      fetchItems: (page) =>
         this.fetchTracksPage({ start_at, end_at, page, per_page: 500 }).then(
-          (result) => ({ page, features: result.features }),
+          (result) => result.features,
         ),
-      )
+      onBatchDone: (completedPages, loadedItems) => {
+        onProgress?.(completedPages, totalPages)
+        onBatch?.(loadedItems().length)
+      },
+    })
 
-      const batchResults = await Promise.all(batchPromises)
-      pageResults.push(...batchResults)
-      completedPages += batchResults.length
-
-      // Call progress callback after each batch
-      if (onProgress) {
-        onProgress(completedPages, totalPages)
-      }
-      if (onBatch) {
-        const totalFeatures = pageResults.reduce(
-          (sum, r) => sum + r.features.length,
-          0,
-        )
-        onBatch(totalFeatures)
-      }
-    }
-
-    // Sort by page number to ensure correct order
-    pageResults.sort((a, b) => a.page - b.page)
-
-    // Flatten into single array
-    return {
-      type: "FeatureCollection",
-      features: pageResults.flatMap((r) => r.features),
-    }
+    return { type: "FeatureCollection", features }
   }
 
   /**
@@ -930,27 +875,15 @@ export class ApiClient {
       return firstPage.points
     }
 
-    const pageResults = [{ page: 1, points: firstPage.points }]
-
-    const remainingPages = Array.from(
-      { length: totalPages - 1 },
-      (_, i) => i + 2,
-    )
-
-    for (let i = 0; i < remainingPages.length; i += maxConcurrent) {
-      const batch = remainingPages.slice(i, i + maxConcurrent)
-      const batchResults = await Promise.all(
-        batch.map((page) =>
-          this.fetchTrackPointsPage(trackId, { page, per_page, unmasked }).then(
-            (result) => ({ page, points: result.points }),
-          ),
+    return fetchRemainingPages({
+      firstItems: firstPage.points,
+      totalPages,
+      maxConcurrent,
+      fetchItems: (page) =>
+        this.fetchTrackPointsPage(trackId, { page, per_page, unmasked }).then(
+          (result) => result.points,
         ),
-      )
-      pageResults.push(...batchResults)
-    }
-
-    pageResults.sort((a, b) => a.page - b.page)
-    return pageResults.flatMap((r) => r.points)
+    })
   }
 
   async movePointPosition(

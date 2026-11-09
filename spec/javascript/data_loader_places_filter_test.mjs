@@ -106,9 +106,7 @@ settings.placesEnabled = true
 const loader = new context.DataLoader(api, "test-key", settings)
 await loader.fetchMapData("2026-06-01", "2026-06-30")
 
-assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
-  { tag_ids: [11, "untagged"] },
-])
+assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ tag_ids: [12] }])
 
 settings.placesTagFilters = []
 calls.length = 0
