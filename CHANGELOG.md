@@ -26,6 +26,8 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - A "skip SSL verification" value saved by a very old version as the text `0` no longer turns certificate checks off for Immich and Photoprism.
 - TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
 - **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead. Saving the keys through `PATCH /api/v1/settings` works as before.
+- Account archives no longer contain integration credentials (Immich, Photoprism and AirTrail API keys, the TeslaMate password and token). Restoring an archive no longer changes the account's integration connections at all, so an archive cannot point a stored key at another server. After moving to a new instance, reconnect integrations in Settings → Integrations.
+- Restoring an account archive no longer writes the account email or the imported settings to the log.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
