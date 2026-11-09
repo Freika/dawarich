@@ -54,6 +54,12 @@ RSpec.describe 'Account standing gates' do
       expect([web_admitted?, api_admitted?]).to eq([true, true])
     end
 
+    it 'rejects an account whose end date has passed' do
+      set_standing(:active, 1.day.ago)
+
+      expect([web_admitted?, api_admitted?]).to eq([false, false])
+    end
+
     it 'rejects an inactive account' do
       set_standing(:inactive, 1000.years.from_now)
 

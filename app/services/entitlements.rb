@@ -40,7 +40,7 @@ class Entitlements
   def in_good_standing?
     return false unless @user.active? || @user.trial?
 
-    self_hosted? || @user.active_until&.future? || false
+    @user.active_until ? @user.active_until.future? : self_hosted?
   end
 
   def can_create_family?
