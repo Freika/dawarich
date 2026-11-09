@@ -31,7 +31,7 @@ module TimelineHelper
     parsed = parse_calendar_date(date_param)
     return parsed.strftime('%Y-%m') if parsed
 
-    tz = user&.safe_settings&.timezone.presence || 'UTC'
+    tz = user&.timezone_or_utc || 'UTC'
     Time.use_zone(tz) { Date.current.strftime('%Y-%m') }
   end
 

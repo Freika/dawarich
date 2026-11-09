@@ -126,7 +126,7 @@ class TripsController < ApplicationController
       return
     end
 
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     start_date = @trip.started_at.in_time_zone(tz).to_date
     export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
 

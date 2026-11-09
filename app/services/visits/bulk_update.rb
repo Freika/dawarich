@@ -43,7 +43,7 @@ module Visits
 
       # Captured before update_all: declined visits drop out of scoped_visits.
       declined_place_ids = status == 'declined' ? visits.where.not(place_id: nil).distinct.pluck(:place_id) : []
-      tz = user.safe_settings.timezone.presence || 'UTC'
+      tz = user.timezone_or_utc
       months = visits.distinct.pluck(:started_at, :ended_at).select(&:first)
                      .flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }.uniq
 

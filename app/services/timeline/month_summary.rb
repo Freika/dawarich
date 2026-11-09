@@ -35,7 +35,7 @@ module Timeline
 
     def self.cache_key_for(user, date)
       d = normalize_month(date)
-      tz = user.safe_settings.timezone.presence || 'UTC'
+      tz = user.timezone_or_utc
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
       ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v4']
     end
@@ -96,7 +96,7 @@ module Timeline
     end
 
     def tz
-      @tz ||= @user.safe_settings.timezone.presence || 'UTC'
+      @tz ||= @user.timezone_or_utc
     end
 
     def month_range

@@ -337,6 +337,10 @@ class User < ApplicationRecord
 
   delegate :timezone, to: :safe_settings
 
+  def timezone_or_utc
+    timezone.presence || 'UTC'
+  end
+
   def timezone_iana
     raw = timezone.presence || Time.zone.name
     tz = ActiveSupport::TimeZone[raw] if raw

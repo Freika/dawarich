@@ -175,7 +175,7 @@ class Visit < ApplicationRecord
   def bust_timeline_month_summary_cache
     return unless user
 
-    tz = user.safe_settings.timezone.presence || 'UTC'
+    tz = user.timezone_or_utc
     spans = [[started_at, ended_at], [started_at_before_last_save, ended_at_before_last_save]]
 
     spans.select(&:first).flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }

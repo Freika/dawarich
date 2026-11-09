@@ -169,7 +169,7 @@ class VisitsController < ApplicationController
   end
 
   def destroy
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
     # Soft delete: the row stays as a tombstone so visit detection never
@@ -228,7 +228,7 @@ class VisitsController < ApplicationController
   # Visits shown on the day: those that started on it and those still going
   # on from an earlier day, matching Timeline::DayAssembler.
   def apply_date_scope(scope)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     range = Date.parse(params[:date]).in_time_zone(tz).all_day
     scope.overlapping(range.begin, range.end)
   end
@@ -253,7 +253,7 @@ class VisitsController < ApplicationController
   # "N visits confirmed." flash. `turbo_stream.update` targets the frame's
   # children — we keep the frame element (its id + Stimulus target) intact.
   def build_bulk_update_streams(status, count)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     date_str = params[:date].presence || Time.use_zone(tz) { Date.current.to_s }
     day_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_day }
 
@@ -290,7 +290,7 @@ class VisitsController < ApplicationController
   # (name, picker, tags, everything) and refresh the calendar so day dots
   # stay accurate. Keeps the panel consistent after any edit.
   def build_update_streams
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
 
     [
@@ -334,7 +334,7 @@ class VisitsController < ApplicationController
   end
 
   def same_day?(visits)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     visits.map { |v| Timeline::TrackDayShares.shares_between(v.started_at, v.ended_at, tz).keys }
           .reduce(:&).any?
   end
@@ -347,7 +347,7 @@ class VisitsController < ApplicationController
   end
 
   def build_merge_streams(merged)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     day_date = viewed_date&.to_s || Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
     day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
 
@@ -381,7 +381,7 @@ class VisitsController < ApplicationController
   end
 
   def build_bulk_destroy_streams(count)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     affected_dates = Time.use_zone(tz) do
       Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
     end
@@ -470,7 +470,7 @@ class VisitsController < ApplicationController
     spans = @affected_spans || Array(@affected_started_at).compact.map { |time| [time, time] }
     return if spans.empty?
 
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     spans.flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }.uniq.each do |month_start|
       Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
     end
