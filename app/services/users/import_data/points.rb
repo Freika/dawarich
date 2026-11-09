@@ -339,7 +339,7 @@ class Users::ImportData::Points
   # SQL-backed exports encode these JSONB values as JSON text inside JSONL.
   # Decode before upsert_all, otherwise its serializer stores string scalars.
   def deserialize_jsonb_columns(attributes)
-    %w[geodata raw_data].each do |column|
+    %w[geodata raw_data motion_data].each do |column|
       value = attributes[column]
       attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
