@@ -158,8 +158,16 @@ RSpec.describe Import, type: :model do
   end
 
   describe '#years_and_months_tracked' do
+    it "buckets months in the user's time zone, not the process zone" do
+      tokyo_user = create(:user, settings: { 'timezone' => 'Asia/Tokyo' })
+      tokyo_import = create(:import, user: tokyo_user)
+      create(:point, user: tokyo_user, import: tokyo_import, timestamp: Time.utc(2024, 10, 31, 20).to_i)
+
+      expect(tokyo_import.years_and_months_tracked).to eq([[2024, 11]])
+    end
+
     let(:import) { create(:import) }
-    let(:timestamp) { Time.zone.local(2024, 11, 1) }
+    let(:timestamp) { Time.zone.local(2024, 11, 15) }
     let!(:points) do
       (1..3).map do |i|
         create(:point, import:, timestamp: timestamp + i.minutes)

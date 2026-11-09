@@ -69,7 +69,7 @@ class Import < ApplicationRecord
   end
 
   def years_and_months_tracked
-    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
+    quoted_tz = ActiveRecord::Base.connection.quote(user.timezone_iana)
     points
       .select(Arel.sql(
                 "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
