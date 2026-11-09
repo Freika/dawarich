@@ -16,8 +16,7 @@ class Api::V1::ImportsController < ApiController
               .page(params[:page])
               .per([params.fetch(:per_page, 25).to_i, 100].min)
 
-    response.set_header('X-Current-Page', imports.current_page.to_s)
-    response.set_header('X-Total-Pages', imports.total_pages.to_s)
+    set_pagination_headers(imports)
 
     render json: imports.map { |i| serialize_import(i) }
   end

@@ -57,9 +57,7 @@ module Api
         # Always set pagination headers for consistency
         if @places.respond_to?(:current_page)
           # Paginated collection
-          response.set_header('X-Current-Page', @places.current_page.to_s)
-          response.set_header('X-Total-Pages', @places.total_pages.to_s)
-          response.set_header('X-Total-Count', @places.total_count.to_s)
+          set_pagination_headers(@places, with_total: true)
         else
           # Non-paginated collection - treat as single page with all results
           total = @places.count

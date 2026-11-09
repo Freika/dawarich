@@ -14,9 +14,7 @@ class Api::V1::VisitsController < ApiController
       per_page = [params[:per_page]&.to_i || 100, 500].min
       visits = visits.page(params[:page]).per(per_page)
 
-      response.set_header('X-Current-Page', visits.current_page.to_s)
-      response.set_header('X-Total-Pages', visits.total_pages.to_s)
-      response.set_header('X-Total-Count', visits.total_count.to_s)
+      set_pagination_headers(visits, with_total: true)
     end
 
     point_centers = visit_point_centers(visits)
