@@ -1,5 +1,4 @@
 import { translate } from "i18n"
-import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
 import { formatSpeed } from "maps_maplibre/utils/format_helpers"
@@ -9,6 +8,7 @@ import {
 } from "maps_maplibre/utils/geojson_transformers"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { TrackSelection } from "./track_selection"
 
 /**
  * Format the coordinates a feature carries in its properties. Returns null when
@@ -36,9 +36,7 @@ export class EventHandlers {
   constructor(map, controller) {
     this.map = map
     this.controller = controller
-    this.selectedTrackFeature = null // Track selection state
-    this._trackSelectionGeneration = 0
-    this.trackMarkers = [] // Store segment markers for tracks
+    this.trackSelection = new TrackSelection(map, controller)
 
     // Bound handler for track point clicks — stored so the same reference can be
     // used for both map.on() and map.off() during toggle cleanup
@@ -73,15 +71,20 @@ export class EventHandlers {
       this._boundOnSegmentModeChanged = null
     }
     this.teardownLayerInteractions()
-    this._clearTrackMarkers()
+  }
+
+  get selectedTrackFeature() {
+    return this.trackSelection.feature
+  }
+
+  set selectedTrackFeature(feature) {
+    this.trackSelection.feature = feature
   }
 
   teardownLayerInteractions() {
     this.pointDrag?.cancel()
     this.map.off("click", "track-points", this._handleTrackPointClick)
-    this._trackSelectionGeneration += 1
-    this.selectedTrackFeature = null
-    this._clearTrackMarkers()
+    this.trackSelection.reset()
   }
 
   /** Handle a tile Point; address details load through the existing info UI. */
@@ -280,23 +283,6 @@ export class EventHandlers {
   }
 
   /**
-   * Create an emoji marker
-   * @param {String} emoji - The emoji to display
-   * @param {String} markerClass - CSS class for the marker (default: 'route-emoji-marker')
-   * @returns {maplibregl.Marker}
-   */
-  _createEmojiMarker(emoji, markerClass = "route-emoji-marker") {
-    const el = document.createElement("div")
-    el.className = markerClass
-    el.textContent = emoji
-    el.style.fontSize = "24px"
-    el.style.cursor = "pointer"
-    el.style.userSelect = "none"
-
-    return new maplibregl.Marker({ element: el, anchor: "center" })
-  }
-
-  /**
    * Handle track click — opens the Timeline tab, navigates to the track's day,
    * and expands the matching journey entry so the track's full details
    * (distance, speed, elevation, replay, show-points toggle) are shown inline.
@@ -324,21 +310,9 @@ export class EventHandlers {
     if (!clickedFeature) return
 
     const properties = clickedFeature.properties
-    const fullFeature = clickedFeature
-    const generation = ++this._trackSelectionGeneration
-    this.selectedTrackFeature = fullFeature
-
-    // Keep the on-map highlight + segment visualization — those are visual
-    // feedback for the click itself, independent of the info surface.
-    try {
-      const tracksLayer = this.controller.layerManager.getLayer("tracks")
-      if (tracksLayer?.setSelectedTrack) {
-        tracksLayer.setSelectedTrack(fullFeature)
-      }
-    } catch (err) {
-      console.warn("[EventHandlers] Failed to highlight track:", err)
-    }
-    this._loadTrackSegments(properties.id, fullFeature, generation)
+    // The on-map highlight and segments are feedback for the click itself,
+    // independent of the info surface.
+    void this.trackSelection.select(clickedFeature)
 
     // Derive the day from the track's start. `start_at` comes from our own
     // serializer as an ISO8601 string — safe to slice the date portion.
@@ -354,143 +328,12 @@ export class EventHandlers {
     )
   }
 
-  /**
-   * Load track segments from API (lazy loading)
-   * @private
-   */
-  async _loadTrackSegments(
-    trackId,
-    fullFeature,
-    generation = this._trackSelectionGeneration,
-  ) {
-    try {
-      const trackFeature = await this.controller.api.fetchTrackWithSegments(
-        trackId,
-        { ...this.controller.layerManager?.pointTileRange },
-      )
-      if (
-        generation !== this._trackSelectionGeneration ||
-        this.selectedTrackFeature !== fullFeature
-      )
-        return
-      if (!trackFeature) return
-
-      // The clicked MVT feature is clipped to a tile; segment visualization
-      // must use the canonical linestring returned by the focused fetch.
-      const displayFeature = trackFeature.geometry ? trackFeature : fullFeature
-      if (displayFeature !== fullFeature) {
-        this.selectedTrackFeature = displayFeature
-        const highlightLayer = this.controller.layerManager.getLayer("tracks")
-        if (highlightLayer?.setSelectedTrack) {
-          highlightLayer.setSelectedTrack(displayFeature)
-        }
-      }
-
-      let segments = []
-      try {
-        const props = trackFeature.properties
-        segments =
-          typeof props.segments === "string"
-            ? JSON.parse(props.segments)
-            : props.segments || []
-      } catch (err) {
-        console.warn("Failed to parse track segments:", err)
-      }
-
-      const tracksLayer = this.controller.layerManager.getLayer("tracks")
-      if (tracksLayer?.showSegments) {
-        tracksLayer.showSegments(displayFeature, segments)
-        tracksLayer.setSegmentHoverCallback((segmentIndex) => {
-          this._highlightSegmentOnMap(segmentIndex)
-          this._dispatchSegmentHover(trackId, segments[segmentIndex]?.id)
-        })
-        tracksLayer.setSegmentLeaveCallback(() => {
-          this._clearSegmentHighlight()
-          this._dispatchSegmentUnhover(trackId)
-        })
-      }
-
-      this._createTrackSegmentMarkers(trackId, displayFeature, segments)
-    } catch (error) {
-      if (generation !== this._trackSelectionGeneration) return
-      console.error("Failed to load track segments:", error)
-      Toast.error(translate("messages.failed_to_load_track_details"))
-    }
-  }
-
-  _dispatchSegmentHover(trackId, segmentId) {
-    if (!segmentId) return
-    document.dispatchEvent(
-      new CustomEvent("dawarich:segment-hover", {
-        detail: { trackId, segmentId },
-      }),
-    )
-  }
-
-  _dispatchSegmentUnhover(trackId) {
-    document.dispatchEvent(
-      new CustomEvent("dawarich:segment-unhover", {
-        detail: { trackId },
-      }),
-    )
-  }
-
   _onSegmentModeChanged(event) {
-    const { trackId, segmentId, mode } = event.detail
-    const tracksLayer = this.controller.layerManager.getLayer("tracks")
-    if (tracksLayer?.updateSegmentMode) {
-      tracksLayer.updateSegmentMode(trackId, segmentId, mode)
-    }
-    this._updateSegmentMarkerEmoji(trackId, segmentId, mode)
-  }
-
-  _updateSegmentMarkerEmoji(trackId, segmentId, mode) {
-    const marker = this.trackMarkers?.find(
-      (m) => m.trackId === trackId && m.segmentId === segmentId,
-    )
-    if (!marker) return
-    if (typeof marker.setEmoji === "function") {
-      marker.setEmoji(this._modeEmoji(mode))
-    }
-  }
-
-  _modeEmoji(mode) {
-    return (
-      {
-        unknown: "❓",
-        stationary: "🛑",
-        walking: "🚶",
-        running: "🏃",
-        cycling: "🚴",
-        driving: "🚗",
-        bus: "🚌",
-        train: "🚆",
-        flying: "✈️",
-        boat: "⛵",
-        motorcycle: "\u{1F3CD}️",
-      }[mode] || "❓"
-    )
+    this.trackSelection.refreshSegments(event.detail.trackId)
   }
 
   clearTrackSelection({ preserveEditor = false } = {}) {
-    if (!this.selectedTrackFeature) return
-
-    this._trackSelectionGeneration += 1
-    this.selectedTrackFeature = null
-
-    const tracksLayer = this.controller.layerManager.getLayer("tracks")
-    if (tracksLayer) {
-      // Clear selection highlight
-      if (tracksLayer.setSelectedTrack) {
-        tracksLayer.setSelectedTrack(null)
-      }
-      if (tracksLayer.hideSegments) {
-        tracksLayer.hideSegments()
-      }
-      // Clear hover callbacks
-      tracksLayer.setSegmentHoverCallback(null)
-      tracksLayer.setSegmentLeaveCallback(null)
-    }
+    if (!this.trackSelection.clear()) return
 
     if (preserveEditor) {
       this.map.off("click", "track-points", this._handleTrackPointClick)
@@ -498,9 +341,6 @@ export class EventHandlers {
     } else {
       this.clearPointSelection()
     }
-
-    // Clear segment markers
-    this._clearTrackMarkers()
 
     // Close info panel
     if (!preserveEditor) this.controller.closeInfo({ clearSelection: false })
@@ -607,89 +447,5 @@ export class EventHandlers {
       this.map.setPaintProperty("points-mvt", "circle-opacity", opacity)
       this.map.setPaintProperty("points-mvt", "circle-stroke-opacity", opacity)
     }
-  }
-
-  /**
-   * Create emoji markers at segment transition points
-   */
-  _createTrackSegmentMarkers(trackId, feature, segments) {
-    this._clearTrackMarkers()
-
-    if (feature?.geometry?.type !== "LineString") return
-    if (!segments || segments.length === 0) return
-
-    const coords = feature.geometry.coordinates
-    if (coords.length < 2) return
-
-    segments.forEach((segment) => {
-      const coordIndex = Math.min(segment.start_index || 0, coords.length - 1)
-      const coord = coords[coordIndex]
-      if (!coord) return
-
-      const marker = this._createEmojiMarker(
-        segment.emoji || "❓",
-        "track-emoji-marker",
-      )
-      marker.trackId = trackId
-      marker.segmentId = segment.id
-      marker.setLngLat(coord).addTo(this.map)
-      this.trackMarkers.push(marker)
-    })
-
-    const endCoord = coords[coords.length - 1]
-    const endMarker = this._createEmojiMarker("🏁", "track-emoji-marker")
-    endMarker.setLngLat(endCoord).addTo(this.map)
-    this.trackMarkers.push(endMarker)
-  }
-
-  /**
-   * Clear all track segment markers
-   */
-  _clearTrackMarkers() {
-    for (const marker of this.trackMarkers) {
-      marker.remove()
-    }
-    this.trackMarkers = []
-  }
-
-  /**
-   * Highlight a specific segment on the map
-   * @param {number} segmentIndex - Index of the segment to highlight
-   */
-  _highlightSegmentOnMap(segmentIndex) {
-    const tracksLayer = this.controller.layerManager.getLayer("tracks")
-    if (!tracksLayer) return
-
-    const segmentLayerId = tracksLayer.segmentLayerId
-    if (!this.map.getLayer(segmentLayerId)) return
-
-    // Increase opacity/width of hovered segment, dim others
-    this.map.setPaintProperty(segmentLayerId, "line-opacity", [
-      "case",
-      ["==", ["get", "segmentIndex"], segmentIndex],
-      1.0,
-      0.4,
-    ])
-    this.map.setPaintProperty(segmentLayerId, "line-width", [
-      "case",
-      ["==", ["get", "segmentIndex"], segmentIndex],
-      8,
-      4,
-    ])
-  }
-
-  /**
-   * Clear segment highlight on map
-   */
-  _clearSegmentHighlight() {
-    const tracksLayer = this.controller.layerManager.getLayer("tracks")
-    if (!tracksLayer) return
-
-    const segmentLayerId = tracksLayer.segmentLayerId
-    if (!this.map.getLayer(segmentLayerId)) return
-
-    // Reset to uniform appearance
-    this.map.setPaintProperty(segmentLayerId, "line-opacity", 0.9)
-    this.map.setPaintProperty(segmentLayerId, "line-width", 6)
   }
 }
