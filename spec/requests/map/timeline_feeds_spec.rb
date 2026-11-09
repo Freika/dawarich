@@ -18,6 +18,34 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
     context 'when signed in' do
       before { sign_in user }
 
+      describe 'on this day' do
+        # The user's time zone is UTC; the dates below are days of that calendar.
+        let(:today) { Time.now.utc.beginning_of_day }
+
+        before do
+          create(:note, user: user, body: 'One year back', noted_at: today - 1.year + 10.hours,
+                        latitude: 52.5, longitude: 13.4)
+          create(:note, user: user, body: 'Yesterday last year', noted_at: today - 1.year - 2.hours,
+                        latitude: 52.5, longitude: 13.4)
+          create(:note, user: user, body: 'Written today', noted_at: today + 1.hour, latitude: 52.5, longitude: 13.4)
+        end
+
+        it 'lists notes from the same date in earlier years when today is open' do
+          get map_timeline_feeds_path(start_at: today.iso8601, end_at: (today + 1.day - 1.second).iso8601)
+
+          block = Capybara.string(response.body).find('[data-testid=on-this-day]')
+          expect(block).to have_text('One year back')
+          expect(block).not_to have_text('Yesterday last year')
+          expect(block).not_to have_text('Written today')
+        end
+
+        it 'is absent on any other day' do
+          get map_timeline_feeds_path(start_at: (today - 1.day).iso8601, end_at: (today - 1.second).iso8601)
+
+          expect(response.body).not_to include('on-this-day')
+        end
+      end
+
       it 'returns http success with empty data' do
         get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 

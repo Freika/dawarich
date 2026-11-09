@@ -6,12 +6,26 @@ es:
       pick_a_point_on_the_map: Elige un punto en el mapa para esta nota
     form:
       note: Nota
-      what_happened_here: ¿Qué pasó aquí?
+      what_happened_here: "¿Qué pasó aquí?"
       when: Cuándo
       delete: Eliminar
-      delete_this_note: ¿Eliminar esta nota?
+      delete_this_note: "¿Eliminar esta nota?"
       cancel: Cancelar
       save: Guardar
+    index:
+      notes: Notas
+      search: Buscar
+      search_placeholder: Busca en tus notas
+      from: Desde
+      to: Hasta
+      clear: Limpiar
+      nothing_found: Ninguna nota coincide con esta búsqueda
+      no_notes_yet: Aún no hay notas
+      no_notes_yet_hint: Abre el mapa, elige Añadir nota en Herramientas y haz clic en el lugar que quieres recordar.
+      open_the_map: Abrir el mapa
+    note:
+      trip: 'Viaje: %{name}'
+      open_this_day_on_the_map: Abrir este día en el mapa
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ es:
         notes: Notas
         show_your_map_notes: Muestra las notas que escribiste en el mapa
         add_note: Añadir nota
+    timeline_feeds:
+      on_this_day:
+        on_this_day: Tal día como hoy
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Haz clic en el mapa para colocar una nota. Esc para cancelar.
       failed_to_load_notes: No se pudieron cargar las notas
+  shared:
+    navbar:
+      notes: Notas

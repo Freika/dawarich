@@ -31,6 +31,17 @@ class Note < ApplicationRecord
     where('notes.lonlat && ST_MakeEnvelope(?, ?, ?, ?, 4326)::geography',
           min_lon.to_f, min_lat.to_f, max_lon.to_f, max_lat.to_f)
   }
+  # ponytail: substring match with a sequential scan over one user's notes and
+  # no stemming. Move to a tsvector column with a GIN index when a user has
+  # enough notes for this to be slow, or asks for word-form matching.
+  scope :matching, ->(query) { where('notes.body ILIKE ?', "%#{sanitize_sql_like(query.to_s)}%") }
+  # Notes about the same month and day as `date`, in earlier years, by the
+  # calendar of `timezone`.
+  scope :on_this_day_before, lambda { |date, timezone|
+    local = "(notes.noted_at AT TIME ZONE 'UTC' AT TIME ZONE #{connection.quote(timezone)})"
+    where("EXTRACT(MONTH FROM #{local}) = ? AND EXTRACT(DAY FROM #{local}) = ? AND EXTRACT(YEAR FROM #{local}) < ?",
+          date.month, date.day, date.year)
+  }
   scope :ordered, -> { order(noted_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
 

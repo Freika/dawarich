@@ -1,0 +1,42 @@
+<% content_for :title, t('.notes') %>
+<% filtered = params.values_at(:q, :from, :to).any?(&:present?) %>
+
+<div class="w-full my-5">
+  <%= render 'shared/page_header', title: t('.notes') %>
+
+  <%= form_with url: notes_path, method: :get, class: 'flex flex-wrap items-end gap-3 mb-6',
+                data: { turbo_frame: '_top', testid: 'notes-filter' } do |form| %>
+    <div class="form-control min-w-0 grow basis-56">
+      <%= form.label :q, t('.search'), class: 'label label-text' %>
+      <%= form.search_field :q, value: params[:q], placeholder: t('.search_placeholder'),
+                                class: 'input input-bordered w-full min-w-0' %>
+    </div>
+    <div class="form-control min-w-0">
+      <%= form.label :from, t('.from'), class: 'label label-text' %>
+      <%= form.date_field :from, value: params[:from], class: 'input input-bordered min-w-0' %>
+    </div>
+    <div class="form-control min-w-0">
+      <%= form.label :to, t('.to'), class: 'label label-text' %>
+      <%= form.date_field :to, value: params[:to], class: 'input input-bordered min-w-0' %>
+    </div>
+    <%= form.submit t('.search'), name: nil, class: 'btn btn-primary' %>
+    <% if filtered %>
+      <%= link_to t('.clear'), notes_path, class: 'btn btn-ghost' %>
+    <% end %>
+  <% end %>
+
+  <% if @notes.empty? %>
+    <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
+      <h3 class="text-xl font-medium mb-3"><%= t(filtered ? '.nothing_found' : '.no_notes_yet') %></h3>
+      <% unless filtered %>
+        <p class="text-base-content/50 mb-6 max-w-sm mx-auto"><%= t('.no_notes_yet_hint') %></p>
+        <%= link_to t('.open_the_map'), map_v2_path, class: 'btn btn-primary' %>
+      <% end %>
+    </div>
+  <% else %>
+    <ul class="space-y-3">
+      <%= render partial: 'notes/note', collection: @notes %>
+    </ul>
+    <div class="flex justify-center my-5"><%= paginate @notes %></div>
+  <% end %>
+</div>

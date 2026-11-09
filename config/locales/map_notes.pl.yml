@@ -12,6 +12,20 @@ pl:
       delete_this_note: Usunąć tę notatkę?
       cancel: Anuluj
       save: Zapisz
+    index:
+      notes: Notatki
+      search: Szukaj
+      search_placeholder: Szukaj w notatkach
+      from: Od
+      to: Do
+      clear: Wyczyść
+      nothing_found: Żadna notatka nie pasuje do tego wyszukiwania
+      no_notes_yet: Nie ma jeszcze notatek
+      no_notes_yet_hint: Otwórz mapę, wybierz Dodaj notatkę w Narzędziach i kliknij miejsce, które chcesz zapamiętać.
+      open_the_map: Otwórz mapę
+    note:
+      trip: 'Podróż: %{name}'
+      open_this_day_on_the_map: Otwórz ten dzień na mapie
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ pl:
         notes: Notatki
         show_your_map_notes: Pokazuje notatki napisane przez ciebie na mapie
         add_note: Dodaj notatkę
+    timeline_feeds:
+      on_this_day:
+        on_this_day: Tego dnia
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Kliknij na mapie, aby umieścić notatkę. Esc, aby anulować.
       failed_to_load_notes: Nie udało się wczytać notatek
+  shared:
+    navbar:
+      notes: Notatki

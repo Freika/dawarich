@@ -20,6 +20,7 @@ module Map
       # the "< Weekday, Month D >" day navigator so users can step days even
       # when a day has no visits.
       @requested_date = parsed_start_at.to_date.iso8601
+      @on_this_day = on_this_day_notes
     end
 
     def track_info
@@ -47,6 +48,16 @@ module Map
     end
 
     private
+
+    # Rereading is what a diary is for: under today, the notes written about
+    # this date in earlier years. Not plan-scoped (ADR-0029).
+    def on_this_day_notes
+      # "Today is open" is judged by the instant, not the date: the browser
+      # sends day bounds in its own time zone, which may not be the user's.
+      return Note.none unless (parsed_start_at..parsed_end_at).cover?(Time.current)
+
+      current_user.notes.standalone.on_this_day_before(Time.zone.today, Time.zone.tzinfo.name).ordered
+    end
 
     def parsed_start_at
       Time.zone.at(safe_timestamp(params[:start_at]))

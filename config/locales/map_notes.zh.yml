@@ -12,6 +12,20 @@ zh:
       delete_this_note: 删除这条笔记？
       cancel: 取消
       save: 保存
+    index:
+      notes: 笔记
+      search: 搜索
+      search_placeholder: 搜索你的笔记
+      from: 从
+      to: 到
+      clear: 清除
+      nothing_found: 没有符合搜索条件的笔记
+      no_notes_yet: 还没有笔记
+      no_notes_yet_hint: 打开地图，在“工具”中选择“添加笔记”，然后点击你想记住的地点。
+      open_the_map: 打开地图
+    note:
+      trip: 旅行：%{name}
+      open_this_day_on_the_map: 在地图上打开这一天
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ zh:
         notes: 笔记
         show_your_map_notes: 显示你在地图上写下的笔记
         add_note: 添加笔记
+    timeline_feeds:
+      on_this_day:
+        on_this_day: 历史上的今天
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: 点击地图放置笔记。按 Esc 取消。
       failed_to_load_notes: 笔记加载失败
+  shared:
+    navbar:
+      notes: 笔记

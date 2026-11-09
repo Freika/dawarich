@@ -1352,3 +1352,50 @@
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
+
+/* ── On this day: notes about this date in earlier years ── */
+.on-this-day {
+  margin-top: 0.75rem;
+  padding: 0.75rem var(--tl-pad-x) 0;
+  border-top: 1px solid oklch(var(--bc) / 0.08);
+}
+
+.on-this-day__title {
+  margin-bottom: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tl-text-2);
+}
+
+.on-this-day__list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.on-this-day__note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.6rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.on-this-day__note:hover,
+.on-this-day__note:focus-visible {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.on-this-day__year {
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+}
+
+.on-this-day__body {
+  min-width: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}

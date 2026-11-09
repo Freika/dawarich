@@ -162,7 +162,7 @@ Rails.application.routes.draw do
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]
-  resources :notes, only: %i[new create edit update destroy]
+  resources :notes, only: %i[index new create edit update destroy]
   resources :trips do
     member do
       post :recalculate

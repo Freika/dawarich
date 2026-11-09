@@ -12,6 +12,20 @@ ca:
       delete_this_note: Vols suprimir aquesta nota?
       cancel: Cancel·la
       save: Desa
+    index:
+      notes: Notes
+      search: Cerca
+      search_placeholder: Cerca a les teves notes
+      from: Des de
+      to: Fins a
+      clear: Neteja
+      nothing_found: Cap nota coincideix amb aquesta cerca
+      no_notes_yet: Encara no hi ha notes
+      no_notes_yet_hint: Obre el mapa, tria Afegeix una nota a Eines i fes clic al lloc que vols recordar.
+      open_the_map: Obre el mapa
+    note:
+      trip: 'Viatge: %{name}'
+      open_this_day_on_the_map: Obre aquest dia al mapa
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ ca:
         notes: Notes
         show_your_map_notes: Mostra les notes que has escrit al mapa
         add_note: Afegeix una nota
+    timeline_feeds:
+      on_this_day:
+        on_this_day: Tal dia com avui
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Fes clic al mapa per col·locar una nota. Esc per cancel·lar.
       failed_to_load_notes: No s'han pogut carregar les notes
+  shared:
+    navbar:
+      notes: Notes

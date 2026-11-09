@@ -1,0 +1,18 @@
+<%# locals: (note:) %>
+<%# A map note links to its day on the map; a trip day note links to its trip. %>
+<li class="border border-base-300 rounded-xl p-4 min-w-0" data-testid="note-row">
+  <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2 text-sm">
+    <% if note.attachable.is_a?(Trip) %>
+      <%= link_to l(note.date, format: :long), trip_path(note.attachable), class: 'link link-hover font-medium' %>
+      <span class="badge badge-ghost h-auto [overflow-wrap:anywhere]"><%= t('.trip', name: note.attachable.name) %></span>
+    <% elsif note.attachable %>
+      <span class="font-medium"><%= l(note.date, format: :long) %></span>
+      <span class="badge badge-ghost h-auto [overflow-wrap:anywhere]"><%= note.attachable.try(:name) %></span>
+    <% else %>
+      <%= link_to l(note.date, format: :long), map_v2_path(panel: 'timeline', date: note.date),
+                  class: 'link link-hover font-medium', title: t('.open_this_day_on_the_map') %>
+      <span class="text-base-content/60"><%= l(note.noted_at.in_time_zone, format: :hour_minute) %></span>
+    <% end %>
+  </div>
+  <p class="whitespace-pre-line [overflow-wrap:anywhere]" data-testid="note-body"><%= note.body %></p>
+</li>

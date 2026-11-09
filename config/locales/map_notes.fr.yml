@@ -12,6 +12,20 @@ fr:
       delete_this_note: Supprimer cette note ?
       cancel: Annuler
       save: Enregistrer
+    index:
+      notes: Notes
+      search: Rechercher
+      search_placeholder: Rechercher dans vos notes
+      from: Du
+      to: Au
+      clear: Effacer
+      nothing_found: Aucune note ne correspond à cette recherche
+      no_notes_yet: Pas encore de notes
+      no_notes_yet_hint: Ouvrez la carte, choisissez Ajouter une note dans Outils et cliquez sur l'endroit dont vous voulez vous souvenir.
+      open_the_map: Ouvrir la carte
+    note:
+      trip: 'Voyage : %{name}'
+      open_this_day_on_the_map: Ouvrir ce jour sur la carte
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ fr:
         notes: Notes
         show_your_map_notes: Affiche les notes que vous avez écrites sur la carte
         add_note: Ajouter une note
+    timeline_feeds:
+      on_this_day:
+        on_this_day: Ce jour-là
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Cliquez sur la carte pour placer une note. Échap pour annuler.
       failed_to_load_notes: Impossible de charger les notes
+  shared:
+    navbar:
+      notes: Notes

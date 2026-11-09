@@ -12,6 +12,20 @@ de:
       delete_this_note: Diese Notiz löschen?
       cancel: Abbrechen
       save: Speichern
+    index:
+      notes: Notizen
+      search: Suchen
+      search_placeholder: Notizen durchsuchen
+      from: Von
+      to: Bis
+      clear: Zurücksetzen
+      nothing_found: Keine Notizen passen zu dieser Suche
+      no_notes_yet: Noch keine Notizen
+      no_notes_yet_hint: Öffne die Karte, wähle unter Werkzeuge „Notiz hinzufügen“ und klicke auf den Ort, den du festhalten möchtest.
+      open_the_map: Karte öffnen
+    note:
+      trip: 'Reise: %{name}'
+      open_this_day_on_the_map: Diesen Tag auf der Karte öffnen
   map:
     maplibre:
       note_modal:
@@ -20,7 +34,13 @@ de:
         notes: Notizen
         show_your_map_notes: Zeigt die Notizen, die du auf der Karte geschrieben hast
         add_note: Notiz hinzufügen
+    timeline_feeds:
+      on_this_day:
+        on_this_day: An diesem Tag
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Klicke auf die Karte, um eine Notiz zu setzen. Esc zum Abbrechen.
       failed_to_load_notes: Notizen konnten nicht geladen werden
+  shared:
+    navbar:
+      notes: Notizen
