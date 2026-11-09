@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-# Validates user-supplied integration URLs (immich_url, photoprism_url) at
-# save time. Catches obvious SSRF attempts and configuration mistakes before
-# the URL ever reaches HTTPParty.
+# Validates user-supplied integration URLs (Immich, Photoprism, AirTrail,
+# TeslaMate, TREK). Catches SSRF attempts and configuration mistakes.
 #
 # Two tiers of strictness, chosen at request time from DawarichSettings:
 #
@@ -19,11 +18,10 @@
 #   so a fat-fingered `gopher://` or `http://169.254.169.254/` is still
 #   caught.
 #
-# NOTE: this is a save-time check, not a request-time check. DNS rebinding
-# is still possible: an attacker can serve a public IP to the validator
-# and a private IP to the actual HTTPParty request a moment later. The
-# mitigation lives in the HTTP client (pin the resolved IP) and is
-# tracked separately. (audit C-3)
+# The check runs twice: when a URL is saved, and again on every outbound
+# request inside Integrations::Transport, which then connects to the address
+# it just validated. A DNS answer that changes between the two (rebinding)
+# therefore cannot move the request into a blocked range.
 module UrlValidatable
   extend ActiveSupport::Concern
 

@@ -20,7 +20,7 @@ module Photos
     RETRYABLE = (UNREACHABLE + [Net::OpenTimeout, Net::ReadTimeout,
                                 Integrations::Transport::RetryableError]).freeze
 
-    HANDLED = (RETRYABLE + [HTTParty::Error, JSON::ParserError, Integrations::Transport::Error]).freeze
+    HANDLED = (RETRYABLE + [JSON::ParserError, Integrations::Transport::Error]).freeze
 
     def self.retryable?(error)
       RETRYABLE.any? { |klass| error.is_a?(klass) }
