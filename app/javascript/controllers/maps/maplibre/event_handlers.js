@@ -192,7 +192,9 @@ export class EventHandlers {
     const mapEditor = this.controller.layerManager.getLayer("map-editor")
     if (mapEditor?.justDragged) return
 
-    const container = document.getElementById("track-point-info-container")
+    const container = document.getElementById(
+      `track-point-info-container-${mapEditor?.trackId}`,
+    )
     if (!container) return
 
     const feature = e.features[0]
