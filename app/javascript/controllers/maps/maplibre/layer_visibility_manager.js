@@ -17,6 +17,19 @@ export class LayerVisibilityManager {
     this._anomaliesFetchId = 0
   }
 
+  _previewedForLite({ layer, layerName = layer, toggle, showFn, hideFn }) {
+    return gatedToggle({
+      layer,
+      gatedLayers: this.controller.gatedLayersValue,
+      layerName,
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn,
+      hideFn,
+      upgradeUrl: this.controller.upgradeUrlValue,
+    })
+  }
+
   /**
    * Toggle heatmap visibility
    */
@@ -31,17 +44,15 @@ export class LayerVisibilityManager {
       this.applyHeatmapRenderer(false)
     }
 
-    const intercepted = gatedToggle({
-      layer: "Heatmap",
-      gatedLayers: this.controller.gatedLayersValue,
-      layerName: "Heatmap",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showHeatmap,
-      hideFn: hideHeatmap,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Heatmap",
+        toggle,
+        showFn: showHeatmap,
+        hideFn: hideHeatmap,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
@@ -60,17 +71,15 @@ export class LayerVisibilityManager {
   async toggleHexagons(event) {
     const toggle = event.target
 
-    const intercepted = gatedToggle({
-      layer: "Hexagons",
-      gatedLayers: this.controller.gatedLayersValue,
-      layerName: "Hexagons",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: () => this._showHexagons(),
-      hideFn: () => this._hideHexagons(),
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Hexagons",
+        toggle,
+        showFn: () => this._showHexagons(),
+        hideFn: () => this._hideHexagons(),
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("hexagonsEnabled", enabled)
@@ -115,17 +124,15 @@ export class LayerVisibilityManager {
       fogLayer?.toggle(false)
     }
 
-    const intercepted = gatedToggle({
-      layer: "Fog of War",
-      gatedLayers: this.controller.gatedLayersValue,
-      layerName: "Fog of War",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showFog,
-      hideFn: hideFog,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Fog of War",
+        toggle,
+        showFn: showFog,
+        hideFn: hideFog,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
@@ -192,17 +199,16 @@ export class LayerVisibilityManager {
       if (scratchLayer) scratchLayer.hide()
     }
 
-    const intercepted = gatedToggle({
-      layer: "Scratch map",
-      gatedLayers: this.controller.gatedLayersValue,
-      layerName: translate("layers.scratch_map"),
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showScratch,
-      hideFn: hideScratch,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Scratch map",
+        layerName: translate("layers.scratch_map"),
+        toggle,
+        showFn: showScratch,
+        hideFn: hideScratch,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("scratchEnabled", enabled)
@@ -246,19 +252,11 @@ export class LayerVisibilityManager {
             isComplete: false,
           })
 
-          const api = this.controller.api
           const dataLoader = this.controller.dataLoader
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-
-          const photosPromise = api.fetchPhotos({
-            start_at: startDate,
-            end_at: endDate,
-          })
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
+          const photos = await dataLoader.fetchPhotosWithTimeout(
+            this.controller.startDateValue,
+            this.controller.endDateValue,
           )
-          const photos = await Promise.race([photosPromise, timeoutPromise])
           const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
 
           this.controller.updateLoadingCounts({
