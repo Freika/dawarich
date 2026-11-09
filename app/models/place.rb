@@ -53,7 +53,7 @@ class Place < ApplicationRecord
       Achievements::Selection.where('achievement_selections.place_id = places.id')
     ]
     candidates = photon.not_archived.where(name_locked_at: nil, geofence: false)
-                       .where("places.note IS NULL OR places.note !~ '[^[:space:]]'")
+                       .where("NULLIF(BTRIM(places.note), '') IS NULL")
     holders.reduce(candidates) { |scope, holder| scope.where.not(holder.arel.exists) }
   }
   scope :containing, lambda { |latitude, longitude|
