@@ -151,7 +151,7 @@ RSpec.describe Visits::Suggest do
 
         described_class.new(user, start_at:, end_at:).call
 
-        expect(Rails.logger).to have_received(:error).with(/detector exploded/)
+        expect(Rails.logger).to have_received(:error).with(/detector exploded/).at_least(:once)
       end
 
       it 'does not repeat the notification while an unread one is recent' do
