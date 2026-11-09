@@ -573,7 +573,7 @@ export class EventHandlers {
 
     if (preserveEditor) {
       this.map.off("click", "track-points", this._handleTrackPointClick)
-      this._setMainPointsOpacity(1.0)
+      this._restoreMainPointsOpacity()
     } else {
       this.clearPointSelection()
     }
@@ -587,7 +587,7 @@ export class EventHandlers {
 
   clearPointSelection() {
     this._clearTrackPointsLayer()
-    this._setMainPointsOpacity(1.0)
+    this._restoreMainPointsOpacity()
   }
 
   async _handleTrackPointsToggleChange(event) {
@@ -618,7 +618,7 @@ export class EventHandlers {
       this._clearTrackPointsLayer()
 
       // Restore main points layer opacity
-      this._setMainPointsOpacity(1.0)
+      this._restoreMainPointsOpacity()
     }
   }
 
@@ -670,6 +670,17 @@ export class EventHandlers {
       })
     } else {
       editor.selectPoint(feature, { forEditing: true })
+    }
+  }
+
+  /**
+   * Undo the dimming of a point selection, keeping a highlighted day dimmed.
+   */
+  _restoreMainPointsOpacity() {
+    if (this.controller._highlightedDay) {
+      this.controller._applyDayHighlight(this.controller._highlightedDay)
+    } else {
+      this._setMainPointsOpacity(1.0)
     }
   }
 

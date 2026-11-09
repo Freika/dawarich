@@ -229,7 +229,12 @@ export class SettingsManager {
    * @param {Object} settings - Settings object
    */
   static updateCache(settings) {
-    SettingsManager.cachedSettings = { ...settings }
+    // In place: controllers hold on to the object sync() returned.
+    if (SettingsManager.cachedSettings) {
+      Object.assign(SettingsManager.cachedSettings, settings)
+    } else {
+      SettingsManager.cachedSettings = { ...settings }
+    }
   }
 
   /**

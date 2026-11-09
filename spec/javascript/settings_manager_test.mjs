@@ -345,6 +345,16 @@ test("a saved Areas layer carries over to Places with their boundaries", async (
   }
 })
 
+test("a loaded settings object sees later updates", async () => {
+  const loaded = { photosEnabled: false, mapStyle: "light" }
+  SettingsManager.cachedSettings = loaded
+  SettingsManager.saveToBackend = async (settings) => settings
+
+  await SettingsManager.updateSetting("photosEnabled", true)
+
+  assert.equal(loaded.photosEnabled, true)
+})
+
 test("multiple setting updates are persisted in one write", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",

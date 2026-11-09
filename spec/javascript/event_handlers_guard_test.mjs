@@ -386,3 +386,41 @@ test("a tile point under the click is selected instead of the edited point", () 
   handlers.handleEditablePointClick(editedPointClick)
   assert.deepEqual(shown, [])
 })
+
+test("clearing a point selection keeps a highlighted day dimmed", () => {
+  const reapplied = []
+  const paints = []
+  const handlers = new EventHandlers(
+    {
+      getLayer: () => true,
+      setPaintProperty: (...args) => paints.push(args),
+    },
+    {
+      _highlightedDay: "2026-03-14",
+      _applyDayHighlight: (day) => reapplied.push(day),
+    },
+  )
+
+  handlers._restoreMainPointsOpacity()
+
+  assert.deepEqual(reapplied, ["2026-03-14"])
+  assert.deepEqual(paints, [])
+})
+
+test("clearing a point selection with no highlighted day restores opacity", () => {
+  const paints = []
+  const handlers = new EventHandlers(
+    {
+      getLayer: () => true,
+      setPaintProperty: (...args) => paints.push(args),
+    },
+    {},
+  )
+
+  handlers._restoreMainPointsOpacity()
+
+  assert.deepEqual(paints, [
+    ["points-mvt", "circle-opacity", 1],
+    ["points-mvt", "circle-stroke-opacity", 1],
+  ])
+})
