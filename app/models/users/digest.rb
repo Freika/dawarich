@@ -22,6 +22,12 @@ class Users::Digest < ApplicationRecord
 
   enum :generation_status, { ready: 0, queued: 1, calculating: 2, failed: 3 }, prefix: :generation
 
+  def self.generatable_year?(user, year)
+    return false if year < 1970 || year >= Time.current.year
+
+    user.scoped_stats.exists?(year: year)
+  end
+
   def self.for_year_generation(user, year)
     user.with_lock do
       digest = user.digests.yearly.find_or_initialize_by(year: year)

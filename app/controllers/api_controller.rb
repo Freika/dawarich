@@ -107,6 +107,16 @@ class ApiController < ApplicationController
 
   # Applies the 12-month plan window to any point relation.
   # Use this when scoping points that don't start from user.points (e.g. track.points).
+  def distance_unit
+    params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
+  end
+
+  def set_pagination_headers(collection, with_total: false)
+    response.set_header('X-Current-Page', collection.current_page.to_s)
+    response.set_header('X-Total-Pages', collection.total_pages.to_s)
+    response.set_header('X-Total-Count', collection.total_count.to_s) if with_total
+  end
+
   def apply_plan_scope(relation, user = current_api_user)
     window_start = user&.data_window_start
     return relation unless window_start
