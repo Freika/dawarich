@@ -665,31 +665,17 @@ export class ApiClient {
    * @param {number} pointId - Point ID to delete
    * @returns {Promise<Object>} Deleted point payload
    */
-  async deletePoint(pointId) {
-    const response = await fetch(`${this.baseURL}/points/${pointId}`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete point: ${response.statusText}`)
-    }
-
-    return response.json()
+  deletePoint(pointId) {
+    return this._send("DELETE", `/points/${pointId}`, "Failed to delete point")
   }
 
   /** Clear a point's anomaly flag and keep the filter from setting it again. */
-  async markPointValid(pointId) {
-    const response = await fetch(
-      `${this.baseURL}/points/${pointId}/mark_valid`,
-      { method: "PATCH", headers: this.getHeaders() },
+  markPointValid(pointId) {
+    return this._send(
+      "PATCH",
+      `/points/${pointId}/mark_valid`,
+      "Failed to mark point as correct",
     )
-
-    if (!response.ok) {
-      throw new Error(`Failed to mark point as correct: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   /**
@@ -729,18 +715,13 @@ export class ApiClient {
    * @param {string} status - 'confirmed' or 'declined'
    * @returns {Promise<Object>} Updated visit
    */
-  async updateVisitStatus(visitId, status) {
-    const response = await fetch(`${this.baseURL}/visits/${visitId}`, {
-      method: "PATCH",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ visit: { status } }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to update visit status: ${response.statusText}`)
-    }
-
-    return response.json()
+  updateVisitStatus(visitId, status) {
+    return this._send(
+      "PATCH",
+      `/visits/${visitId}`,
+      "Failed to update visit status",
+      { visit: { status } },
+    )
   }
 
   /**
@@ -748,18 +729,10 @@ export class ApiClient {
    * @param {Array<number>} visitIds - Array of visit IDs to merge
    * @returns {Promise<Object>} Merged visit
    */
-  async mergeVisits(visitIds) {
-    const response = await fetch(`${this.baseURL}/visits/merge`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ visit_ids: visitIds }),
+  mergeVisits(visitIds) {
+    return this._send("POST", "/visits/merge", "Failed to merge visits", {
+      visit_ids: visitIds,
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to merge visits: ${response.statusText}`)
-    }
-
-    return response.json()
   }
 
   /**
@@ -767,17 +740,8 @@ export class ApiClient {
    * @param {number} visitId - Visit ID to delete
    * @returns {Promise<Object>} Deleted visit payload
    */
-  async deleteVisit(visitId) {
-    const response = await fetch(`${this.baseURL}/visits/${visitId}`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete visit: ${response.statusText}`)
-    }
-
-    return response.json()
+  deleteVisit(visitId) {
+    return this._send("DELETE", `/visits/${visitId}`, "Failed to delete visit")
   }
 
   /**
@@ -785,18 +749,13 @@ export class ApiClient {
    * @param {Array<number>} visitIds - Array of visit IDs to delete
    * @returns {Promise<Object>} { message, count }
    */
-  async bulkDestroyVisits(visitIds) {
-    const response = await fetch(`${this.baseURL}/visits/bulk_destroy`, {
-      method: "DELETE",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ visit_ids: visitIds }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete visits: ${response.statusText}`)
-    }
-
-    return response.json()
+  bulkDestroyVisits(visitIds) {
+    return this._send(
+      "DELETE",
+      "/visits/bulk_destroy",
+      "Failed to delete visits",
+      { visit_ids: visitIds },
+    )
   }
 
   /**
@@ -805,18 +764,13 @@ export class ApiClient {
    * @param {string} status - 'confirmed' or 'declined'
    * @returns {Promise<Object>} Update result
    */
-  async bulkUpdateVisits(visitIds, status) {
-    const response = await fetch(`${this.baseURL}/visits/bulk_update`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ visit_ids: visitIds, status }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to bulk update visits: ${response.statusText}`)
-    }
-
-    return response.json()
+  bulkUpdateVisits(visitIds, status) {
+    return this._send(
+      "POST",
+      "/visits/bulk_update",
+      "Failed to bulk update visits",
+      { visit_ids: visitIds, status },
+    )
   }
 
   /**
@@ -1001,6 +955,21 @@ export class ApiClient {
     } catch {
       return { zones: [], fingerprint: null, failed: true }
     }
+  }
+
+  /** Send a write and return its JSON; a failed response throws `failure`. */
+  async _send(method, path, failure, body = undefined) {
+    const response = await fetch(`${this.baseURL}${path}`, {
+      method,
+      headers: this.getHeaders(),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`${failure}: ${response.statusText}`)
+    }
+
+    return response.json()
   }
 
   getHeaders() {
