@@ -218,10 +218,10 @@ export class SettingsManager {
     const expandedSettings =
       SettingsManager._expandLayerSettings(frontendSettings)
 
-    SettingsManager.cachedSettings = expandedSettings
+    SettingsManager.updateCache(expandedSettings)
     SettingsManager.loaded = true
 
-    return expandedSettings
+    return SettingsManager.cachedSettings
   }
 
   /**

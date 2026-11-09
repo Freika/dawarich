@@ -1004,7 +1004,7 @@ export class SettingsController {
 
     // Update controller settings and dataLoader BEFORE applying,
     // so that loadMapData() sees the new values
-    this.controller.settings = { ...this.controller.settings, ...settings }
+    Object.assign(this.controller.settings, settings)
     this.settings = this.controller.settings
     if (this.controller.dataLoader) {
       this.controller.dataLoader.updateSettings(this.controller.settings)

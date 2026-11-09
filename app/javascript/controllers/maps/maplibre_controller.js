@@ -615,6 +615,10 @@ export default class extends Controller {
     this.showProgress()
   }
 
+  hideLoading() {
+    this.hideProgress()
+  }
+
   /**
    * Update loading counts badge
    */

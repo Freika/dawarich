@@ -52,7 +52,6 @@ export function resolveTheme(tokens) {
   }
 }
 
-const _cache = new Map()
 const tokenCache = new Map()
 
 export async function loadThemeTokens(key) {
