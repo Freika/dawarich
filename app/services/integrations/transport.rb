@@ -59,6 +59,13 @@ module Integrations
       new(method, url, **options).call
     end
 
+    # One caller-supplied value as a single URL path segment: separators are
+    # escaped, and a dot segment cannot climb out of the intended path.
+    def self.path_segment(value)
+      segment = ERB::Util.url_encode(value.to_s)
+      segment.match?(/\A\.+\z/) ? segment.gsub('.', '%2E') : segment
+    end
+
     def initialize(method, url, headers: {}, query: nil, body: nil, skip_ssl_verification: false,
                    timeout: DEFAULT_TIMEOUT)
       @request_class = REQUEST_CLASSES.fetch(method) { raise ArgumentError, "Unsupported HTTP method: #{method}" }
@@ -71,14 +78,15 @@ module Integrations
     end
 
     def call
+      refuse_unsafe_headers
       addresses = validated_addresses
       uri = request_uri
-      response = try_addresses(uri, addresses)
-      refuse_redirect(response) if response.is_a?(Net::HTTPRedirection)
+      response = connect(uri, addresses) { |http| http.request(build_request(uri)) }
+      refuse_redirect(response) if response.is_a?(Net::HTTPRedirection) && response['location'].present?
 
       Response.new(response.code.to_i, response.body.to_s, Headers.new(response))
-    rescue OpenSSL::SSL::SSLError, SystemCallError, IOError, Timeout::Error, SocketError,
-           Resolv::ResolvError, Net::HTTPBadResponse, Net::ProtocolError => e
+    rescue OpenSSL::SSL::SSLError, SystemCallError, IOError, Timeout::Error, SocketError, Resolv::ResolvError,
+           Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Zlib::Error => e
       raise RetryableError, e.message
     end
 
@@ -101,26 +109,37 @@ module Integrations
       uri
     end
 
-    # Tries each validated address in turn, so a host with an unreachable
-    # first record (often an unrouted AAAA) still connects on the next.
-    def try_addresses(uri, addresses)
+    # Net::HTTP raises on a line break in a header value and quotes the value,
+    # which would put a pasted API key into the error message.
+    def refuse_unsafe_headers
+      return unless @headers.values.any? { |value| value.to_s.match?(/[\r\n]/) }
+
+      raise Error, 'A request header contains a line break. Re-enter the API key or token without line breaks.'
+    end
+
+    # Opens a connection to the first validated address that accepts one, so a
+    # host with an unreachable first record (often an unrouted AAAA) still
+    # connects. Only the connect is retried: once a connection exists the
+    # request is sent exactly once.
+    def connect(uri, addresses, &)
+      http = open_connection(uri, addresses)
+      yield http
+    ensure
+      http&.finish if http&.started?
+    end
+
+    def open_connection(uri, addresses)
+      # Behind a proxy the target is resolved by the proxy, so there is nothing to pin.
+      return connection(uri).tap(&:start) if connection(uri).proxy?
+
       last_error = nil
       addresses.each do |address|
-        return perform(uri, address)
+        return connection(uri).tap { |http| http.ipaddr = address }.tap(&:start)
       rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::EADDRNOTAVAIL,
              Net::OpenTimeout => e
         last_error = e
       end
       raise last_error
-    end
-
-    def perform(uri, address)
-      http = connection(uri)
-      # Behind a proxy the target is resolved by the proxy, so there is nothing to pin.
-      return http.start { |open| open.request(build_request(uri)) } if http.proxy?
-
-      http.ipaddr = address
-      http.start { |open| open.request(build_request(uri)) }
     end
 
     def connection(uri)
@@ -139,7 +158,10 @@ module Integrations
       request.body = @body if @body
       # Same precedence HTTParty had: credentials in the URL win over a
       # caller's Authorization header (a homelab reverse proxy in front).
-      request.basic_auth(*uri.userinfo.split(':', 2)) if uri.userinfo.present?
+      if uri.userinfo.present?
+        username, password = uri.userinfo.split(':', 2)
+        request.basic_auth(username, password.to_s)
+      end
       request
     end
 

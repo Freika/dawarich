@@ -32,10 +32,13 @@ RSpec.describe Integrations::Transport do
     server&.close
   end
 
-  def allowing_real_connection(*hosts_with_port)
-    WebMock.disable_net_connect!(allow: hosts_with_port)
+  # WebMock replaces Net::HTTP#start, so under it a connection is only opened
+  # when the request is sent. These examples need the real connect.
+  def allowing_real_connection
+    WebMock.disable!
     yield
   ensure
+    WebMock.enable!
     WebMock.disable_net_connect!
   end
 
@@ -92,11 +95,26 @@ RSpec.describe Integrations::Transport do
     end
   end
 
+  describe '.path_segment' do
+    it 'escapes separators and reserved characters' do
+      expect(described_class.path_segment('a/b?c#d')).to eq('a%2Fb%3Fc%23d')
+    end
+
+    it 'does not let a dot segment climb the path' do
+      expect(described_class.path_segment('..')).to eq('%2E%2E')
+      expect(described_class.path_segment('.')).to eq('%2E')
+    end
+
+    it 'leaves an ordinary id alone' do
+      expect(described_class.path_segment('7fe486e3-c3ba.jpg')).to eq('7fe486e3-c3ba.jpg')
+    end
+  end
+
   describe 'address pinning' do
     it 'connects to the validated address and keeps the hostname in the Host header' do
       received = with_local_server do |port|
         stub_host_addresses('pinned.test', '127.0.0.1')
-        allowing_real_connection("pinned.test:#{port}") do
+        allowing_real_connection do
           response = described_class.request(:get, "http://pinned.test:#{port}/hello")
           expect(response.body).to eq('ok')
         end
@@ -106,10 +124,21 @@ RSpec.describe Integrations::Transport do
       expect(received).to match(/^Host: pinned\.test/i)
     end
 
+    it 'sends the request once when the first address refuses the connection' do
+      received = with_local_server do |port|
+        stub_host_addresses('dual.test', '::1', '127.0.0.1')
+        allowing_real_connection do
+          described_class.request(:post, "http://dual.test:#{port}/items", body: '{}')
+        end
+      end
+
+      expect(received.scan('POST /items').size).to eq(1)
+    end
+
     it 'falls back to the next address when the first refuses the connection' do
       with_local_server do |port|
         stub_host_addresses('dual.test', '::1', '127.0.0.1')
-        allowing_real_connection("dual.test:#{port}") do
+        allowing_real_connection do
           expect(described_class.request(:get, "http://dual.test:#{port}/").body).to eq('ok')
         end
       end
@@ -129,7 +158,7 @@ RSpec.describe Integrations::Transport do
       stub_host_addresses('behind-proxy.test', '203.0.113.20')
       received = with_local_server do |port|
         ENV['http_proxy'] = "http://127.0.0.1:#{port}"
-        allowing_real_connection('behind-proxy.test:80') do
+        allowing_real_connection do
           described_class.request(:get, 'http://behind-proxy.test/data')
         end
       end
@@ -142,7 +171,7 @@ RSpec.describe Integrations::Transport do
         ENV['http_proxy'] = 'http://127.0.0.1:1'
         ENV['no_proxy'] = 'direct.test'
         stub_host_addresses('direct.test', '127.0.0.1')
-        allowing_real_connection("direct.test:#{port}") do
+        allowing_real_connection do
           described_class.request(:get, "http://direct.test:#{port}/data")
         end
       end
@@ -198,6 +227,20 @@ RSpec.describe Integrations::Transport do
       expect(put).to have_been_requested
     end
 
+    it 'does not treat a 304 without a Location as a redirect' do
+      stub_request(:get, 'http://api.test/cached').to_return(status: 304)
+
+      expect(described_class.request(:get, 'http://api.test/cached').code).to eq(304)
+    end
+
+    it 'refuses a header value with a line break without echoing it' do
+      request = stub_request(:get, 'http://api.test/')
+
+      expect { described_class.request(:get, 'http://api.test/', headers: { 'x-api-key' => "secret\nvalue" }) }
+        .to raise_error(described_class::Error) { |error| expect(error.message).not_to include('secret') }
+      expect(request).not_to have_been_requested
+    end
+
     it 'rejects an unsupported method' do
       expect { described_class.request(:delete, 'http://api.test/') }.to raise_error(ArgumentError)
     end
@@ -227,6 +270,14 @@ RSpec.describe Integrations::Transport do
 
       described_class.request(:get, 'http://proxyuser:proxypass@immich.lan/',
                               headers: { 'Authorization' => 'Bearer token' })
+
+      expect(request).to have_been_requested
+    end
+
+    it 'accepts a user name without a password' do
+      request = stub_request(:get, 'http://immich.lan/').with(basic_auth: ['tokenonly', '']).to_return(json_ok)
+
+      described_class.request(:get, 'http://tokenonly@immich.lan/')
 
       expect(request).to have_been_requested
     end
@@ -294,6 +345,27 @@ RSpec.describe Integrations::Transport do
       stub_request(:get, 'http://flaky.test/').to_raise(Errno::EADDRNOTAVAIL)
 
       expect { described_class.request(:get, 'http://flaky.test/') }.to raise_error(described_class::RetryableError)
+    end
+
+    it 'wraps a body that cannot be decoded' do
+      stub_request(:get, 'http://flaky.test/').to_raise(Zlib::DataError.new('incorrect header check'))
+
+      expect { described_class.request(:get, 'http://flaky.test/') }.to raise_error(described_class::RetryableError)
+    end
+
+    it 'wraps a malformed response header' do
+      stub_request(:get, 'http://flaky.test/').to_raise(Net::HTTPHeaderSyntaxError.new('wrong Content-Length format'))
+
+      expect { described_class.request(:get, 'http://flaky.test/') }.to raise_error(described_class::RetryableError)
+    end
+
+    it 'does not send the request again when it fails after the connection was made' do
+      stub_host_addresses('flaky.test', '203.0.113.7', '203.0.113.8')
+      request = stub_request(:post, 'http://flaky.test/').to_raise(Errno::EHOSTUNREACH)
+
+      expect { described_class.request(:post, 'http://flaky.test/', body: '{}') }
+        .to raise_error(described_class::RetryableError)
+      expect(request).to have_been_requested.once
     end
 
     it 'is rescued and classified by the shared connection error lists' do
