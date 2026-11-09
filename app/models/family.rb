@@ -33,9 +33,7 @@ class Family < ApplicationRecord
   end
 
   def can_add_members?
-    return true if DawarichSettings.self_hosted?
-
-    (member_count + pending_invitations_count) < MAX_MEMBERS
+    !full?
   end
 
   def member_count
