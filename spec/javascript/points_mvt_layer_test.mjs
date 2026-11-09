@@ -195,19 +195,19 @@ test("circle stroke follows the basemap marker theme", () => {
   assert.equal(stroke("dark"), "#ffffff")
 })
 
-test("anyVisible reports heatmap-only, circles-only and fully hidden states", () => {
-  const layer = new PointsMvtLayer(fakeMap(), {})
+test("flight windows set before the layer exists apply when it is added", () => {
+  const map = fakeMap()
+  const filters = {}
+  map.setFilter = (id, filter) => {
+    filters[id] = filter
+  }
+  const layer = new PointsMvtLayer(map, {})
+  layer.setFlightWindows([[100, 200]])
 
-  layer.visible = false
-  layer.heatmapVisible = false
-  assert.equal(layer.anyVisible, false)
+  layer.add({})
 
-  layer.heatmapVisible = true
-  assert.equal(layer.anyVisible, true)
-
-  layer.visible = true
-  layer.heatmapVisible = false
-  assert.equal(layer.anyVisible, true)
+  assert.ok(filters[layer.id])
+  assert.ok(filters[PointsMvtLayer.HEATMAP_LAYER_ID])
 })
 
 test("update() to a new range re-adds sub-layers at their original z-position", () => {

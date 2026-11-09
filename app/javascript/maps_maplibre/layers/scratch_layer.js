@@ -1,6 +1,6 @@
 import * as maplibregl from "maplibre-gl"
 import { Protocol } from "pmtiles"
-import { BaseLayer } from "./base_layer"
+import { VectorTileLayer } from "./vector_tile_layer"
 
 let protocolRegistered = false
 
@@ -16,26 +16,21 @@ export function visitedCountryFilter(isoA3 = []) {
 }
 
 /** Tile-native presentation of the countries visited in the active range. */
-export class ScratchLayer extends BaseLayer {
+export class ScratchLayer extends VectorTileLayer {
   constructor(map, options = {}) {
     super(map, { id: "scratch", ...options })
     this.apiClient = options.apiClient
     this.historyScope = options.historyScope
-    this.onTileError = options.onTileError || null
     this.onMembershipError = options.onMembershipError || null
     this.visitedIsoA3 = []
     this._membershipStale = false
     this._membershipGeneration = 0
     this._cacheBuster = 0
-    this._tileErrorHandler = null
-    this._tileErrorReported = false
     this._onPointMoved = this.onPointMoved.bind(this)
   }
 
   async add(_data, beforeId = null) {
     registerPmtilesProtocol()
-    this._tileErrorReported = false
-    this._watchTileErrors()
     super.add(undefined, beforeId)
     this.applyFilter()
     document.removeEventListener("dawarich:point-moved", this._onPointMoved)
@@ -110,35 +105,8 @@ export class ScratchLayer extends BaseLayer {
     this.setVisibility(wasVisible)
   }
 
-  _layerAbove() {
-    const styleLayers = this.map.getStyle?.()?.layers ?? []
-    const ownIds = new Set(this.getLayerIds())
-    let lastOwnIndex = -1
-    styleLayers.forEach((styleLayer, index) => {
-      if (ownIds.has(styleLayer.id)) lastOwnIndex = index
-    })
-    if (lastOwnIndex === -1 || lastOwnIndex + 1 >= styleLayers.length)
-      return null
-    return styleLayers[lastOwnIndex + 1].id
-  }
-
-  _watchTileErrors() {
-    if (this._tileErrorHandler || !this.onTileError) return
-
-    this._tileErrorHandler = (event) => {
-      if (event?.sourceId !== this.sourceId || this._tileErrorReported) return
-
-      this._tileErrorReported = true
-      this.onTileError(event)
-    }
-    this.map.on("error", this._tileErrorHandler)
-  }
-
-  _unwatchTileErrors() {
-    if (!this._tileErrorHandler) return
-
-    this.map.off("error", this._tileErrorHandler)
-    this._tileErrorHandler = null
+  _isTileFailure() {
+    return true
   }
 
   getSourceConfig() {
@@ -180,7 +148,6 @@ export class ScratchLayer extends BaseLayer {
 
   remove() {
     this._membershipGeneration += 1
-    this._unwatchTileErrors()
     document.removeEventListener("dawarich:point-moved", this._onPointMoved)
     super.remove()
   }

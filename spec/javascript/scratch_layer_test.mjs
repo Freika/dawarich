@@ -1,27 +1,10 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import {
+  ScratchLayer,
+  visitedCountryFilter,
+} from "maps_maplibre/layers/scratch_layer"
 
-let source = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/scratch_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-source = source.replace(/^import .+\n/gm, "")
-const dependencies = `
-const maplibregl = { addProtocol() {} }
-class Protocol { constructor() { this.tile = () => {} } }
-class BaseLayer {
-  constructor(map, options) { this.map = map; this.id = options.id; this.sourceId = this.id + "-source" }
-  add() { this.map.added?.push(this.id) }
-  remove() { this.map.removed?.push(this.id) }
-  show() { this.visible = true }
-}
-`
-const url = `data:text/javascript;base64,${Buffer.from(dependencies + source).toString("base64")}`
-const { ScratchLayer, visitedCountryFilter } = await import(url)
 globalThis.document ??= { addEventListener() {}, removeEventListener() {} }
 
 test("visited-country filtering uses only canonical ISO-3 metadata", () => {
@@ -252,10 +235,23 @@ test("a stale failed country request does not report an error after a newer succ
 
 test("scratch attaches immediately and a removed layer ignores its pending country response", async () => {
   let resolveRequest
+  const live = new Set()
   const map = {
     added: [],
     removed: [],
-    getLayer: () => false,
+    getLayer: (id) => live.has(id),
+    getSource: () => null,
+    addSource() {},
+    addLayer({ id }) {
+      live.add(id)
+      map.added.push(id)
+    },
+    removeLayer(id) {
+      live.delete(id)
+      map.removed.push(id)
+    },
+    setFilter() {},
+    setLayoutProperty() {},
   }
   const layer = new ScratchLayer(map, {
     historyScope: () => ({ startAt: "2024-06-01", endAt: "2024-06-30" }),
@@ -268,12 +264,12 @@ test("scratch attaches immediately and a removed layer ignores its pending count
   })
 
   const pendingAdd = layer.add()
-  assert.deepEqual(map.added, ["scratch"])
+  assert.deepEqual(map.added, ["scratch", "scratch-outline"])
   layer.remove()
   resolveRequest({ countries: [{ iso_a3: "DEU" }] })
   await pendingAdd
 
-  assert.deepEqual(map.added, ["scratch"])
-  assert.deepEqual(map.removed, ["scratch"])
+  assert.deepEqual(map.added, ["scratch", "scratch-outline"])
+  assert.deepEqual(map.removed, ["scratch", "scratch-outline"])
   assert.deepEqual(layer.visitedIsoA3, [])
 })
