@@ -333,7 +333,7 @@ export default class extends Controller {
     this.familyManager?.disconnect()
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
-    this.settingsController?.stopRecalculationPolling()
+    this.settingsController?.transportation.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
     this.timelineSegmentHover?.destroy()
@@ -776,10 +776,14 @@ export default class extends Controller {
     return this.settingsController.toggleGlobe(event)
   }
   markTransportationSettingsDirty(event) {
-    return this.settingsController.markTransportationSettingsDirty(event)
+    return this.settingsController.transportation.markTransportationSettingsDirty(
+      event,
+    )
   }
   applyTransportationSettings(event) {
-    return this.settingsController.applyTransportationSettings(event)
+    return this.settingsController.transportation.applyTransportationSettings(
+      event,
+    )
   }
 
   // Area Selection Manager methods

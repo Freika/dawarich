@@ -20,6 +20,9 @@ const BACKEND_SETTINGS_MAP = {}
 const LAYER_NAME_MAP = {}
 const basemapUrlFor = () => null
 const SettingsManager = globalThis.__settingsManagerStub
+const TransportationSettings = class { syncTransportationSettings() {} }
+const applyGlobeProjection = () => {}
+const globeEnabled = () => false
 `
 globalThis.CustomEvent ??= class CustomEvent extends Event {}
 globalThis.document = new EventTarget()

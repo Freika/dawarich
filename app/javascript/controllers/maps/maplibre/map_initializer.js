@@ -2,6 +2,10 @@ import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
+import {
+  applyGlobeProjection,
+  globeEnabled,
+} from "maps_maplibre/utils/globe_projection"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
@@ -99,26 +103,8 @@ export class MapInitializer {
       map.on("error", onError)
     }
 
-    // Set globe projection after map loads
-    if (globeProjection === true || globeProjection === "true") {
-      map.on("load", () => {
-        map.setProjection({ type: "globe" })
-
-        // Add atmosphere effect
-        map.setSky({
-          "atmosphere-blend": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            0,
-            1,
-            5,
-            1,
-            7,
-            0,
-          ],
-        })
-      })
+    if (globeEnabled(globeProjection)) {
+      map.on("load", () => applyGlobeProjection(map))
     }
 
     if (showControls) {
