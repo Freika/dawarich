@@ -1,26 +1,12 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { LayerVisibilityManager } from "controllers/maps/maplibre/layer_visibility_manager"
+import { Toast } from "maps_maplibre/components/toast"
+import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/layer_visibility_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const dependencies = `
-const SettingsManager = { updateSetting: (...args) => globalThis.__settingUpdates?.push(args) }
-const translate = (key) => key
-const Toast = { retry(_message, _label, callback) { globalThis.__scratchRetry = callback } }
-const gatedToggle = (options) => globalThis.__gatedToggle?.(options) ?? false
-const lazyLoader = { loadLayer: async () => globalThis.__scratchTestLayer }
-`
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(dependencies + withoutImports).toString("base64")}`
-const { LayerVisibilityManager } = await import(moduleUrl)
-
-test("track visibility controls tile lines and focused selection together", async () => {
+test("track visibility controls tile lines and focused selection together", async (t) => {
+  t.mock.method(SettingsManager, "updateSetting", () => {})
   const actions = []
   const layers = {
     "tracks-mvt": { setEnabled: (enabled) => actions.push(["tile", enabled]) },
@@ -48,13 +34,18 @@ test("track visibility controls tile lines and focused selection together", asyn
   ])
 })
 
-test("a failed first Scratch membership fetch retries the registered layer instead of leaking another", async () => {
+test("a failed first Scratch membership fetch retries the registered layer instead of leaking another", async (t) => {
   let installed = false
   let instances = 0
   let listeners = 0
   let retryCalls = 0
-  globalThis.__scratchRetry = null
-  globalThis.__scratchTestLayer = class {
+  let retry = null
+  t.mock.method(Toast, "retry", (_message, _label, callback) => {
+    retry = callback
+  })
+  t.mock.method(SettingsManager, "updateSetting", () => {})
+  t.mock.method(console, "error", () => {})
+  class ScratchLayerDouble {
     constructor() {
       this.id = "scratch"
       instances += 1
@@ -72,6 +63,7 @@ test("a failed first Scratch membership fetch retries the registered layer inste
       listeners -= 1
     }
   }
+  t.mock.method(lazyLoader, "loadLayer", async () => ScratchLayerDouble)
   const layers = {}
   const controller = {
     map: { getLayer: () => installed },
@@ -87,45 +79,42 @@ test("a failed first Scratch membership fetch retries the registered layer inste
   }
   const manager = new LayerVisibilityManager(controller)
   manager.reapplyPointsRenderer = async () => {}
-  const originalError = console.error
-  console.error = () => {}
-  try {
-    await manager.toggleScratch({ target: { checked: true } })
-    assert.equal(instances, 1)
-    assert.equal(listeners, 1)
-    assert.ok(layers.scratchLayer)
-    assert.equal(typeof globalThis.__scratchRetry, "function")
+  await manager.toggleScratch({ target: { checked: true } })
+  assert.equal(instances, 1)
+  assert.equal(listeners, 1)
+  assert.ok(layers.scratchLayer)
+  assert.equal(typeof retry, "function")
 
-    await globalThis.__scratchRetry()
-    assert.equal(instances, 1)
-    assert.equal(listeners, 1)
-    assert.equal(retryCalls, 1)
-  } finally {
-    console.error = originalError
-    delete globalThis.__scratchTestLayer
-    delete globalThis.__scratchRetry
-  }
+  await retry()
+  assert.equal(instances, 1)
+  assert.equal(listeners, 1)
+  assert.equal(retryCalls, 1)
 })
 
-test("a Lite fog toggle runs as a gated preview without persisting fogEnabled", async () => {
-  const gated = []
-  globalThis.__settingUpdates = []
-  globalThis.__gatedToggle = (options) => {
-    gated.push(options.layerName)
-    return true
-  }
+test("a Lite fog toggle runs as a gated preview without persisting fogEnabled", async (t) => {
+  t.mock.method(Toast, "info", () => null)
+  t.mock.method(Toast, "dismiss", () => {})
+  const updateSetting = t.mock.method(
+    SettingsManager,
+    "updateSetting",
+    () => {},
+  )
+  const shown = []
   const controller = {
     map: {},
     settings: {},
     userPlanValue: "lite",
-    layerManager: { getLayer: () => null },
+    gatedLayersValue: ["Fog of War"],
+    layerManager: {
+      getLayer: () => ({ toggle: (enabled) => shown.push(enabled) }),
+    },
   }
   const manager = new LayerVisibilityManager(controller)
 
   await manager.toggleFog({ target: { checked: true } })
+  await new Promise((resolve) => setImmediate(resolve))
+  await manager.toggleFog({ target: { checked: false } })
 
-  assert.deepEqual(gated, ["Fog of War"])
-  assert.deepEqual(globalThis.__settingUpdates, [])
-  globalThis.__gatedToggle = null
-  globalThis.__settingUpdates = null
+  assert.deepEqual(shown, [true, false])
+  assert.equal(updateSetting.mock.callCount(), 0)
 })

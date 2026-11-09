@@ -1,58 +1,8 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
-
-const baseLayerSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/base_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const heatmapSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/heatmap_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const mvtSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/points_mvt_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const markerThemeSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/marker_theme.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-
-const freshness = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const stripImports = (source) =>
-  source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [
-  baseLayerSource,
-  heatmapSource,
-  markerThemeSource,
-  freshness,
-  mvtSource,
-]
-  .map(stripImports)
-  .join("\n")
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
-const { heatmapPaint, PointsMvtLayer, withTileVersion } = await import(
-  moduleUrl
-)
+import { heatmapPaint } from "maps_maplibre/layers/heatmap_layer"
+import { PointsMvtLayer } from "maps_maplibre/layers/points_mvt_layer"
+import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
 // Minimal fake MapLibre map: records addLayer calls, tracks style layer order.
 function fakeMap(initialLayers = []) {
