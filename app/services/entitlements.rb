@@ -12,6 +12,11 @@ class Entitlements
     @user.plan.to_sym
   end
 
+  # A self-hosted instance has no Lite limits, whatever plan the row carries.
+  def map_plan
+    full_access? && effective_plan == :lite ? :pro : effective_plan
+  end
+
   def inherited_family_access?
     (@user.in_family? && @user.family&.access_live?) || false
   end
