@@ -47,6 +47,14 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps an untagged discovered place that is a Home' do
+      place = create(:place, user: user, source: :photon, note: nil)
+      create(:home, user: user, place: place)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps places with a note' do
       place = create(:place, user: user, source: :photon, note: 'mine')
 
