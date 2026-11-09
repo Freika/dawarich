@@ -50,8 +50,7 @@ module ShareLinks
     def revoke
       return ensure_share! unless @share
 
-      @share.update!(revoked_at: Time.current)
-      broadcast_live_share_ended(@share)
+      @share.revoke!
       notice = I18n.t('controllers.concerns.share_links.managable.revoked')
       respond_with_hub_or(redirect_after_action_path, active_tab: hub_tab,
                                                       notice: notice)
@@ -69,7 +68,7 @@ module ShareLinks
           settings:      @share.settings,
           expires_at:    (@share.expires_at if @share.expires_at&.future?)
         )
-        broadcast_live_share_ended(@share)
+        @share.broadcast_live_share_ended
         @share.destroy!
       end
       notice = I18n.t('controllers.concerns.share_links.managable.url_regenerated')
@@ -81,7 +80,7 @@ module ShareLinks
       return ensure_share! unless @share
 
       @share.update!(magic_phrase: SharedLink::PhraseGenerator.call)
-      broadcast_live_share_ended(@share)
+      @share.broadcast_live_share_ended
       respond_with_hub_or(
         redirect_after_action_path,
         active_tab: hub_tab,
@@ -119,7 +118,7 @@ module ShareLinks
     end
 
     def revoke_existing_active_shares!
-      active_share_scope.active.find_each { |share| broadcast_live_share_ended(share) }
+      active_share_scope.active.find_each(&:broadcast_live_share_ended)
       active_share_scope.active.update_all(revoked_at: Time.current)
     end
 
@@ -127,15 +126,9 @@ module ShareLinks
       raw = params.fetch(:shared_link, {})[:settings]
       return {} if raw.blank?
 
-      keys = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
+      keys = SharedLink::SETTING_KEYS
       permitted = raw.respond_to?(:permit) ? raw.permit(*keys) : raw.slice(*keys.map(&:to_s))
       permitted.to_h.transform_values { |v| ActiveModel::Type::Boolean.new.cast(v) }
-    end
-
-    def broadcast_live_share_ended(share)
-      return unless share.resource_type == 'live'
-
-      SharedLocationChannel.broadcast_to(share, { revoked: true })
     end
 
     def expiry_from(raw)
