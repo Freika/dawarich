@@ -173,7 +173,8 @@ class Users::Destroy
     cache_keys = [
       Cache::UserKeys.countries_visited(user_id),
       Cache::UserKeys.cities_visited(user_id),
-      Cache::UserKeys.years_tracked(user_id)
+      Cache::UserKeys.years_tracked(user_id),
+      Cache::UserKeys.points_geocoded_stats(user_id)
     ]
 
     cache_keys.each { |key| Rails.cache.delete(key) }
