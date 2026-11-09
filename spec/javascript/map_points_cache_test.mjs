@@ -11,6 +11,7 @@ async function loadModule(path) {
   ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
   const stubs = `
     class Controller {}
+class ReplayHost extends Controller {}
     const translate = (key) => key
     const Toast = { error() {}, success() {}, info() {} }
     const pointMatchesActiveDateRange = () => true

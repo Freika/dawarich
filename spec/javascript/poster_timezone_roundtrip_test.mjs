@@ -49,6 +49,7 @@ async function load(source, bindings = {}) {
       }
       for (const name of names) {
         if (name === "Controller") declarations.push("class Controller {}")
+        else if (name === "ReplayHost") declarations.push("class ReplayHost {}")
         else
           declarations.push(
             `const ${name}=globalThis.__reviewBindings[${id}][${JSON.stringify(name)}] ?? (()=>{throw new Error('Unexpected dependency ${name} executed')})`,

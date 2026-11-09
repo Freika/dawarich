@@ -22,7 +22,8 @@ const controllerSource = stripImports(
 )
 const { default: TripController } = await import(
   moduleUrl(
-    `class Controller {}\n${providers}\n${mask}\n${pointsSource}\n${controllerSource}`,
+    `class Controller {}
+class ReplayHost extends Controller {}\n${providers}\n${mask}\n${pointsSource}\n${controllerSource}`,
   )
 )
 const editorSource = (
@@ -38,7 +39,8 @@ const frameSource = await read("poster_studio/render/frame_geometry.js")
 const editorDependencies = `import { collectCoords } from "${moduleUrl(previewSource)}"; import { frameCovers } from "${moduleUrl(frameSource)}"; const translate = key => key;`
 const { TripProvider } = await import(moduleUrl(providers))
 const { default: Editor } = await import(
-  moduleUrl(`class Controller {}\n${editorDependencies}\n${editorSource}`)
+  moduleUrl(`class Controller {}
+class ReplayHost extends Controller {}\n${editorDependencies}\n${editorSource}`)
 )
 const fc = (features) => ({ type: "FeatureCollection", features })
 const line = (id, startTime, endTime) => ({
