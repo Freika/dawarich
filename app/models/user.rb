@@ -218,13 +218,13 @@ class User < ApplicationRecord
   end
 
   def countries_visited
-    Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
+    Rails.cache.fetch(Cache::UserKeys.countries_visited(id), expires_in: 1.day) do
       countries_visited_uncached
     end
   end
 
   def cities_visited
-    Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
+    Rails.cache.fetch(Cache::UserKeys.cities_visited(id), expires_in: 1.day) do
       cities_visited_uncached
     end
   end
@@ -250,7 +250,7 @@ class User < ApplicationRecord
   end
 
   def years_tracked
-    Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
+    Rails.cache.fetch(Cache::UserKeys.years_tracked(id), expires_in: 1.day) do
       sql = <<~SQL
         WITH RECURSIVE tracked_months AS (
           SELECT MAX(timestamp) AS timestamp
