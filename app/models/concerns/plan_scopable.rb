@@ -3,7 +3,7 @@
 module PlanScopable
   extend ActiveSupport::Concern
 
-  delegate :effective_plan, :full_access?, :inherited_family_access?, to: :entitlements
+  delegate :effective_plan, :full_access?, :inherited_family_access?, :data_window_start, to: :entitlements
 
   def entitlements
     @entitlements ||= Entitlements.for(self)
@@ -11,10 +11,6 @@ module PlanScopable
 
   def plan_restricted?
     entitlements.restricted?
-  end
-
-  def data_window_start
-    DawarichSettings.lite_data_window_start
   end
 
   def scoped_points
@@ -33,6 +29,12 @@ module PlanScopable
     return visits.active unless plan_restricted?
 
     visits.active.where('started_at >= ?', data_window_start)
+  end
+
+  def scoped_geofence_events
+    return geofence_events.real unless plan_restricted?
+
+    geofence_events.real.where(occurred_at: data_window_start..)
   end
 
   def scoped_stats

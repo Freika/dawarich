@@ -145,11 +145,7 @@ module Users
         timezone = user.timezone_iana
         start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
-        lower_bound = if user.plan_restricted?
-                        [start_of_year.to_i, user.data_window_start.to_i].max
-                      else
-                        start_of_year.to_i
-                      end
+        lower_bound = [start_of_year, user.data_window_start].compact.max.to_i
 
         sql = <<~SQL
           SELECT

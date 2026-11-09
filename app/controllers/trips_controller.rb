@@ -166,7 +166,7 @@ class TripsController < ApplicationController
   end
 
   def compute_day_stats
-    window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
+    window = current_user.data_window_start&.to_date
     masker = current_privacy_zone_masker
     cache_key = ['trip_day_stats/v6', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key,
                  masker.fingerprint]

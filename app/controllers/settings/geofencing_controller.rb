@@ -13,10 +13,9 @@ class Settings::GeofencingController < ApplicationController
   private
 
   def filtered_events
-    events = current_user.geofence_events.real.includes(:place, :webhook_deliveries)
+    events = current_user.scoped_geofence_events.includes(:place, :webhook_deliveries)
                          .order(occurred_at: :desc, id: :desc)
     events = events.where(place_id: params[:place_id]) if params[:place_id].present?
-    events = events.where(occurred_at: current_user.data_window_start..) if current_user.plan_restricted?
     from = parse_day(params[:start_at])
     to = parse_day(params[:end_at])
     events = events.where(occurred_at: from.beginning_of_day..) if from

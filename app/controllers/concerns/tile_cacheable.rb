@@ -92,7 +92,7 @@ module TileCacheable
       tile_epoch_component,
       # Date-truncated: the raw LITE_DATA_WINDOW.ago moves per request and
       # would make every Lite ETag unique.
-      (current_api_user.data_window_start.to_date if current_api_user.plan_restricted?),
+      current_api_user.data_window_start&.to_date,
       params[:z], params[:x], params[:y],
       cacheable_start_at, cacheable_end_at, params[:import_id].presence
     ]

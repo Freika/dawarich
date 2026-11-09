@@ -439,10 +439,11 @@ class VisitsController < ApplicationController
   end
 
   def message_for_missing_visits(ids)
-    return missing_visits_message unless current_user.plan_restricted?
+    window_start = current_user.data_window_start
+    return missing_visits_message unless window_start
 
     archived_count = current_user.visits.where(id: ids)
-                                 .where('started_at < ?', current_user.data_window_start)
+                                 .where('started_at < ?', window_start)
                                  .count
     return missing_visits_message if archived_count.zero?
 

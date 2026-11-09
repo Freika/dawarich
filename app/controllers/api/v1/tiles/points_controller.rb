@@ -35,7 +35,7 @@ class Api::V1::Tiles::PointsController < ApiController
   def fence_key
     [
       current_api_user.id, tile_epoch_component,
-      (current_api_user.data_window_start.to_date if current_api_user.plan_restricted?),
+      current_api_user.data_window_start&.to_date,
       cacheable_start_at, cacheable_end_at, params[:import_id].presence
     ]
   end

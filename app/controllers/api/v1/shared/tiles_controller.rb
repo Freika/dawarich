@@ -72,7 +72,7 @@ module Api
             TILE_SCHEMA_VERSION, link.id, link.updated_at.to_i, trip.updated_at.to_i,
             Digest::SHA256.hexdigest(privacy_zones.to_json),
             trip.recording_devices_cache_key, link.user.timezone_iana,
-            (link.user.data_window_start.to_date if link.user.plan_restricted?), params[:z], params[:x], params[:y]
+            link.user.data_window_start&.to_date, params[:z], params[:x], params[:y]
           ]
         end
 

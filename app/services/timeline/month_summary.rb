@@ -282,10 +282,8 @@ module Timeline
     end
 
     def disabled_cell?(date)
-      return false unless @user.plan_restricted?
-
-      cutoff = @user.data_window_start.to_date
-      date < cutoff
+      cutoff = @user.data_window_start&.to_date
+      cutoff.present? && date < cutoff
     end
   end
 end

@@ -114,7 +114,7 @@ class ApiController < ApplicationController
   # Applies the 12-month plan window to any point relation.
   # Use this when scoping points that don't start from user.points (e.g. track.points).
   def apply_plan_scope(relation, user = current_api_user)
-    window_start = user&.entitlements&.data_window_start
+    window_start = user&.data_window_start
     return relation unless window_start
 
     relation.where('timestamp >= ?', window_start.to_i)
