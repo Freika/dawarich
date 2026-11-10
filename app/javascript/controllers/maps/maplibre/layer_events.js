@@ -2,7 +2,7 @@ import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 
 /**
  * Click, hover and cursor wiring for the map's interactive layers.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into LayerManager; `this` is the LayerManager.
  */
 export const layerEvents = {
   /**

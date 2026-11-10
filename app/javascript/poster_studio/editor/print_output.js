@@ -8,7 +8,7 @@ import { submitPrintOrder } from "poster_studio/ui/order_client"
 
 /**
  * Poster download and the print order flow (size picker, checkout steps).
- * Mixed into the controller; `this` is the controller.
+ * Mixed into PosterStudioEditorController; `this` is the PosterStudioEditorController.
  */
 export const printOutput = {
   async download() {

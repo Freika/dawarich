@@ -1,6 +1,6 @@
 /**
  * Replay playback: play/pause, speed, segment timing and the animation frame.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into ReplayPanel; `this` is the ReplayPanel.
  */
 export const playback = {
   togglePlayback() {

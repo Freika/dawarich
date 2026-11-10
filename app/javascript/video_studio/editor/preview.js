@@ -18,7 +18,7 @@ const HUD_PREVIEW_FRACTION = 0.62
 
 /**
  * Video studio live preview: map style, frame size, HUD and stats.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into VideoStudioController; `this` is the VideoStudioController.
  */
 export const preview = {
   async refreshStyle(operation = null) {

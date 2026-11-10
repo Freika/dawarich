@@ -3,7 +3,7 @@ import { monthGridStart } from "maps_maplibre/utils/month_grid"
 
 /**
  * Calendar month skeleton shown while the real month streams in.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into TimelineFeedController; `this` is the TimelineFeedController.
  */
 export const monthPreview = {
   // ---------- Calendar month skeleton ----------

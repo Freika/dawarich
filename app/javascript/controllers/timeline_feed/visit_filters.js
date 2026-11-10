@@ -2,7 +2,7 @@ import { translate } from "i18n"
 
 /**
  * Timeline visit filters: status checkboxes, search and tag chips.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into TimelineFeedController; `this` is the TimelineFeedController.
  */
 export const visitFilters = {
   // ---------- Filters + Search ----------

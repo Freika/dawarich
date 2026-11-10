@@ -5,7 +5,7 @@ const EXTERNAL_LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" he
 
 /**
  * Scan results: the match list, thumbnails, selection and the enrich request.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into ImmichEnrichController; `this` is the ImmichEnrichController.
  */
 export const matchList = {
   renderResults(data) {

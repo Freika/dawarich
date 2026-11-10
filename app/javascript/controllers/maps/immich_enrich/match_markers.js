@@ -3,7 +3,7 @@ import * as maplibregl from "maplibre-gl"
 
 /**
  * Map markers for the scanned photo matches.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into ImmichEnrichController; `this` is the ImmichEnrichController.
  */
 export const matchMarkers = {
   // --- Map markers ---

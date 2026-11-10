@@ -8,7 +8,7 @@ import {
 
 /**
  * Video studio settings: theme, colours, mode, format and saved-settings restore.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into VideoStudioController; `this` is the VideoStudioController.
  */
 export const settingsPanel = {
   selectTheme(event) {

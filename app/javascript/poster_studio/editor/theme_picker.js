@@ -6,7 +6,7 @@ const RESTYLE_DEBOUNCE_MS = 150
 
 /**
  * Poster theme: preset picking, token edits and the debounced restyle.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into PosterStudioEditorController; `this` is the PosterStudioEditorController.
  */
 export const themePicker = {
   scheduleRestyle() {

@@ -4,7 +4,7 @@ import { ReplayPhotoIndex } from "maps_maplibre/managers/replay_photo_index"
 
 /**
  * Photos revealed along the replay as the marker passes them.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into ReplayPanel; `this` is the ReplayPanel.
  */
 export const photos = {
   setupReplayPhotos() {

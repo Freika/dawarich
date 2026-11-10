@@ -2,7 +2,7 @@ import { translate } from "i18n"
 
 /**
  * Search results for a place: its past visits grouped by year.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into SearchManager; `this` is the SearchManager.
  */
 export const visitsResults = {
   showVisitsLoading(locationName) {

@@ -1,7 +1,7 @@
 /**
  * Opening a visit or track from the map or the URL: pick its day, then
  * expand the matching entry once the visit list loads.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into TimelineFeedController; `this` is the TimelineFeedController.
  */
 export const openEntry = {
   handleOpenVisit(event) {

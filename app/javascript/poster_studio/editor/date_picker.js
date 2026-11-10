@@ -7,7 +7,7 @@ import {
 
 /**
  * Poster date range inputs: seeding, presets and loading the chosen range.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into PosterStudioEditorController; `this` is the PosterStudioEditorController.
  */
 export const datePicker = {
   seedDateInputs() {

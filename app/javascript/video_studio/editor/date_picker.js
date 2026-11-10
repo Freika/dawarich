@@ -7,7 +7,7 @@ import {
 
 /**
  * Video studio date range inputs and applying the chosen range.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into VideoStudioController; `this` is the VideoStudioController.
  */
 export const datePicker = {
   // Date changes stay inside the open studio. Map-backed providers update the

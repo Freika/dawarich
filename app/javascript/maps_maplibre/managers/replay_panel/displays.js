@@ -3,7 +3,7 @@ import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 
 /**
  * Replay readouts: day, time, speed, point count, density and cycle controls.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into ReplayPanel; `this` is the ReplayPanel.
  */
 export const displays = {
   updateDayDisplay() {

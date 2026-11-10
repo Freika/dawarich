@@ -4,7 +4,7 @@ import { overlayAwarePadding } from "maps_maplibre/utils/map_padding"
 
 /**
  * Fitting the map to loaded data or to the range's history bounds.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into MapDataManager; `this` is the MapDataManager.
  */
 export const mapFit = {
   _fitToFirstAvailable(geojsonSources) {

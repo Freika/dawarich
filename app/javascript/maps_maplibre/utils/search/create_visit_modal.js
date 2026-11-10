@@ -2,7 +2,7 @@ import { formatDate, formatDateTime, translate } from "i18n"
 
 /**
  * Creating a visit from a search result: the modal and its submit.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into SearchManager; `this` is the SearchManager.
  */
 export const createVisitModal = {
   /**

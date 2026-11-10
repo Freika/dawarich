@@ -2,7 +2,7 @@ import { translate } from "i18n"
 
 /**
  * Timeline bulk selection: pick visits, then merge or delete them.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into TimelineFeedController; `this` is the TimelineFeedController.
  */
 export const visitSelection = {
   enterSelection(event) {

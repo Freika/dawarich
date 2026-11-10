@@ -2,7 +2,7 @@ import { greatCircleLines } from "../../utils/flight_arcs"
 
 /**
  * A selected track's coloured segments and their hover events.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into TracksLayer; `this` is the TracksLayer.
  */
 export const trackSegments = {
   showSegments(trackFeature, segments) {

@@ -17,7 +17,7 @@ import { fitFrame } from "poster_studio/ui/preview"
 
 /**
  * Poster layout, print size and font pickers, and the frame resize.
- * Mixed into the controller; `this` is the controller.
+ * Mixed into PosterStudioEditorController; `this` is the PosterStudioEditorController.
  */
 export const layoutPicker = {
   // ===== Layout =====
