@@ -469,8 +469,18 @@ export default class extends Controller {
     const statistics = this.element.querySelector(
       '[data-testid="map-range-statistics"]',
     )
-    if (statistics)
-      this.rangeStatistics = new RangeStatistics(statistics, this.api)
+    if (!statistics) return
+    // An empty period gets a persistent explanation with a way out, not a
+    // toast that disappears while the user is still looking at a blank map.
+    const emptyState = this.element.querySelector(
+      '[data-testid="map-empty-state"]',
+    )
+    this.rangeStatistics = new RangeStatistics(
+      statistics,
+      this.api,
+      "km",
+      (data) => emptyState?.classList.toggle("hidden", data.points > 0),
+    )
   }
 
   /**

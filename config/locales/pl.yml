@@ -992,7 +992,7 @@ pl:
         enter_name_of_a_place: Wpisz nazwę miejsca
         search_for_a_location_to_find_places_you_visited: Wyszukaj lokalizację, aby znaleźć odwiedzone miejsca
         points: Punkty
-        show_individual_location_points: Pokaż pojedyncze punkty lokalizacji
+        show_individual_location_points: "Każda pozycja zapisana przez Twoje urządzenia, jako osobny punkt."
         edit_points: Edytuj punkty
         allow_dragging_points_to_correct_their_position: Pozwala przeciągać punkty, aby poprawić ich pozycję.
         editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów jest dostępna w planie Pro.
@@ -1004,31 +1004,31 @@ pl:
         anomalies: Anomalie
         show_filtered_gps_noise_points: Pokaż odfiltrowane zakłócenia GPS
         tracks: Odcinki
-        show_backend_calculated_tracks: Pokaż odcinki obliczone po stronie serwera
+        show_backend_calculated_tracks: "Twoje punkty połączone w przebyte odcinki."
         flights: Loty
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Pokaż loty AirTrail jako łuki (ukrywa nakładające się ślady GPS)
         heatmap: Heatmapa
-        show_density_heatmap: Pokaż Heatmapę
+        show_density_heatmap: "Świeci jaśniej tam, gdzie masz więcej punktów."
         hexagons: Heksagony
-        show_point_density_as_hexagonal_cells: Pokaż gęstość punktów jako komórki heksagonalne
+        show_point_density_as_hexagonal_cells: "Zlicza Twoje punkty w sześciokątnych komórkach, dając ogólniejszy obraz."
         visits: Wizyty
-        show_detected_area_visits: Pokaż wykryte wizyty w obszarach
+        show_detected_area_visits: "Pobyty wykryte przez Dawarich: okresy spędzone w jednym miejscu."
         filter_by_name: Filtruj po nazwie...
         all_visits: Wszystkie wizyty
         confirmed_only: Tylko potwierdzone
         suggested_only: Tylko sugerowane
         places: Miejsca
-        show_your_saved_places: Pokaż zapisane miejsca
+        show_your_saved_places: "Zapisane przez Ciebie nazwane miejsca. Wizyty są do nich przypisywane."
         enable_all_tags: Włącz wszystkie tagi
         show_place_boundaries: Pokaż granice miejsc
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca
         photos: Zdjęcia
-        show_geotagged_photos: Pokaż zdjęcia z geotagami
+        show_geotagged_photos: "Twoje zdjęcia z geotagami, przypięte tam, gdzie zostały zrobione."
         areas: Obszary
         show_defined_areas: Pokaż zdefiniowane obszary
         fog_of_war: Nieodkryty obszar
-        show_explored_areas: Pokaż odkryte obszary
+        show_explored_areas: "Przyciemnia mapę poza odwiedzonymi obszarami."
         per_point: Na punkt
         per_hexagon: Na heksagon
         scratch_map: Odwiedzone kraje
@@ -1251,6 +1251,10 @@ pl:
       index:
         loading: Ładowanie...
         pick_a_day: Wybierz dzień
+        no_data_in_period: "Brak danych lokalizacji w tym okresie"
+        jump_to_latest_data: "Przejdź do najnowszych danych"
+        nothing_recorded_yet: "Nic jeszcze nie zostało zarejestrowane ani zaimportowane."
+        get_started: "Zacznij"
         map: Mapa
     residency:
       show:

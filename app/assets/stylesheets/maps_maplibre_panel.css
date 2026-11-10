@@ -852,6 +852,43 @@
   background-color: color-mix(in oklab, oklch(var(--bc)) 4%, oklch(var(--b1)));
 }
 
+/* Preview card for a layer tile: a popover, so it floats over the map
+   instead of being clipped by the scrolling panel. */
+.layer-preview-card {
+  position: fixed;
+  inset: auto;
+  width: min(23rem, calc(100vw - 16px));
+  margin: 0;
+  padding: 0 0 12px;
+  overflow: hidden;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 12px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  text-align: left;
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
+.layer-preview-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 368 / 200;
+  background: oklch(var(--b2));
+}
+
+.layer-preview-card__title {
+  padding: 10px 14px 0;
+  font-weight: 600;
+}
+
+.layer-preview-card__text {
+  padding: 2px 14px 0;
+  color: oklch(var(--bc) / 0.7);
+  font-size: 13px;
+}
+
 .layer-tile__input {
   position: absolute;
   inset: 0;

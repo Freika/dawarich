@@ -443,7 +443,14 @@ export class LayerManager {
               this.layers.mapEditorLayer?.reapplyTileFilters()
             },
           ),
-        onEmptyTracks: () => Toast.info(translate("messages.tracks_pending")),
+        // An empty period already explains itself on the map; the toast is
+        // for points that have no tracks yet.
+        onEmptyTracks: async () => {
+          const statistics = this.controller?.rangeStatistics
+          await statistics?.pending?.catch(() => {})
+          if (statistics?.data?.points === 0) return
+          Toast.info(translate("messages.tracks_pending"))
+        },
         ...this.pointTileRange,
       })
       this.layers.tracksMvtLayer.add(this.pointTileRange)

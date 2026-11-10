@@ -1034,7 +1034,7 @@ de:
         enter_name_of_a_place: Gib den Namen eines Ortes ein
         search_for_a_location_to_find_places_you_visited: Suche nach einem Ort, um Orte zu finden, die du besucht hast
         points: Punkte
-        show_individual_location_points: Zeige einzelne Standortpunkte
+        show_individual_location_points: "Jede Position, die deine Geräte aufgezeichnet haben, als einzelner Punkt."
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
         editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
@@ -1046,31 +1046,31 @@ de:
         anomalies: Anomalien
         show_filtered_gps_noise_points: Zeige gefilterte GPS-Rauschpunkte
         tracks: Tracks
-        show_backend_calculated_tracks: Im Hintergrund berechnete Tracks anzeigen
+        show_backend_calculated_tracks: "Deine Punkte, verbunden zu den Wegen, die du zurückgelegt hast."
         flights: Flüge
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Flüge von AirTrail als Bögen anzeigen (überlappende GPS-Daten verbergen)
         heatmap: Heatmap
-        show_density_heatmap: Dichtegradienten-Heatmap anzeigen
+        show_density_heatmap: "Leuchtet heller, wo du mehr Punkte hast."
         hexagons: Hexagone
-        show_point_density_as_hexagonal_cells: Punktdichte als hexagonale Zellen anzeigen
+        show_point_density_as_hexagonal_cells: "Zählt deine Punkte pro Sechseck-Zelle für einen gröberen Überblick."
         visits: Aufenthalte
-        show_detected_area_visits: Erkannte Aufenthaltsorte anzeigen
+        show_detected_area_visits: "Von Dawarich erkannte Aufenthalte: Zeiten, in denen du an einem Ort geblieben bist."
         filter_by_name: Nach Namen filtern...
         all_visits: Alle Aufenthalte
         confirmed_only: Nur bestätigte
         suggested_only: Nur vorgeschlagene
         places: Orte
-        show_your_saved_places: Deine gespeicherten Orte anzeigen
+        show_your_saved_places: "Benannte Orte, die du gespeichert hast. Aufenthalte werden ihnen zugeordnet."
         enable_all_tags: Alle Tags aktivieren
         show_place_boundaries: Ortsgrenzen anzeigen
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
-        show_geotagged_photos: Geotagte Fotos anzeigen
+        show_geotagged_photos: "Deine Fotos mit Geotag, dort angeheftet, wo sie aufgenommen wurden."
         areas: Gebiete
         show_defined_areas: Definierte Gebiete anzeigen
         fog_of_war: Kartennebel
-        show_explored_areas: Erkundete Flächen anzeigen
+        show_explored_areas: "Verdunkelt die Karte, außer dort, wo du schon warst."
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
         scratch_map: Besuchte Länder
@@ -1293,6 +1293,10 @@ de:
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
+        no_data_in_period: "Keine Standortdaten in diesem Zeitraum"
+        jump_to_latest_data: "Zu den neuesten Daten springen"
+        nothing_recorded_yet: "Bisher wurde nichts aufgezeichnet oder importiert."
+        get_started: "Loslegen"
         map: Karte
     residency:
       show:

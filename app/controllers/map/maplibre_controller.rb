@@ -14,6 +14,7 @@ module Map
       @end_at = parsed_end_at
       @import_id = import_record&.id
       @current_position = current_position
+      @latest_data_date = latest_data_date
       @exploration_bounds = exploration_bounds
       @exploration_snapshot_id = exploration_snapshot_id if @exploration_bounds
 
@@ -50,8 +51,23 @@ module Map
       [[west, south], [east, north]]
     end
 
+    def latest_point
+      return @latest_point if defined?(@latest_point)
+
+      @latest_point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
+    end
+
+    # The day the empty-period state offers to jump to, in the same zone
+    # `?date=` is read in.
+    def latest_data_date
+      return unless latest_point
+
+      zone = current_user.safe_settings.timezone.presence || 'UTC'
+      Time.zone.at(latest_point.timestamp).in_time_zone(zone).to_date
+    end
+
     def current_position
-      point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
+      point = latest_point
       return if point.nil? || current_privacy_zone_masker.in_zone?(point.lon, point.lat)
 
       { longitude: point.lon, latitude: point.lat, timestamp: point.timestamp }

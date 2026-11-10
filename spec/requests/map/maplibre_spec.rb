@@ -222,6 +222,38 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
     end
   end
 
+  describe 'empty period state' do
+    def empty_state
+      get map_v2_path
+      Nokogiri::HTML(response.body).at_css('[data-testid="map-empty-state"]')
+    end
+
+    it 'offers a jump to the day of the latest point, hidden until the map reports an empty period' do
+      create(:point, user: user, timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+
+      state = empty_state
+
+      expect(state['class']).to include('hidden')
+      expect(state['href']).to eq(map_v2_path(date: '2025-10-16'))
+    end
+
+    it 'keeps the open panel when jumping' do
+      create(:point, user: user, timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+
+      get map_v2_path(panel: 'timeline')
+      link = Nokogiri::HTML(response.body).at_css('a[data-testid="map-empty-state"]')
+
+      expect(link['href']).to eq(map_v2_path(date: '2025-10-16', panel: 'timeline'))
+    end
+
+    it 'points an account without any data to the getting-started guide' do
+      state = empty_state
+
+      expect(state.name).to eq('button')
+      expect(state['onclick']).to eq('getting_started.showModal()')
+    end
+  end
+
   describe 'GET /map/v2 date window (C1)' do
     it 'derives the data window from ?date= when start_at/end_at are absent' do
       get map_v2_path(date: '2026-05-28', panel: 'timeline')

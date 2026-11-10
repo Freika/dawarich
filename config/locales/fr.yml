@@ -1665,7 +1665,7 @@ fr:
         search_for_a_location_to_find_places_you_visited: Rechercher une localisation
           pour trouver les endroits visités
         points: Points
-        show_individual_location_points: Afficher les points individuels de localisation
+        show_individual_location_points: "Chaque position enregistrée par vos appareils, un point pour chacune."
         edit_points: Éditer les points
         allow_dragging_points_to_correct_their_position: Autoriser la traînée des
           points pour corriger leur position.
@@ -1679,32 +1679,32 @@ fr:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Afficher les points bruit GPS filtrés
         tracks: Trajets
-        show_backend_calculated_tracks: Afficher les trajets calculés par Dawarich
+        show_backend_calculated_tracks: "Vos points reliés pour former les trajets que vous avez parcourus."
         flights: Vols
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Afficher les vols AirTrail
           sous forme d'arc (masque les points GPS superposés)
         heatmap: Carte de chaleur
-        show_density_heatmap: Afficher la carte de chaleur de densité
+        show_density_heatmap: "Plus lumineux là où vous avez plus de points."
         hexagons: Hexagones
-        show_point_density_as_hexagonal_cells: Afficher la densité des points en hexagones
+        show_point_density_as_hexagonal_cells: "Compte vos points par cellule hexagonale pour une vue plus générale."
         visits: Visites
-        show_detected_area_visits: Afficher les visites détectées dans une zone
+        show_detected_area_visits: "Séjours détectés par Dawarich : les moments où vous êtes resté au même endroit."
         filter_by_name: Filtrer par nom...
         all_visits: Toutes les Visites
         confirmed_only: Seulement confirmé
         suggested_only: Seulement suggéré
         places: Endroits
-        show_your_saved_places: Afficher vos endroits sauvegardés
+        show_your_saved_places: "Lieux nommés que vous avez enregistrés. Les visites y sont rattachées."
         enable_all_tags: Activer toutes les étiquettes
         show_place_boundaries: Afficher les limites des lieux
         untagged: "\U0001F3F7️ Sans étiquette"
         click_tags_to_filter_places: Cliquez sur les étiquettes pour filtrer les endroits
         photos: Photos
-        show_geotagged_photos: Afficher les photos géotagées
+        show_geotagged_photos: "Vos photos géolocalisées, placées là où elles ont été prises."
         areas: Zones
         show_defined_areas: Afficher les zones définies
         fog_of_war: Brouillard de guerre
-        show_explored_areas: Afficher les zones explorées
+        show_explored_areas: "Assombrit la carte, sauf là où vous êtes déjà allé."
         per_point: Par point
         per_hexagon: Par hexagone
         scratch_map: Pays visités
@@ -1978,6 +1978,10 @@ fr:
       index:
         loading: Chargement...
         pick_a_day: Choisissez une journée
+        no_data_in_period: "Aucune donnée de localisation sur cette période"
+        jump_to_latest_data: "Aller à vos données les plus récentes"
+        nothing_recorded_yet: "Rien n'a encore été enregistré ni importé."
+        get_started: "Commencer"
         map: Carte
     residency:
       show:

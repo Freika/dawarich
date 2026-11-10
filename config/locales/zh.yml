@@ -991,7 +991,7 @@ zh:
         enter_name_of_a_place: 输入地点名称
         search_for_a_location_to_find_places_you_visited: 搜索位置以查找您到访过的地点
         points: 轨迹点
-        show_individual_location_points: 显示各个轨迹点
+        show_individual_location_points: "您的设备记录的每一个位置，每个位置显示为一个点。"
         edit_points: 编辑轨迹点
         allow_dragging_points_to_correct_their_position: 允许拖动轨迹点来修正位置。
         editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点功能可在 Pro 计划中使用。
@@ -1002,31 +1002,31 @@ zh:
         anomalies: 异常
         show_filtered_gps_noise_points: 显示过滤后的 GPS 噪声点
         tracks: 轨迹
-        show_backend_calculated_tracks: 显示后端计算的轨迹
+        show_backend_calculated_tracks: "将您的轨迹点连接成您走过的路线。"
         flights: 航班
         show_airtrail_flights_as_arcs_hides_overlapping_gps: 显示 AirTrail 飞行轨迹为弧线（隐藏重叠的 GPS）
         heatmap: 热图
-        show_density_heatmap: 显示密度热图
+        show_density_heatmap: "轨迹点越多的地方越亮。"
         hexagons: 六边形
-        show_point_density_as_hexagonal_cells: 以六边形单元显示轨迹点密度
+        show_point_density_as_hexagonal_cells: "按六边形单元统计轨迹点，提供更概括的视图。"
         visits: 到访记录
-        show_detected_area_visits: 显示检测到的区域到访记录
+        show_detected_area_visits: "Dawarich 检测到的停留：您在同一地点逗留的时段。"
         filter_by_name: 按名称筛选...
         all_visits: 所有到访记录
         confirmed_only: 仅已确认
         suggested_only: 仅建议
         places: 地点
-        show_your_saved_places: 显示您保存的地点
+        show_your_saved_places: "您保存的已命名地点，到访记录会与其关联。"
         enable_all_tags: 启用所有标签
         show_place_boundaries: 显示地点边界
         untagged: 🏷️ 未标记
         click_tags_to_filter_places: 点击标签以筛选地点
         photos: 照片
-        show_geotagged_photos: 显示地理标记照片
+        show_geotagged_photos: "您带有地理标记的照片，显示在拍摄位置。"
         areas: 区域
         show_defined_areas: 显示已定义的区域
         fog_of_war: 战争迷雾
-        show_explored_areas: 显示探索过的区域
+        show_explored_areas: "将地图变暗，只显示您去过的区域。"
         per_point: 按轨迹点
         per_hexagon: 按六边形
         scratch_map: 已访问国家/地区
@@ -1258,6 +1258,10 @@ zh:
       index:
         loading: 正在加载...
         pick_a_day: 选择一天
+        no_data_in_period: "此时间段内没有位置数据"
+        jump_to_latest_data: "跳转到最新数据"
+        nothing_recorded_yet: "尚未记录或导入任何数据。"
+        get_started: "开始使用"
         map: 地图
     residency:
       show:

@@ -1,7 +1,13 @@
-<%# locals: (target:, action:, icon_name:, label:, description:, pro: false, testid: nil) %>
+<%# locals: (target:, action:, icon_name:, label:, description:, pro: false, testid: nil, preview: nil) %>
 <% description_id = "layer-tile-#{target}-description" %>
 <% badge = pro_badge_tag if pro %>
-<label class="layer-tile" title="<%= description %>">
+<%# Hovering or focusing a tile opens a card beside it with the description
+    and, when there is a preview, a short loop of the real map with the layer
+    switched on. The card replaces the title tooltip. %>
+<%= tag.label class: 'layer-tile',
+              data: { controller: 'layer-preview',
+                      action: 'mouseenter->layer-preview#show mouseleave->layer-preview#hide ' \
+                              'focusin->layer-preview#show focusout->layer-preview#hide' } do %>
   <%= tag.input type: 'checkbox',
                 class: 'layer-tile__input',
                 data: { 'maps--maplibre-target': target, action: "change->maps--maplibre##{action}", testid: testid },
@@ -12,4 +18,11 @@
   <% if badge %>
     <span class="layer-tile__badge"><%= badge %></span>
   <% end %>
-</label>
+  <div class="layer-preview-card" popover="manual" aria-hidden="true" data-layer-preview-target="card">
+    <% if preview %>
+      <%= tag.img data: { src: image_path("layer_previews/#{preview}.gif") }, alt: '', width: 368, height: 200 %>
+    <% end %>
+    <p class="layer-preview-card__title"><%= label %></p>
+    <p class="layer-preview-card__text"><%= description %></p>
+  </div>
+<% end %>

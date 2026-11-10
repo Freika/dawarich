@@ -984,7 +984,7 @@ ca:
         enter_name_of_a_place: Introdueix el nom d'un lloc
         search_for_a_location_to_find_places_you_visited: Cerca una ubicació per trobar llocs que has visitat
         points: Punts
-        show_individual_location_points: Mostra els punts d'ubicació individuals
+        show_individual_location_points: "Cada posició que han enregistrat els teus dispositius, un punt per cadascuna."
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
         editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
@@ -995,31 +995,31 @@ ca:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Mostra els punts de soroll GPS filtrats
         tracks: Trajectes
-        show_backend_calculated_tracks: Mostra els trajectes calculats pel servidor
+        show_backend_calculated_tracks: "Els teus punts units en els trajectes que has recorregut."
         flights: Vols
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Mostra els vols d'AirTrail com a arcs (amaga el GPS superposat)
         heatmap: Mapa de calor
-        show_density_heatmap: Mostra el mapa de calor de densitat
+        show_density_heatmap: "Brilla més on tens més punts."
         hexagons: Hexàgons
-        show_point_density_as_hexagonal_cells: Mostra la densitat de punts com a cel·les hexagonals
+        show_point_density_as_hexagonal_cells: "Compta els teus punts per cel·la hexagonal per a una visió més general."
         visits: Visites
-        show_detected_area_visits: Mostra les visites a àrees detectades
+        show_detected_area_visits: "Estades detectades per Dawarich: moments en què vas romandre en un mateix lloc."
         filter_by_name: Filtra per nom...
         all_visits: Totes les visites
         confirmed_only: Només confirmades
         suggested_only: Només suggerides
         places: Llocs
-        show_your_saved_places: Mostra els teus llocs desats
+        show_your_saved_places: "Llocs amb nom que has desat. Les visites s'hi associen."
         enable_all_tags: Activa totes les etiquetes
         show_place_boundaries: Mostra els límits dels llocs
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
-        show_geotagged_photos: Mostra les fotos geolocalitzades
+        show_geotagged_photos: "Les teves fotos geolocalitzades, situades on es van fer."
         areas: Àrees
         show_defined_areas: Mostra les àrees definides
         fog_of_war: Boira de guerra
-        show_explored_areas: Mostra les àrees explorades
+        show_explored_areas: "Enfosqueix el mapa excepte on ja has estat."
         per_point: Per punt
         per_hexagon: Per hexàgon
         scratch_map: Països visitats
@@ -1243,6 +1243,10 @@ ca:
       index:
         loading: Carregant...
         pick_a_day: Tria un dia
+        no_data_in_period: "No hi ha dades d'ubicació en aquest període"
+        jump_to_latest_data: "Ves a les teves dades més recents"
+        nothing_recorded_yet: "Encara no s'ha enregistrat ni importat res."
+        get_started: "Comença"
         map: Mapa
     residency:
       show:

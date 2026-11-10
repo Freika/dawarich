@@ -63,29 +63,34 @@
 
       <!-- Layers Tab -->
       <div class="tab-content<%= ' active' unless timeline_panel_open %>" data-tab-content="layers" data-map-panel-target="tabContent">
+        <% layer_tiles = [
+             { target: 'pointsToggle', action: 'togglePoints', icon_name: 'dots-scattered', preview: 'points',
+               label: t('.points'), description: t('.show_individual_location_points') },
+             { target: 'tracksToggle', action: 'toggleTracks', icon_name: 'route', preview: 'tracks',
+               label: t('.tracks'), description: t('.show_backend_calculated_tracks') },
+             (if current_user.safe_settings.airtrail_url.present?
+                { target: 'flightsToggle', action: 'toggleFlights', icon_name: 'plane',
+                  label: t('.flights'), description: t('.show_airtrail_flights_as_arcs_hides_overlapping_gps') }
+              end),
+             { target: 'visitsToggle', action: 'toggleVisits', icon_name: 'map-pin-check', preview: 'visits',
+               label: t('.visits'), description: t('.show_detected_area_visits') },
+             { target: 'placesToggle', action: 'togglePlaces', icon_name: 'map-pin', preview: 'places',
+               label: t('.places'), description: t('.show_your_saved_places') },
+             { target: 'photosToggle', action: 'togglePhotos', icon_name: 'image',
+               label: t('.photos'), description: t('.show_geotagged_photos') },
+             { target: 'heatmapToggle', action: 'toggleHeatmap', icon_name: 'flame', pro: true, preview: 'heatmap',
+               label: t('.heatmap'), description: t('.show_density_heatmap') },
+             { target: 'hexagonsToggle', action: 'toggleHexagons', icon_name: 'hexagon', pro: true, preview: 'hexagons',
+               testid: 'hexagons-toggle', label: t('.hexagons'), description: t('.show_point_density_as_hexagonal_cells') },
+             { target: 'fogToggle', action: 'toggleFog', icon_name: 'cloud-fog', pro: true, preview: 'fog_of_war',
+               label: t('.fog_of_war'), description: t('.show_explored_areas') },
+             { target: 'scratchToggle', action: 'toggleScratch', icon_name: 'flag', pro: true, preview: 'scratch_map',
+               label: t('.scratch_map'), description: t('.show_scratched_countries') }
+           ].compact %>
         <div class="layer-tiles">
-          <%= render 'map/maplibre/layer_tile', target: 'pointsToggle', action: 'togglePoints', icon_name: 'dots-scattered',
-                     label: t('.points'), description: t('.show_individual_location_points') %>
-          <%= render 'map/maplibre/layer_tile', target: 'tracksToggle', action: 'toggleTracks', icon_name: 'route',
-                     label: t('.tracks'), description: t('.show_backend_calculated_tracks') %>
-          <% if current_user.safe_settings.airtrail_url.present? %>
-            <%= render 'map/maplibre/layer_tile', target: 'flightsToggle', action: 'toggleFlights', icon_name: 'plane',
-                       label: t('.flights'), description: t('.show_airtrail_flights_as_arcs_hides_overlapping_gps') %>
+          <% layer_tiles.each do |tile| %>
+            <%= render 'map/maplibre/layer_tile', **tile %>
           <% end %>
-          <%= render 'map/maplibre/layer_tile', target: 'visitsToggle', action: 'toggleVisits', icon_name: 'map-pin-check',
-                     label: t('.visits'), description: t('.show_detected_area_visits') %>
-          <%= render 'map/maplibre/layer_tile', target: 'placesToggle', action: 'togglePlaces', icon_name: 'map-pin',
-                     label: t('.places'), description: t('.show_your_saved_places') %>
-          <%= render 'map/maplibre/layer_tile', target: 'photosToggle', action: 'togglePhotos', icon_name: 'image',
-                     label: t('.photos'), description: t('.show_geotagged_photos') %>
-          <%= render 'map/maplibre/layer_tile', target: 'heatmapToggle', action: 'toggleHeatmap', icon_name: 'flame', pro: true,
-                     label: t('.heatmap'), description: t('.show_density_heatmap') %>
-          <%= render 'map/maplibre/layer_tile', target: 'hexagonsToggle', action: 'toggleHexagons', icon_name: 'hexagon', pro: true,
-                     testid: 'hexagons-toggle', label: t('.hexagons'), description: t('.show_point_density_as_hexagonal_cells') %>
-          <%= render 'map/maplibre/layer_tile', target: 'fogToggle', action: 'toggleFog', icon_name: 'cloud-fog', pro: true,
-                     label: t('.fog_of_war'), description: t('.show_explored_areas') %>
-          <%= render 'map/maplibre/layer_tile', target: 'scratchToggle', action: 'toggleScratch', icon_name: 'flag', pro: true,
-                     label: t('.scratch_map'), description: t('.show_scratched_countries') %>
         </div>
 
         <div class="layer-options">

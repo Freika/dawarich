@@ -984,7 +984,7 @@ en:
         enter_name_of_a_place: Enter name of a place
         search_for_a_location_to_find_places_you_visited: Search for a location to find places you visited
         points: Points
-        show_individual_location_points: Show individual location points
+        show_individual_location_points: "Every location fix your devices recorded, one dot each."
         edit_points: Edit points
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
         editing_points_is_a_pro_feature_this_stays_on_for: Editing points is available on the Pro plan.
@@ -996,31 +996,31 @@ en:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Show filtered GPS noise points
         tracks: Tracks
-        show_backend_calculated_tracks: Show backend-calculated tracks
+        show_backend_calculated_tracks: "Your points joined into the paths you travelled."
         flights: Flights
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Show AirTrail flights as arcs (hides overlapping GPS)
         heatmap: Heatmap
-        show_density_heatmap: Show density heatmap
+        show_density_heatmap: "Glows brighter where you have more points."
         hexagons: Hexagons
-        show_point_density_as_hexagonal_cells: Show point density as hexagonal cells
+        show_point_density_as_hexagonal_cells: "Counts your points per hexagonal cell for a coarser overview."
         visits: Visits
-        show_detected_area_visits: Show detected area visits
+        show_detected_area_visits: "Stays Dawarich detected: times you remained in one spot."
         filter_by_name: Filter by name...
         all_visits: All Visits
         confirmed_only: Confirmed Only
         suggested_only: Suggested Only
         places: Places
-        show_your_saved_places: Show your saved places
+        show_your_saved_places: "Named locations you saved. Visits are matched to them."
         enable_all_tags: Enable All Tags
         show_place_boundaries: Show place boundaries
         untagged: "\U0001F3F7️ Untagged"
         click_tags_to_filter_places: Click tags to filter places
         photos: Photos
-        show_geotagged_photos: Show geotagged photos
+        show_geotagged_photos: "Your geotagged photos, pinned where they were taken."
         areas: Areas
         show_defined_areas: Show defined areas
         fog_of_war: Fog of War
-        show_explored_areas: Show explored areas
+        show_explored_areas: "Darkens the map except where you have been."
         per_point: Per point
         per_hexagon: Per hexagon
         scratch_map: Visited Countries
@@ -1243,6 +1243,10 @@ en:
       index:
         loading: Loading...
         pick_a_day: Pick a day
+        no_data_in_period: "No location data in this period"
+        jump_to_latest_data: "Jump to your latest data"
+        nothing_recorded_yet: "Nothing has been recorded or imported yet."
+        get_started: "Get started"
         map: Map
     residency:
       show:

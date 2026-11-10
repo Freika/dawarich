@@ -537,6 +537,37 @@ html.dark .map-html-label {
   }
 }
 
+/* Explains an empty period; toggled by the range statistics result. It sits
+   right above the period totals, so it stays on the visible map at every
+   side-panel width and clear of the rail on phones. */
+.map-empty-state {
+  position: absolute;
+  right: 12px;
+  bottom: 92px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: calc(100% - 24px);
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  font-size: 12px;
+  text-align: right;
+}
+
+.map-empty-state.hidden {
+  display: none;
+}
+
+.map-empty-state-action {
+  color: oklch(var(--p));
+  font-weight: 600;
+}
+
 /* Persistent period totals sit above MapLibre's attribution and scale. */
 .map-range-statistics {
   position: absolute;

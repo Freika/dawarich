@@ -118,3 +118,31 @@ test("refresh coalesces point invalidations and keeps the selected period", asyn
     globalThis.clearTimeout = originalClearTimeout
   }
 })
+
+test("reports each result so the map can show an empty state", async () => {
+  const seen = []
+  const api = {
+    fetchRangeStatistics: async () => ({ points: 0, distance_meters: 0 }),
+  }
+  const statistics = new RangeStatistics(element(), api, "km", (data) =>
+    seen.push(data.points),
+  )
+  await statistics.load("start", "end")
+  api.fetchRangeStatistics = async () => ({ points: 4, distance_meters: 10 })
+  await statistics.load("start", "end")
+  assert.deepEqual(seen, [0, 4])
+})
+
+test("exposes the in-flight request so other map notices can wait for it", async () => {
+  const element = { textContent: "", setAttribute() {} }
+  const api = {
+    fetchRangeStatistics: async () => ({ points: 0, distance_meters: 0 }),
+  }
+  const statistics = new RangeStatistics(element, api)
+
+  const loading = statistics.load("a", "b")
+  await statistics.pending
+  await loading
+
+  assert.equal(statistics.data.points, 0)
+})

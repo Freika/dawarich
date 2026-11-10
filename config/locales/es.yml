@@ -1034,7 +1034,7 @@ es:
         enter_name_of_a_place: Introduce el nombre de un lugar
         search_for_a_location_to_find_places_you_visited: Busca una ubicación para encontrar los lugares que has visitado
         points: Puntos
-        show_individual_location_points: Muestra puntos individuales
+        show_individual_location_points: "Cada posición que registraron tus dispositivos, un punto por cada una."
         edit_points: Editar puntos
         allow_dragging_points_to_correct_their_position: Permite arrastrar puntos para corregir su posición.
         editing_points_is_a_pro_feature_this_stays_on_for: La edición de puntos está disponible con el plan Pro.
@@ -1046,31 +1046,31 @@ es:
         anomalies: Anomalías
         show_filtered_gps_noise_points: Muestra puntos de ruido GPS filtrados
         tracks: Trayectos
-        show_backend_calculated_tracks: Mostrar trayectos calculados por el servidor
+        show_backend_calculated_tracks: "Tus puntos unidos en los trayectos que recorriste."
         flights: Vuelos
         show_airtrail_flights_as_arcs_hides_overlapping_gps: Muestra vuelos como arcos (oculta señales GPS superpuestas)
         heatmap: Calor gráfico
-        show_density_heatmap: Muestra calor gráfico de densidad
+        show_density_heatmap: "Brilla más donde tienes más puntos."
         hexagons: Hexágonos
-        show_point_density_as_hexagonal_cells: Muestra densidad de puntos como celdas hexagonales
+        show_point_density_as_hexagonal_cells: "Cuenta tus puntos por celda hexagonal para una vista más general."
         visits: Visitas
-        show_detected_area_visits: Muestra visitas detectadas en áreas
+        show_detected_area_visits: "Estancias detectadas por Dawarich: momentos en que permaneciste en un mismo lugar."
         filter_by_name: Filtrar por nombre...
         all_visits: Todas las visitas
         confirmed_only: Solo confirmadas
         suggested_only: Solo sugeridas
         places: Lugares
-        show_your_saved_places: Muestra lugares guardados
+        show_your_saved_places: "Lugares con nombre que guardaste. Las visitas se asocian a ellos."
         enable_all_tags: Habilita todos los etiquetas
         show_place_boundaries: Mostrar los límites de los lugares
         untagged: "\U0001F3F7️ Sin etiquetar"
         click_tags_to_filter_places: Haz clic en las etiquetas para filtrar lugares
         photos: Fotos
-        show_geotagged_photos: Mostrar fotos geotagadas
+        show_geotagged_photos: "Tus fotos geoetiquetadas, situadas donde se tomaron."
         areas: Áreas
         show_defined_areas: Mostrar áreas definidas
         fog_of_war: Niebla de guerra
-        show_explored_areas: Mostrar áreas exploradas
+        show_explored_areas: "Oscurece el mapa salvo donde ya has estado."
         per_point: Por punto
         per_hexagon: Por hexágono
         scratch_map: Países visitados
@@ -1293,6 +1293,10 @@ es:
       index:
         loading: Cargando…
         pick_a_day: Elige un día
+        no_data_in_period: "No hay datos de ubicación en este periodo"
+        jump_to_latest_data: "Ir a tus datos más recientes"
+        nothing_recorded_yet: "Todavía no se ha registrado ni importado nada."
+        get_started: "Empezar"
         map: Mapa
     residency:
       show:

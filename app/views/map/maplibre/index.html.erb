@@ -51,6 +51,21 @@
     <%= t('.loading') %>
   </div>
 
+  <%# Shown by the range statistics when the period holds no points. The whole
+      pill is the action, so it stays small without a small tap target. %>
+  <% if @latest_data_date %>
+    <%= link_to map_v2_path(date: @latest_data_date.iso8601, panel: params[:panel].presence),
+                class: 'map-empty-state hidden', data: { testid: 'map-empty-state' } do %>
+      <span><%= t('.no_data_in_period') %></span>
+      <span class="map-empty-state-action"><%= t('.jump_to_latest_data') %> · <%= human_date(@latest_data_date) %></span>
+    <% end %>
+  <% else %>
+    <button type="button" class="map-empty-state hidden" data-testid="map-empty-state" onclick="getting_started.showModal()">
+      <span><%= t('.nothing_recorded_yet') %></span>
+      <span class="map-empty-state-action"><%= t('.get_started') %></span>
+    </button>
+  <% end %>
+
   <!-- Map-edge button cluster (top-right corner) -->
   <%= render 'button_cluster' %>
 
