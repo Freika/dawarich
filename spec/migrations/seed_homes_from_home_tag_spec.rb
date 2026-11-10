@@ -26,6 +26,13 @@ RSpec.describe SeedHomesFromHomeTag do
     expect(Home.where(place:).count).to eq(1)
   end
 
+  it 'makes no second Home when it runs again' do
+    tag_place(place, 'home')
+    migrate
+    migrate
+    expect(Home.where(place:).count).to eq(1)
+  end
+
   it "ignores another user's home tag on the Place" do
     tag_place(place, 'home', owner: create(:user))
     migrate
