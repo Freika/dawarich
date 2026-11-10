@@ -10,6 +10,8 @@ import {
  * Mixed into the controller; `this` is the controller.
  */
 export const datePicker = {
+  // Date changes stay inside the open studio. Map-backed providers update the
+  // main map in place; trip-backed providers keep their fixed range display.
   syncDateTimeControls() {
     const editable = Boolean(this.provider?.supportsDateNavigation)
     if (this.hasRangeControlsTarget) {

@@ -86,6 +86,4 @@ export const datePicker = {
     this.dateEndTarget.value = range.end
     this.applyDates()
   },
-
-  // ===== Map interaction =====
 }

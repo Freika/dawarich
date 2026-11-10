@@ -43,6 +43,7 @@ RSpec.describe 'Clicking another editable point updates the selection' do
         'maps_maplibre/editing/editable_track_data.js',
         'maps_maplibre/editing/map_editor.js',
         'controllers/maps/maplibre/event_handlers.js',
+        'controllers/maps/maplibre/layer_events.js',
         'controllers/maps/maplibre/layer_manager.js'
       ]) vm.runInContext(read(file), context, { filename: file });
       (async () => {

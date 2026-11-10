@@ -401,6 +401,11 @@ export class MapDataManager {
    * @returns {boolean} true if bounds were fitted
    * @private
    */
+  /**
+   * Show a persistent upgrade banner for Lite users when the queried date
+   * range extends beyond the 12-month data window.
+   * @private
+   */
   _showDataWindowBanner() {
     const windowStart = this.controller.dataWindowStartValue
     if (!windowStart) return

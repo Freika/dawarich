@@ -302,6 +302,11 @@ export class SearchManager {
    * Show loading state while fetching visits
    * @param {string} locationName - Name of the location being searched
    */
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string
+   */
   escapeHtml(str) {
     if (!str) return ""
     return String(str)

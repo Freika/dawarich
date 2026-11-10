@@ -197,6 +197,4 @@ export const preview = {
       }),
     )
   },
-
-  // ===== render =====
 }

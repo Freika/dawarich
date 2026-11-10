@@ -16,6 +16,7 @@ RSpec.describe 'Photo clusters above journey layers' do
       import vm from 'node:vm';
       const root = path.resolve('app/javascript');
       const actual = new Set([
+        'controllers/maps/maplibre/layer_events',
         'controllers/maps/maplibre/layer_manager',
         ...['base_layer', 'photos_layer', 'points_mvt_layer', 'tracks_mvt_layer', 'heatmap_layer',
           'recent_point_layer', 'replay_marker_layer'].map(n => `maps_maplibre/layers/${n}`),

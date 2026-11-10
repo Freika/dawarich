@@ -232,9 +232,4 @@ export const visitsResults = {
       ended_at: endTime,
     })
   },
-
-  /**
-   * Open modal to create a visit with prefilled data
-   * @param {Object} visitData - Visit data to prefill
-   */
 }

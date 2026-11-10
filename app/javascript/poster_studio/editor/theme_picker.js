@@ -72,6 +72,4 @@ export const themePicker = {
       swatch.classList.toggle("ring-2", swatch.dataset.key === key)
     })
   },
-
-  // ===== Layout =====
 }

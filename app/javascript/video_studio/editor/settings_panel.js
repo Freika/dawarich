@@ -112,7 +112,4 @@ export const settingsPanel = {
       if (this.operationIsCurrent(operation)) this.setRangeBusy(false)
     }
   },
-
-  // Date changes stay inside the open studio. Map-backed providers update the
-  // main map in place; trip-backed providers keep their fixed range display.
 }

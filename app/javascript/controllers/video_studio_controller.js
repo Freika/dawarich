@@ -244,8 +244,7 @@ export default class VideoStudioController extends Controller {
     }
   }
 
-  // ===== preview =====
-
+  // ===== render =====
   async render() {
     if (!this.style || this.rendering || this.rangeLoading) return
     if (this.points.length < 2) {

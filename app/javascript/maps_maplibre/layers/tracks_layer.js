@@ -373,6 +373,9 @@ export class TracksLayer extends BaseLayer {
    * @param {Object} trackFeature - The track GeoJSON feature
    * @param {Array} segments - Array of segment data with mode, color, start_index, end_index
    */
+  /**
+   * Override remove to also clean up segment and selection layers
+   */
   remove() {
     // Stop animation first
     this._stopFlowAnimation()

@@ -99,10 +99,4 @@ export const mapFit = {
       view.contains(bounds.getNorthEast())
     )
   },
-
-  /**
-   * Show a persistent upgrade banner for Lite users when the queried date
-   * range extends beyond the 12-month data window.
-   * @private
-   */
 }

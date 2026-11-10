@@ -220,9 +220,4 @@ export const printOutput = {
     }
     this.orderDoneButtonTarget.classList.remove("hidden")
   },
-
-  // Server-side render through the sidecar: fills the hidden posters form
-  // from the studio state and submits via Turbo. The sidecar renders its
-  // classic 3:4 print poster around the studio's center; the result lands
-  // in Recent posters via the gallery broadcast.
 }

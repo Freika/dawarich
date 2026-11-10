@@ -181,9 +181,4 @@ export const openEntry = {
     }
     return best?.querySelector(".journey-leg[data-track-id]") || null
   },
-
-  // ---------- Calendar ----------
-  // User-facing actions trigger a full Turbo navigation so the whole map
-  // page (points / routes / fog-of-war / any enabled layer) rebinds to the
-  // new date range — consistent with the existing top-of-page date form.
 }

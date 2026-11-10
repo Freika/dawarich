@@ -194,8 +194,7 @@ export default class ImmichEnrichController extends Controller {
     window.history.replaceState({}, "", url.toString())
   }
 
-  // --- Results rendering ---
-
+  // --- UI state ---
   showLoading(text) {
     this.scanFormTarget.classList.add("hidden")
     this.resultsTarget.classList.add("hidden")

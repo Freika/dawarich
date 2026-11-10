@@ -284,6 +284,4 @@ export const matchList = {
     this.removeMarkers()
     this.showScanForm()
   },
-
-  // --- Map markers ---
 }

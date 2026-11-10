@@ -346,8 +346,7 @@ export default class PosterStudioEditorController extends Controller {
     return Number.parseInt(this.trackWidthTarget.value, 10) / 100
   }
 
-  // ===== Date range =====
-
+  // ===== Map interaction =====
   recenter() {
     const bounds =
       trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
@@ -372,6 +371,10 @@ export default class PosterStudioEditorController extends Controller {
 
   // ===== Export =====
 
+  // Server-side render through the sidecar: fills the hidden posters form
+  // from the studio state and submits via Turbo. The sidecar renders its
+  // classic 3:4 print poster around the studio's center; the result lands
+  // in Recent posters via the gallery broadcast.
   saveToGallery() {
     if (!this.previewMap || this.saveButtonTarget.disabled) return
     const center = this.previewMap.getCenter()

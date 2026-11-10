@@ -6,6 +6,7 @@ import * as maplibregl from "maplibre-gl"
  * Mixed into the controller; `this` is the controller.
  */
 export const matchMarkers = {
+  // --- Map markers ---
   addMarkers() {
     const map = this.getMap()
     if (!map) return
@@ -125,6 +126,4 @@ export const matchMarkers = {
     this.markers = []
     this.markerElements = []
   },
-
-  // --- UI state ---
 }

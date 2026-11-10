@@ -187,8 +187,4 @@ export const trackSegments = {
   setSegmentLeaveCallback(callback) {
     this.onSegmentLeave = callback
   },
-
-  /**
-   * Override remove to also clean up segment and selection layers
-   */
 }

@@ -5,6 +5,10 @@ import { formatDate, formatDateTime, translate } from "i18n"
  * Mixed into the controller; `this` is the controller.
  */
 export const createVisitModal = {
+  /**
+   * Open modal to create a visit with prefilled data
+   * @param {Object} visitData - Visit data to prefill
+   */
   openCreateVisitModal(visitData) {
     // Create modal HTML
     const modalId = "create-visit-modal"
@@ -201,10 +205,4 @@ export const createVisitModal = {
   formatDateTime(dateString) {
     return formatDateTime(dateString)
   },
-
-  /**
-   * Escape HTML to prevent XSS
-   * @param {string} str - String to escape
-   * @returns {string} Escaped string
-   */
 }

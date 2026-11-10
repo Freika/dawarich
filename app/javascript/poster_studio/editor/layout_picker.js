@@ -20,6 +20,7 @@ import { fitFrame } from "poster_studio/ui/preview"
  * Mixed into the controller; `this` is the controller.
  */
 export const layoutPicker = {
+  // ===== Layout =====
   populateLayouts() {
     const select = this.layoutSelectTarget
     select.innerHTML = ""

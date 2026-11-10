@@ -68,6 +68,4 @@ export const monthPreview = {
     grid.innerHTML = cells.join("")
     calendar.classList.add("timeline-calendar--loading")
   },
-
-  // ---------- Day navigation ----------
 }

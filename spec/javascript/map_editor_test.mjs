@@ -1613,15 +1613,9 @@ test("disposing an editor during undo keeps its history control removed", async 
 })
 
 test("style teardown removes the previous history before another editor is created", async () => {
-  const source = (
-    await readFile(
-      new URL(
-        "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
-        import.meta.url,
-      ),
-      "utf8",
-    )
-  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const source = await strippedSource(
+    "controllers/maps/maplibre/layer_manager.js",
+  )
   const { LayerManager } = await import(
     `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
   )
