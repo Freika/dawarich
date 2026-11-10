@@ -5,7 +5,39 @@
   distance_unit  = day[:summary][:distance_unit]
   mode_distances = day[:summary][:mode_distances] || {}
 %>
-<div class="timeline-day" data-day="<%= day[:date] %>" data-bounds="<%= day_bounds_json(day) %>">
+<% range = local_assigns[:range] %>
+<%# A period of several days reads like a diary: the date, where the day went
+    and the notes stay in sight. Each day is a <details>; opening it selects
+    the day (the shared `name` keeps it to one) and unfolds its visits and
+    journeys, with the notes at their moments. A single day is simply open. %>
+<% if range %><section class="timeline-diary-day" data-testid="timeline-diary-day"><% end %>
+<%= content_tag(range ? :details : :div,
+                class: 'timeline-day', name: ('timeline-range-day' if range),
+                data: { day: day[:date], bounds: day_bounds_json(day),
+                        action: ('toggle->timeline-feed#dayToggled' if range) }) do %>
+  <% if range %>
+    <% date = Date.parse(day[:date].to_s) %>
+    <summary class="timeline-day-header timeline-day-header--range timeline-diary-head">
+      <span class="timeline-diary-head__number"><%= date.day %></span>
+      <span class="min-w-0">
+        <span class="timeline-diary-head__weekday"><%= l(date, format: '%A') %></span>
+        <span class="timeline-diary-head__month"><%= l(date, format: :month_year) %></span>
+      </span>
+      <span class="timeline-day-header__meta ml-auto">
+        <span data-timeline-visit-count aria-live="polite"><%= t('.visit_count', count: day_total_visits_count(day)) %></span>
+        <%= icon 'chevron-down', class: 'timeline-day-chevron' %>
+      </span>
+      <% if day[:summary][:facts].present? %>
+        <span class="timeline-diary-head__facts"><%= day[:summary][:facts] %></span>
+      <% end %>
+    </summary>
+    <% if day_total_visits_count(day) >= 2 %>
+      <div class="flex justify-end px-2">
+        <button type="button" class="day-select-toggle" data-testid="day-select-toggle"
+                data-action="click->timeline-feed#enterSelection"><%= t('.select') %></button>
+      </div>
+    <% end %>
+  <% else %>
   <div class="timeline-day-header">
     <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
     <div class="timeline-day-header__meta">
@@ -20,10 +52,11 @@
       <% end %>
     </div>
   </div>
+  <% end %>
 
   <%# Where the day went, in the names of its places. Generated from the
       visits, so it is absent on a day that only has notes. %>
-  <% if day[:summary][:facts].present? %>
+  <% if day[:summary][:facts].present? && !range %>
     <p class="timeline-day-facts"><%= day[:summary][:facts] %></p>
   <% end %>
 
@@ -94,6 +127,7 @@
     <p class="text-center text-sm text-base-content/60 py-6"><%= t('.no_visits_tracked_this_day') %></p>
   <% end %>
 
+  <% unless range %>
   <footer class="timeline-day-footer">
     <button type="button"
             class="btn btn-ghost btn-xs btn-square"
@@ -113,4 +147,17 @@
       <%= icon 'chevron-right', class: 'w-4 h-4' %>
     </button>
   </footer>
-</div>
+  <% end %>
+<% end %>
+<% if range %>
+  <%# Closed, the day shows its notes on their own; open, they are in the
+      timeline above at their moments, so this copy steps aside (CSS). %>
+  <% if Array(day[:notes]).any? %>
+    <ol class="timeline-entries timeline-diary-notes">
+      <% Array(day[:notes]).each do |note| %>
+        <%= render partial: 'map/timeline_feeds/note_entry', locals: { entry: note } %>
+      <% end %>
+    </ol>
+  <% end %>
+  </section>
+<% end %>

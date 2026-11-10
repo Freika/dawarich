@@ -126,6 +126,7 @@ export default class extends Controller {
     "replayScrubber",
     "replayScrubberTrack",
     "replayDensityContainer",
+    "replayDaySegments",
     "replayDayDisplay",
     "replayDayCount",
     "replayTimeDisplay",
@@ -797,6 +798,11 @@ export default class extends Controller {
     if (day) {
       this._applyDayHighlight(day)
       this._showDayVisits(day)
+      this.replayPanel?.syncToDay(day)
+      this.rangeStatistics?.load(
+        DateManager.formatDateForAPI(new Date(`${day}T00:00:00`)),
+        DateManager.formatDateForAPI(new Date(`${day}T23:59:59`)),
+      )
     }
   }
 
@@ -805,6 +811,7 @@ export default class extends Controller {
    */
   handleDayCollapsed() {
     this._clearDayHighlight()
+    this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
   }
 
   /**
@@ -1836,6 +1843,11 @@ export default class extends Controller {
         return this._getLoadedPoints()
       },
       onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
+      initialDay: () => this._highlightedDay,
+      onDaySync: (day) =>
+        document.dispatchEvent(
+          new CustomEvent("replay:day-changed", { detail: { day } }),
+        ),
       getPhotos: () => {
         const layer = this.layerManager?.getLayer("photos")
         const features = layer?.visible ? layer.data?.features : null

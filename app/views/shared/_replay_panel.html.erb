@@ -107,6 +107,10 @@
     </div>
   </div>
 
+  <%# Day labels over a scrubber that spans several days (filled by ReplayPanel
+      when the host controller declares the target). %>
+  <div class="replay-day-segments" data-<%= stimulus %>-target="replayDaySegments"></div>
+
   <%# Scrubber with data density visualization %>
   <div class="replay-scrubber-wrapper">
     <span class="replay-time-label">00:00</span>

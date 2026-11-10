@@ -1,10 +1,18 @@
 <%# locals: (entry:) %>
-<%# A map note the user wrote, shown at the moment it describes. The link loads
-    the edit form into the map note dialog's turbo frame. %>
+<%# A map note the user wrote, shown at the moment it describes. A click shows
+    it on the map; the pencil loads the edit form into the map note dialog. %>
 <li class="timeline-entry timeline-entry--note" data-entry-type="note" data-note-id="<%= entry[:note_id] %>">
-  <%= link_to edit_note_path(entry[:note_id]), class: 'note-leg', data: { turbo_frame: 'map-note-form' } do %>
+  <div class="note-leg" role="button" tabindex="0"
+       data-action="click->timeline-feed#selectNote keydown.enter->timeline-feed#selectNote"
+       data-note-id="<%= entry[:note_id] %>"
+       data-note-lat="<%= entry[:latitude] %>" data-note-lng="<%= entry[:longitude] %>">
     <span class="note-leg__time"><%= l(Time.zone.parse(entry[:noted_at]), format: :hour_minute) %></span>
     <span class="note-leg__rail-col" aria-hidden="true"><%= icon 'square-pen', class: 'note-leg__icon' %></span>
     <span class="note-leg__body"><%= entry[:body] %></span>
-  <% end %>
+    <%= link_to edit_note_path(entry[:note_id]), class: 'note-leg__edit',
+                title: t('.edit'), 'aria-label': t('.edit'),
+                data: { turbo_frame: 'map-note-form', testid: 'note-edit' } do %>
+      <%= icon 'square-pen', class: 'w-3.5 h-3.5' %>
+    <% end %>
+  </div>
 </li>

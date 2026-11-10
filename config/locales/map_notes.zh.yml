@@ -13,7 +13,7 @@ zh:
       cancel: 取消
       save: 保存
     index:
-      notes: 笔记
+      notes: 日记
       search: 搜索
       search_placeholder: 搜索你的笔记
       from: 从
@@ -35,6 +35,8 @@ zh:
         show_your_map_notes: 显示你在地图上写下的笔记
         add_note: 添加笔记
     timeline_feeds:
+      note_entry:
+        edit: 编辑
       on_this_day:
         on_this_day: 历史上的今天
   javascript:
@@ -43,7 +45,7 @@ zh:
       failed_to_load_notes: 笔记加载失败
   shared:
     navbar:
-      notes: 笔记
+      notes: 日记
     links:
       map_notes:
         notes: 笔记

@@ -822,27 +822,8 @@
       <!-- Timeline Feed Tab -->
       <div class="tab-content<%= ' active' if timeline_panel_open %>" data-tab-content="timeline-feed" data-map-panel-target="tabContent">
         <div class="timeline-tab-content" data-controller="timeline-feed">
-          <%# ---------- LEFT RAIL ---------- %>
+          <%# ---------- Search and tags (the calendar lives in the period picker) ---------- %>
           <aside class="timeline-rail">
-            <%# Calendar (lazy-loaded turbo frame) %>
-            <turbo-frame id="timeline-calendar-frame"
-                         src="<%= calendar_map_timeline_feeds_path(month: initial_calendar_month(current_user)) %>"
-                         loading="lazy">
-              <div class="text-center text-base-content/60 py-4 text-sm"><%= t('.loading_calendar') %></div>
-            </turbo-frame>
-
-            <%# Heat legend %>
-            <div class="timeline-rail__heat-legend">
-              <span><%= t('.less') %></span>
-              <span class="heat-swatch heat-0"></span>
-              <span class="heat-swatch heat-1"></span>
-              <span class="heat-swatch heat-2"></span>
-              <span class="heat-swatch heat-3"></span>
-              <span class="heat-swatch heat-4"></span>
-              <span class="heat-swatch heat-5"></span>
-              <span><%= t('.more') %></span>
-            </div>
-
             <%# Search — filters the currently loaded day's visit rows by
                 name / place / tag (substring match on data-search-tokens).
                 DaisyUI `input` styles target the <input> element directly;
@@ -857,7 +838,7 @@
                      class="input input-sm input-bordered w-full pl-8"
                      autocomplete="off"
                      data-timeline-feed-target="searchInput"
-                     data-action="input->timeline-feed#search" />
+                     data-action="input->timeline-feed#search keydown.enter->timeline-feed#searchNotes" />
             </div>
 
             <%# Tag chips — click to toggle as an active filter. Multi-select ANDs
@@ -894,6 +875,14 @@
 
           <%# ---------- MAIN COLUMN (visit list) ---------- %>
           <div class="timeline-main">
+            <div class="flex justify-end px-2 pb-2">
+              <button type="button" class="btn btn-primary btn-xs gap-1"
+                      data-action="click->maps--maplibre#startCreateNote"
+                      data-testid="timeline-add-note">
+                <%= icon 'square-pen', class: 'w-3.5 h-3.5' %>
+                <%= t('.add_note') %>
+              </button>
+            </div>
             <turbo-frame id="timeline-feed-frame"
                          data-timeline-feed-target="visitListFrame"
                          data-maps--maplibre-target="timelineFeedContainer">

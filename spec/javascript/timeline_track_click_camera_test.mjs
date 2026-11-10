@@ -49,6 +49,7 @@ function installBrowserStubs(t) {
   }
   globalThis.document = {
     querySelector: () => null,
+    querySelectorAll: () => [],
     getElementById: () => null,
     dispatchEvent: (event) => events.push(event),
   }

@@ -1,6 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { firstDayOfWeek, translate } from "i18n"
-import { monthGridStart } from "maps_maplibre/utils/month_grid"
+import { translate } from "i18n"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -24,6 +23,7 @@ export default class extends Controller {
     "mergeButton",
     "deleteForm",
     "deleteButton",
+    "allDaysButton",
   ]
 
   connect() {
@@ -63,12 +63,13 @@ export default class extends Controller {
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
 
     this.boundDateNavigated = (event) => {
-      if (event.detail?.date) return
-      this.selectedDate = null
-      for (const el of this.element.querySelectorAll(".cal-cell--selected")) {
-        el.classList.remove("cal-cell--selected")
-      }
+      if (!event.detail?.date) this.selectedDate = null
+      this.syncAllDays()
     }
+    // The period picker says what was picked; the period is ours.
+    this.boundPickRange = (event) =>
+      this.navigateToPeriod(event.detail.startAt, event.detail.endAt)
+    document.addEventListener("period-picker:range", this.boundPickRange)
     document.addEventListener(
       "timeline-feed:date-navigated",
       this.boundDateNavigated,
@@ -82,18 +83,14 @@ export default class extends Controller {
       )
     }
 
-    // The calendar is rendered into a lazy turbo-frame, so the cell for the
-    // URL-driven selected day doesn't exist when hydrateFromUrl() first runs.
-    // Re-apply the highlight once the calendar frame finishes loading.
-    this.boundCalendarLoad = (e) => {
-      if (e.target?.id !== "timeline-calendar-frame") return
-      if (!this.selectedDate) return
-      const cell = this.element.querySelector(
-        `[data-day="${this.selectedDate}"]`,
-      )
-      if (cell) cell.classList.add("cal-cell--selected")
+    // Replay moved into another day of the period: when a day is selected,
+    // the selection follows it (the camera stays with the replay marker).
+    this.boundReplayDay = (event) => {
+      const day = event.detail?.day
+      if (!this.rangeDay(this.selectedDate) || this.selectedDate === day) return
+      this.selectInRange(day, { keepCamera: true })
     }
-    document.addEventListener("turbo:frame-load", this.boundCalendarLoad)
+    document.addEventListener("replay:day-changed", this.boundReplayDay)
 
     // Re-apply filter + search visibility after any turbo_stream update
     // (e.g., VisitsController#update replaces the row with fresh state, and
@@ -113,6 +110,7 @@ export default class extends Controller {
 
       requestAnimationFrame(() => {
         this.applyVisibility()
+        if (dayFrameUpdated) this.syncRange()
         if (visitRowReplaced || dayFrameUpdated) {
           document.dispatchEvent(new CustomEvent("visit:updated"))
         }
@@ -135,9 +133,8 @@ export default class extends Controller {
       "timeline-feed:date-navigated",
       this.boundDateNavigated,
     )
-    if (this.boundCalendarLoad) {
-      document.removeEventListener("turbo:frame-load", this.boundCalendarLoad)
-    }
+    document.removeEventListener("replay:day-changed", this.boundReplayDay)
+    document.removeEventListener("period-picker:range", this.boundPickRange)
     if (this.boundStreamRender) {
       document.removeEventListener(
         "turbo:before-stream-render",
@@ -183,6 +180,11 @@ export default class extends Controller {
     // entry is already rendered — expand it immediately. Otherwise navigate
     // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
+    if (date && this.selectInRange(date, { keepCamera: true })) {
+      this._tryExpandPendingTrack()
+      return
+    }
+
     this.keepCameraOnDate = date || this.selectedDate
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date, { fitBounds: false })
@@ -213,6 +215,10 @@ export default class extends Controller {
     // (arriving via the top date-range form / Search / Last 7 days) so the
     // panel lands on the most recent day of the range instead of going blank —
     // keeping the range and the panel in sync (C1).
+    // A period of several days opens as a whole; a `date=` beside it picks
+    // the day to select once the period has rendered (see applyUrlDay).
+    if (this.showRange()) return
+
     const date = params.get("date") || this.renderedDay()
     if (date) {
       const isoDate =
@@ -237,7 +243,14 @@ export default class extends Controller {
 
     // Extract the day's bounds from the rendered DOM and re-dispatch
     // day-selected with bounds so the map can fit to the visits.
-    const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
+    this.syncRange()
+
+    // A period has no single day to fit the map to.
+    const dayEl = this.visitListFrameTarget.querySelector(
+      ".timeline-range-head",
+    )
+      ? null
+      : this.visitListFrameTarget.querySelector(".timeline-day")
     const keepCamera =
       this.pendingTrackId ||
       this.pendingTrackTime ||
@@ -261,6 +274,10 @@ export default class extends Controller {
       this._tryExpandPendingTrack()
     }
 
+    this.selectPendingVisit()
+  }
+
+  selectPendingVisit() {
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
       `[data-visit-id="${this.pendingVisitId}"]`,
@@ -270,6 +287,164 @@ export default class extends Controller {
     // Synthesize a Stimulus-shaped event and run through the normal path so
     // visual selection + the `timeline-feed:visit-selected` dispatch are consistent.
     this.selectVisit({ currentTarget: row, target: row })
+  }
+
+  // ---------- A period of several days ----------
+  // The feed renders every day of the period as a closed <details>. The open
+  // one is the selected day: the map dims the rest, replay jumps to it, the
+  // calendar marks it. Nothing is refetched, the period stays loaded.
+  showRange() {
+    const start = document.querySelector('input[name="start_at"]')?.value
+    const end = document.querySelector('input[name="end_at"]')?.value
+    if (!this.periodSpansDays() || !this.hasVisitListFrameTarget) return false
+
+    this.selectedDate = null
+    this.visitListFrameTarget.setAttribute(
+      "src",
+      `/map/timeline_feeds?start_at=${encodeURIComponent(start)}&end_at=${encodeURIComponent(end)}`,
+    )
+    return true
+  }
+
+  // Same rule as the server: a period is more than a day long.
+  periodSpansDays() {
+    const start = document.querySelector('input[name="start_at"]')?.value
+    const end = document.querySelector('input[name="end_at"]')?.value
+    return new Date(end) - new Date(start) > 86400000
+  }
+
+  // Enter in the search field looks through every note the user wrote, not
+  // only the days on screen. An empty search brings the days back.
+  searchNotes() {
+    if (!this.hasVisitListFrameTarget) return
+    const query = this.searchInputTarget.value.trim()
+    if (!query) {
+      if (!this.showRange()) this.applySelectedDayUI(this.renderedDay())
+      return
+    }
+    this.visitListFrameTarget.setAttribute(
+      "src",
+      `/map/timeline_feeds?q=${encodeURIComponent(query)}`,
+    )
+  }
+
+  // `date=` in the URL of a period selects that day, once per URL.
+  applyUrlDay() {
+    const search = window.location.search
+    const date = new URLSearchParams(search).get("date")
+    if (!date || this.appliedUrlDay === search || !this.rangeDay(date)) return
+    this.appliedUrlDay = search
+    this.selectInRange(date)
+  }
+
+  rangeDay(date) {
+    if (!date || !this.hasVisitListFrameTarget) return null
+    return this.visitListFrameTarget.querySelector(
+      `details.timeline-day[data-day="${date}"]`,
+    )
+  }
+
+  selectInRange(date, { keepCamera = false } = {}) {
+    const day = this.rangeDay(date)
+    if (!day) return false
+    if (keepCamera) this.keepCameraOnDate = date
+    day.open = true
+    day.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    return true
+  }
+
+  showAllDays() {
+    const open = this.rangeDay(this.selectedDate)
+    if (open) open.open = false
+  }
+
+  // Fired by every day <details>. Opening one closes the previous one (shared
+  // `name`), so read the result from the DOM instead of trusting event order.
+  dayToggled() {
+    const open = this.visitListFrameTarget.querySelector(
+      "details.timeline-day[open]",
+    )
+    const day = open?.dataset.day || null
+    if (day === this.selectedDate) return
+    if (this.selectionMode) this.exitSelection()
+    this.selectedDate = day
+    this.syncAllDays()
+
+    if (!day) {
+      document.dispatchEvent(new CustomEvent("timeline-feed:day-collapsed"))
+      return
+    }
+    let bounds = null
+    if (this.keepCameraOnDate !== day) {
+      try {
+        bounds = JSON.parse(open.dataset.bounds || "null")
+      } catch {
+        // Malformed bounds JSON — select the day without moving the map
+      }
+    }
+    this.keepCameraOnDate = null
+    document.dispatchEvent(
+      new CustomEvent("timeline-feed:day-expanded", {
+        detail: { day, bounds },
+      }),
+    )
+  }
+
+  // After the frame (re)renders: keep the selected day open, or forget it
+  // when the new content no longer has it.
+  syncRange() {
+    const selected = this.rangeDay(this.selectedDate)
+    if (selected) {
+      selected.open = true
+    } else if (
+      this.visitListFrameTarget.querySelector(".timeline-range-head")
+    ) {
+      this.selectedDate = null
+    }
+    this.applyUrlDay()
+    this.syncAllDays()
+  }
+
+  // "All days" is there to leave the selected day.
+  syncAllDays() {
+    if (this.hasAllDaysButtonTarget) {
+      this.allDaysButtonTarget.hidden = !this.rangeDay(this.selectedDate)
+    }
+  }
+
+  // A period picked in the calendar, as wall-clock values. Like
+  // navigateToDay, nothing reloads: the URL, the date fields and the map
+  // follow. A whole single day goes the same way as any other day.
+  navigateToPeriod(startAt, endAt) {
+    const day = endAt.slice(0, 10)
+    const wholeDay =
+      startAt === `${day}T00:00:00` && endAt === `${day}T23:59:59`
+    if (wholeDay) {
+      this.navigateToDay(day)
+      return
+    }
+    if (this.selectionMode) this.exitSelection()
+    this.selectedDate = null
+
+    const startInput = document.querySelector('input[name="start_at"]')
+    const endInput = document.querySelector('input[name="end_at"]')
+    if (startInput) startInput.value = startAt.slice(0, 16)
+    if (endInput) endInput.value = endAt.slice(0, 16)
+
+    const params = new URLSearchParams(window.location.search)
+    params.set("start_at", startAt)
+    params.set("end_at", endAt)
+    params.delete("date")
+    params.delete("month")
+    window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+
+    // Part of one day still reads as that day.
+    if (!this.showRange()) this.applySelectedDayUI(day)
+    document.dispatchEvent(
+      new CustomEvent("timeline-feed:date-navigated", {
+        detail: { startAt, endAt, fitBounds: true },
+      }),
+    )
   }
 
   // Expands the journey entry for `this.pendingTrackId` if it's present in
@@ -330,17 +505,9 @@ export default class extends Controller {
     return best?.querySelector(".journey-leg[data-track-id]") || null
   }
 
-  // ---------- Calendar ----------
-  // User-facing actions trigger a full Turbo navigation so the whole map
-  // page (points / routes / fog-of-war / any enabled layer) rebinds to the
-  // new date range — consistent with the existing top-of-page date form.
-  selectDay(event) {
-    const cell = event.currentTarget
-    const date = cell.dataset.day
-    if (!date || cell.disabled) return
-    this.navigateToDay(date)
-  }
-
+  // ---------- Period ----------
+  // A day is opened without a page load: the map instance stays alive, layers
+  // refetch in place, the URL updates via pushState.
   navigateToDay(date, { fitBounds = true } = {}) {
     if (fitBounds) this.keepCameraOnDate = null
     // Fully SPA — no Turbo.visit. The map instance stays alive, layers
@@ -362,6 +529,7 @@ export default class extends Controller {
     params.set("end_at", endAtLocal)
     params.set("panel", "timeline")
     params.set("date", date)
+    params.delete("month")
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
 
     document.dispatchEvent(
@@ -376,25 +544,7 @@ export default class extends Controller {
   applySelectedDayUI(date) {
     this.selectedDate = date
 
-    for (const el of this.element.querySelectorAll(".cal-cell--selected")) {
-      el.classList.remove("cal-cell--selected")
-    }
-    const cell = this.element.querySelector(`[data-day="${date}"]`)
-    if (cell) {
-      cell.classList.add("cal-cell--selected")
-    }
-
-    // If the date is outside the calendar's currently-rendered month, fetch
-    // the matching month so the cell becomes visible. `boundCalendarLoad`
-    // re-applies `.cal-cell--selected` once the new cells are in the DOM.
-    const calendarFrame = document.getElementById("timeline-calendar-frame")
-    if (calendarFrame && !cell) {
-      const month = date.slice(0, 7)
-      const newSrc = `/map/timeline_feeds/calendar?month=${encodeURIComponent(month)}`
-      if (calendarFrame.getAttribute("src") !== newSrc) {
-        calendarFrame.setAttribute("src", newSrc)
-      }
-    }
+    this.syncAllDays()
 
     if (this.hasVisitListFrameTarget) {
       const start = `${date}T00:00:00`
@@ -427,6 +577,16 @@ export default class extends Controller {
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
   selectDayByDate(date, alignInputs = true) {
+    // A day of the period on screen is selected in place. Not on hydration
+    // (alignInputs false): after a page visit the feed on screen belongs to
+    // the previous period and has to be loaded anew.
+    if (
+      alignInputs &&
+      this.selectInRange(date, { keepCamera: Boolean(this.pendingVisitId) })
+    ) {
+      this.selectPendingVisit()
+      return
+    }
     this.keepCameraOnDate = null
     if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
@@ -494,6 +654,28 @@ export default class extends Controller {
       new CustomEvent("timeline-feed:visit-selected", {
         detail: {
           visitId,
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+        },
+      }),
+    )
+  }
+
+  // A note row: mark it and let the map show where it was written.
+  selectNote(event) {
+    // The pencil opens the edit dialog; Turbo needs that click to bubble.
+    if (event.target.closest?.("a")) return
+    const row = event.currentTarget
+    for (const el of this.element.querySelectorAll(".note-leg--selected")) {
+      el.classList.remove("note-leg--selected")
+    }
+    row.classList.add("note-leg--selected")
+    const lat = Number.parseFloat(row.dataset.noteLat)
+    const lng = Number.parseFloat(row.dataset.noteLng)
+    document.dispatchEvent(
+      new CustomEvent("timeline-feed:note-selected", {
+        detail: {
+          id: Number(row.dataset.noteId),
           lat: Number.isFinite(lat) ? lat : null,
           lng: Number.isFinite(lng) ? lng : null,
         },
@@ -701,72 +883,22 @@ export default class extends Controller {
     ).map((b) => b.dataset.tagName || "")
   }
 
-  // ---------- Calendar month skeleton ----------
-  // Paints a "neutral" version of the target month immediately on click,
-  // so users see the new month structure without waiting for the
-  // turbo_stream round-trip. The stream then swaps this skeleton out for
-  // the real heat-colored cells the moment the response arrives.
-  previewMonth(event) {
-    const link = event.currentTarget
-    const targetMonth = link?.dataset?.targetMonth
-    if (!targetMonth) return
-
-    const calendar = this.element.querySelector(
-      '[data-testid="timeline-calendar"]',
-    )
-    if (!calendar) return
-
-    const grid = calendar.querySelector(
-      ".grid.grid-cols-7.gap-0\\.5:last-child",
-    )
-    const title = calendar.querySelector('[data-testid="calendar-title"]')
-    if (!grid || !title) return
-
-    const [yearStr, monthStr] = targetMonth.split("-")
-    const year = Number.parseInt(yearStr, 10)
-    const monthIdx = Number.parseInt(monthStr, 10) - 1
-    if (!Number.isFinite(year) || !Number.isFinite(monthIdx)) return
-
-    // Force English locale to match the server-rendered title
-    // (`strftime('%B %Y')`) — otherwise users on a non-English browser see
-    // a brief "Январь 2025" → "January 2025" flicker as the turbo_stream
-    // response replaces the skeleton.
-    title.textContent = new Date(year, monthIdx, 1).toLocaleDateString("en", {
-      month: "long",
-      year: "numeric",
-    })
-
-    // 6×7 grid aligned to the first day of week — mirrors MonthSummary.
-    const gridStart = monthGridStart(year, monthIdx, firstDayOfWeek())
-
-    const cells = []
-    for (let i = 0; i < 42; i += 1) {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      const inMonth = d.getMonth() === monthIdx
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      const selected = iso === this.selectedDate
-      const classes = [
-        "cal-cell",
-        "heat-0",
-        "cal-cell--dark-text",
-        inMonth ? null : "out-of-month",
-        selected ? "cal-cell--selected" : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
-      cells.push(
-        `<button type="button" class="${classes}" data-day="${iso}" data-action="click->timeline-feed#selectDay" data-testid="calendar-day" disabled><span class="cal-cell__day">${d.getDate()}</span></button>`,
-      )
-    }
-
-    grid.innerHTML = cells.join("")
-    calendar.classList.add("timeline-calendar--loading")
-  }
-
   // ---------- Day navigation ----------
   navigateDay(event) {
     const direction = event.currentTarget.dataset.direction
+    // Inside a period the arrows step through its days, by the calendar
+    // whatever order the days are listed in.
+    const days = this.hasVisitListFrameTarget
+      ? [
+          ...this.visitListFrameTarget.querySelectorAll("details.timeline-day"),
+        ].sort((a, b) => (a.dataset.day < b.dataset.day ? -1 : 1))
+      : []
+    if (days.length) {
+      const step = direction === "prev" ? -1 : 1
+      const next = days[days.findIndex((day) => day.open) + step]
+      if (next) next.open = true
+      return
+    }
     const current = this.selectedDate || this.renderedDay()
     if (!current) return
     // Work in UTC throughout to avoid local-timezone drift. `new Date("YYYY-MM-DDT00:00:00")`

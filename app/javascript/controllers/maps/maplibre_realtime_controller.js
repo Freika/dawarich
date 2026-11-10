@@ -320,11 +320,13 @@ export default class extends Controller {
   updateConnectionIndicator(connected) {
     if (!this.hasConnectionStatusTarget) return
     const indicator = this.connectionStatusTarget
-    indicator.textContent = translate(
+    const words = translate(
       connected ? "ux_p3.realtime.connected" : "ux_p3.realtime.disconnected",
     )
+    // The indicator is a dot: its words are a tooltip and screen-reader text.
+    indicator.title = words
+    indicator.firstElementChild.textContent = words
     indicator.dataset.state = connected ? "connected" : "disconnected"
-    indicator.classList.toggle("text-warning", !connected)
     indicator.classList.remove("hidden")
   }
 }

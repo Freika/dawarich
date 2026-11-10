@@ -13,7 +13,7 @@ fr:
       cancel: Annuler
       save: Enregistrer
     index:
-      notes: Notes
+      notes: Journal
       search: Rechercher
       search_placeholder: Rechercher dans vos notes
       from: Du
@@ -35,6 +35,8 @@ fr:
         show_your_map_notes: Affiche les notes que vous avez écrites sur la carte
         add_note: Ajouter une note
     timeline_feeds:
+      note_entry:
+        edit: Modifier
       on_this_day:
         on_this_day: Ce jour-là
   javascript:
@@ -43,7 +45,7 @@ fr:
       failed_to_load_notes: Impossible de charger les notes
   shared:
     navbar:
-      notes: Notes
+      notes: Journal
     links:
       map_notes:
         notes: Notes

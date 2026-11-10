@@ -169,8 +169,6 @@ class VisitsController < ApplicationController
   end
 
   def destroy
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
     # Soft delete: the row stays as a tombstone so visit detection never
     # re-suggests it; the user's points are untouched either way.
@@ -178,7 +176,7 @@ class VisitsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: build_destroy_streams(day_date)
+        render turbo_stream: build_destroy_streams
       end
       format.html { redirect_to build_timeline_url(date: 'today'), status: :see_other }
     end
@@ -274,30 +272,18 @@ class VisitsController < ApplicationController
                else
                  turbo_stream.update('timeline-feed-frame', '')
                end
-    streams << calendar_frame_stream(date_str)
     streams << stream_flash(:notice, bulk_update_success_message(status, count))
     streams
   end
 
-  def calendar_frame_stream(date)
-    month = date.to_s[0, 7]
-    turbo_stream.replace('timeline-calendar-frame',
-                         partial: 'map/timeline_feeds/calendar',
-                         locals: { summary: Timeline::MonthSummary.new(user: current_user, month: month).call })
-  end
-
   # Turbo streams emitted on a successful #update: replace the visit row
-  # (name, picker, tags, everything) and refresh the calendar so day dots
-  # stay accurate. Keeps the panel consistent after any edit.
+  # (name, picker, tags, everything). The period picker's calendar refetches
+  # its month when the row changes.
   def build_update_streams
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = viewed_date&.to_s || Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
-
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
                            partial: 'map/timeline_feeds/visit_entry',
                            locals: { entry: timeline_entry_for(@visit) }),
-      calendar_frame_stream(day_date),
       stream_flash(
         :notice,
         I18n.t("controllers.visits.visit_updated.#{@visit.status}")
@@ -372,10 +358,9 @@ class VisitsController < ApplicationController
     streams
   end
 
-  def build_destroy_streams(day_date)
+  def build_destroy_streams
     [
       turbo_stream.remove("visit_entry_#{@visit.id}"),
-      calendar_frame_stream(day_date),
       stream_flash(:notice, I18n.t('controllers.visits.visit_removed'))
     ]
   end
@@ -386,12 +371,10 @@ class VisitsController < ApplicationController
       Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
     end
     visible_date = viewed_date || (affected_dates.first if affected_dates.length == 1)
-    counts_date_str = (visible_date || Time.use_zone(tz) { Date.current }).to_s
 
     streams = []
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
-    streams << calendar_frame_stream(counts_date_str)
     streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams
   end

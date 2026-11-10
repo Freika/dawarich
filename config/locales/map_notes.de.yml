@@ -13,7 +13,7 @@ de:
       cancel: Abbrechen
       save: Speichern
     index:
-      notes: Notizen
+      notes: Tagebuch
       search: Suchen
       search_placeholder: Notizen durchsuchen
       from: Von
@@ -35,6 +35,8 @@ de:
         show_your_map_notes: Zeigt die Notizen, die du auf der Karte geschrieben hast
         add_note: Notiz hinzufügen
     timeline_feeds:
+      note_entry:
+        edit: Bearbeiten
       on_this_day:
         on_this_day: An diesem Tag
   javascript:
@@ -43,7 +45,7 @@ de:
       failed_to_load_notes: Notizen konnten nicht geladen werden
   shared:
     navbar:
-      notes: Notizen
+      notes: Tagebuch
     links:
       map_notes:
         notes: Notizen

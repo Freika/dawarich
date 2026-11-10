@@ -178,6 +178,36 @@ export class ReplayManager {
   }
 
   /**
+   * Density for a scrubber that spans every available day, one block of
+   * segments per day. Counts minutes with data, like getDataDensity.
+   * @param {number} segmentsPerDay
+   * @returns {Array} Density values (0-1), days in order
+   */
+  getRangeDensity(segmentsPerDay) {
+    const minutesPerSegment = 1440 / segmentsPerDay
+    const density = new Array(this.availableDays.length * segmentsPerDay).fill(
+      0,
+    )
+
+    this.availableDays.forEach((day, dayIndex) => {
+      const minutes = new Set(
+        this.pointsByDay[day].map((point) =>
+          this.minuteOfDay(this._parseTimestamp(this._getTimestamp(point))),
+        ),
+      )
+      for (const minute of minutes) {
+        if (minute === null) continue
+        density[
+          dayIndex * segmentsPerDay + Math.floor(minute / minutesPerSegment)
+        ]++
+      }
+    })
+
+    const maxDensity = Math.max(...density, 1)
+    return density.map((d) => d / maxDensity)
+  }
+
+  /**
    * Check if a minute has data
    * @param {number} minute - Minute of day (0-1439)
    * @returns {boolean}

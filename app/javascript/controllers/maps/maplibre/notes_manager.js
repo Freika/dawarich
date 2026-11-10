@@ -40,8 +40,28 @@ export class NotesManager {
       this.reload()
       this.controller.refreshTimelineFeedIfActive?.()
     }
+    // A note picked in the timeline: bring it into view, with its dot marked.
+    // The dot has to be there to be seen, so this turns the layer on.
+    this.onSelected = async (event) => {
+      const { id, lat, lng } = event.detail || {}
+      if (lat === null || lng === null || !this.map) return
+      if (!this.enabled) {
+        this.setEnabled(true)
+        if (this.controller.hasNotesToggleTarget) {
+          this.controller.notesToggleTarget.checked = true
+        }
+        await this.reload()
+      }
+      this.layer?.select(id)
+      this.map.flyTo({
+        center: [lng, lat],
+        zoom: Math.max(this.map.getZoom(), 15),
+        duration: 600,
+      })
+    }
     document.addEventListener("note:saved", this.onSaved)
     document.addEventListener("note:deleted", this.onChanged)
+    document.addEventListener("timeline-feed:note-selected", this.onSelected)
   }
 
   setEnabled(enabled) {
@@ -150,6 +170,7 @@ export class NotesManager {
     this.disarm()
     document.removeEventListener("note:saved", this.onSaved)
     document.removeEventListener("note:deleted", this.onChanged)
+    document.removeEventListener("timeline-feed:note-selected", this.onSelected)
     this.map?.off("click", "notes", this.onNoteClick)
     this.map?.off("styledata", this.onStyleData)
   }

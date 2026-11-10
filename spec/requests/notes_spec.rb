@@ -14,72 +14,10 @@ RSpec.describe '/notes', type: :request do
   end
 
   describe 'GET /notes' do
-    let!(:rain) do
-      create(:note, user: user, body: 'Rain started here', noted_at: Time.utc(2025, 5, 3, 16, 30),
-                    latitude: 35.68, longitude: 139.76)
-    end
-    let!(:pastry) do
-      create(:note, user: user, body: '100% butter croissant', noted_at: Time.utc(2025, 6, 10, 8),
-                    latitude: 48.85, longitude: 2.35)
-    end
-
-    def listed
-      Capybara.string(response.body).all('[data-testid=note-row] [data-testid=note-body]').map(&:text)
-    end
-
-    it 'lists every note newest first, linking each to its day on the map' do
+    it 'leads to the diary on the map' do
       get notes_url
 
-      expect(listed).to eq(['100% butter croissant', 'Rain started here'])
-      expect(response.body).to include('date=2025-05-04&amp;panel=timeline')
-    end
-
-    it 'lists trip day notes with their trip' do
-      trip = create(:trip, user: user, name: 'Lisbon')
-      create(:note, user: user, attachable: trip, body: 'Day one', noted_at: trip.started_at.to_date.to_datetime.noon)
-
-      get notes_url
-
-      expect(listed).to include('Day one')
-      expect(response.body).to include('Lisbon')
-    end
-
-    it 'searches the text case-insensitively' do
-      get notes_url, params: { q: 'RAIN' }
-
-      expect(listed).to eq(['Rain started here'])
-    end
-
-    it 'treats LIKE wildcards in the search as plain characters' do
-      get notes_url, params: { q: '100%' }
-      expect(listed).to eq(['100% butter croissant'])
-
-      get notes_url, params: { q: '_' }
-      expect(listed).to eq([])
-    end
-
-    it 'filters by date in the user timezone' do
-      get notes_url, params: { from: '2025-05-04', to: '2025-05-04' }
-
-      expect(listed).to eq(['Rain started here'])
-    end
-
-    it 'shows notes older than the Lite data window' do
-      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-      user.update!(plan: :lite)
-      rain.update!(noted_at: 3.years.ago)
-
-      get notes_url
-
-      expect(listed).to include('Rain started here')
-    end
-
-    it 'never lists another user\'s notes' do
-      create(:note, body: 'Foreign', latitude: 1, longitude: 2)
-
-      get notes_url
-
-      expect(listed).not_to include('Foreign')
+      expect(response).to redirect_to(map_v2_path(panel: 'timeline', month: 'latest'))
     end
   end
 

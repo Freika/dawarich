@@ -37,6 +37,12 @@ export class NotesLayer extends BaseLayer {
     return { type: "geojson", data: this.data || EMPTY }
   }
 
+  select(id) {
+    if (!this.map.getSource(this.sourceId)) return
+    this.map.removeFeatureState({ source: this.sourceId })
+    this.map.setFeatureState({ source: this.sourceId, id }, { selected: true })
+  }
+
   getLayerConfigs() {
     return [
       {
@@ -44,9 +50,20 @@ export class NotesLayer extends BaseLayer {
         type: "circle",
         source: this.sourceId,
         paint: {
-          "circle-radius": 8,
+          // The selected note (feature state) stands out from the rest.
+          "circle-radius": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            12,
+            8,
+          ],
           "circle-color": "#f59e0b",
-          "circle-stroke-width": 2,
+          "circle-stroke-width": [
+            "case",
+            ["boolean", ["feature-state", "selected"], false],
+            4,
+            2,
+          ],
           "circle-stroke-color": "#ffffff",
         },
       },

@@ -1,5 +1,5 @@
 <turbo-frame id="timeline-feed-frame">
-  <%= render partial: 'map/timeline_feeds/feed', locals: { days: @days, requested_date: @requested_date } %>
+  <%= render partial: 'map/timeline_feeds/feed', locals: { days: @days, requested_date: @requested_date, range: @range } %>
   <% if @on_this_day.present? %>
     <%= render partial: 'map/timeline_feeds/on_this_day', locals: { notes: @on_this_day } %>
   <% end %>

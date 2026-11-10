@@ -13,7 +13,7 @@ es:
       cancel: Cancelar
       save: Guardar
     index:
-      notes: Notas
+      notes: Diario
       search: Buscar
       search_placeholder: Busca en tus notas
       from: Desde
@@ -35,6 +35,8 @@ es:
         show_your_map_notes: Muestra las notas que escribiste en el mapa
         add_note: Añadir nota
     timeline_feeds:
+      note_entry:
+        edit: Editar
       on_this_day:
         on_this_day: Tal día como hoy
   javascript:
@@ -43,7 +45,7 @@ es:
       failed_to_load_notes: No se pudieron cargar las notas
   shared:
     navbar:
-      notes: Notas
+      notes: Diario
     links:
       map_notes:
         notes: Notas

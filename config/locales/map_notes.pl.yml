@@ -13,7 +13,7 @@ pl:
       cancel: Anuluj
       save: Zapisz
     index:
-      notes: Notatki
+      notes: Dziennik
       search: Szukaj
       search_placeholder: Szukaj w notatkach
       from: Od
@@ -35,6 +35,8 @@ pl:
         show_your_map_notes: Pokazuje notatki napisane przez ciebie na mapie
         add_note: Dodaj notatkę
     timeline_feeds:
+      note_entry:
+        edit: Edytuj
       on_this_day:
         on_this_day: Tego dnia
   javascript:
@@ -43,7 +45,7 @@ pl:
       failed_to_load_notes: Nie udało się wczytać notatek
   shared:
     navbar:
-      notes: Notatki
+      notes: Dziennik
     links:
       map_notes:
         notes: Notatki

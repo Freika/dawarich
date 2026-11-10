@@ -20,29 +20,6 @@ module TimelineHelper
   # day column scrolls more than it communicates.
   JOURNEY_LEG_MAX_EXTRA_PX = 80
 
-  # "YYYY-MM" for the calendar's initial month. Prefers, in order:
-  #   1. `params[:date]` (the selected day, e.g. "2025-12-11")
-  #   2. `params[:start_at]` (range start, e.g. "2025-12-11T00:00:00")
-  #   3. Today in the user's timezone
-  # Edge case avoided: around UTC midnight, plain Date.current returns the
-  # server-local day, which can differ from the user's day by one.
-  def initial_calendar_month(user)
-    date_param = params[:date].presence || params[:start_at].presence
-    parsed = parse_calendar_date(date_param)
-    return parsed.strftime('%Y-%m') if parsed
-
-    tz = user&.safe_settings&.timezone.presence || 'UTC'
-    Time.use_zone(tz) { Date.current.strftime('%Y-%m') }
-  end
-
-  def parse_calendar_date(value)
-    return nil if value.blank?
-
-    Date.parse(value)
-  rescue ArgumentError, TypeError
-    nil
-  end
-
   # Lower-cased, space-joined string of all tokens a user might type into the
   # rail's search box to find this visit. Baked into the row as
   # `data-search-tokens` so the Stimulus filter is a single substring check.
@@ -69,20 +46,6 @@ module TimelineHelper
     return I18n.t('units.minutes_compact', value: m) if h.zero?
 
     I18n.t('units.hours_minutes_compact', hours: h, minutes: m)
-  end
-
-  # Tracked seconds -> bucket index 0..5
-  def heat_bucket(tracked_seconds)
-    s = tracked_seconds.to_i
-    return 0 if s <= 0
-
-    h = s / 3600.0
-    return 1 if h < 2
-    return 2 if h < 4
-    return 3 if h < 8
-    return 4 if h < 12
-
-    5
   end
 
   # Hash-entry helpers (Timeline::DayAssembler returns hash-shaped entries).
@@ -250,38 +213,23 @@ module TimelineHelper
     s[:confirmed_count].to_i + s[:suggested_count].to_i + s[:declined_count].to_i
   end
 
+  # "November 5 – 7, 2026" for the days a multi-day feed renders.
+  def timeline_range_label(days)
+    period_label(Date.parse(days.first[:date].to_s), Date.parse(days.last[:date].to_s))
+  end
+
+  # "November 5 – 7, 2026", or "November 6, 2026" for a single day.
+  def period_label(from, to)
+    first = from.to_date
+    last = to.to_date
+    return l(first, format: :month_day_year) if first == last
+
+    same_month = first.year == last.year && first.month == last.month
+    from = l(first, format: first.year == last.year ? :month_day : :month_day_year)
+    "#{from} – #{same_month ? last.day : l(last, format: :month_day)}, #{last.year}"
+  end
+
   def day_bounds_json(day)
     day[:bounds]&.to_json
-  end
-
-  def calendar_month_nav(summary)
-    month_date = Date.parse("#{summary[:month]}-01")
-    {
-      prev: (month_date - 1.month).strftime('%Y-%m'),
-      next: (month_date + 1.month).strftime('%Y-%m'),
-      title: I18n.l(month_date, format: :month_year)
-    }
-  end
-
-  def calendar_weekday_labels
-    week_ordered(I18n.t('calendar.weekday_initials'))
-  end
-
-  def calendar_day_number(cell)
-    Date.parse(cell[:date].to_s).day
-  end
-
-  # Returns the space-joined CSS class string for a calendar cell.
-  # Heat bucket is precomputed by Timeline::MonthSummary as a month-relative
-  # grade (1..5 = quintiles of the busiest day in the visible month;
-  # 0 = no activity at all).
-  def calendar_cell_classes(cell)
-    bucket = cell[:heat_bucket].nil? ? heat_bucket(cell[:tracked_seconds]) : cell[:heat_bucket].to_i
-    classes = ['cal-cell', "heat-#{bucket}"]
-    classes << 'has-suggestions' if cell[:suggested_count].to_i.positive?
-    classes << 'out-of-month' unless cell[:in_month]
-    classes << 'disabled' if cell[:disabled]
-    classes << (bucket >= 3 ? 'cal-cell--light-text' : 'cal-cell--dark-text')
-    classes.join(' ')
   end
 end

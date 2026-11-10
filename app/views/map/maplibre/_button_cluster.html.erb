@@ -103,6 +103,17 @@
     <%= icon 'settings' %>
   </button>
 
+  <div class="relative">
+    <%= link_to share_links_hub_path(tab: 'timeline', start_date: start_at.to_date, end_date: end_at.to_date, import_id: params[:import_id]),
+                class: 'map-button-cluster__btn',
+                title: t('shared.map.date_navigation_v2.share'),
+                'aria-label': t('shared.map.date_navigation_v2.share'),
+                data: { turbo_frame: 'share-link-modal', testid: 'timeline-share-button' } do %>
+      <%= icon 'share-2', class: 'w-5 h-5', aria: { hidden: true } %>
+    <% end %>
+    <%= render 'shared/map/share_indicator' %>
+  </div>
+
   <%# Cloud-only — same gating as the previous in-panel `Links` tab so
       self-hosted instances aren't pointed at marketing/help URLs. The Links
       tab content is still rendered in the side panel (just without its own
@@ -119,4 +130,12 @@
       <%= icon 'info' %>
     </button>
   <% end %>
+
+  <%# Live updates: a dot at the foot of the cluster. Green while connected,
+      amber and pulsing while the connection is down; the words are its
+      tooltip and are announced to screen readers. Hidden until the state
+      is known. %>
+  <span class="map-button-cluster__live hidden" role="status" aria-live="polite"
+        data-testid="realtime-status"
+        data-maps--maplibre-realtime-target="connectionStatus"><span class="sr-only"></span></span>
 </div>

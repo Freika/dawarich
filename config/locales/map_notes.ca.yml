@@ -13,7 +13,7 @@ ca:
       cancel: Cancel·la
       save: Desa
     index:
-      notes: Notes
+      notes: Diari
       search: Cerca
       search_placeholder: Cerca a les teves notes
       from: Des de
@@ -35,6 +35,8 @@ ca:
         show_your_map_notes: Mostra les notes que has escrit al mapa
         add_note: Afegeix una nota
     timeline_feeds:
+      note_entry:
+        edit: Edita
       on_this_day:
         on_this_day: Tal dia com avui
   javascript:
@@ -43,7 +45,7 @@ ca:
       failed_to_load_notes: No s'han pogut carregar les notes
   shared:
     navbar:
-      notes: Notes
+      notes: Diari
     links:
       map_notes:
         notes: Notes
