@@ -10,29 +10,40 @@ const source = await readFile(
   "utf8",
 )
 
-const start = source.indexOf("  async initializeMap() {")
-const end = source.indexOf("\n  }\n", start) + 4
-const initializeMapSource = source.slice(start, end)
-
-async function buildController(initialize) {
-  globalThis.__webglTestMapInitializer = { initialize }
-  const moduleSource = `
-    const MapInitializer = globalThis.__webglTestMapInitializer
+const startupSource = (
+  await readFile(
+    new URL(
+      "../../app/javascript/controllers/maps/maplibre/map_startup.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const startup = await import(
+  `data:text/javascript;base64,${Buffer.from(`
+    const MapInitializer = {
+      initialize: (...args) => globalThis.__webglTestInitialize(...args),
+    }
     const loadLastView = () => null
     const saveView = () => {}
     const syncSidebarLayout = () => {}
-    export default class {
-      ${initializeMapSource}
-    }
-  `
-  const { default: Controller } = await import(
-    `data:text/javascript;base64,${Buffer.from(moduleSource).toString("base64")}#${Math.random()}`
-  )
-  const controller = new Controller()
-  controller.settings = {}
-  controller.webglErrorShown = false
-  controller.showWebGLError = () => {
-    controller.webglErrorShown = true
+    ${startupSource}
+  `).toString("base64")}`
+)
+
+function buildController(initialize) {
+  globalThis.__webglTestInitialize = initialize
+  const controller = {
+    settings: {},
+    webglErrorShown: false,
+    containerTarget: { classList: { add() {} } },
+    webglErrorTarget: {
+      classList: {
+        remove: () => {
+          controller.webglErrorShown = true
+        },
+      },
+    },
   }
   return controller
 }
@@ -45,38 +56,37 @@ class GPUInitializationError extends Error {
 }
 
 test("shows the WebGL error instead of throwing when the GPU context cannot be created", async () => {
-  const controller = await buildController(async () => {
+  const controller = buildController(async () => {
     throw new GPUInitializationError()
   })
 
-  await controller.initializeMap()
+  await startup.initializeMap(controller)
 
   assert.equal(controller.webglErrorShown, true)
   assert.equal(controller.map, undefined)
 })
 
 test("rethrows map initialization errors that are not about the GPU", async () => {
-  const controller = await buildController(async () => {
+  const controller = buildController(async () => {
     throw new Error("style failed")
   })
 
-  await assert.rejects(controller.initializeMap(), /style failed/)
+  await assert.rejects(startup.initializeMap(controller), /style failed/)
   assert.equal(controller.webglErrorShown, false)
 })
 
-const lifecycleStart = source.indexOf("  disconnect() {")
-const lifecycleEnd = source.indexOf(
-  "  async loadViewSettings() {",
-  lifecycleStart,
+const disconnectStart = source.indexOf("  disconnect() {")
+const disconnectSource = source.slice(
+  disconnectStart,
+  source.indexOf("\n  }\n", disconnectStart) + 4,
 )
-const lifecycleSource = source.slice(lifecycleStart, lifecycleEnd)
 
 async function buildLifecycleController() {
   const moduleSource = `
     const cancelAllPreviews = () => {}
     const performanceMonitor = { logReport: () => {} }
     export default class {
-      ${lifecycleSource}
+      ${disconnectSource}
     }
   `
   const { default: Controller } = await import(
@@ -105,9 +115,7 @@ test("the WebGL probe releases its context instead of holding it until GC", asyn
       }),
     }),
   }
-  const controller = await buildLifecycleController()
-
-  assert.equal(controller.isWebGLSupported(), true)
+  assert.equal(startup.isWebGLSupported(), true)
   assert.equal(released, true)
 })
 
@@ -125,7 +133,5 @@ test("the WebGL probe reports no support when the browser gives no context", asy
   globalThis.document = {
     createElement: () => ({ getContext: () => null }),
   }
-  const controller = await buildLifecycleController()
-
-  assert.equal(controller.isWebGLSupported(), false)
+  assert.equal(startup.isWebGLSupported(), false)
 })

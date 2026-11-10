@@ -4,7 +4,6 @@ import { Toast } from "maps_maplibre/components/toast"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
-import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
@@ -14,8 +13,13 @@ import { FamilyManager } from "./maplibre/family_manager"
 import { InfoPanel } from "./maplibre/info_panel"
 import { LoadingBadge } from "./maplibre/loading_badge"
 import { buildMapFeatures, listenToDocument } from "./maplibre/map_bootstrap"
-import { MapInitializer } from "./maplibre/map_initializer"
 import { MapReplayActions } from "./maplibre/map_replay"
+import {
+  initializeMap,
+  isWebGLSupported,
+  loadViewSettings,
+  showWebGLError,
+} from "./maplibre/map_startup"
 import { SettingsController } from "./maplibre/settings_manager"
 import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
 
@@ -138,8 +142,8 @@ export default class MapController extends Controller {
     this.containerTarget.classList.remove("hidden")
     this.webglErrorTarget.classList.add("hidden")
 
-    if (!this.isWebGLSupported()) {
-      this.showWebGLError()
+    if (!isWebGLSupported()) {
+      showWebGLError(this)
       return
     }
 
@@ -155,14 +159,14 @@ export default class MapController extends Controller {
     this.replayActions = new MapReplayActions(this)
     this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
-    await this.loadViewSettings()
+    await loadViewSettings(this)
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
     if (this.hasExplorationBoundsValue && this.hasFogToggleTarget)
       this.fogToggleTarget.checked = true
 
-    await this.initializeMap()
+    await initializeMap(this)
     // initializeMap bails without setting this.map if the controller
     // disconnected mid-init (fast Turbo nav); don't build managers on a
     // dead controller with an undefined map. It also returns without a map
@@ -220,79 +224,6 @@ export default class MapController extends Controller {
     this.layerManager?.clearLayerReferences()
     this.map?.remove()
     performanceMonitor.logReport()
-  }
-
-  isWebGLSupported() {
-    try {
-      const canvas = document.createElement("canvas")
-      const gl = canvas.getContext("webgl2")
-      // Hand the probe's context back at once: iOS caps live WebGL contexts,
-      // and this one would otherwise linger until GC on every day switch.
-      gl?.getExtension("WEBGL_lose_context")?.loseContext()
-      return !!gl
-    } catch {
-      return false
-    }
-  }
-
-  showWebGLError() {
-    this.containerTarget.classList.add("hidden")
-    this.webglErrorTarget.classList.remove("hidden")
-  }
-
-  async loadViewSettings() {
-    await this.settingsController.loadSettings()
-    // A city card opens the map with fog on for this view only; the copy
-    // keeps the forced layer out of the stored settings.
-    this.settings = this.hasExplorationBoundsValue
-      ? { ...this.settingsController.settings, fogEnabled: true }
-      : this.settingsController.settings
-    this.settings.timezone = this.timezoneValue
-  }
-
-  async initializeMap() {
-    syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
-    // Reopen at the user's last viewport instead of the zoomed-out globe.
-    // When the date range has data, fitBounds overrides this; when it has
-    // none, the map stays on the last-known view rather than the world.
-    const lastView = loadLastView(this.apiKeyValue)
-
-    let map
-    try {
-      map = await MapInitializer.initialize(
-        this.containerTarget,
-        {
-          mapStyle: this.settings.mapStyle,
-          globeProjection: this.settings.globeProjection,
-          hiddenTileCategories: this.settings.hiddenTileCategories || [],
-          disabledPoiGroups: this.settings.disabledPoiGroups || [],
-          customTheme: this.settings.customTheme,
-          vectorTilesUrl: this.settings.vectorTilesUrl,
-          tilesFallback: this.settings.tilesFallback === true,
-          ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-        },
-        this.apiKeyValue,
-      )
-    } catch (error) {
-      // The isWebGLSupported() probe passes, yet the browser can still refuse
-      // the map its own context, e.g. iOS Safari past its WebGL context limit.
-      if (error?.name !== "GPUInitializationError") throw error
-      console.warn("[Maps V2] WebGL context refused:", error)
-      this.showWebGLError()
-      return
-    }
-
-    // The controller may have disconnected while the style was loading (e.g.
-    // fast Turbo navigation). Tear the map down instead of attaching a listener
-    // to an orphaned instance that disconnect() can no longer reach.
-    if (this._disconnected) {
-      map.remove()
-      return
-    }
-
-    this.map = map
-    this._persistView = () => saveView(this.map, this.apiKeyValue)
-    this.map.on("moveend", this._persistView)
   }
 
   /**
