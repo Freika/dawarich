@@ -1,30 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/timeline_feed_controller.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const stubbedSource = source
-  .replace(
-    'import { Controller } from "@hotwired/stimulus"',
-    "class Controller {}",
-  )
-  .replace(
-    /^import \{[^}]*\} from "i18n"$/m,
-    "const translate = (key) => key\nconst formatDate = (value) => String(value)\nconst formatTime = (value) => String(value)\nconst formatDateTime = (value) => String(value)\nconst firstDayOfWeek = () => 1",
-  )
-  .replace(
-    'import { monthGridStart } from "maps_maplibre/utils/month_grid"',
-    "const monthGridStart = (year, month) => new Date(year, month, 1)",
-  )
-const { default: TimelineFeedController } = await import(
-  `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
-)
+import TimelineFeedController from "controllers/timeline_feed_controller"
 
 function installBrowserStubs(t) {
   const events = []
