@@ -15,8 +15,10 @@ const IMPORT = /^import\s+([\s\S]*?)\s+from\s+"([^"]+)"\n/gm
  *
  * @param {string} relativePath path under app/javascript, e.g.
  *   "controllers/video_studio_controller.js"
+ * @param {{ inline?: string[] }} options other modules under app/javascript
+ *   to inline first, the same way (for imported classes, not mixins)
  */
-export async function strippedSource(relativePath) {
+export async function strippedSource(relativePath, { inline = [] } = {}) {
   const file = path.join(appJavascript, relativePath)
   const source = await readFile(file, "utf8")
 
@@ -32,6 +34,13 @@ export async function strippedSource(relativePath) {
   }
 
   const mixins = []
+  for (const other of inline) {
+    mixins.push(
+      (await readFile(path.join(appJavascript, other), "utf8"))
+        .replace(IMPORT, "")
+        .replace(/^export /gm, ""),
+    )
+  }
   for (const [, list] of source.matchAll(
     /^Object\.assign\(\s*\w+\.prototype,([\s\S]*?)\)$/gm,
   )) {

@@ -1,15 +1,11 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/event_handlers.js",
-    import.meta.url,
-  ),
-  "utf8",
+const withoutImports = await strippedSource(
+  "controllers/maps/maplibre/event_handlers.js",
+  { inline: ["controllers/maps/maplibre/track_selection.js"] },
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const stubs = `class PointDragGesture {
   attach() {}
   detach() {}
