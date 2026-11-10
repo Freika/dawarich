@@ -24,6 +24,12 @@ RSpec.describe Homes::CreateAtLocation do
     expect(existing.reload).not_to be_demo
   end
 
+  it "does not reuse another user's place at that spot" do
+    create(:place, user: create(:user), latitude: 52.52, longitude: 13.405)
+    expect { home }.to change(user.places, :count).by(1)
+    expect(home.place.user).to eq(user)
+  end
+
   it 'does not reuse an archived place' do
     create(:place, user:, latitude: 52.52, longitude: 13.405, archived: true)
     expect { home }.to change(user.places, :count).by(1)
