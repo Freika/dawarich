@@ -3,7 +3,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 
 /** The main map's replay panel, created on first use. */
-export function ensureMapReplayPanel(controller) {
+function ensureMapReplayPanel(controller) {
   controller.replayPanel ||= new ReplayPanel({
     controller,
     map: controller.map,
@@ -33,11 +33,59 @@ export function ensureMapReplayPanel(controller) {
   return controller.replayPanel
 }
 
+/** The replay actions the main map's views bind. */
+export class MapReplayActions {
+  constructor(controller) {
+    this.controller = controller
+  }
+
+  get panel() {
+    return this.controller.replayPanel
+  }
+
+  async toggleReplay() {
+    if (!this.controller.hasReplayPanelTarget) return
+    await ensureMapReplayPanel(this.controller).toggle()
+  }
+
+  replayScrubberHover(event) {
+    this.panel?.scrubberHover(event)
+  }
+
+  replayCyclePrev() {
+    this.panel?.cyclePrev()
+  }
+
+  replayCycleNext() {
+    this.panel?.cycleNext()
+  }
+
+  replayTogglePlayback() {
+    this.panel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.panel?.recenterFollow()
+  }
+
+  replaySpeedChange(event) {
+    this.panel?.speedChange(event)
+  }
+
+  replayTrack(event) {
+    if (!this.controller.hasReplayPanelTarget) return
+    return replayTrackFrom(
+      this.controller,
+      event.currentTarget.dataset.trackStart,
+    )
+  }
+}
+
 /**
  * The timeline's track Replay button: pause a running replay, resume an open
  * one, or open the panel at the track's day and start minute.
  */
-export async function replayTrackFrom(controller, trackStart) {
+async function replayTrackFrom(controller, trackStart) {
   const panel = ensureMapReplayPanel(controller)
 
   if (panel.isPlaying) {

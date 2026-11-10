@@ -15,7 +15,7 @@ import { InfoPanel } from "./maplibre/info_panel"
 import { LoadingBadge } from "./maplibre/loading_badge"
 import { buildMapFeatures, listenToDocument } from "./maplibre/map_bootstrap"
 import { MapInitializer } from "./maplibre/map_initializer"
-import { ensureMapReplayPanel, replayTrackFrom } from "./maplibre/map_replay"
+import { MapReplayActions } from "./maplibre/map_replay"
 import { SettingsController } from "./maplibre/settings_manager"
 import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
 
@@ -152,6 +152,7 @@ export default class MapController extends Controller {
     this.loadingBadge = new LoadingBadge(this)
     this.infoPanel = new InfoPanel(this)
     this.dateRange = new MapDateRange(this)
+    this.replayActions = new MapReplayActions(this)
     this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
@@ -454,40 +455,6 @@ export default class MapController extends Controller {
     }
   }
 
-  async toggleReplay() {
-    if (!this.hasReplayPanelTarget) return
-    await ensureMapReplayPanel(this).toggle()
-  }
-
-  replayScrubberHover(event) {
-    this.replayPanel?.scrubberHover(event)
-  }
-
-  replayCyclePrev() {
-    this.replayPanel?.cyclePrev()
-  }
-
-  replayCycleNext() {
-    this.replayPanel?.cycleNext()
-  }
-
-  replayTogglePlayback() {
-    this.replayPanel?.togglePlayback()
-  }
-
-  replayRecenterFollow() {
-    this.replayPanel?.recenterFollow()
-  }
-
-  replaySpeedChange(event) {
-    this.replayPanel?.speedChange(event)
-  }
-
-  replayTrack(event) {
-    if (!this.hasReplayPanelTarget) return
-    return replayTrackFrom(this, event.currentTarget.dataset.trackStart)
-  }
-
   async toggleTrackPoints(event) {
     const target = event?.currentTarget
     if (!target) return
@@ -560,6 +527,16 @@ const FORWARDED_ACTIONS = {
     "startCreatePlace",
   ],
   infoPanel: ["handleDelete", "deletePoint", "markPointValid"],
+  replayActions: [
+    "toggleReplay",
+    "replayScrubberHover",
+    "replayCyclePrev",
+    "replayCycleNext",
+    "replayTogglePlayback",
+    "replayRecenterFollow",
+    "replaySpeedChange",
+    "replayTrack",
+  ],
   dateRange: [
     "monthChanged",
     "handleTimelineDateNavigated",
