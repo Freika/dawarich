@@ -131,7 +131,7 @@ pending_imports_cleanup:
   description: "Sweep expired or old-claimed pending imports"
 
 trip_detecting_job:
-  cron: "35 0 * * *" # every day at 00:35
+  cron: "35 0 * * *" # every day at 00:35 UTC
   class: "Trips::BulkDetectJob"
   queue: trips
   active_job: true

@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe Trips::DetectJob do
+  include ActiveSupport::Testing::TimeHelpers
   include Rails.application.routes.url_helpers
 
   let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin', 'locale' => 'en' }) }
@@ -44,7 +45,9 @@ RSpec.describe Trips::DetectJob do
     expect { described_class.perform_now(user.id) }.to change(user.notifications, :count).by(1)
     expect(user.trips.origin_detected.count).to eq(2)
     expect(user.notifications.last).to have_attributes(
-      kind: 'info', title: include('2'), content: include(trips_path(origin: 'detected'))
+      kind: 'info',
+      title: I18n.t('trip_detection.notifications.many.title', count: 2),
+      content: include(trips_path(origin: 'detected'))
     )
   end
 
@@ -64,6 +67,42 @@ RSpec.describe Trips::DetectJob do
   it 'does nothing when detection is switched off' do
     user.update!(settings: user.settings.merge('trip_detection_enabled' => 'false'))
     expect { described_class.perform_now(user.id) }.not_to change(Trip, :count)
+    expect(user.notifications).to be_empty
+  end
+
+  context 'when another run holds the lock of the user' do
+    def with_lock_held_elsewhere
+      config = ActiveRecord::Base.connection_db_config.configuration_hash
+      other = PG.connect(host: config[:host], port: config[:port], dbname: config[:database],
+                         user: config[:username], password: config[:password])
+      key = Trips::Detection::RunLock::NAMESPACE | user.id
+      other.exec("SELECT pg_advisory_lock(#{key})")
+      yield
+    ensure
+      other&.close
+    end
+
+    it 'creates nothing and runs again a minute later' do
+      with_lock_held_elsewhere do
+        freeze_time do
+          expect { described_class.perform_now(user.id) }
+            .to have_enqueued_job(described_class).with(user.id).at(1.minute.from_now)
+          expect(user.trips).to be_empty
+          expect(user.notifications).to be_empty
+        end
+      end
+    end
+  end
+
+  it 'releases the lock of the user after a run' do
+    described_class.perform_now(user.id)
+    key = Trips::Detection::RunLock::NAMESPACE | user.id
+    config = ActiveRecord::Base.connection_db_config.configuration_hash
+    other = PG.connect(host: config[:host], port: config[:port], dbname: config[:database],
+                       user: config[:username], password: config[:password])
+    expect(other.exec("SELECT pg_try_advisory_lock(#{key})").getvalue(0, 0)).to eq('t')
+  ensure
+    other&.close
   end
 
   it 'ignores a missing user' do

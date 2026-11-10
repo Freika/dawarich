@@ -2,15 +2,24 @@
 
 # Runs Trip Detection for one user and tells them about the Detected Trips it
 # created. The Runner writes the user row itself, so this job never saves the
-# user. A RecordNotUnique from a simultaneous run is left to the retry, which
-# finds the trips in place and creates nothing.
+# user. Runs of one user are serialized by Trips::Detection::RunLock: a run
+# that finds the lock taken tries again a minute later.
 class Trips::DetectJob < ApplicationJob
   queue_as :trips
+
+  RETRY_WAIT = 1.minute
 
   def perform(user_id)
     user = User.find_by(id: user_id)
     return unless user&.safe_settings&.trip_detection_enabled?
 
+    ran = Trips::Detection::RunLock.try_with(user.id) { detect(user) }
+    self.class.set(wait: RETRY_WAIT).perform_later(user_id) unless ran
+  end
+
+  private
+
+  def detect(user)
     trips = Trips::Detection::Runner.new(user).call
     return if trips.empty?
 
@@ -18,8 +27,6 @@ class Trips::DetectJob < ApplicationJob
       Notifications::Create.new(user:, kind: :info, **message(trips)).call
     end
   end
-
-  private
 
   def message(trips)
     routes = Rails.application.routes.url_helpers
