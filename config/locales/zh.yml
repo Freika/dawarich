@@ -443,6 +443,7 @@ zh:
         create_account_join_family: 创建帐户并加入家庭 →
         already_have_an_account: 已有帐户？
         sign_in_to_accept_invitation: 登录以接受邀请
+        open_in_the_dawarich_app: "在 Dawarich 应用中打开"
         not_interested_you_can_simply_close_this_page: 不感兴趣？您只需关闭此页面即可。
       index:
         invited: 已邀请

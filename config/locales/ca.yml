@@ -441,6 +441,7 @@ ca:
         create_account_join_family: "Crea el compte i uneix-te a la família →"
         already_have_an_account: Ja tens un compte?
         sign_in_to_accept_invitation: Inicia sessió per acceptar la invitació
+        open_in_the_dawarich_app: "Obre a l’app de Dawarich"
         not_interested_you_can_simply_close_this_page: No t'interessa? Simplement pots tancar aquesta pàgina.
       index:
         invited: Convidat

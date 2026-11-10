@@ -441,6 +441,7 @@ pl:
         create_account_join_family: Utwórz konto i dołącz do rodziny →
         already_have_an_account: Masz już konto?
         sign_in_to_accept_invitation: Zaloguj się, aby zaakceptować zaproszenie
+        open_in_the_dawarich_app: "Otwórz w aplikacji Dawarich"
         not_interested_you_can_simply_close_this_page: Nie jesteś zainteresowany? Po prostu zamknij tę stronę.
       index:
         invited: Zaproszono

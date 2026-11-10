@@ -42,9 +42,11 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
 - Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
 - The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
+- The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour.
 
 ### Fixed
 
+- On Dawarich Cloud, an invitation into the last free seat of a family can now be accepted; before, it was refused as if the family were full.
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
 - Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
 - When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)

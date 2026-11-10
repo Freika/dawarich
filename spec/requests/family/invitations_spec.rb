@@ -46,6 +46,26 @@ RSpec.describe 'Family::Invitations', type: :request do
       end
     end
 
+    context 'with the Dawarich app' do
+      it 'offers a link that opens the invitation in the app' do
+        get "/invitations/#{invitation.token}"
+
+        link = Nokogiri::HTML(response.body).at_css('a[href^="dawarich://invite?"]')
+        expect(link).to be_present
+        query = Rack::Utils.parse_query(URI.parse(link['href']).query)
+        expect(query).to eq('server' => 'http://www.example.com', 'token' => invitation.token)
+        expect(link.text.strip).to eq(I18n.t('family.invitations.show.open_in_the_dawarich_app'))
+      end
+
+      it 'offers the link to a signed-in visitor too' do
+        sign_in create(:user)
+
+        get "/invitations/#{invitation.token}"
+
+        expect(response.body).to include('dawarich://invite?')
+      end
+    end
+
     context 'when invitation is expired' do
       before { invitation.update!(expires_at: 1.day.ago) }
 
@@ -267,6 +287,12 @@ RSpec.describe 'Family::Invitations', type: :request do
       expect(response.body).to include(
         CGI.escapeHTML(I18n.t('family.invitations.show.this_family_s_plan_is_currently_inactive_you_can_accept'))
       )
+    end
+
+    it 'does not offer the app link' do
+      get public_invitation_path(invite.token)
+
+      expect(response.body).not_to include('dawarich://invite')
     end
   end
 end

@@ -441,6 +441,7 @@ en:
         create_account_join_family: Create Account & Join Family →
         already_have_an_account: Already have an account?
         sign_in_to_accept_invitation: Sign in to accept invitation
+        open_in_the_dawarich_app: "Open in the Dawarich app"
         not_interested_you_can_simply_close_this_page: Not interested? You can simply close this page.
       index:
         invited: Invited
