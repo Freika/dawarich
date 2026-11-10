@@ -31,6 +31,18 @@ RSpec.describe 'Homes', type: :request do
       expect(response.body).to include('data-onboarding-modal-target="homeScreen"')
     end
 
+    it 'does not start its map until the screen is shown' do
+      get map_path
+      expect(response.body).not_to include('data-controller="place-location"')
+    end
+
+    it 'is reached from the import screen too' do
+      get map_path
+      import_screen = Nokogiri::HTML(response.body).at_css('[data-onboarding-modal-target="importScreen"]')
+      expect(import_screen.at_css('[data-action="onboarding-modal#finish"]').text.strip)
+        .to eq(I18n.t('trip_detection.onboarding.continue'))
+    end
+
     it 'is left out for a user who has a Home' do
       create(:home, user:)
       get map_path

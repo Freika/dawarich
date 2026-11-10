@@ -65,3 +65,5 @@ zh:
       location_denied: "无法读取您的位置。您可以点击地图来标出住所，也可以稍后在“地点”页面设置。"
       home_saved: "您的住所已保存。Dawarich 将查找您的旅行。"
       invalid_location: "请先在地图上选择一个位置。"
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "继续"

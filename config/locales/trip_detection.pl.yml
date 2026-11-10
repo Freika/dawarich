@@ -67,3 +67,5 @@ pl:
       location_denied: "Nie udało się odczytać Twojej lokalizacji. Kliknij mapę, aby wskazać swój dom, albo ustaw go później na stronie Miejsca."
       home_saved: "Twój dom został zapisany. Dawarich poszuka Twoich podróży."
       invalid_location: "Najpierw wybierz miejsce na mapie."
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "Dalej"

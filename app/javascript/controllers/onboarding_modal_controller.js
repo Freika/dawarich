@@ -9,6 +9,7 @@ export default class extends Controller {
     "importScreen",
     "trackScreen",
     "homeScreen",
+    "homeMap",
     "homeLatitude",
     "homeLongitude",
     "homeSubmit",
@@ -110,8 +111,8 @@ export default class extends Controller {
 
   showHome() {
     this.switchScreen("homeScreen")
-    // The map was created while the screen was hidden; let it size itself.
-    window.dispatchEvent(new Event("resize"))
+    // Attached only now, so the modal (rendered on every page) starts no map until this step is shown.
+    this.homeMapTarget.dataset.controller ||= "place-location"
   }
 
   locateHome() {

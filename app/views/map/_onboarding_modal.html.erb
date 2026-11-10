@@ -147,7 +147,8 @@
             </div>
           </label>
 
-          <div class="flex justify-end">
+          <div class="flex flex-wrap justify-end gap-2">
+            <button type="button" class="btn btn-ghost" data-action="onboarding-modal#finish"><%= t('trip_detection.onboarding.continue') %></button>
             <%= form.submit t('.import_files'), class: "btn btn-primary",
                 data: { upload_target: "submit" } %>
           </div>
@@ -226,14 +227,14 @@
       </div>
 
       <%# ═══ Home Screen ═══ %>
-      <%# Only while onboarding is open and no Home exists: its map starts on render, on every page. %>
+      <%# Only while onboarding is open and no Home exists. showHome() attaches place-location, so the map starts only when shown. %>
       <% if onboarding_modal_showable?(current_user) && !has_home %>
         <div data-onboarding-modal-target="homeScreen" class="hidden">
           <h3 class="text-xl font-medium mb-2"><%= t('trip_detection.onboarding.title') %></h3>
           <p class="text-sm text-base-content/70 mb-4"><%= t('trip_detection.onboarding.intro') %></p>
 
           <%= form_with url: homes_path, data: { action: 'turbo:submit-end->onboarding-modal#homeSaved' } do |f| %>
-            <div data-controller="place-location" data-place-location-editable-value="true"
+            <div data-onboarding-modal-target="homeMap" data-place-location-editable-value="true"
                  data-place-location-latitude-value="0" data-place-location-longitude-value="0"
                  data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
                  data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"

@@ -65,3 +65,5 @@ fr:
       location_denied: "Votre position n’a pas pu être lue. Cliquez plutôt sur la carte pour placer votre domicile, ou définissez-le plus tard sur la page Lieux."
       home_saved: "Votre domicile est enregistré. Dawarich va chercher vos voyages."
       invalid_location: "Choisissez d’abord un lieu sur la carte."
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "Continuer"
