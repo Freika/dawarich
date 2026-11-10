@@ -21,6 +21,24 @@ RSpec.describe Families::Memberships::Destroy do
         expect(member.reload.family_membership).to be_nil
       end
 
+      # Every other writer to a family (invite, accept, revoke, delete) locks
+      # the family row first; without it a removal can deadlock with an accept.
+      it 'takes the family lock before removing the membership' do
+        queries = []
+        subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+          queries << payload[:sql]
+        end
+
+        service.call
+
+        lock_at = queries.index { |sql| sql.match?(/FROM "families".*FOR UPDATE/m) }
+        delete_at = queries.index { |sql| sql.match?(/DELETE FROM "family_memberships"/) }
+        expect(lock_at).not_to be_nil
+        expect(lock_at).to be < delete_at
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+
       it 'sends notification to member who left' do
         expect { service.call }.to change(Notification, :count).by(2)
 

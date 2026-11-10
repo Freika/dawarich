@@ -14,10 +14,13 @@ module Families
       def call
         return false unless validate_can_leave
 
-        @family_name = member_to_remove.family.name
-        @family_owner = member_to_remove.family.owner
+        family = member_to_remove.family
+        @family_name = family.name
+        @family_owner = family.owner
 
-        ActiveRecord::Base.transaction do
+        # Family first, then users: the lock order of every other writer to a
+        # family. Without it a removal can deadlock with a concurrent accept.
+        family.with_lock do
           remove_membership
           send_notifications
         end
