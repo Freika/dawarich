@@ -33,7 +33,7 @@ module Trips
       private
 
       def range
-        return I18n.l(@end_date, format: I18n.t('trip_detection.range.same_month.end')) if @start_date == @end_date
+        return I18n.l(@end_date, format: I18n.t('trip_detection.range.cross_year.end')) if @start_date == @end_date
 
         span = if @start_date.year != @end_date.year then 'cross_year'
                elsif @start_date.month != @end_date.month then 'same_year'

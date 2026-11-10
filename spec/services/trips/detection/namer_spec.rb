@@ -82,6 +82,12 @@ RSpec.describe Trips::Detection::Namer do
     expect(namer.call).to eq('Portugal, Nov 2026')
   end
 
+  it 'writes one full date when the trip starts and ends on the same local day' do
+    namer = described_class.new(user, started_at: Time.utc(2026, 10, 12, 0), ended_at: Time.utc(2026, 10, 12, 20))
+
+    I18n.with_locale(:zh) { expect(namer.fallback).to eq('旅行，2026年10月12日') }
+  end
+
   it 'uses the current locale' do
     I18n.with_locale(:de) { expect(namer.fallback).to eq('Reise, 12.–18. Okt 2026') }
   end
