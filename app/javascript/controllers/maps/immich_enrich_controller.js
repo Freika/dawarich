@@ -175,12 +175,9 @@ export default class extends Controller {
     const startIso = `${startDate}T00:00`
     const endIso = `${endDate}T23:59`
 
-    // Update map controller's date values and reload map data
     const mapController = this.findMapController()
     if (mapController) {
-      mapController.startDateValue = startIso
-      mapController.endDateValue = endIso
-      mapController.loadMapData()
+      void mapController.setDateRange(startIso, endIso)
       this.rememberShownDates()
     }
 

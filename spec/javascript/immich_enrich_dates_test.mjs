@@ -83,7 +83,10 @@ function mapShowing(start, end) {
   return {
     startDateValue: start,
     endDateValue: end,
-    loadMapData() {},
+    setDateRange(startAt, endAt) {
+      this.startDateValue = startAt
+      this.endDateValue = endAt
+    },
   }
 }
 
@@ -184,6 +187,7 @@ test("after a scan the panel follows the map again", async () => {
   panel.startDateTarget.value = "2026-01-05"
   await panel.scan()
   console.error = consoleError
+  assert.equal(map.startDateValue, "2026-01-05T00:00")
   map.startDateValue = "2026-03-01T00:00:00+00:00"
   map.endDateValue = "2026-03-31T23:59:00+00:00"
   panel.toggle()

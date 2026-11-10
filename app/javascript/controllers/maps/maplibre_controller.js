@@ -427,26 +427,17 @@ export default class extends Controller {
     )
   }
 
-  /**
-   * Month selector changed
-   */
+  /** Month selector changed. Called by the private E2E suite. */
   monthChanged(event) {
     const { startDate, endDate } = DateManager.parseMonthSelector(
       event.target.value,
     )
-    this.startDateValue = startDate
-    this.endDateValue = endDate
-
-    this.layerManager.getLayer("map-editor")?.close()
-    this.timelineBridge.clearDayHighlight()
-    this.loadMapData()
-    this.refreshTimelineFeedIfActive()
-    this.familyManager.debouncedLoadHistory()
+    return this.setDateRange(startDate, endDate)
   }
 
   /**
    * Timeline panel requested a new day (SPA navigation — no page reload).
-   * Mirrors `monthChanged` exactly, including the date format: the Points/Tracks
+   * Uses the month selector's date format: the Points/Tracks
    * API expects `DateManager.formatDateForAPI`'s local `YYYY-MM-DDTHH:MM+OFFSET`
    * shape. Using `Date#toISOString()` (UTC `Z` suffix) here was causing Tracks
    * to come back empty because the server parsed the dates differently.
@@ -472,8 +463,16 @@ export default class extends Controller {
     const end = toApiDate(endAt)
     if (!start || !end) return
 
-    this.startDateValue = start
-    this.endDateValue = end
+    await this.setDateRange(start, end, { fitBounds })
+  }
+
+  /**
+   * The one place the selected range changes: every enabled layer, the
+   * Timeline feed and family history reload for it.
+   */
+  async setDateRange(startAt, endAt, { fitBounds = true } = {}) {
+    this.startDateValue = startAt
+    this.endDateValue = endAt
 
     this.layerManager.getLayer("map-editor")?.close()
     this.timelineBridge.clearDayHighlight()
@@ -481,7 +480,7 @@ export default class extends Controller {
     if (anomaliesVisible(SettingsManager.getSettings())) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
-    this.refreshTimelineFeedIfActive?.()
+    this.refreshTimelineFeedIfActive()
     this.familyManager.debouncedLoadHistory()
   }
 

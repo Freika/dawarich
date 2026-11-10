@@ -193,15 +193,19 @@ test("the day's bounds are sent to the map for an ordinary day switch", (t) => {
 })
 
 test("the map honours fitBounds from a timeline navigation", () => {
-  const start = mapControllerSource.indexOf("async navigateTimelineDateRange(")
   const navigate = mapControllerSource.slice(
-    start,
-    mapControllerSource.indexOf("this.refreshTimelineFeedIfActive", start),
+    mapControllerSource.indexOf("async navigateTimelineDateRange("),
+    mapControllerSource.indexOf("async setDateRange("),
+  )
+  const setRange = mapControllerSource.slice(
+    mapControllerSource.indexOf("async setDateRange("),
+    mapControllerSource.indexOf("this.refreshTimelineFeedIfActive"),
   )
 
   assert.match(
     navigate,
     /navigateTimelineDateRange\(\{[^}]*fitBounds = true[^}]*\}\)/,
   )
-  assert.match(navigate, /this\.loadMapData\(\{ fitBounds \}\)/)
+  assert.match(navigate, /this\.setDateRange\(start, end, \{ fitBounds \}\)/)
+  assert.match(setRange, /this\.loadMapData\(\{ fitBounds \}\)/)
 })
