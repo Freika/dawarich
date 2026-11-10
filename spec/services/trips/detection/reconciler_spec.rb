@@ -14,6 +14,21 @@ RSpec.describe Trips::Detection::Reconciler do
     create(:point, user:, timestamp: time.to_i, city:, country:)
   end
 
+  # Runs the block once, right after the reconciler has read the trips it may
+  # replace: a user's edit that lands in the middle of a run.
+  def during_the_run(edit, &run)
+    fired = false
+    on_sql = lambda do |*, payload|
+      sql = payload[:sql]
+      next if fired || !sql.start_with?('SELECT "trips".*') || !sql.include?('"user_edited_at" IS NULL')
+
+      fired = true
+      edit.call
+    end
+    ActiveSupport::Notifications.subscribed(on_sql, 'sql.active_record', &run)
+    expect(fired).to be(true)
+  end
+
   it 'creates a Detected Trip for a free period' do
     expect(created.size).to eq(1)
     expect(created.first).to have_attributes(origin: 'detected', started_at: candidate.started_at,
@@ -66,6 +81,59 @@ RSpec.describe Trips::Detection::Reconciler do
                            started_at: Time.utc(2026, 10, 10, 8), ended_at: Time.utc(2026, 10, 13, 20))
     expect(created).to be_empty
     expect(edited.reload.ended_at).to eq(Time.utc(2026, 10, 13, 20))
+  end
+
+  it 'yields to a dismissed period that overlaps only part of the period' do
+    create(:trip, user:, origin: :detected, started_at: Time.utc(2026, 10, 13), ended_at: Time.utc(2026, 10, 18))
+      .destroy_by_user!
+    expect(created).to be_empty
+  end
+
+  it 'neither removes nor renames a Detected Trip with a note' do
+    noted = create(:trip, user:, origin: :detected, name: 'Old name',
+                          started_at: candidate.started_at, ended_at: candidate.ended_at)
+    stale = create(:trip, user:, origin: :detected, name: 'Kept')
+    [noted, stale].each { |trip| create(:note, user:, attachable: trip, noted_at: trip.started_at + 1.hour) }
+    Trip.where(id: [noted.id, stale.id]).update_all(user_edited_at: nil) # the note alone must hold them
+
+    expect(created).to be_empty
+    expect(noted.reload.name).to eq('Old name')
+    expect(Trip.exists?(stale.id)).to be(true)
+  end
+
+  # Ruling R21
+  it 'keeps a trip the user annotates while the run is under way' do
+    stale = create(:trip, user:, origin: :detected, name: 'Kept')
+
+    during_the_run(-> { create(:note, user:, attachable: stale, noted_at: stale.started_at + 1.hour) }) do
+      described_class.new(user, []).call
+    end
+
+    expect(stale.reload.name).to eq('Kept')
+  end
+
+  it 'keeps the name a user gives a trip while the run is under way' do
+    trip = create(:trip, user:, origin: :detected, name: 'Trip, 10–14 Oct 2026',
+                         started_at: candidate.started_at, ended_at: candidate.ended_at)
+    point_at(Time.utc(2026, 10, 11, 12), city: 'Lisbon', country: 'Portugal')
+
+    user_edit = -> { Trip.where(id: trip.id).update_all(name: 'Our honeymoon', user_edited_at: Time.current) }
+    during_the_run(user_edit) do
+      expect(described_class.new(user, [candidate]).call).to be_empty
+    end
+
+    expect(trip.reload.name).to eq('Our honeymoon')
+  end
+
+  it 'creates nothing over a trip the user annotates while the run is under way' do
+    stale = create(:trip, user:, origin: :detected, started_at: Time.utc(2026, 10, 10, 8),
+                          ended_at: Time.utc(2026, 10, 13, 20))
+
+    during_the_run(-> { create(:note, user:, attachable: stale, noted_at: stale.started_at + 1.hour) }) do
+      expect(created).to be_empty
+    end
+
+    expect(user.trips.pluck(:id)).to eq([stale.id])
   end
 
   it 'never removes a Detected Trip with a share link' do

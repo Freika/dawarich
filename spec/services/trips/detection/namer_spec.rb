@@ -40,6 +40,15 @@ RSpec.describe Trips::Detection::Namer do
     expect(namer.call).to eq('Porto, Oct 2026')
   end
 
+  it 'breaks a full tie between cities by name' do
+    noon = Time.utc(2026, 10, 13, 12).to_i
+    %w[Porto Lisbon Faro].each_with_index do |city, i|
+      create(:point, user:, timestamp: noon, city:, country: 'Portugal', tracker_id: "device-#{i}")
+    end
+
+    expect(namer.call).to eq('Faro, Oct 2026')
+  end
+
   it 'lists up to three countries in order of arrival' do
     %w[Portugal Spain France Italy].each_with_index do |country, i|
       point_at(Time.utc(2026, 10, 12 + i, 12), city: "City #{i}", country:)

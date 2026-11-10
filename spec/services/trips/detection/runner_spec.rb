@@ -64,6 +64,26 @@ RSpec.describe Trips::Detection::Runner do
     expect(user.reload.safe_settings.trip_detection_long_absence?).to be(false)
   end
 
+  it 'leaves the user row alone when the long-absence flag does not change' do
+    in_lisbon(Time.utc(2026, 3, 1, 12))
+    in_lisbon(Time.utc(2026, 6, 29, 12))
+    at_home(Time.utc(2026, 6, 30, 12))
+    run
+    user.update_columns(updated_at: 1.day.ago)
+    written_at = user.reload.updated_at
+
+    described_class.new(user).call
+    expect(user.reload.updated_at).to eq(written_at)
+  end
+
+  it 'writes nothing for a user who never had a long absence' do
+    user.update_columns(updated_at: 1.day.ago)
+    written_at = user.reload.updated_at
+    run
+    expect(user.reload.updated_at).to eq(written_at)
+    expect(user.settings).not_to have_key('trip_detection_long_absence')
+  end
+
   it 'keeps the other settings when it writes the long-absence flag' do
     in_lisbon(Time.utc(2026, 3, 1, 12))
     in_lisbon(Time.utc(2026, 6, 29, 12))

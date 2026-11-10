@@ -26,10 +26,13 @@ module Trips
       def reconcile
         wanted = candidates.reject { |candidate| fixed_periods.any? { |period| overlap?(candidate, period) } }
         kept, stale = replaceable.to_a.partition { |trip| wanted.any? { |candidate| same_period?(trip, candidate) } }
-        stale.each(&:destroy!)
+        touched = stale.reject { |trip| guarded(trip).first&.destroy! }
         rename(kept)
 
-        wanted.reject { |candidate| kept.any? { |trip| same_period?(trip, candidate) } }.map do |candidate|
+        fresh = wanted.reject do |candidate|
+          kept.any? { |trip| same_period?(trip, candidate) } || touched.any? { |trip| overlap?(candidate, trip) }
+        end
+        fresh.map do |candidate|
           user.trips.create!(origin: :detected, started_at: candidate.started_at, ended_at: candidate.ended_at,
                              name: namer(candidate).call, skip_calculation_enqueue: true)
         end
@@ -49,8 +52,16 @@ module Trips
                            user.trip_detection_dismissals.pluck(:started_at, :ended_at)
       end
 
-      def overlap?(candidate, (started_at, ended_at))
+      def overlap?(candidate, period)
+        started_at, ended_at = period.is_a?(Trip) ? [period.started_at, period.ended_at] : period
         candidate.started_at <= ended_at && started_at <= candidate.ended_at
+      end
+
+      # Every write re-reads the trip through the scope (ruling R21): a user who
+      # edits, annotates or shares it while the run is under way wins. No row
+      # lock, so the user's own save never waits for a run.
+      def guarded(trip)
+        replaceable.where(id: trip.id)
       end
 
       def same_period?(trip, candidate)
@@ -62,7 +73,7 @@ module Trips
       def rename(trips)
         trips.each do |trip|
           name = namer(trip).call
-          trip.update_columns(name:, updated_at: Time.current) if trip.name != name
+          guarded(trip).update_all(name:, updated_at: Time.current) if trip.name != name
         end
       end
 
