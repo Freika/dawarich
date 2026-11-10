@@ -1,4 +1,4 @@
-import { VectorTileLayer } from "./vector_tile_layer"
+import { VectorTileLayer } from "./base_layer"
 
 /**
  * Vector-tile line layer for canonical backend Tracks.

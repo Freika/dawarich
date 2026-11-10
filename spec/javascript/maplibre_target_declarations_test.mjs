@@ -24,15 +24,9 @@ async function boundTargetNames() {
   return names
 }
 
-// The controller extends ReplayHost; Stimulus merges both target lists.
-const replayHostUrl = new URL(
-  "../../app/javascript/maps_maplibre/managers/replay_host.js",
-  import.meta.url,
-)
-
 async function declaredTargetNames() {
   const names = new Set()
-  for (const url of [controllerUrl, replayHostUrl]) {
+  for (const url of [controllerUrl]) {
     const source = await readFile(url, "utf8")
     const block = source.match(/static targets = \[([\s\S]*?)\]/)
     assert.ok(block, `${url.pathname} declares no static targets block`)

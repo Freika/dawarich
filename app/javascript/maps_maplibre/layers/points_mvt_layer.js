@@ -1,6 +1,6 @@
 import { getMarkerStrokeColor } from "../utils/marker_theme"
+import { VectorTileLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
-import { VectorTileLayer } from "./vector_tile_layer"
 
 export class PointsMvtLayer extends VectorTileLayer {
   // Ten minutes in a cell contributes a heatmap weight of one.

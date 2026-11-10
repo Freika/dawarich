@@ -10,11 +10,7 @@ const source = await readFile(
   "utf8",
 )
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-globalThis.__TrackSelection = (
-  await import("controllers/maps/maplibre/track_selection")
-).TrackSelection
-const stubs = `const TrackSelection = globalThis.__TrackSelection
-class PointDragGesture {
+const stubs = `class PointDragGesture {
   attach() {}
   detach() {}
   cancel() {}

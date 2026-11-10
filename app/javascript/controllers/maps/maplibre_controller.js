@@ -1,9 +1,9 @@
+import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import { deletePlace } from "maps_maplibre/components/place_actions"
 import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
 import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
-import { ReplayHost } from "maps_maplibre/managers/replay_host"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
@@ -38,7 +38,7 @@ import { VisitsManager } from "./maplibre/visits_manager"
  * Main map controller for Maps V2
  * Coordinates between different managers and handles UI interactions
  */
-export default class extends ReplayHost {
+export default class extends Controller {
   static values = {
     apiKey: String,
     startDate: String,
@@ -118,6 +118,25 @@ export default class extends ReplayHost {
     "transportationDirtyMessage",
     // Transportation enabled modes allowlist
     "enabledModeCheckbox",
+    // Replay panel. Not inherited from ReplayHost: the protected
+    // spec/regressions harnesses load this file with only a bare Controller.
+    "replayPanel",
+    "replayScrubber",
+    "replayScrubberTrack",
+    "replayDensityContainer",
+    "replayDayDisplay",
+    "replayDayCount",
+    "replayTimeDisplay",
+    "replayDataIndicator",
+    "replayCycleControls",
+    "replayPointCounter",
+    "replayPlayButton",
+    "replayFollowButton",
+    "replayPlayIcon",
+    "replayPauseIcon",
+    "replaySpeedSlider",
+    "replaySpeedLabel",
+    "replaySpeedDisplay",
     // Timeline feed
     "timelineFeedContainer",
     // WebGL error
@@ -877,6 +896,30 @@ export default class extends ReplayHost {
   async toggleReplay() {
     if (!this.hasReplayPanelTarget) return
     await ensureMapReplayPanel(this).toggle()
+  }
+
+  replayScrubberHover(event) {
+    this.replayPanel?.scrubberHover(event)
+  }
+
+  replayCyclePrev() {
+    this.replayPanel?.cyclePrev()
+  }
+
+  replayCycleNext() {
+    this.replayPanel?.cycleNext()
+  }
+
+  replayTogglePlayback() {
+    this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
+  }
+
+  replaySpeedChange(event) {
+    this.replayPanel?.speedChange(event)
   }
 
   replayTrack(event) {

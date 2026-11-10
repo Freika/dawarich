@@ -1,6 +1,6 @@
 import * as maplibregl from "maplibre-gl"
 import { Protocol } from "pmtiles"
-import { VectorTileLayer } from "./vector_tile_layer"
+import { VectorTileLayer } from "./base_layer"
 
 let protocolRegistered = false
 

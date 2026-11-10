@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { TrackSelection } from "controllers/maps/maplibre/track_selection"
+import { TrackSelection } from "controllers/maps/maplibre/event_handlers"
 import { Toast } from "maps_maplibre/components/toast"
 
 function harness(fetchedFeature, pointTileRange = undefined) {

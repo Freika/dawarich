@@ -11,7 +11,6 @@ const source = await readFile(
 )
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const stubs = `const translate = (key) => key
-class TrackSelection {}
 class PointDragGesture {
   attach() {}
   detach() {}
