@@ -42,3 +42,14 @@ zh:
       remove: "删除"
       add: "添加时间段"
       end_before_start: "“至”不能早于“从”。"
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "显示"
+      all: "全部旅行"
+      manual: "我创建的"
+      detected: "自动发现的"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "添加您的住所，Dawarich 就能自动发现您的旅行。"
+      long_absence: "Dawarich 跳过了一段离家超过 90 天的时间。如果您当时住在别处，请添加那个更早的住所。"
+      add_home: "在“地点”页面添加住所"

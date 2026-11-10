@@ -42,3 +42,14 @@ de:
       remove: "Entfernen"
       add: "Zeitraum hinzufügen"
       end_before_start: "„Bis“ darf nicht vor „Von“ liegen."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Anzeigen"
+      all: "Alle Reisen"
+      manual: "Von mir erstellt"
+      detected: "Automatisch gefunden"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Füge dein Zuhause hinzu, damit Dawarich deine Reisen automatisch finden kann."
+      long_absence: "Dawarich hat eine Zeit von mehr als 90 Tagen außerhalb deines Zuhauses übersprungen. Wenn du damals woanders gewohnt hast, füge dieses frühere Zuhause hinzu."
+      add_home: "Zuhause auf der Seite „Orte“ hinzufügen"

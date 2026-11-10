@@ -44,3 +44,14 @@ pl:
       remove: "Usuń"
       add: "Dodaj okres"
       end_before_start: "Data „Do” nie może być wcześniejsza niż „Od”."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Pokaż"
+      all: "Wszystkie podróże"
+      manual: "Utworzone przeze mnie"
+      detected: "Znalezione automatycznie"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Dodaj swój dom, aby Dawarich mógł automatycznie znajdować Twoje podróże."
+      long_absence: "Dawarich pominął okres dłuższy niż 90 dni poza domem. Jeśli mieszkałeś(-aś) wtedy gdzie indziej, dodaj ten wcześniejszy dom."
+      add_home: "Dodaj dom na stronie Miejsca"

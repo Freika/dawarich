@@ -1,0 +1,15 @@
+<% settings = current_user.safe_settings %>
+<% if settings.trip_detection_enabled? %>
+  <% hints = [] %>
+  <% hints << t('trip_detection.hints.no_home') unless current_user.homes.exists? %>
+  <% hints << t('trip_detection.hints.long_absence') if settings.trip_detection_long_absence? %>
+  <% hints.each do |hint| %>
+    <div role="alert" class="alert mb-4" data-testid="trip-detection-hint">
+      <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
+      <p class="min-w-0 [overflow-wrap:anywhere]">
+        <%= hint %>
+        <%= link_to t('trip_detection.hints.add_home'), places_path, class: 'link link-primary whitespace-normal' %>
+      </p>
+    </div>
+  <% end %>
+<% end %>

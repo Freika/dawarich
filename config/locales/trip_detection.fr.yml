@@ -42,3 +42,14 @@ fr:
       remove: "Supprimer"
       add: "Ajouter une période"
       end_before_start: "« Au » ne peut pas précéder « Du »."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Afficher"
+      all: "Tous les voyages"
+      manual: "Créés par moi"
+      detected: "Trouvés automatiquement"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Ajoutez votre domicile pour que Dawarich puisse trouver vos voyages automatiquement."
+      long_absence: "Dawarich a ignoré une absence de plus de 90 jours hors de votre domicile. Si vous habitiez ailleurs à ce moment-là, ajoutez ce domicile précédent."
+      add_home: "Ajouter un domicile sur la page Lieux"

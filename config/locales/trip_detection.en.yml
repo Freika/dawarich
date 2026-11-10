@@ -42,3 +42,14 @@ en:
       remove: "Remove"
       add: "Add a period"
       end_before_start: "“Until” can't be before “From”."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Show"
+      all: "All trips"
+      manual: "Created by me"
+      detected: "Found automatically"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Add your Home so Dawarich can find your trips automatically."
+      long_absence: "Dawarich skipped a time away from home longer than 90 days. If you lived somewhere else then, add that earlier Home."
+      add_home: "Add a Home on the Places page"

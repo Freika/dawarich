@@ -95,6 +95,46 @@ RSpec.describe '/trips', type: :request do
         .to be(true)
     end
 
+    describe 'Trip Detection hints' do
+      it 'asks for a Home when detection is on and there is none' do
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+        expect(Nokogiri::HTML(response.body).at_css('[role="alert"] a[href="/places"]')).to be_present
+      end
+
+      it 'shows no hint once there is a Home' do
+        create(:home, user:, place: create(:place, user:))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      end
+
+      it 'shows no hint when detection is off' do
+        user.update!(settings: user.settings.merge('trip_detection_enabled' => false,
+                                                   'trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.long_absence'))
+      end
+
+      it 'explains a skipped long absence' do
+        create(:home, user:, place: create(:place, user:))
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.long_absence'))
+      end
+    end
+
+    it 'filters the list by origin' do
+      create(:trip, user:, name: 'Planned by hand')
+      create(:trip, user:, name: 'Found on its own', origin: :detected)
+
+      get trips_path(origin: 'detected')
+
+      names = Nokogiri::HTML(response.body).css('[data-testid="trip-card-name"]').map { _1.text.strip }
+      expect(names).to eq(['Found on its own'])
+      expect(Nokogiri::HTML(response.body).at_css('select[name="origin"] option[selected]')['value']).to eq('detected')
+    end
+
     context 'when trip path is not yet calculated' do
       let!(:trip_without_path) { create(:trip, user:, path: nil, distance: nil) }
 

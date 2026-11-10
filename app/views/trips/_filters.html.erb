@@ -48,6 +48,16 @@
       </div>
     <% end %>
 
+    <div class="min-w-0 flex-[1_1_9rem]">
+      <%= f.label :origin, t('trip_detection.filter.label'), class: label_class %>
+      <%= f.select :origin,
+                   options_for_select(Trips::IndexQuery::ORIGINS.map { [t("trip_detection.filter.#{_1}"), _1] },
+                                      filters.origin),
+                   { include_blank: t('trip_detection.filter.all') },
+                   class: 'select select-bordered select-sm w-full',
+                   data: { action: 'keydown->auto-submit#noteKeyboard change->auto-submit#submit' } %>
+    </div>
+
     <div class="flex gap-2">
       <%= f.submit t('.apply'), name: nil, class: 'btn btn-sm border-base-content/15 bg-base-100' %>
       <% if filters.active? || filters.sort != Trips::IndexQuery::DEFAULT_SORT %>

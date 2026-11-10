@@ -42,3 +42,14 @@ es:
       remove: "Eliminar"
       add: "Añadir un periodo"
       end_before_start: "«Hasta» no puede ser anterior a «Desde»."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Mostrar"
+      all: "Todos los viajes"
+      manual: "Creados por mí"
+      detected: "Encontrados automáticamente"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Añade tu hogar para que Dawarich pueda encontrar tus viajes automáticamente."
+      long_absence: "Dawarich ha omitido un periodo de más de 90 días fuera de tu hogar. Si entonces vivías en otro lugar, añade ese hogar anterior."
+      add_home: "Añadir un hogar en la página Lugares"

@@ -42,3 +42,14 @@ ca:
       remove: "Elimina"
       add: "Afegeix un període"
       end_before_start: "«Fins a» no pot ser anterior a «Des de»."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Mostra"
+      all: "Tots els viatges"
+      manual: "Creats per mi"
+      detected: "Trobats automàticament"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
+      long_absence: "Dawarich ha omès un període de més de 90 dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
+      add_home: "Afegeix una llar a la pàgina Llocs"
