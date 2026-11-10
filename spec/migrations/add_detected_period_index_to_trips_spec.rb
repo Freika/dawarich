@@ -19,6 +19,20 @@ RSpec.describe AddDetectedPeriodIndexToTrips, :non_transactional do
     expect(connection.index_name_exists?(:trips, 'index_trips_on_detected_period')).to be(false)
   end
 
+  it 'rebuilds an index an aborted concurrent run left invalid' do
+    connection.execute(<<~SQL.squish)
+      UPDATE pg_index SET indisvalid = FALSE
+      WHERE indexrelid = 'index_trips_on_detected_period'::regclass
+    SQL
+
+    migration.migrate(:up)
+
+    valid = connection.select_value(<<~SQL.squish)
+      SELECT indisvalid FROM pg_index WHERE indexrelid = 'index_trips_on_detected_period'::regclass
+    SQL
+    expect(valid).to be(true)
+  end
+
   it 'makes the index unique only for untouched detected trips' do
     migration.migrate(:down)
     migration.migrate(:up)

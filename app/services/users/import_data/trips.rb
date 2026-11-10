@@ -69,6 +69,9 @@ class Users::ImportData::Trips
                                     :stopped
                                   end
 
+    # Homes and dismissals are not in the archive, so a run would remove an untouched
+    # Detected Trip before the user adds a Home; an imported one is the user's.
+    attributes['user_edited_at'] ||= Time.current if attributes['origin'].to_s == 'detected'
     attributes['user_id'] = user.id
     attributes['created_at'] = Time.current
     attributes['updated_at'] = Time.current

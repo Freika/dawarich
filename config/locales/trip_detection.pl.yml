@@ -72,3 +72,6 @@ pl:
       home_exists: "Masz już dom. Możesz go zmienić na stronie Miejsca."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Dalej"
+    # Under "Find trips automatically" when an admin switched it off for the instance.
+    settings:
+      instance_off: "Administrator serwera wyłączył znajdowanie podróży dla wszystkich, więc Dawarich na razie nie znajduje podróży."

@@ -41,6 +41,16 @@ RSpec.describe Trips::BulkDetectJob do
     expect { described_class.perform_now }.to have_enqueued_job(Trips::DetectJob).with(trial.id)
   end
 
+  it 'enqueues nothing when an operator switched trip detection off for the instance' do
+    Flipper.add(:trip_detection)
+    expect { described_class.perform_now }.not_to have_enqueued_job(Trips::DetectJob)
+  end
+
+  it 'still enqueues when the operator enabled trip detection only for some users' do
+    Flipper.enable_actor(:trip_detection, user)
+    expect { described_class.perform_now }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+  end
+
   it 'staggers the users in batches' do
     stub_const("#{described_class}::BATCH_SIZE", 1)
     later = create(:user, status: :active)

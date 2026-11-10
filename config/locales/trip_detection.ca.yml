@@ -70,3 +70,6 @@ ca:
       home_exists: "Ja tens una llar. La pots canviar a la pàgina Llocs."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Continua"
+    # Under "Find trips automatically" when an admin switched it off for the instance.
+    settings:
+      instance_off: "L’administració del servidor ha desactivat la cerca de viatges per a tothom, així que Dawarich no trobarà viatges de moment."

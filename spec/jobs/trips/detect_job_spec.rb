@@ -81,6 +81,37 @@ RSpec.describe Trips::DetectJob do
     expect(user.notifications).to be_empty
   end
 
+  it 'does nothing when an operator switched trip detection off for the instance' do
+    Flipper.add(:trip_detection)
+    expect { described_class.perform_now(user.id) }.not_to change(Trip, :count)
+  end
+
+  it 'runs for a user the operator enabled trip detection for' do
+    Flipper.enable_actor(:trip_detection, user)
+    expect { described_class.perform_now(user.id) }.to change(Trip, :count).by(1)
+  end
+
+  def lock_free?
+    key = Trips::Detection::RunLock::NAMESPACE | user.id
+    config = ActiveRecord::Base.connection_db_config.configuration_hash
+    other = PG.connect(host: config[:host], port: config[:port], dbname: config[:database],
+                       user: config[:username], password: config[:password])
+    other.exec("SELECT pg_try_advisory_lock(#{key})").getvalue(0, 0) == 't'
+  ensure
+    other&.close
+  end
+
+  it 'gives up without a retry when the scan of the history times out, and frees the lock' do
+    stub_const('Trips::Detection::AwayPeriods::STATEMENT_TIMEOUT', '1ms')
+    allow(ActiveRecord::Base.connection).to receive(:select_rows).and_wrap_original do |original, sql, *rest, **options|
+      original.call(sql.to_s.include?('user_homes') ? 'SELECT pg_sleep(1)' : sql, *rest, **options)
+    end
+
+    expect { described_class.perform_now(user.id) }.not_to have_enqueued_job(described_class)
+    expect(Trip.count).to eq(0)
+    expect(lock_free?).to be(true)
+  end
+
   context 'when another run holds the lock of the user' do
     def with_lock_held_elsewhere
       config = ActiveRecord::Base.connection_db_config.configuration_hash
@@ -107,13 +138,7 @@ RSpec.describe Trips::DetectJob do
 
   it 'releases the lock of the user after a run' do
     described_class.perform_now(user.id)
-    key = Trips::Detection::RunLock::NAMESPACE | user.id
-    config = ActiveRecord::Base.connection_db_config.configuration_hash
-    other = PG.connect(host: config[:host], port: config[:port], dbname: config[:database],
-                       user: config[:username], password: config[:password])
-    expect(other.exec("SELECT pg_try_advisory_lock(#{key})").getvalue(0, 0)).to eq('t')
-  ensure
-    other&.close
+    expect(lock_free?).to be(true)
   end
 
   describe '.schedule' do
@@ -131,6 +156,14 @@ RSpec.describe Trips::DetectJob do
       described_class.schedule(user.id)
       described_class.perform_now(user.id)
 
+      expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class).with(user.id)
+    end
+
+    it 'schedules again after enqueueing the run failed' do
+      allow(ActiveJob::Base.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+      expect { described_class.schedule(user.id) }.to raise_error(RedisClient::CannotConnectError)
+
+      allow(ActiveJob::Base.queue_adapter).to receive(:enqueue_at).and_call_original
       expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class).with(user.id)
     end
 

@@ -193,6 +193,9 @@
                       <div class="min-w-0">
                         <span class="label-text font-medium"><%= t(".#{feature}_feature") %></span>
                         <p class="text-sm text-base-content/70 mt-1"><%= t(".#{feature}_feature_hint") %></p>
+                        <% if feature == 'trip_detection' && !Trips::DetectJob.instance_enabled?(current_user) %>
+                          <p class="text-sm text-warning mt-1"><%= t('trip_detection.settings.instance_off') %></p>
+                        <% end %>
                       </div>
                     </label>
                   </div>

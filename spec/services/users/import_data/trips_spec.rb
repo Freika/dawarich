@@ -116,6 +116,17 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       end
     end
 
+    context 'with an untouched Detected Trip' do
+      it 'keeps it when detection runs before the user adds a Home' do
+        original_user = create(:user)
+        create(:trip, user: original_user, origin: :detected, user_edited_at: nil)
+        described_class.new(user, Users::ExportData::Trips.new(original_user).call).call
+
+        expect { Trips::Detection::Runner.new(user).call }.not_to(change { user.trips.count })
+        expect(user.trips.sole).to be_origin_detected
+      end
+    end
+
     context 'with valid trips data' do
       it 'creates new trips for the user' do
         expect { service.call }.to change { user.trips.count }.by(2)

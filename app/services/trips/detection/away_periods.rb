@@ -21,10 +21,14 @@ module Trips
         @user = user
       end
 
+      # A runaway scan is cancelled instead of holding a connection; SET LOCAL keeps the
+      # timeout on this transaction, so it survives PgBouncer transaction pooling.
+      STATEMENT_TIMEOUT = '5min'
+
       def call
         at = ->(timestamp) { timestamp && Time.zone.at(timestamp) }
 
-        ActiveRecord::Base.connection.select_rows(sql).map do |first_far, last_far, home_before, home_after, closed|
+        rows.map do |first_far, last_far, home_before, home_after, closed|
           AwayPeriod.new(first_far_at: at.call(first_far), last_far_at: at.call(last_far),
                          home_before_at: at.call(home_before), home_after_at: at.call(home_after), closed:)
         end
@@ -33,6 +37,14 @@ module Trips
       private
 
       attr_reader :user
+
+      def rows
+        connection = ActiveRecord::Base.connection
+        connection.transaction do
+          connection.execute("SET LOCAL statement_timeout = '#{STATEMENT_TIMEOUT}'")
+          connection.select_rows(sql)
+        end
+      end
 
       # ponytail: scans the user's whole visible history on every run; make it incremental
       # from the last closed trip when a run is measured to be slow. An open-start Home the user

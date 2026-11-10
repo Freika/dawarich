@@ -209,6 +209,19 @@ RSpec.describe 'settings/general', type: :request do
         expect(toggle['checked']).to be_present
       end
 
+      it 'says when the instance admin switched trip detection off' do
+        Flipper.add(:trip_detection)
+        get settings_general_index_url
+
+        expect(response.body).to include(I18n.t('trip_detection.settings.instance_off'))
+      end
+
+      it 'says nothing about the instance switch while trip detection runs' do
+        get settings_general_index_url
+
+        expect(response.body).not_to include(I18n.t('trip_detection.settings.instance_off'))
+      end
+
       it 'switches trip detection off and removes no Detected Trip' do
         trip = create(:trip, user:, origin: :detected)
 
