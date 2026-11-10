@@ -17,13 +17,18 @@ module Trips
       end
 
       def call
-        @trip.calculate_countries
+        visited_countries
         countries = @trip.canonical_visited_countries
         places = countries.size > 1 ? countries.first(MAX_COUNTRIES) : [top_city || countries.first].compact
         return fallback if places.empty?
 
         I18n.t('trip_detection.name', places: places.join(I18n.t('trip_detection.list_separator')),
                                       month: I18n.l(@start_date, format: I18n.t('trip_detection.formats.month_year')))
+      end
+
+      # The trip's countries as Trip#calculate_countries stores them.
+      def visited_countries
+        @visited_countries ||= @trip.calculate_countries
       end
 
       def fallback

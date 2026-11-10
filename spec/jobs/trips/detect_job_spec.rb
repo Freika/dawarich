@@ -64,6 +64,17 @@ RSpec.describe Trips::DetectJob do
     expect { described_class.perform_now(user.id) }.not_to change(Notification, :count)
   end
 
+  it 'announces nothing when a run only replaces a trip whose period moved' do
+    described_class.perform_now(user.id)
+    first = user.trips.sole
+    in_lisbon(Time.utc(2026, 10, 14, 15))
+    at_home(Time.utc(2026, 10, 15, 18))
+    Point.where(user:, timestamp: Time.utc(2026, 10, 14, 18).to_i).delete_all
+
+    expect { described_class.perform_now(user.id) }.not_to change(Notification, :count)
+    expect(user.trips.sole.id).not_to eq(first.id)
+  end
+
   it 'does nothing when detection is switched off' do
     user.update!(settings: user.settings.merge('trip_detection_enabled' => 'false'))
     expect { described_class.perform_now(user.id) }.not_to change(Trip, :count)

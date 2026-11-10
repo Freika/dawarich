@@ -68,12 +68,21 @@ RSpec.describe Trips::Detection::Reconciler do
     expect(created).to be_empty
   end
 
-  it 'replaces an untouched Detected Trip whose period moved' do
+  it 'replaces an untouched Detected Trip whose period moved, and does not return the replacement as new' do
     old = create(:trip, user:, origin: :detected, started_at: Time.utc(2026, 10, 10, 8),
                         ended_at: Time.utc(2026, 10, 13, 20))
-    expect(created.size).to eq(1)
+    expect { expect(created).to be_empty }.to have_enqueued_job(Trips::CalculateAllJob)
     expect(Trip.exists?(old.id)).to be(false)
+    expect(user.trips.sole).to have_attributes(started_at: candidate.started_at, ended_at: candidate.ended_at)
     expect(user.trip_detection_dismissals).to be_empty
+  end
+
+  it 'returns a new trip next to the one it replaces' do
+    create(:trip, user:, origin: :detected, started_at: Time.utc(2026, 10, 10, 8), ended_at: Time.utc(2026, 10, 13, 20))
+    later = Trips::Detection::Candidates::Candidate.new(Time.utc(2026, 11, 1, 8), Time.utc(2026, 11, 4, 20))
+
+    expect(described_class.new(user, [candidate, later]).call.map(&:started_at)).to eq([later.started_at])
+    expect(user.trips.count).to eq(2)
   end
 
   it 'never changes an edited Detected Trip, and yields to it' do
@@ -189,8 +198,9 @@ RSpec.describe Trips::Detection::Reconciler do
       moved = create(:trip, user:, origin: :detected, started_at: 2.months.ago - 3.days, ended_at: 2.months.ago)
       period = Trips::Detection::Candidates::Candidate.new(2.months.ago - 3.days, 2.months.ago + 1.day)
 
-      expect(described_class.new(user, [period]).call.size).to eq(1)
+      expect(described_class.new(user, [period]).call).to be_empty
       expect(Trip.exists?(moved.id)).to be(false)
+      expect(user.trips.sole.ended_at).to eq(period.ended_at)
     end
   end
 
@@ -214,6 +224,27 @@ RSpec.describe Trips::Detection::Reconciler do
     described_class.new(user, [candidate]).call
 
     expect(trip.reload.name).to eq('Lisbon, Oct 2026')
+  end
+
+  # Ruling R32: countries arrive with reverse geocoding, after the trip's own calculation ran.
+  it 'fills in the countries of an untouched trip once its points get them' do
+    point = point_at(Time.utc(2026, 10, 11, 12))
+    trip = created.first
+    expect(trip.reload.visited_countries).to eq({})
+
+    point.update_columns(country_name: 'Portugal', city: 'Lisbon')
+    described_class.new(user, [candidate]).call
+
+    expect(trip.reload).to have_attributes(visited_countries: ['Portugal'], name: 'Lisbon, Oct 2026')
+  end
+
+  it 'never fills in the countries of an edited Detected Trip' do
+    edited = create(:trip, user:, origin: :detected, user_edited_at: Time.current, name: 'Our honeymoon',
+                           started_at: candidate.started_at, ended_at: candidate.ended_at)
+    edited.update_columns(visited_countries: {})
+    point_at(Time.utc(2026, 10, 11, 12)).update_columns(country_name: 'Portugal')
+    described_class.new(user, [candidate]).call
+    expect(edited.reload.visited_countries).to eq({})
   end
 
   it 'never renames an edited Detected Trip' do

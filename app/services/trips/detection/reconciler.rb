@@ -11,12 +11,13 @@ module Trips
         @candidates = candidates
       end
 
-      # Returns the trips it created.
+      # Returns the trips it created, except those that replace a trip it removed:
+      # those are not news to the user.
       def call
-        created = Trip.transaction { reconcile }
+        created, replacements = Trip.transaction { reconcile }
         # Enqueued after commit, so the calculation never looks for a trip that is not there yet.
         created.each(&:enqueue_calculation_jobs)
-        created
+        created - replacements
       end
 
       private
@@ -32,10 +33,12 @@ module Trips
         fresh = wanted.reject do |candidate|
           kept.any? { |trip| same_period?(trip, candidate) } || touched.any? { |trip| overlap?(candidate, trip) }
         end
-        fresh.map do |candidate|
+        created = fresh.map do |candidate|
           user.trips.create!(origin: :detected, started_at: candidate.started_at, ended_at: candidate.ended_at,
                              name: namer(candidate).call, skip_calculation_enqueue: true)
         end
+        removed = stale - touched
+        [created, created.select { |trip| removed.any? { |old| overlap?(trip, old) } }]
       end
 
       # A Lite trip that began before the data window is fixed: its points there are unseen (ruling R19).
@@ -68,12 +71,20 @@ module Trips
         trip.started_at == candidate.started_at && trip.ended_at == candidate.ended_at
       end
 
+      # Names and countries follow the points: countries arrive with reverse
+      # geocoding, after the trip's own calculation ran (ruling R32).
       # ponytail: names every kept trip on every run (one countries and one city query each);
       # skip trips whose points did not change when a run is measured to be slow
       def rename(trips)
         trips.each do |trip|
-          name = namer(trip).call
-          guarded(trip).update_all(name:, updated_at: Time.current) if trip.name != name
+          namer = namer(trip)
+          name = namer.call
+          countries = namer.visited_countries
+          changes = {}
+          changes[:name] = name if trip.name != name
+          # A never-calculated trip stores {}: the same as no countries.
+          changes[:visited_countries] = countries if Array(trip.visited_countries) != countries
+          guarded(trip).update_all(**changes, updated_at: Time.current) if changes.any?
         end
       end
 
