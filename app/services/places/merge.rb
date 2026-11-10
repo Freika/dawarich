@@ -20,6 +20,7 @@ module Places
     def call
       validate!
 
+      homes_moved = 0
       Place.transaction do
         lock_places!
         merge_visits
@@ -27,7 +28,7 @@ module Places
         merge_tags
         merge_timeline_notes
         merge_legacy_mappings
-        merge_homes
+        homes_moved = merge_homes
         Achievements::MergeSelections.call(survivor, duplicate)
         geofence = merge_geofence
 
@@ -43,6 +44,7 @@ module Places
         duplicate.destroy!
         survivor.update!(merged_attributes)
       end
+      Trips::DetectJob.perform_later(user.id) if homes_moved.positive?
 
       survivor.reload
     end

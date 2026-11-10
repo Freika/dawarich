@@ -54,4 +54,23 @@ RSpec.describe Home, type: :model do
     expect(user.homes).to contain_exactly(home)
     expect(place.homes).to contain_exactly(home)
   end
+
+  it 'enqueues detection when created, changed or removed' do
+    home = nil
+    expect { home = create(:home, user:, place:) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+    expect { home.update!(ended_on: Date.new(2026, 1, 1)) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+    expect { home.destroy! }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+  end
+
+  it 'enqueues detection when its place moves, and not for a place without a Home' do
+    create(:home, user:, place:)
+    expect { place.update!(latitude: 48.85, longitude: 2.35) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+    expect(place.reload.lonlat.y).to eq(48.85)
+    expect { create(:place, user:).update!(latitude: 48.85, longitude: 2.35) }.not_to have_enqueued_job(Trips::DetectJob)
+  end
+
+  it 'does not enqueue detection when its place changes without moving' do
+    create(:home, user:, place:)
+    expect { place.update!(name: 'Elsewhere') }.not_to have_enqueued_job(Trips::DetectJob)
+  end
 end

@@ -186,6 +186,10 @@ RSpec.describe Imports::Create do
           end
         end
 
+        it 'schedules Trip Detection for the user' do
+          expect { service.call }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+        end
+
         it 'schedules an achievements check from the oldest imported point' do
           clear_achievement_checks(user.id)
 

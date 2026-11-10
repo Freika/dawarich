@@ -8,6 +8,8 @@ class Home < ApplicationRecord
   validates :ended_on, comparison: { greater_than_or_equal_to: :started_on }, allow_nil: true, if: :started_on
   validate :place_belongs_to_user
 
+  after_commit -> { Trips::DetectJob.perform_later(user_id) }, on: %i[create update destroy]
+
   scope :in_effect_on, lambda { |date|
     where('homes.started_on IS NULL OR homes.started_on <= ?', date)
       .where('homes.ended_on IS NULL OR homes.ended_on >= ?', date)

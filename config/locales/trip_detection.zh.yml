@@ -22,3 +22,13 @@ zh:
         pattern: "%{start}–%{end}"
         start: "%Y年%b%-d日"
         end: "%Y年%b%-d日"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "发现旅行：%{name}"
+        content: "Dawarich 在您的历史记录中发现了一次新旅行。<a href=\"%{url}\">打开旅行</a>"
+      many:
+        title:
+          one: "发现 %{count} 次旅行"
+          other: "发现 %{count} 次旅行"
+        content: "Dawarich 在您的历史记录中发现了新的旅行。<a href=\"%{url}\">查看自动发现的旅行</a>"

@@ -72,6 +72,16 @@ RSpec.describe Places::Merge do
     expect(home.reload.place).to eq(survivor)
   end
 
+  it 'runs Trip Detection after moving a Home to the survivor' do
+    create(:home, user:, place: duplicate)
+    expect { described_class.new(user:, survivor:, duplicate:).call }
+      .to have_enqueued_job(Trips::DetectJob).with(user.id)
+  end
+
+  it 'does not run Trip Detection when the merged place has no Home' do
+    expect { described_class.new(user:, survivor:, duplicate:).call }.not_to have_enqueued_job(Trips::DetectJob)
+  end
+
   it 'keeps a same-day note as a standalone note when the merged text would be too long' do
     noted_at = Time.zone.parse('2026-09-01 12:00')
     survivor_body = 'a' * 6_000

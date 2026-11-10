@@ -22,3 +22,13 @@ ca:
         pattern: "%{start} – %{end}"
         start: "%-d %b %Y"
         end: "%-d %b %Y"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "Viatge trobat: %{name}"
+        content: "Dawarich ha trobat un viatge nou al teu historial. <a href=\"%{url}\">Obre el viatge</a>"
+      many:
+        title:
+          one: "S'ha trobat %{count} viatge"
+          other: "S'han trobat %{count} viatges"
+        content: "Dawarich ha trobat viatges nous al teu historial. <a href=\"%{url}\">Mostra els viatges trobats automàticament</a>"

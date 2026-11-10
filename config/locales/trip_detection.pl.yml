@@ -22,3 +22,15 @@ pl:
         pattern: "%{start} – %{end}"
         start: "%-d %b %Y"
         end: "%-d %b %Y"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "Znaleziono podróż: %{name}"
+        content: "Dawarich znalazł nową podróż w Twojej historii. <a href=\"%{url}\">Otwórz podróż</a>"
+      many:
+        title:
+          one: "Znaleziono %{count} podróż"
+          few: "Znaleziono %{count} podróże"
+          many: "Znaleziono %{count} podróży"
+          other: "Znaleziono %{count} podróży"
+        content: "Dawarich znalazł nowe podróże w Twojej historii. <a href=\"%{url}\">Zobacz podróże znalezione automatycznie</a>"
