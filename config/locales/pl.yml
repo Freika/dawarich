@@ -3387,6 +3387,7 @@ pl:
         this_invitation_is_no_longer_valid: To zaproszenie nie jest już ważne.
         invitation_sent_successfully: Zaproszenie wysłano pomyślnie!
         invitation_cancelled: Zaproszenie anulowane
+        too_many_invitations: "Zbyt wiele zaproszeń, spróbuj ponownie później."
         failed_to_cancel_invitation_please_try_again: Nie udało się anulować zaproszenia. Spróbuj ponownie
         an_unexpected_error_occurred_while_cancelling_the_invitation: Wystąpił nieoczekiwany błąd podczas anulowania zaproszenia
         you_are_not_in_a_family: Nie należysz do rodziny

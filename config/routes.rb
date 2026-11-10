@@ -482,6 +482,12 @@ Rails.application.routes.draw do
       namespace :families do
         resource :mine, only: %i[show create update destroy], controller: 'mine'
         resource :sharing, only: [:update], controller: 'sharing'
+        resources :invitations, only: %i[create destroy] do
+          collection do
+            post :preview
+            post :accept
+          end
+        end
         resources :locations, only: [:index] do
           collection do
             get :history

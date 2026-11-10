@@ -119,6 +119,24 @@ RSpec.describe 'Family::Invitations', type: :request do
       end
     end
 
+    context 'on cloud after ten invitations within an hour' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :family, active_until: 1.year.from_now)
+        family.update!(access_until: 1.year.from_now)
+      end
+
+      it 'refuses the eleventh with an alert' do
+        10.times { |i| post '/family/invitations', params: { family_invitation: { email: "r#{i}@example.com" } } }
+
+        expect do
+          post '/family/invitations', params: { family_invitation: { email: 'eleventh@example.com' } }
+        end.not_to(change { Family::Invitation.where(email: 'eleventh@example.com').count })
+        expect(response).to redirect_to(family_path)
+        expect(flash[:alert]).to eq('Too many invitations, try again later.')
+      end
+    end
+
     context 'when user is not the owner' do
       before { membership.update!(role: :member) }
 

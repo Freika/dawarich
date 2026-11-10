@@ -4217,6 +4217,7 @@ fr:
         this_invitation_is_no_longer_valid: Cette invitation n'est plus valide
         invitation_sent_successfully: Invitation envoyée avec succès !
         invitation_cancelled: Invitation annulée
+        too_many_invitations: "Trop d’invitations, réessayez plus tard."
         failed_to_cancel_invitation_please_try_again: Échec d'annulation de l'invitation.
           Veuillez réessayer
         an_unexpected_error_occurred_while_cancelling_the_invitation: Une erreur inattendue

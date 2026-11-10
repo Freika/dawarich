@@ -10,6 +10,7 @@ module Api::FamilyErrorRendering
     owner_required: :forbidden,
     email_mismatch: :forbidden,
     feature_disabled: :forbidden,
+    family_plan_required: :forbidden,
     invitation_not_found: :not_found,
     member_not_found: :not_found,
     rate_limited: :too_many_requests
@@ -18,6 +19,10 @@ module Api::FamilyErrorRendering
   FAMILY_ERROR_MESSAGES = {
     owner_required: 'Only the family owner can do this.',
     family_has_members: 'Remove all members before deleting the family.',
+    invitation_not_found: 'Invitation not found.',
+    invitation_invalid: 'This invitation is no longer valid or has expired.',
+    member_not_found: 'Member not found.',
+    rate_limited: 'Too many invitations, try again later.',
     unexpected_error: 'Something went wrong, please try again.'
   }.freeze
 

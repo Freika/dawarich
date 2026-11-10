@@ -3291,6 +3291,7 @@ es:
         this_invitation_is_no_longer_valid: Esta invitación ya no es válida.
         invitation_sent_successfully: "¡Se envió la invitación con éxito!"
         invitation_cancelled: Cancelada la invitación.
+        too_many_invitations: "Demasiadas invitaciones, inténtalo de nuevo más tarde."
         failed_to_cancel_invitation_please_try_again: Falló cancelar la invitación. Intenta de nuevo.
         an_unexpected_error_occurred_while_cancelling_the_invitation: Ocurrió un error inesperado al cancelar la invitación.
         you_are_not_in_a_family: No perteneces a ninguna familia

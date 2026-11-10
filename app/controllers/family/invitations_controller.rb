@@ -7,6 +7,12 @@ class Family::InvitationsController < ApplicationController
   before_action :ensure_family_feature_available!, except: %i[show index destroy]
   before_action :set_family, except: %i[show]
   before_action :set_invitation_by_id_and_family, only: %i[destroy]
+  # Same limit as the API: each invitation sends an email.
+  rate_limit to: 10, within: 1.hour, only: :create, by: -> { current_user.id },
+             with: lambda {
+               redirect_to family_path, alert: I18n.t('controllers.family.invitations.too_many_invitations')
+             },
+             unless: -> { DawarichSettings.self_hosted? }
 
   def index
     authorize @family, :show?

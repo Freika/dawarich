@@ -3331,6 +3331,7 @@ zh:
         this_invitation_is_no_longer_valid: 此邀请不再有效。
         invitation_sent_successfully: 邀请发送成功！
         invitation_cancelled: 邀请已取消
+        too_many_invitations: "邀请过多，请稍后再试。"
         failed_to_cancel_invitation_please_try_again: 无法取消邀请。请重试
         an_unexpected_error_occurred_while_cancelling_the_invitation: 取消邀请时发生意外错误
         you_are_not_in_a_family: 您不在任何家庭中
