@@ -9,6 +9,7 @@ const CONTROLLERS = {
   "timeline-feed": "controllers/timeline_feed_controller",
   "poster-studio-editor": "controllers/poster_studio_editor_controller",
   "video-studio": "controllers/video_studio_controller",
+  "maps--immich-enrich": "controllers/maps/immich_enrich_controller",
 }
 
 const root = new URL("../../", import.meta.url)

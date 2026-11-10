@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 globalThis.CustomEvent ??= class CustomEvent extends Event {
   constructor(type, options = {}) {
@@ -10,14 +10,9 @@ globalThis.CustomEvent ??= class CustomEvent extends Event {
 }
 
 async function loadImmichEnrichController() {
-  const source = await readFile(
-    new URL(
-      "../../app/javascript/controllers/maps/immich_enrich_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
+  const withoutImports = await strippedSource(
+    "controllers/maps/immich_enrich_controller.js",
   )
-  const withoutImports = source.replace(/^import .*\n/gm, "")
   const dependencies = `
     class Controller {}
     const formatDateTime = (value) => value
