@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 const toModuleUrl = (code) =>
   `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
@@ -24,21 +25,10 @@ const resolveTheme = (tokens) => tokens
 const DAWARICH_BLUE = "#2563EB"
 const studioTilesUrl = globalThis.__studioTilesUrl
 `
-// The editor's mixins are not under test here.
-const editorMixins = `
-const printOutput = {}
-const themePicker = {}
-const layoutPicker = {}
-const datePicker = {}
-`
-
 const { default: PosterStudioController } = await import(
   toModuleUrl(
     stubs +
-      editorMixins +
-      stripImports(
-        await readApp("controllers/poster_studio_editor_controller.js"),
-      ),
+      (await strippedSource("controllers/poster_studio_editor_controller.js")),
   )
 )
 const { buildVideoStyle, defaultSettings } = await import(
@@ -56,7 +46,7 @@ const translate = (key) => key
 const loadThemeTokens = async () => ({})
 const buildVideoStyle = globalThis.__buildVideoStyle
 const studioTilesUrl = globalThis.__studioTilesUrl
-` + stripImports(await readApp("controllers/video_studio_controller.js")),
+` + (await strippedSource("controllers/video_studio_controller.js")),
   )
 )
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 const moduleUrl = (source) =>
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
@@ -26,9 +27,9 @@ const { default: TripController } = await import(
 class ReplayHost extends Controller {}\n${providers}\n${mask}\n${pointsSource}\n${controllerSource}`,
   )
 )
-const editorSource = (
-  await read("controllers/poster_studio_editor_controller.js")
-).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const editorSource = await strippedSource(
+  "controllers/poster_studio_editor_controller.js",
+)
 // Import constants stay inert until the editor connects; tests exercise the
 // public geometry getter with actual providers, not a mocked method under test.
 const previewSource = (await read("poster_studio/ui/preview.js")).replace(
@@ -36,7 +37,7 @@ const previewSource = (await read("poster_studio/ui/preview.js")).replace(
   "",
 )
 const frameSource = await read("poster_studio/render/frame_geometry.js")
-const editorDependencies = `import { collectCoords } from "${moduleUrl(previewSource)}"; import { frameCovers } from "${moduleUrl(frameSource)}"; const translate = key => key; const printOutput = {}, themePicker = {}, layoutPicker = {}, datePicker = {};`
+const editorDependencies = `import { collectCoords } from "${moduleUrl(previewSource)}"; import { frameCovers } from "${moduleUrl(frameSource)}"; const translate = key => key;`
 const { TripProvider } = await import(moduleUrl(providers))
 const { default: Editor } = await import(
   moduleUrl(`class Controller {}
