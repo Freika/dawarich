@@ -32,3 +32,13 @@ zh:
           one: "发现 %{count} 次旅行"
           other: "发现 %{count} 次旅行"
         content: "Dawarich 在您的历史记录中发现了新的旅行。<a href=\"%{url}\">查看自动发现的旅行</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "我住在 / 曾住在这里"
+      help: "“从”留空表示从您首次在此处被记录起；“至”留空表示您仍住在这里。"
+      from: "从"
+      until: "至"
+      save: "保存"
+      remove: "删除"
+      add: "添加时间段"
+      end_before_start: "“至”不能早于“从”。"

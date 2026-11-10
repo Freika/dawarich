@@ -158,6 +158,7 @@ Rails.application.routes.draw do
       post :bulk_merge
       get 'nearby'
     end
+    resources :homes, controller: 'places/homes', only: %i[create update destroy]
   end
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]

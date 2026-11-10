@@ -32,3 +32,13 @@ de:
           one: "%{count} Reise gefunden"
           other: "%{count} Reisen gefunden"
         content: "Dawarich hat in deinem Verlauf neue Reisen gefunden. <a href=\"%{url}\">Automatisch gefundene Reisen ansehen</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Ich wohne / wohnte hier"
+      help: "Ein leeres „Von“ heißt: seit du hier zum ersten Mal aufgezeichnet wurdest; ein leeres „Bis“ heißt: du wohnst noch hier."
+      from: "Von"
+      until: "Bis"
+      save: "Speichern"
+      remove: "Entfernen"
+      add: "Zeitraum hinzufügen"
+      end_before_start: "„Bis“ darf nicht vor „Von“ liegen."

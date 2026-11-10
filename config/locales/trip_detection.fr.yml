@@ -32,3 +32,13 @@ fr:
           one: "%{count} voyage trouvé"
           other: "%{count} voyages trouvés"
         content: "Dawarich a trouvé de nouveaux voyages dans votre historique. <a href=\"%{url}\">Voir les voyages trouvés automatiquement</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "J'habite / j'ai habité ici"
+      help: "Un « Du » vide signifie depuis votre premier enregistrement ici ; un « Au » vide signifie que vous y habitez toujours."
+      from: "Du"
+      until: "Au"
+      save: "Enregistrer"
+      remove: "Supprimer"
+      add: "Ajouter une période"
+      end_before_start: "« Au » ne peut pas précéder « Du »."

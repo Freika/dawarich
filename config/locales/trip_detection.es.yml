@@ -32,3 +32,13 @@ es:
           one: "Se ha encontrado %{count} viaje"
           other: "Se han encontrado %{count} viajes"
         content: "Dawarich ha encontrado viajes nuevos en tu historial. <a href=\"%{url}\">Ver los viajes encontrados automáticamente</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Vivo / viví aquí"
+      help: "Un «Desde» vacío significa desde que se te registró aquí por primera vez; un «Hasta» vacío significa que sigues viviendo aquí."
+      from: "Desde"
+      until: "Hasta"
+      save: "Guardar"
+      remove: "Eliminar"
+      add: "Añadir un periodo"
+      end_before_start: "«Hasta» no puede ser anterior a «Desde»."

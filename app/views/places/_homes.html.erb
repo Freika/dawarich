@@ -1,0 +1,25 @@
+<%# The Home periods of a Place. A failed save re-renders this frame with the rejected Home in its form. %>
+<% failed_home = local_assigns[:failed_home] %>
+<% homes = place.homes.order(Home.arel_table[:started_on].asc.nulls_first, :id).map { |home| home.id == failed_home&.id ? failed_home : home } %>
+<% new_home = failed_home&.new_record? ? failed_home : Home.new %>
+<%= turbo_frame_tag 'place_homes' do %>
+  <section class="mt-8 space-y-3">
+    <h2 class="text-xl font-semibold"><%= t('trip_detection.homes.title') %></h2>
+    <p class="text-sm text-base-content/70"><%= t('trip_detection.homes.help') %></p>
+    <% (homes + [new_home]).each do |home| %>
+      <div class="flex flex-wrap items-end gap-2 rounded-box bg-base-200 p-3">
+        <% if home.errors.any? %>
+          <p role="alert" class="w-full text-sm text-error"><%= home.errors.include?(:ended_on) ? t('trip_detection.homes.end_before_start') : home.errors.full_messages.to_sentence %></p>
+        <% end %>
+        <%= form_with model: [place, home], namespace: dom_id(home), class: 'flex flex-wrap items-end gap-2 min-w-0' do |f| %>
+          <label class="form-control min-w-0"><span class="label-text"><%= t('trip_detection.homes.from') %></span><%= f.date_field :started_on, class: 'input input-bordered input-sm' %></label>
+          <label class="form-control min-w-0"><span class="label-text"><%= t('trip_detection.homes.until') %></span><%= f.date_field :ended_on, class: 'input input-bordered input-sm' %></label>
+          <%= f.submit t(home.new_record? ? 'trip_detection.homes.add' : 'trip_detection.homes.save'), class: "btn btn-sm #{home.new_record? ? 'btn-primary' : 'btn-outline'}" %>
+        <% end %>
+        <% if home.persisted? %>
+          <%= button_to t('trip_detection.homes.remove'), place_home_path(place, home), method: :delete, class: 'btn btn-sm btn-ghost' %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+<% end %>

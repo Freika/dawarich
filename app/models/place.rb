@@ -62,8 +62,10 @@ class Place < ApplicationRecord
     where("NULLIF(BTRIM(places.note), '') IS NOT NULL")
       .or(where(id: Note.where(attachable_type: 'Place').select(:attachable_id)))
   }
+  scope :with_home, -> { where(id: Home.select(:place_id)) }
   scope :confirmed_for, lambda { |user|
     manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted).or(geofences).or(archived)
+          .or(with_home)
   }
   scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
   scope :map_visible, ->(user) { confirmed_for(user).not_archived }

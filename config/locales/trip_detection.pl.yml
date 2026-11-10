@@ -34,3 +34,13 @@ pl:
           many: "Znaleziono %{count} podróży"
           other: "Znaleziono %{count} podróży"
         content: "Dawarich znalazł nowe podróże w Twojej historii. <a href=\"%{url}\">Zobacz podróże znalezione automatycznie</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Mieszkam / mieszkałem(-am) tutaj"
+      help: "Puste pole „Od” oznacza: od pierwszego zapisu Twojej lokalizacji w tym miejscu; puste pole „Do” oznacza, że nadal tu mieszkasz."
+      from: "Od"
+      until: "Do"
+      save: "Zapisz"
+      remove: "Usuń"
+      add: "Dodaj okres"
+      end_before_start: "Data „Do” nie może być wcześniejsza niż „Od”."

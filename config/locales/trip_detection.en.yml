@@ -32,3 +32,13 @@ en:
           one: "Found %{count} trip"
           other: "Found %{count} trips"
         content: "Dawarich found new trips in your history. <a href=\"%{url}\">See the trips found automatically</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "I live / lived here"
+      help: "An empty “From” means since you were first recorded here; an empty “Until” means you still live here."
+      from: "From"
+      until: "Until"
+      save: "Save"
+      remove: "Remove"
+      add: "Add a period"
+      end_before_start: "“Until” can't be before “From”."

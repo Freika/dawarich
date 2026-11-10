@@ -32,3 +32,13 @@ ca:
           one: "S'ha trobat %{count} viatge"
           other: "S'han trobat %{count} viatges"
         content: "Dawarich ha trobat viatges nous al teu historial. <a href=\"%{url}\">Mostra els viatges trobats automàticament</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Hi visc / hi vaig viure"
+      help: "Un «Des de» buit vol dir des que se't va registrar aquí per primera vegada; un «Fins a» buit vol dir que encara hi vius."
+      from: "Des de"
+      until: "Fins a"
+      save: "Desa"
+      remove: "Elimina"
+      add: "Afegeix un període"
+      end_before_start: "«Fins a» no pot ser anterior a «Des de»."
