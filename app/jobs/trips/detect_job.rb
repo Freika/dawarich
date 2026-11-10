@@ -4,12 +4,29 @@
 # created. The Runner writes the user row itself, so this job never saves the
 # user. Runs of one user are serialized by Trips::Detection::RunLock: a run
 # that finds the lock taken tries again a minute later.
+#
+# Every trigger goes through .schedule (ruling R31): a burst of triggers, such
+# as the files of one multi-file import, becomes one run once they settle.
 class Trips::DetectJob < ApplicationJob
   queue_as :trips
 
   RETRY_WAIT = 1.minute
+  # Long enough for an import batch and its post-processing to settle.
+  DEBOUNCE_DELAY = 5.minutes
+  LOCK_TTL = 1.hour
+
+  def self.schedule(user_id)
+    newly_scheduled = Sidekiq.redis { |redis| redis.set(schedule_key(user_id), 1, nx: true, ex: LOCK_TTL.to_i) }
+    set(wait: DEBOUNCE_DELAY).perform_later(user_id) if newly_scheduled
+  end
+
+  def self.schedule_key(user_id)
+    "trip_detection_run:user:#{user_id}"
+  end
 
   def perform(user_id)
+    # Cleared first, so a trigger from now on schedules the next run.
+    Sidekiq.redis { |redis| redis.del(self.class.schedule_key(user_id)) }
     user = User.find_by(id: user_id)
     return unless user&.safe_settings&.trip_detection_enabled?
 

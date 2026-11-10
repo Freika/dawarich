@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Imports::Create do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:service) { described_class.new(user, import) }
 
@@ -187,7 +189,23 @@ RSpec.describe Imports::Create do
         end
 
         it 'schedules Trip Detection for the user' do
-          expect { service.call }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+          clear_trip_detection_schedule(user.id)
+          freeze_time do
+            expect { service.call }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+                                                                          .at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+          end
+        end
+
+        it 'schedules one Trip Detection run for several imports in a row' do
+          clear_trip_detection_schedule(user.id)
+          second = create(:import, source: 'owntracks', name: '2024-03-copy.rec')
+          second.file.attach(io: File.open(file_path), filename: '2024-03-copy.rec',
+                             content_type: 'application/octet-stream')
+
+          expect do
+            service.call
+            described_class.new(user, second).call
+          end.to have_enqueued_job(Trips::DetectJob).with(user.id).exactly(:once)
         end
 
         it 'schedules an achievements check from the oldest imported point' do

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Homes::CreateAtLocation do
+  include ActiveSupport::Testing::TimeHelpers
+
   subject(:home) { described_class.new(user:, latitude: 52.52, longitude: 13.405).call }
 
   let(:user) { create(:user) }
@@ -40,7 +42,11 @@ RSpec.describe Homes::CreateAtLocation do
     expect(user.homes.count).to eq(1)
   end
 
-  it 'enqueues Trip Detection' do
-    expect { home }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+  it 'schedules Trip Detection' do
+    clear_trip_detection_schedule(user.id)
+    freeze_time do
+      expect { home }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+                                                            .at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+    end
   end
 end

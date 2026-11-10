@@ -44,7 +44,7 @@ module Places
         duplicate.destroy!
         survivor.update!(merged_attributes)
       end
-      Trips::DetectJob.perform_later(user.id) if homes_moved.positive?
+      Trips::DetectJob.schedule(user.id) if homes_moved.positive?
 
       survivor.reload
     end

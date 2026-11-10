@@ -116,6 +116,33 @@ RSpec.describe Trips::DetectJob do
     other&.close
   end
 
+  describe '.schedule' do
+    before { clear_trip_detection_schedule(user.id) }
+
+    it 'runs detection once, a while after a burst of triggers' do
+      freeze_time do
+        expect { 3.times { described_class.schedule(user.id) } }
+          .to have_enqueued_job(described_class).with(user.id).at(described_class::DEBOUNCE_DELAY.from_now)
+          .exactly(:once)
+      end
+    end
+
+    it 'schedules again once the scheduled run has started' do
+      described_class.schedule(user.id)
+      described_class.perform_now(user.id)
+
+      expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class).with(user.id)
+    end
+
+    it 'schedules again after a run that found detection switched off' do
+      user.update!(settings: user.settings.merge('trip_detection_enabled' => 'false'))
+      described_class.schedule(user.id)
+      described_class.perform_now(user.id)
+
+      expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class).with(user.id)
+    end
+  end
+
   it 'ignores a missing user' do
     expect { described_class.perform_now(0) }.not_to raise_error
   end

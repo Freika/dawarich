@@ -219,15 +219,17 @@ RSpec.describe 'settings/general', type: :request do
         expect(Trip.exists?(trip.id)).to be(true)
       end
 
-      it 'runs Trip Detection when it is switched back on' do
+      it 'schedules Trip Detection when it is switched back on' do
         user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+        clear_trip_detection_schedule(user.id)
 
         expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
-          .to have_enqueued_job(Trips::DetectJob).with(user.id)
+          .to have_enqueued_job(Trips::DetectJob).with(user.id).at(a_value > Time.current)
         expect(user.reload.safe_settings.trip_detection_enabled?).to be(true)
       end
 
       it 'does not run Trip Detection when the page is saved while it stays on' do
+        clear_trip_detection_schedule(user.id)
         expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
           .not_to have_enqueued_job(Trips::DetectJob)
       end

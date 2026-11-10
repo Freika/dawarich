@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Places::Merge do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:survivor) do
     create(
@@ -72,13 +74,17 @@ RSpec.describe Places::Merge do
     expect(home.reload.place).to eq(survivor)
   end
 
-  it 'runs Trip Detection after moving a Home to the survivor' do
+  it 'schedules Trip Detection after moving a Home to the survivor' do
     create(:home, user:, place: duplicate)
-    expect { described_class.new(user:, survivor:, duplicate:).call }
-      .to have_enqueued_job(Trips::DetectJob).with(user.id)
+    clear_trip_detection_schedule(user.id)
+    freeze_time do
+      expect { described_class.new(user:, survivor:, duplicate:).call }
+        .to have_enqueued_job(Trips::DetectJob).with(user.id).at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+    end
   end
 
-  it 'does not run Trip Detection when the merged place has no Home' do
+  it 'does not schedule Trip Detection when the merged place has no Home' do
+    clear_trip_detection_schedule(user.id)
     expect { described_class.new(user:, survivor:, duplicate:).call }.not_to have_enqueued_job(Trips::DetectJob)
   end
 

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Home, type: :model do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:place) { create(:place, user:) }
 
@@ -55,22 +57,37 @@ RSpec.describe Home, type: :model do
     expect(place.homes).to contain_exactly(home)
   end
 
-  it 'enqueues detection when created, changed or removed' do
-    home = nil
-    expect { home = create(:home, user:, place:) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
-    expect { home.update!(ended_on: Date.new(2026, 1, 1)) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
-    expect { home.destroy! }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+  def schedules_detection
+    have_enqueued_job(Trips::DetectJob).with(user.id).at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
   end
 
-  it 'enqueues detection when its place moves, and not for a place without a Home' do
-    create(:home, user:, place:)
-    expect { place.update!(latitude: 48.85, longitude: 2.35) }.to have_enqueued_job(Trips::DetectJob).with(user.id)
-    expect(place.reload.lonlat.y).to eq(48.85)
-    expect { create(:place, user:).update!(latitude: 48.85, longitude: 2.35) }.not_to have_enqueued_job(Trips::DetectJob)
+  it 'schedules detection when created, changed or removed' do
+    freeze_time do
+      home = nil
+      clear_trip_detection_schedule(user.id)
+      expect { home = create(:home, user:, place:) }.to schedules_detection
+      clear_trip_detection_schedule(user.id)
+      expect { home.update!(ended_on: Date.new(2026, 1, 1)) }.to schedules_detection
+      clear_trip_detection_schedule(user.id)
+      expect { home.destroy! }.to schedules_detection
+    end
   end
 
-  it 'does not enqueue detection when its place changes without moving' do
+  it 'schedules detection when its place moves, and not for a place without a Home' do
     create(:home, user:, place:)
+    other = create(:place, user:)
+    freeze_time do
+      clear_trip_detection_schedule(user.id)
+      expect { place.update!(latitude: 48.85, longitude: 2.35) }.to schedules_detection
+      expect(place.reload.lonlat.y).to eq(48.85)
+      clear_trip_detection_schedule(user.id)
+      expect { other.update!(latitude: 48.85, longitude: 2.35) }.not_to have_enqueued_job(Trips::DetectJob)
+    end
+  end
+
+  it 'does not schedule detection when its place changes without moving' do
+    create(:home, user:, place:)
+    clear_trip_detection_schedule(user.id)
     expect { place.update!(name: 'Elsewhere') }.not_to have_enqueued_job(Trips::DetectJob)
   end
 end

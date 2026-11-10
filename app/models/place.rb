@@ -32,7 +32,7 @@ class Place < ApplicationRecord
                on: %i[create update],
                if: :suggested_visit_reattribution_needed?
   after_update -> { carry_name_to_visits(name_before_last_save) }, if: :saved_change_to_name?
-  after_commit -> { Trips::DetectJob.perform_later(user_id) },
+  after_commit -> { Trips::DetectJob.schedule(user_id) },
                on: :update, if: -> { saved_change_to_lonlat? && homes.exists? }
 
   validates :name, presence: true, length: { maximum: 255 }

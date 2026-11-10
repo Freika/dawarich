@@ -68,7 +68,7 @@ class Imports::Create
     run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
     run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
     run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
-    run_post_import_step('schedule_trip_detection') { Trips::DetectJob.perform_later(user.id) }
+    run_post_import_step('schedule_trip_detection') { Trips::DetectJob.schedule(user.id) }
     run_post_import_step('update_points_count') { update_import_points_count(import) }
     run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
   end

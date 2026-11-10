@@ -444,7 +444,7 @@ class User < ApplicationRecord
   end
 
   def enqueue_trip_detection
-    Trips::DetectJob.perform_later(id)
+    Trips::DetectJob.schedule(id)
   end
 
   def family_reenabled?
