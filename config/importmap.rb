@@ -32,3 +32,4 @@ pin 'fflate' # @0.8.2
 pin 'pmtiles', to: 'pmtiles.js' # @4.5.0, vendored for offline maps
 pin 'h3-js' # @4.4.0
 pin 'mp4-muxer' # @5.2.2
+pin "air-datepicker" # @3.6.0
