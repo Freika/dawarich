@@ -11,27 +11,9 @@ module Places
     end
 
     def call
-      place = Place.find_by(id: @place_id)
-      return false unless place
-      return false unless place.photon?
-      return false if place.archived?
-      return false if place.note.present?
-      return false if Note.where(attachable_type: 'Place', attachable_id: @place_id).exists?
-      return false if place.name_locked?
-      return false if place.geofence?
-      return false if Achievements::Selection.exists?(place_id: place.id)
-      return false if LegacyAreaPlaceMapping.exists?(place_id: @place_id)
-      return false if Visit.active.where(place_id: @place_id).exists?
-      return false if Tagging.where(taggable_id: @place_id, taggable_type: 'Place').exists?
+      return false unless Place.orphaned.exists?(@place_id)
 
-      Place.transaction do
-        # Only hidden visits (tombstones/declines) can still reference the
-        # place here; detach them so the FK allows the delete. Their dedup
-        # role survives — Visit#center falls back to the visit's own points.
-        Visit.where(place_id: @place_id).update_all(place_id: nil)
-        PlaceVisit.where(place_id: @place_id).delete_all
-        place.delete
-      end
+      Place.delete_orphans([@place_id])
       true
     rescue ActiveRecord::InvalidForeignKey => e
       Rails.logger.warn("[DeleteIfOrphan] place=#{@place_id} FK race: #{e.message}")

@@ -7,6 +7,17 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
   let(:other) { create(:user) }
 
   describe '#perform' do
+    it 'keeps archived places and places picked for an achievement' do
+      archived = create(:place, user: user, source: :photon, archived_at: 1.day.ago)
+      selected = create(:place, user: user, source: :photon)
+      Achievements::Selection.create!(user: user, place: selected)
+
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(archived.id)).to be(true)
+      expect(Place.exists?(selected.id)).to be(true)
+    end
+
     it 'deletes orphan photon places for the given user only' do
       orphan       = create(:place, user: user,  source: :photon)
       chosen       = create(:place, user: user,  source: :photon)

@@ -37,7 +37,7 @@ module Visits
         return false
       end
 
-      started_ats = visits.pluck(:started_at)
+      spans = visits.pluck(:started_at, :ended_at)
       place_ids = visits.reorder(nil).where.not(place_id: nil).distinct.pluck(:place_id)
       started_at = Time.current
 
@@ -49,9 +49,11 @@ module Visits
       # runs on single soft deletes must be enqueued here by hand.
       place_ids.each { |place_id| Places::DeleteIfOrphanJob.perform_later(place_id) }
 
+      ActiveRecord.after_all_transactions_commit { Timeline::MonthSummary.expire(user, spans) }
+
       log_success(ids.length, Time.current - started_at)
 
-      { count: ids.length, started_ats: started_ats }
+      { count: ids.length, started_ats: spans.map(&:first) }
     rescue ActiveRecord::StatementInvalid => e
       Rails.logger.warn(
         "Visits::BulkDestroy failed user_id=#{user.id} count=#{ids&.length} error=#{e.class}: #{e.message}"

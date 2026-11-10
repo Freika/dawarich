@@ -19,6 +19,7 @@ RSpec.describe 'Deleted selected points leave the map immediately', type: :reque
         'maps_maplibre/utils/layer_dependencies',
         'maps_maplibre/layers/points_mvt_layer',
         'maps_maplibre/layers/selected_points_layer',
+        'controllers/maps/maplibre/layer_events',
         'controllers/maps/maplibre/layer_manager',
         'controllers/maps/maplibre/area_selection_manager',
       ];

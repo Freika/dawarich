@@ -64,18 +64,12 @@ module Families
     end
 
     def validate_feature_access
-      return true if can_create_family?
+      return true if user.entitlements.can_create_family?
 
       # Only reachable on cloud — self-hosted short-circuits in can_create_family?
       @error_message = I18n.t('services.families.create.family_feature_requires_an_active_subscription')
 
       false
-    end
-
-    def can_create_family?
-      return true if DawarichSettings.self_hosted?
-
-      user.family?
     end
 
     def create_family

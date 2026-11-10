@@ -50,10 +50,6 @@ module MonthStylingHelper
     MONTH_COLORS[stat.month]
   end
 
-  def month_gradient_classes(stat)
-    MONTH_GRADIENTS[stat.month]
-  end
-
   def month_bg_image(stat)
     image_url(MONTH_BG_IMAGES[stat.month])
   end

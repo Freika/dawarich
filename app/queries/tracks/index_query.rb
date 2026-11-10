@@ -19,14 +19,6 @@ class Tracks::IndexQuery
       .per(per_page_param)
   end
 
-  def pagination_headers(paginated_relation)
-    {
-      'X-Current-Page' => paginated_relation.current_page.to_s,
-      'X-Total-Pages' => paginated_relation.total_pages.to_s,
-      'X-Total-Count' => paginated_relation.total_count.to_s
-    }
-  end
-
   private
 
   attr_reader :user, :params

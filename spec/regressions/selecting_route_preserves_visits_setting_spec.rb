@@ -29,9 +29,11 @@ RSpec.describe 'Opening Timeline with Visits disabled' do
         'app/javascript/controllers/maps/maplibre_controller.js', `class Controller {}\n${sidebarLayout}`);
       const { default: PanelController } = await loadController(
         'app/javascript/controllers/map_panel_controller.js', `class Controller {}\n${sidebarLayout}`);
+      const trackSelection = readFileSync('app/javascript/controllers/maps/maplibre/track_selection.js', 'utf8')
+        .replace(/^import[\s\S]*?from "[^"]+"\n/gm, '').replace(/^export /gm, '');
       const { EventHandlers } = await loadController(
         'app/javascript/controllers/maps/maplibre/event_handlers.js',
-        'class PointDragGesture { attach() {} }');
+        `class PointDragGesture { attach() {} }\n${trackSelection}`);
 
       function classes(initial = []) {
         const values = new Set(initial);

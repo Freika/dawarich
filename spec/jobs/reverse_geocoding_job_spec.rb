@@ -44,6 +44,23 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     end
   end
 
+  describe 'record types' do
+    before { configure_instance_geocoding }
+
+    it 'geocodes a place sent with the lower-case type name' do
+      place = create(:place)
+      allow(ReverseGeocoding::Places::FetchData).to receive(:new).and_return(double(call: true))
+
+      described_class.new.perform('place', place.id)
+
+      expect(ReverseGeocoding::Places::FetchData).to have_received(:new).with(place.id, force: false)
+    end
+
+    it 'refuses a type it does not geocode' do
+      expect { described_class.new.perform('User', 1) }.to raise_error(ArgumentError, /User/)
+    end
+  end
+
   describe 'dedup key release' do
     let(:user) { create(:user) }
     let!(:point) { create(:point, user:, reverse_geocoded_at: nil, city: nil, country: nil) }

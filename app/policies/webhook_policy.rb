@@ -48,6 +48,6 @@ class WebhookPolicy < ApplicationPolicy
   end
 
   def allowed?
-    user.entitlements.pro_api?
+    user.full_access?
   end
 end

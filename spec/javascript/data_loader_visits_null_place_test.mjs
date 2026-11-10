@@ -1,51 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import vm from "node:vm"
+import { DataLoader } from "controllers/maps/maplibre/data_loader"
 
-const importAppModule = async (relativePath) =>
-  import(
-    `data:text/javascript;base64,${Buffer.from(
-      await readFile(
-        new URL(`../../app/javascript/${relativePath}`, import.meta.url),
-        "utf8",
-      ),
-    ).toString("base64")}`
-  )
-const { LoadingCounter } = await importAppModule(
-  "maps_maplibre/utils/loading_counter.js",
-)
-const { visitsToGeoJSON } = await importAppModule(
-  "maps_maplibre/utils/visit_features.js",
-)
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(currentDir, "../..")
-const dataLoaderPath = path.join(
-  repoRoot,
-  "app/javascript/controllers/maps/maplibre/data_loader.js",
-)
-let dataLoaderSource = await readFile(dataLoaderPath, "utf8")
-dataLoaderSource = dataLoaderSource
-  .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
-  .replace("export class DataLoader", "class DataLoader")
-  .concat("\nglobalThis.DataLoader = DataLoader\n")
-
-const context = {
-  visitsToGeoJSON,
-  LoadingCounter,
-  console,
-  performanceMonitor: { mark() {}, measure() {} },
-  RoutesLayer: {},
-  pointsToGeoJSON: () => ({ type: "FeatureCollection", features: [] }),
-  createCircle: () => [],
-  applySpeedColors: (value) => value,
-}
-vm.createContext(context)
-vm.runInContext(dataLoaderSource, context)
-
-const loader = new context.DataLoader({}, "test-key", {})
+const loader = new DataLoader({}, "test-key", {})
 const geojson = loader.visitsToGeoJSON([
   {
     id: 1,

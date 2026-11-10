@@ -126,7 +126,7 @@ class TripsController < ApplicationController
       return
     end
 
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     start_date = @trip.started_at.in_time_zone(tz).to_date
     export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
 
@@ -166,7 +166,7 @@ class TripsController < ApplicationController
   end
 
   def compute_day_stats
-    window = (current_user.data_window_start.to_date if current_user.plan_restricted?)
+    window = current_user.data_window_start&.to_date
     masker = current_privacy_zone_masker
     cache_key = ['trip_day_stats/v6', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key,
                  masker.fingerprint]
