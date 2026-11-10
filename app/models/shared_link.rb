@@ -46,6 +46,8 @@ class SharedLink < ApplicationRecord
   validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
   validate :allowed_live_freshness, if: -> { live? && (new_record? || will_save_change_to_settings?) }
 
+  after_create -> { Trip.mark_touched_by_user(resource_id) }, if: :trip?
+
   scope :active, lambda {
     where(revoked_at: nil)
       .where('expires_at IS NULL OR expires_at > ?', Time.current)

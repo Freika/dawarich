@@ -1008,7 +1008,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_090300) do
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
     t.index ["trip_source_id", "source_identifier"], name: "index_trips_on_source_identifier", unique: true, where: "((trip_source_id IS NOT NULL) AND (source_identifier IS NOT NULL))"
     t.index ["trip_source_id"], name: "index_trips_on_trip_source_id"
-    t.index ["user_id", "started_at", "ended_at"], name: "index_trips_on_detected_period", unique: true, where: "(origin = 1)"
+    t.index ["user_id", "started_at", "ended_at"], name: "index_trips_on_detected_period", unique: true, where: "((origin = 1) AND (user_edited_at IS NULL))"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 

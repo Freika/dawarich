@@ -16,6 +16,14 @@ module TripDetectionOrigin
     }
   end
 
+  class_methods do
+    # Annotating or sharing a Detected Trip touches it for good, even once the
+    # note or link is gone. The first mark wins.
+    def mark_touched_by_user(trip_id)
+      origin_detected.where(id: trip_id, user_edited_at: nil).update_all(user_edited_at: Time.current)
+    end
+  end
+
   def destroy_by_user!
     transaction do
       user.trip_detection_dismissals.create!(started_at:, ended_at:) if origin_detected?

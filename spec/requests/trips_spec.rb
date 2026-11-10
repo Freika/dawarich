@@ -681,6 +681,16 @@ RSpec.describe '/trips', type: :request do
 
         expect(trip.reload).to have_attributes(user_edited_at: be_present, origin: 'detected')
       end
+
+      it 'lets a Detected Trip take the exact period of another Detected Trip' do
+        other = create(:trip, user:, origin: :detected)
+        trip = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        patch trip_path(trip), params: { trip: { started_at: other.started_at, ended_at: other.ended_at } }
+
+        expect(response).to redirect_to(trip_url(trip))
+        expect(trip.reload).to have_attributes(started_at: other.started_at, ended_at: other.ended_at)
+      end
     end
 
     context 'with invalid parameters' do

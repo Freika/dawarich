@@ -25,6 +25,36 @@ RSpec.describe TripDetectionOrigin do
     end
   end
 
+  describe 'the user touching a Detected Trip' do
+    it 'stays touched after its note is deleted' do
+      trip = detected_trip(0)
+      note = create(:note, attachable: trip, user:, noted_at: trip.started_at + 1.hour)
+
+      expect(trip.reload.user_edited_at).to be_present
+
+      note.destroy!
+      expect(Trip.replaceable_by_detection).not_to include(trip)
+    end
+
+    it 'stays touched after its share link is deleted' do
+      trip = detected_trip(0)
+      link = create(:shared_link, user:, resource_type: :trip, resource_id: trip.id)
+
+      expect(trip.reload.user_edited_at).to be_present
+
+      link.destroy!
+      expect(Trip.replaceable_by_detection).not_to include(trip)
+    end
+
+    it 'keeps the first mark' do
+      edited_at = Time.utc(2024, 12, 1, 10)
+      trip = detected_trip(0, user_edited_at: edited_at)
+      create(:shared_link, user:, resource_type: :trip, resource_id: trip.id)
+
+      expect(trip.reload.user_edited_at).to eq(edited_at)
+    end
+  end
+
   describe '#destroy_by_user!' do
     it 'remembers the period of a Detected Trip' do
       trip = detected_trip(0)

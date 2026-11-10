@@ -22,6 +22,8 @@ class Note < ApplicationRecord
   validate :date_within_attachable_range
   validate :attachable_belongs_to_user
 
+  after_create -> { Trip.mark_touched_by_user(attachable_id) }, if: -> { attachable_type == 'Trip' }
+
   scope :standalone, -> { where(attachable_id: nil) }
   scope :attached, -> { where.not(attachable_id: nil) }
   scope :for_trip_day, ->(trip, date) { where(attachable: trip).where('CAST(noted_at AS date) = ?', date) }

@@ -5,7 +5,7 @@ class AddDetectedPeriodIndexToTrips < ActiveRecord::Migration[8.0]
 
   def change
     add_index :trips, %i[user_id started_at ended_at],
-              unique: true, where: 'origin = 1', algorithm: :concurrently,
+              unique: true, where: 'origin = 1 AND user_edited_at IS NULL', algorithm: :concurrently,
               name: 'index_trips_on_detected_period'
   end
 end
