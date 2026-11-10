@@ -164,6 +164,13 @@ export class ReplayManager {
     return this.availableDays[this.currentDayIndex] || null
   }
 
+  /** Points on the current day. Called by the private E2E suite. */
+  getCurrentDayPointCount() {
+    const day = this.getCurrentDay()
+    if (!day) return 0
+    return this.pointsByDay[day]?.length || 0
+  }
+
   /**
    * Get formatted display string for current day
    * @returns {string} Display string like 'January 15, 2025'

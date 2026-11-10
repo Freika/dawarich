@@ -799,6 +799,28 @@ export default class extends ReplayHost {
     }
   }
 
+  /** Open the visit edit modal. Called by the private E2E suite. */
+  async openVisitModal(visitId) {
+    try {
+      const response = await fetch(`/api/v1/visits/${visitId}`, {
+        headers: {
+          Authorization: `Bearer ${this.apiKeyValue}`,
+          "Content-Type": "application/json",
+        },
+      })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch visit: ${response.status}`)
+      }
+
+      const visit = await response.json()
+      document.dispatchEvent(
+        new CustomEvent("visit:edit", { detail: { visit }, bubbles: true }),
+      )
+    } catch (_error) {
+      Toast.error(translate("messages.failed_to_load_visit_details"))
+    }
+  }
+
   /** Delete a point, then invalidate the tile-backed presentation. */
   async deletePoint(pointId) {
     const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
