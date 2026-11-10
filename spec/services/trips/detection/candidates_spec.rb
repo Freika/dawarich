@@ -60,6 +60,14 @@ RSpec.describe Trips::Detection::Candidates do
     expect(periods(run(t[2026, 1, 1, 12], t[2026, 4, 1, 12])).size).to eq(1)
   end
 
+  # Ruling R3: strictly longer than 90 days is skipped
+  it 'keeps exactly 90 elapsed days and skips one second more' do
+    start = Time.utc(2026, 1, 1, 12)
+    expect(periods(run(start, Time.utc(2026, 4, 1, 12))).size).to eq(1)
+    expect(result_for(run(start, Time.utc(2026, 4, 1, 12) + 1.second)))
+      .to have_attributes(periods: [], long_absence: true)
+  end
+
   it 'measures 90 days in elapsed time, not calendar days' do
     # 90 days minus 30 minutes across the spring clock change
     expect(periods(run(t[2026, 1, 1, 12], t[2026, 4, 1, 12, 30])).size).to eq(1)
@@ -96,6 +104,25 @@ RSpec.describe Trips::Detection::Candidates do
     expect(result).to eq([candidate(t[2026, 10, 10, 16], t[2026, 10, 16, 9])])
   end
 
+  # Ruling R14: the 90-day cap and the night test apply to the merged group
+  it 'skips staggered runs of two devices whose union is longer than 90 days' do
+    phone = run(t[2026, 1, 1, 12], t[2026, 3, 22, 12])   # 80 days
+    car = run(t[2026, 2, 1, 12], t[2026, 4, 22, 12])     # 80 days
+    expect(result_for(phone, car)).to have_attributes(periods: [], long_absence: true)
+  end
+
+  it 'skips a short run inside a run longer than 90 days' do
+    long = run(t[2026, 1, 1, 12], t[2026, 5, 1, 12])     # 120 days
+    short = run(t[2026, 2, 1, 12], t[2026, 2, 6, 12])    # 5 days
+    expect(result_for(long, short)).to have_attributes(periods: [], long_absence: true)
+  end
+
+  it 'finds the night in the merged far span of runs that have none alone' do
+    evening = run(t[2026, 10, 10, 18], t[2026, 10, 10, 23], home_after: t[2026, 10, 11, 5])
+    morning = run(t[2026, 10, 11, 4], t[2026, 10, 11, 12])
+    expect(periods(evening, morning)).to eq([candidate(t[2026, 10, 10, 18], t[2026, 10, 11, 12])])
+  end
+
   it 'keeps separate runs apart, sorted by start' do
     result = periods(run(t[2026, 10, 20, 16], t[2026, 10, 22, 11]), run(t[2026, 10, 10, 16], t[2026, 10, 12, 11]))
     expect(result).to eq([candidate(t[2026, 10, 10, 16], t[2026, 10, 12, 11]),
@@ -114,5 +141,17 @@ RSpec.describe Trips::Detection::Candidates do
   it 'finds the night when the clocks go forward and back' do
     expect(periods(run(t[2026, 3, 28, 20], t[2026, 3, 29, 9])).size).to eq(1)    # 02:00 → 03:00
     expect(periods(run(t[2026, 10, 24, 20], t[2026, 10, 25, 9])).size).to eq(1)  # 03:00 → 02:00
+  end
+
+  it 'finds 03:00 itself on the days the clocks change' do
+    expect(periods(run(t[2026, 3, 29, 3, 0], t[2026, 3, 29, 3, 30])).size).to eq(1)
+    expect(periods(run(t[2026, 10, 25, 3, 0], t[2026, 10, 25, 3, 30])).size).to eq(1)
+  end
+
+  # Ruling R15: Helsinki falls back at 04:00, so 03:00 happens twice on 2026-10-25
+  it 'counts the second 03:00 when the clocks fall back across it' do
+    helsinki = ActiveSupport::TimeZone['Europe/Helsinki']
+    first_far = Time.utc(2026, 10, 25, 0, 30) # 03:30 EEST, after the first 03:00
+    expect(periods(run(first_far, helsinki.local(2026, 10, 25, 23)), zone: helsinki).size).to eq(1)
   end
 end

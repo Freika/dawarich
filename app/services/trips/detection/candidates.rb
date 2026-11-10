@@ -2,8 +2,9 @@
 
 module Trips
   module Detection
-    # Turns runs of far points into trip periods: drops unfinished, too long and
-    # nightless runs, joins the road to the points at home, and merges overlaps.
+    # Turns runs of far points into trip periods: drops unfinished runs, joins the
+    # road to the points at home, merges overlapping runs of several devices, then
+    # drops groups that are too long or have no night.
     class Candidates
       Candidate = Data.define(:started_at, :ended_at)
       Result = Data.define(:periods, :long_absence)
@@ -16,35 +17,40 @@ module Trips
       def call
         long_absence = false
 
-        candidates = away_periods.filter_map do |run|
-          next unless run.closed
+        periods = groups.filter_map do |span, runs|
+          far = runs.map(&:first_far_at).min..runs.map(&:last_far_at).max
 
-          if run.last_far_at - run.first_far_at > Policy::MAX_TRIP_DURATION.to_i
+          if far.end - far.begin > Policy::MAX_TRIP_DURATION.to_i
             long_absence = true
             next
           end
 
-          candidate_for(run) if night?(run)
+          span if night?(far)
         end
 
-        Result.new(periods: merge(candidates), long_absence:)
+        Result.new(periods:, long_absence:)
       end
 
       private
 
       attr_reader :away_periods, :time_zone
 
-      def night?(run)
-        far = run.first_far_at..run.last_far_at
-        first_date = run.first_far_at.in_time_zone(time_zone).to_date
-        last_date = run.last_far_at.in_time_zone(time_zone).to_date
+      # Closed runs whose joined spans overlap or touch, as [joined span, runs] sorted by start.
+      def groups
+        spans = away_periods.select(&:closed).map { |run| [joined_span(run), [run]] }
 
-        (first_date..last_date).any? do |date|
-          far.cover?(time_zone.local(date.year, date.month, date.day, Policy::NIGHT_HOUR))
+        spans.sort_by { |span, _| span.started_at }.each_with_object([]) do |(span, runs), merged|
+          last_span, last_runs = merged.last
+
+          if last_span && span.started_at <= last_span.ended_at
+            merged[-1] = [last_span.with(ended_at: [last_span.ended_at, span.ended_at].max), last_runs + runs]
+          else
+            merged << [span, runs]
+          end
         end
       end
 
-      def candidate_for(run)
+      def joined_span(run)
         home_before = run.home_before_at
         home_after = run.home_after_at
 
@@ -58,16 +64,19 @@ module Trips
         earlier && later && later - earlier <= Policy::ROAD_JOIN_WINDOW.to_i
       end
 
-      def merge(candidates)
-        candidates.sort_by(&:started_at).each_with_object([]) do |candidate, merged|
-          last = merged.last
+      def night?(far)
+        first_date = far.begin.in_time_zone(time_zone).to_date
+        last_date = far.end.in_time_zone(time_zone).to_date
 
-          if last && candidate.started_at <= last.ended_at
-            merged[-1] = last.with(ended_at: [last.ended_at, candidate.ended_at].max)
-          else
-            merged << candidate
-          end
-        end
+        (first_date..last_date).any? { |date| night_hours_on(date).any? { |night| far.cover?(night) } }
+      end
+
+      # Local NIGHT_HOUR happens twice on a day the clocks fall back across it.
+      def night_hours_on(date)
+        first = time_zone.local(date.year, date.month, date.day, Policy::NIGHT_HOUR)
+        second = first + 1.hour
+
+        second.hour == Policy::NIGHT_HOUR ? [first, second] : [first]
       end
     end
   end
