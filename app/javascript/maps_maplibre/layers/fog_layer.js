@@ -15,7 +15,10 @@ export class FogLayer {
     this.canvas = null
     this.ctx = null
     this.api = options.api || null
-    this.controller = options.controller || null
+    // () => ({ startAt, endAt }) of the map's selected range.
+    this.dateRange = options.dateRange || null
+    this.snapshotId = options.snapshotId
+    this.statusMessages = options.statusMessages || {}
     this.hexBoundaries = []
     this.hexSource = new FogHexagonSource()
     this._renderHandler = null
@@ -156,10 +159,9 @@ export class FogLayer {
   }
 
   async _ensureHexagons() {
-    if (!this.api || !this.controller || this._removed) return
+    if (!this.api || !this.dateRange || this._removed) return
 
-    const start = this.controller.startDateValue
-    const end = this.controller.endDateValue
+    const { startAt: start, endAt: end } = this.dateRange()
     const key = `${start}|${end}`
 
     if (this._hexFetchKey === key) {
@@ -181,7 +183,7 @@ export class FogLayer {
       const loaded = await this.hexSource.load(this.api, {
         start_at: start,
         end_at: end,
-        snapshot_id: this.controller.explorationSnapshotValue,
+        snapshot_id: this.snapshotId,
       })
       if (loaded === false || this._removed) return
       if (this._hexFetchKey !== key) return
@@ -209,8 +211,7 @@ export class FogLayer {
       this.map.getContainer().appendChild(this.statusNode)
     }
     if (!this.statusNode) return
-    this.statusNode.textContent =
-      this.controller?.explorationMessagesValue?.[status] || ""
+    this.statusNode.textContent = this.statusMessages[status] || ""
     this.statusNode.style.display =
       status === "ready" || !this.visible ? "none" : "block"
   }

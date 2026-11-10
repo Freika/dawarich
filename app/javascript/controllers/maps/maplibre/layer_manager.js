@@ -308,7 +308,7 @@ export class LayerManager {
     this.layers.hexagonsLayer = new HexagonLayer(this.map, {
       visible: this.settings.hexagonsEnabled || false,
       api: this.api,
-      controller: this.controller,
+      loadingBadge: this.controller?.loadingBadge,
     })
     this.layers.hexagonsLayer.add({ type: "FeatureCollection", features: [] })
     return this.layers.hexagonsLayer
@@ -487,7 +487,12 @@ export class LayerManager {
       this.layers.fogLayer = new FogLayer(this.map, {
         visible: this.settings.fogEnabled || false,
         api: this.api,
-        controller: this.controller,
+        dateRange: () => ({
+          startAt: this.controller.startDateValue,
+          endAt: this.controller.endDateValue,
+        }),
+        snapshotId: this.controller.explorationSnapshotValue,
+        statusMessages: this.controller.explorationMessagesValue,
       })
       this.layers.fogLayer.add()
     } else {

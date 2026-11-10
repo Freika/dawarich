@@ -21,7 +21,7 @@ export class HexagonLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "hexagons", ...options })
     this.api = options.api
-    this.controller = options.controller
+    this.loadingBadge = options.loadingBadge
     this.aggregator = new Map()
     this.rawBuffer = []
     this.currentRes = resolutionForZoom(map.getZoom())
@@ -195,7 +195,7 @@ export class HexagonLayer extends BaseLayer {
     this.lastFetchedPage = 0
     this._repaint()
 
-    this.controller?.loadingBadge?.show()
+    this.loadingBadge?.show()
 
     const generation = ++this._loadGeneration
     await loadH3()
@@ -209,7 +209,7 @@ export class HexagonLayer extends BaseLayer {
           this._repaint()
         }
         this.lastFetchedPage = Math.max(this.lastFetchedPage, currentPage)
-        this.controller?.loadingBadge?.update({ counts: { hexagons: loaded } })
+        this.loadingBadge?.update({ counts: { hexagons: loaded } })
       },
     })
 
@@ -240,12 +240,12 @@ export class HexagonLayer extends BaseLayer {
         this._quotaWarned = true
         Toast.warning(translate("hexagons.limit_warning"))
       }
-      this.controller?.loadingBadge?.finish("hexagons", result.length)
-      this.controller?.loadingBadge?.hide()
+      this.loadingBadge?.finish("hexagons", result.length)
+      this.loadingBadge?.hide()
     } catch (error) {
       if (generation !== this._loadGeneration) return
       console.error("HexagonLayer load failed:", error)
-      this.controller?.loadingBadge?.hide()
+      this.loadingBadge?.hide()
       if (error.name !== "AbortError" && error.message !== "Load cancelled") {
         Toast.error(translate("hexagons.load_failed", { error: error.message }))
       }
@@ -268,7 +268,7 @@ export class HexagonLayer extends BaseLayer {
           this._repaint()
         }
         this.lastFetchedPage = Math.max(this.lastFetchedPage, currentPage)
-        this.controller?.loadingBadge?.update({ counts: { hexagons: loaded } })
+        this.loadingBadge?.update({ counts: { hexagons: loaded } })
       },
     })
 
@@ -293,12 +293,12 @@ export class HexagonLayer extends BaseLayer {
       )
 
       if (generation !== this._loadGeneration) return
-      this.controller?.loadingBadge?.finish("hexagons", this.rawBuffer.length)
-      this.controller?.loadingBadge?.hide()
+      this.loadingBadge?.finish("hexagons", this.rawBuffer.length)
+      this.loadingBadge?.hide()
     } catch (error) {
       if (generation !== this._loadGeneration) return
       console.error("HexagonLayer resumeLoad failed:", error)
-      this.controller?.loadingBadge?.hide()
+      this.loadingBadge?.hide()
       if (error.name !== "AbortError" && error.message !== "Load cancelled") {
         Toast.error(translate("hexagons.load_failed", { error: error.message }))
       }

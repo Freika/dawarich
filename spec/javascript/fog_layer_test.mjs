@@ -58,3 +58,41 @@ test("map listeners detach on remove, including the move and zoom handlers", () 
     assert.equal(map.listenerCount(event), 0)
   }
 })
+
+test("fog loads the map's current range and shows the status message it is given", async () => {
+  const appended = []
+  globalThis.document = {
+    createElement: () => ({ style: {}, setAttribute() {} }),
+  }
+  const map = {
+    ...fakeMap(),
+    getZoom: () => 5,
+    getContainer: () => ({ appendChild: (node) => appended.push(node) }),
+  }
+  let range = { startAt: "2024-06-01", endAt: "2024-06-30" }
+  const loads = []
+  const fog = new FogLayer(map, {
+    visible: true,
+    api: {},
+    dateRange: () => range,
+    snapshotId: "snap-1",
+    statusMessages: { calculating: "Calculating…" },
+  })
+  fog.hexSource = {
+    metadata: { status: "calculating" },
+    load: async (_api, params) => {
+      loads.push(params)
+      return false
+    },
+  }
+
+  await fog._ensureHexagons()
+  range = { startAt: "2024-07-01", endAt: "2024-07-31" }
+  await fog._ensureHexagons()
+
+  assert.deepEqual(loads, [
+    { start_at: "2024-06-01", end_at: "2024-06-30", snapshot_id: "snap-1" },
+    { start_at: "2024-07-01", end_at: "2024-07-31", snapshot_id: "snap-1" },
+  ])
+  assert.equal(appended[0].textContent, "Calculating…")
+})
