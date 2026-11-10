@@ -104,6 +104,18 @@ RSpec.describe Users::ImportData::Trips, type: :service do
       end
     end
 
+    context 'with a Detected Trip the user edited' do
+      it 'keeps its origin and the user\'s mark through an export round trip' do
+        original_user = create(:user)
+        edited_at = Time.utc(2024, 12, 1, 10)
+        create(:trip, user: original_user, origin: :detected, user_edited_at: edited_at)
+        exported = Users::ExportData::Trips.new(original_user).call
+
+        expect(described_class.new(user, exported).call).to eq(1)
+        expect(user.trips.sole).to have_attributes(origin: 'detected', user_edited_at: edited_at)
+      end
+    end
+
     context 'with valid trips data' do
       it 'creates new trips for the user' do
         expect { service.call }.to change { user.trips.count }.by(2)

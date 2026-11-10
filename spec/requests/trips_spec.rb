@@ -674,6 +674,13 @@ RSpec.describe '/trips', type: :request do
 
         expect(response).to redirect_to(trip_url(trip))
       end
+
+      it 'marks a Detected Trip as edited' do
+        trip = create(:trip, user:, origin: :detected)
+        patch trip_path(trip), params: { trip: { name: 'Portugal with Anna' } }
+
+        expect(trip.reload).to have_attributes(user_edited_at: be_present, origin: 'detected')
+      end
     end
 
     context 'with invalid parameters' do
@@ -699,6 +706,13 @@ RSpec.describe '/trips', type: :request do
       delete trip_url(trip)
 
       expect(response).to redirect_to(trips_url)
+    end
+
+    it 'dismisses the period when a Detected Trip is deleted' do
+      detected = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+      expect { delete trip_path(detected) }.to change(user.trip_detection_dismissals, :count).by(1)
+      expect(Trip.exists?(detected.id)).to be(false)
     end
   end
 

@@ -35,6 +35,17 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with trip detection dismissals' do
+      it 'deletes the dismissals with the user' do
+        user.trip_detection_dismissals.create!(started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        service.call
+
+        expect(User.exists?(user.id)).to be(false)
+        expect(TripDetectionDismissal.where(user_id: user.id)).to be_empty
+      end
+    end
+
     context 'with geofencing records' do
       it 'deletes events, webhooks and deliveries with the user' do
         delivery = create(:webhook_delivery, webhook: create(:webhook, user:))

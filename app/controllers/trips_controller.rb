@@ -58,7 +58,7 @@ class TripsController < ApplicationController
   end
 
   def update
-    if @trip.update(trip_params)
+    if @trip.update(trip_params.merge(user_edited_at: Time.current))
       @trip.adopt!
       redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
@@ -67,7 +67,7 @@ class TripsController < ApplicationController
   end
 
   def destroy
-    @trip.destroy!
+    @trip.destroy_by_user!
     redirect_to trips_url, notice: I18n.t('controllers.trips.trip_was_successfully_destroyed'), status: :see_other
   end
 

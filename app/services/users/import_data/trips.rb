@@ -5,6 +5,7 @@ class Users::ImportData::Trips
   IMPORTABLE_ATTRIBUTES = %w[
     name started_at ended_at distance path visited_countries
     source_identifier source_digest source_synced_at source_snapshot
+    origin user_edited_at
   ].freeze
 
   def initialize(user, trips_data)

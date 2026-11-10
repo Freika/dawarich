@@ -43,6 +43,7 @@ class User < ApplicationRecord
   has_many :service_settings, dependent: :destroy
   has_many :trips, dependent: :destroy
   has_many :trip_sources, dependent: :destroy
+  has_many :trip_detection_dismissals, dependent: :delete_all
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
