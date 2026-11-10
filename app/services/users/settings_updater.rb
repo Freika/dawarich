@@ -38,6 +38,7 @@ module Users
       blocked = blocked_integration_url_result
       return blocked if blocked
 
+      @settings_params = IntegrationSettingKeys.guard_url_changes(@settings_params, @user.settings)
       apply_settings
       return failure_result unless @user.save
 

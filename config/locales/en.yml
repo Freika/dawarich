@@ -163,7 +163,7 @@ en:
         current_password: Current password
         required_to_confirm_your_changes: "(required to confirm your changes)"
         import_your_data: Import your data
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings. Integration connections (Immich, Photoprism, AirTrail, TeslaMate) are not restored; reconnect them in Settings → Integrations."
         select_zip_archive: Select ZIP archive
         file_will_be_uploaded_directly_to_storage_please_be_patient: File will be uploaded directly to storage. Please be patient during upload.
         cancel: Cancel

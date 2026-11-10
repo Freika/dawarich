@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - A new production install no longer creates its first account with the published default password. Set `INITIAL_ADMIN_PASSWORD` (and, if you like, `INITIAL_ADMIN_EMAIL`) before the first start; otherwise Dawarich generates a password and writes it to the log once. Existing installs are not affected.
 - Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
+- `GET /api/v1/settings` no longer returns integration API keys, and restoring an account archive no longer restores integration connections. Details are under Security below. Account archives exported before this version still contain those keys and the TeslaMate password: delete old archives you no longer need, and change the keys if an archive was ever shared.
 
 ### Security
 
@@ -28,6 +29,9 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
 - A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
 - TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
+- **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead, and integration URLs are returned without any `user:password@` part, here and in `GET /api/v1/users/me`. Saving the keys through `PATCH /api/v1/settings` works as before, with one change: a request that changes an integration URL without sending its key forgets the stored key, so a key cannot be redirected to another server.
+- Account archives no longer contain integration credentials (Immich, Photoprism and AirTrail API keys, the TeslaMate password and token, and any `user:password@` part of an integration URL). Restoring an archive no longer changes the account's integration connections at all, so an archive cannot point a stored key at another server. After moving to a new instance, reconnect integrations in Settings → Integrations.
+- Restoring an account archive no longer writes the imported settings to the log.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.

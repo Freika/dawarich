@@ -233,7 +233,6 @@ class Users::ImportData::V1Handler
   end
 
   def import_settings(settings_data)
-    Rails.logger.debug "Importing settings: #{settings_data.inspect}"
     Users::ImportData::Settings.new(user, settings_data).call
     import_stats[:settings_updated] = true
   end

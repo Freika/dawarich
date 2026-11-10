@@ -1,6 +1,6 @@
 {
   "achievements_enabled": true,
-  "airtrail_api_key": null,
+  "airtrail_configured": false,
   "airtrail_url": null,
   "date_format": "auto",
   "distance_unit": "km",
@@ -27,7 +27,7 @@
   "gps_accuracy_filter_enabled": false,
   "gps_accuracy_threshold": 100,
   "gps_filtering_enabled": true,
-  "immich_api_key": null,
+  "immich_configured": false,
   "immich_url": null,
   "live_map_enabled": true,
   "maps": {
@@ -57,7 +57,7 @@
   "meters_between_routes": 500,
   "min_minutes_spent_in_city": 60,
   "minutes_between_routes": 30,
-  "photoprism_api_key": null,
+  "photoprism_configured": false,
   "photoprism_url": null,
   "places_tag_filters": null,
   "point_dragging_enabled": false,
