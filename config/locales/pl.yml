@@ -163,7 +163,7 @@ pl:
         current_password: Aktualne hasło
         required_to_confirm_your_changes: "(wymagane do potwierdzenia zmian)"
         import_your_data: Zaimportuj swoje dane
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia. Połączenia integracji (Immich, Photoprism, AirTrail, TeslaMate) nie są przywracane; połącz je ponownie w Ustawienia → Integracje."
         select_zip_archive: Wybierz archiwum ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Plik zostanie przesłany bezpośrednio do magazynu. Prosimy o cierpliwość.
         cancel: Anuluj

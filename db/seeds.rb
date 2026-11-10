@@ -3,18 +3,33 @@
 if User.none?
   Rails.logger.debug 'Creating user...'
 
-  email = 'demo@dawarich.app'
+  email = ENV['INITIAL_ADMIN_EMAIL'].presence || 'demo@dawarich.app'
+
+  # In production (self-hosted runs RAILS_ENV=production) never seed a static,
+  # publicly-documented password: take INITIAL_ADMIN_PASSWORD, or generate a
+  # random one and print it once. Dev/test keep the convenient demo password.
+  generated = false
+  password =
+    if Rails.env.production?
+      ENV['INITIAL_ADMIN_PASSWORD'].presence || (generated = true) && SecureRandom.base58(24)
+    else
+      'safepassword'
+    end
 
   User.create!(
     email:,
-    password: 'safepassword',
-    password_confirmation: 'safepassword',
+    password:,
+    password_confirmation: password,
     admin: true,
     status: :active,
     active_until: 100.years.from_now
   )
 
-  Rails.logger.debug "User created: '#{email}' / password: 'safepassword'"
+  if generated
+    Rails.logger.warn("Seeded admin '#{email}' with a generated password: #{password} — sign in and change it now.")
+  else
+    Rails.logger.debug "User created: '#{email}'"
+  end
 end
 
 if Country.none?

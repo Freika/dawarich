@@ -154,7 +154,7 @@ zh:
         current_password: 当前密码
         required_to_confirm_your_changes: （确认更改时需要）
         import_your_data: 导入您的数据
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: 上传包含已导出 Dawarich 数据的 ZIP 文件，即可恢复您的轨迹点、行程和设置。
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "上传包含已导出 Dawarich 数据的 ZIP 文件，即可恢复您的轨迹点、行程和设置。集成连接（Immich、Photoprism、AirTrail、TeslaMate）不会恢复，请在“设置 → 集成”中重新连接。"
         select_zip_archive: 选择 ZIP 压缩包
         file_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
         cancel: 取消

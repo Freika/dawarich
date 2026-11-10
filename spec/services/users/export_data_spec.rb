@@ -130,6 +130,36 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'leaves integration secrets out of the exported settings and keeps the URLs' do
+        user.update!(settings: {
+                       'immich_url' => 'https://immich.example.test', 'immich_api_key' => 'immich-secret',
+                       'photoprism_url' => 'https://photoprism.example.test', 'photoprism_api_key' => 'prism-secret',
+                       'airtrail_url' => 'https://airtrail.example.test', 'airtrail_api_key' => 'airtrail-secret',
+                       'teslamate_url' => 'https://teslamate.example.test', 'teslamate_username' => 'proxy',
+                       'teslamate_password' => 'tesla-secret', 'teslamate_api_token' => 'tesla-token',
+                       'teslamate_last_synced_url' => 'https://basic:url-secret@teslamate.example.test'
+                     })
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          raw = zip_file.read('settings.jsonl')
+          exported = JSON.parse(raw)
+
+          expect(exported.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key',
+                                               'teslamate_password', 'teslamate_api_token')
+          expect(exported['teslamate_last_synced_url']).to eq('https://teslamate.example.test')
+          %w[immich-secret prism-secret airtrail-secret tesla-secret tesla-token url-secret].each do |secret|
+            expect(raw).not_to include(secret)
+          end
+          expect(exported).to include('immich_url' => 'https://immich.example.test',
+                                      'photoprism_url' => 'https://photoprism.example.test',
+                                      'airtrail_url' => 'https://airtrail.example.test',
+                                      'teslamate_url' => 'https://teslamate.example.test',
+                                      'teslamate_username' => 'proxy')
+        end
+      end
+
       it 'exports the stored Pro-only settings of a Lite user' do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         user.update!(plan: :lite, settings: {

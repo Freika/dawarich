@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### ⚠️ Upgrade notes
+
+- A new production install no longer creates its first account with the published default password. Set `INITIAL_ADMIN_PASSWORD` (and, if you like, `INITIAL_ADMIN_EMAIL`) before the first start; otherwise Dawarich generates a password and writes it to the log once. Existing installs are not affected.
+- Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
+- `GET /api/v1/settings` no longer returns integration API keys, and restoring an account archive no longer restores integration connections. Details are under Security below. Account archives exported before this version still contain those keys and the TeslaMate password: delete old archives you no longer need, and change the keys if an archive was ever shared.
+
+### Security
+
+Fixes for issues found in a security audit. Operators should upgrade.
+
+- Signing in with Google, GitHub or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- Replacing a 2FA setup that is already on now requires the current password.
+- Failed logins through the API now count toward account lockout, the same as on the web.
+- Opening a sign-up link with an import ticket while signed in no longer adds that import to your account.
+- Importing an account archive now ignores record IDs inside the archive, so a crafted archive cannot point its points at someone else's imports, visits or tracks. Account exports no longer include details of an import or visit that belongs to another user.
+- Account archives are now parsed as plain JSON, so a crafted line can no longer create Ruby objects during import.
+- Family location sharing now hides points inside each member's Privacy Zones, both for the latest location and for history.
+- Removing a family member, or regenerating a live-share link's phrase, now stops delivering locations to an already-open connection immediately, instead of only blocking new ones.
+- The Immich photo-matching panel now escapes photo filenames, closing a cross-site scripting hole a malicious or compromised Immich server could trigger through a crafted filename.
+- Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
+- Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
+- A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
+- TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
+- **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead, and integration URLs are returned without any `user:password@` part, here and in `GET /api/v1/users/me`. Saving the keys through `PATCH /api/v1/settings` works as before, with one change: a request that changes an integration URL without sending its key forgets the stored key, so a key cannot be redirected to another server.
+- Account archives no longer contain integration credentials (Immich, Photoprism and AirTrail API keys, the TeslaMate password and token, and any `user:password@` part of an integration URL). Restoring an archive no longer changes the account's integration connections at all, so an archive cannot point a stored key at another server. After moving to a new instance, reconnect integrations in Settings → Integrations.
+- Restoring an account archive no longer writes the imported settings to the log.
+- `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
+- API rate limits now also count an `api_key` sent in a JSON body.
+- ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above `KML_MAX_PARSE_BYTES` (64 MiB by default) and JSON/TCX above `IMPORT_MAX_PARSE_BYTES` (512 MiB by default). A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
+
 ### Added
 
 - Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
