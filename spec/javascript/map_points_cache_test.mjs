@@ -1,14 +1,9 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 async function loadModule(path) {
-  const source = (
-    await readFile(
-      new URL(`../../app/javascript/${path}`, import.meta.url),
-      "utf8",
-    )
-  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const source = await strippedSource(path)
   const stubs = `
     class Controller {}
 class ReplayHost extends Controller {}

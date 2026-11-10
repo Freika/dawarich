@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 let source = await readFile(
   new URL(
@@ -58,14 +59,9 @@ class EditSuccessIndicator {
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(dependencies + source).toString("base64")}`
 const { MapEditor } = await import(moduleUrl)
 
-let managerSource = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/map_data_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
+const managerSource = await strippedSource(
+  "controllers/maps/maplibre/map_data_manager.js",
 )
-managerSource = managerSource.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const managerDependencies = `
 const flightWindows = (geoJSON) => geoJSON?.windows || []
 `

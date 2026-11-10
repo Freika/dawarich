@@ -1,15 +1,10 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-let source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/map_data_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
+const source = await strippedSource(
+  "controllers/maps/maplibre/map_data_manager.js",
 )
-source = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const dependencies = `
 const translate = (key) => key
 const Toast = { error() {} }
