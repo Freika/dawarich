@@ -36,7 +36,7 @@ const previewSource = (await read("poster_studio/ui/preview.js")).replace(
   "",
 )
 const frameSource = await read("poster_studio/render/frame_geometry.js")
-const editorDependencies = `import { collectCoords } from "${moduleUrl(previewSource)}"; import { frameCovers } from "${moduleUrl(frameSource)}"; const translate = key => key;`
+const editorDependencies = `import { collectCoords } from "${moduleUrl(previewSource)}"; import { frameCovers } from "${moduleUrl(frameSource)}"; const translate = key => key; const printOutput = {}, themePicker = {}, layoutPicker = {}, datePicker = {};`
 const { TripProvider } = await import(moduleUrl(providers))
 const { default: Editor } = await import(
   moduleUrl(`class Controller {}

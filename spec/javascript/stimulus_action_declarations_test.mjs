@@ -7,6 +7,7 @@ import test from "node:test"
 // drops a method shows up here.
 const CONTROLLERS = {
   "timeline-feed": "controllers/timeline_feed_controller",
+  "poster-studio-editor": "controllers/poster_studio_editor_controller",
 }
 
 const root = new URL("../../", import.meta.url)

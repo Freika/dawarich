@@ -24,10 +24,18 @@ const resolveTheme = (tokens) => tokens
 const DAWARICH_BLUE = "#2563EB"
 const studioTilesUrl = globalThis.__studioTilesUrl
 `
+// The editor's mixins are not under test here.
+const editorMixins = `
+const printOutput = {}
+const themePicker = {}
+const layoutPicker = {}
+const datePicker = {}
+`
 
 const { default: PosterStudioController } = await import(
   toModuleUrl(
     stubs +
+      editorMixins +
       stripImports(
         await readApp("controllers/poster_studio_editor_controller.js"),
       ),

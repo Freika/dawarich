@@ -100,9 +100,19 @@ async function exercise(initial, zone) {
     await read("app/javascript/poster_studio/data/providers.js"),
     { RouteSegmenter },
   )
+  const { datePicker } = await load(
+    await read("app/javascript/poster_studio/editor/date_picker.js"),
+    { ...i18n, ...dateRange },
+  )
   const { default: Poster } = await load(
     await read("app/javascript/controllers/poster_studio_editor_controller.js"),
-    { ...i18n, ...dateRange, MapPageProvider, trackBounds: () => null },
+    {
+      ...i18n,
+      ...dateRange,
+      MapPageProvider,
+      trackBounds: () => null,
+      datePicker,
+    },
   )
   const map = Object.create(MapController.prototype)
   const network = []
