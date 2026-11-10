@@ -2,13 +2,11 @@ import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
-import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { AreaSelectionManager } from "./area_selection_manager"
 import { consumeCreatePlaceLink } from "./create_place_link"
 import { DataLoader } from "./data_loader"
-import { DateManager } from "./date_manager"
 import { EventHandlers } from "./event_handlers"
 import { FilterManager } from "./filter_manager"
 import { LayerManager } from "./layer_manager"
@@ -103,34 +101,5 @@ export function listenToDocument(controller) {
   }
   for (const [name, handler] of Object.entries(handlers)) {
     controller.cleanup.addEventListener(document, name, handler)
-  }
-}
-
-/**
- * Convert the server-rendered range to the API format and remember it.
- * Realtime filtering uses the snapshot to tell the default "today" view
- * (whose frozen end goes stale across local midnight) apart from an
- * explicitly selected past range.
- */
-export function snapshotInitialDateRange(controller) {
-  const [serverStartDate, serverEndDate] = [
-    controller.startDateValue,
-    controller.endDateValue,
-  ].map((value) => value.split("T")[0])
-
-  controller.startDateValue = DateManager.formatDateForAPI(
-    new Date(controller.startDateValue),
-  )
-  controller.endDateValue = DateManager.formatDateForAPI(
-    new Date(controller.endDateValue),
-  )
-
-  const loadEnd = parseTimestamp(controller.endDateValue)
-  controller.defaultDateRange = {
-    startValue: controller.startDateValue,
-    endValue: controller.endDateValue,
-    startDate: serverStartDate,
-    endDate: serverEndDate,
-    reachesNow: loadEnd !== null && loadEnd >= Date.now(),
   }
 }

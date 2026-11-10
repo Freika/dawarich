@@ -88,9 +88,13 @@ const { RouteSegmenter } = await load(
   arcs,
 )
 async function exercise(initial, zone) {
+  const { MapDateRange } = await load(
+    await read("app/javascript/controllers/maps/maplibre/date_range.js"),
+    { DateManager, SettingsManager, anomaliesVisible },
+  )
   const { default: MapController } = await load(
     await read("app/javascript/controllers/maps/maplibre_controller.js"),
-    { ...i18n, DateManager, SettingsManager, anomaliesVisible },
+    i18n,
   )
   const { MapPageProvider } = await load(
     await read("app/javascript/poster_studio/data/providers.js"),
@@ -121,6 +125,7 @@ async function exercise(initial, zone) {
     refreshTimelineFeedIfActive() {},
     familyManager: { debouncedLoadHistory() {} },
   })
+  map.dateRange = new MapDateRange(map)
   const navigationRequests = []
   const element = { id: "maps-maplibre-container" }
   globalThis.window = {

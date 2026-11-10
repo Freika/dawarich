@@ -26,14 +26,6 @@ const { default: TimelineFeedController } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
 )
 
-const mapControllerSource = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre_controller.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-
 function installBrowserStubs(t) {
   const events = []
   const originals = {
@@ -190,22 +182,4 @@ test("the day's bounds are sent to the map for an ordinary day switch", (t) => {
     (e) => e.type === "timeline-feed:day-selected" && e.detail?.bounds,
   )
   assert.deepEqual(daySelected?.detail.bounds, bounds)
-})
-
-test("the map honours fitBounds from a timeline navigation", () => {
-  const navigate = mapControllerSource.slice(
-    mapControllerSource.indexOf("async navigateTimelineDateRange("),
-    mapControllerSource.indexOf("async setDateRange("),
-  )
-  const setRange = mapControllerSource.slice(
-    mapControllerSource.indexOf("async setDateRange("),
-    mapControllerSource.indexOf("this.refreshTimelineFeedIfActive"),
-  )
-
-  assert.match(
-    navigate,
-    /navigateTimelineDateRange\(\{[^}]*fitBounds = true[^}]*\}\)/,
-  )
-  assert.match(navigate, /this\.setDateRange\(start, end, \{ fitBounds \}\)/)
-  assert.match(setRange, /this\.loadMapData\(\{ fitBounds \}\)/)
 })

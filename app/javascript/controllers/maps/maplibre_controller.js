@@ -9,15 +9,11 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
-import { DateManager } from "./maplibre/date_manager"
+import { MapDateRange } from "./maplibre/date_range"
 import { FamilyManager } from "./maplibre/family_manager"
 import { InfoPanel } from "./maplibre/info_panel"
 import { LoadingBadge } from "./maplibre/loading_badge"
-import {
-  buildMapFeatures,
-  listenToDocument,
-  snapshotInitialDateRange,
-} from "./maplibre/map_bootstrap"
+import { buildMapFeatures, listenToDocument } from "./maplibre/map_bootstrap"
 import { MapInitializer } from "./maplibre/map_initializer"
 import { ensureMapReplayPanel, replayTrackFrom } from "./maplibre/map_replay"
 import { SettingsController } from "./maplibre/settings_manager"
@@ -155,6 +151,7 @@ export default class MapController extends Controller {
     this.familyManager = new FamilyManager(this)
     this.loadingBadge = new LoadingBadge(this)
     this.infoPanel = new InfoPanel(this)
+    this.dateRange = new MapDateRange(this)
     this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
@@ -173,7 +170,7 @@ export default class MapController extends Controller {
 
     buildMapFeatures(this)
     listenToDocument(this)
-    snapshotInitialDateRange(this)
+    this.dateRange.snapshotInitial()
 
     if (this.settings.placesEnabled) {
       await this.placesManager.initializePlaceTagFilters({
@@ -311,83 +308,6 @@ export default class MapController extends Controller {
         fitBounds: options.fitBounds !== false && !this.placePanel?.isOpen,
       },
     )
-  }
-
-  /** Month selector changed. Called by the private E2E suite. */
-  monthChanged(event) {
-    const { startDate, endDate } = DateManager.parseMonthSelector(
-      event.target.value,
-    )
-    return this.setDateRange(startDate, endDate)
-  }
-
-  /**
-   * Timeline panel requested a new day (SPA navigation — no page reload).
-   * Uses the month selector's date format: the Points/Tracks
-   * API expects `DateManager.formatDateForAPI`'s local `YYYY-MM-DDTHH:MM+OFFSET`
-   * shape. Using `Date#toISOString()` (UTC `Z` suffix) here was causing Tracks
-   * to come back empty because the server parsed the dates differently.
-   */
-  handleTimelineDateNavigated(event) {
-    const navigation = this.navigateTimelineDateRange(event.detail || {})
-    if (typeof event.detail?.waitUntil === "function") {
-      event.detail.waitUntil(navigation)
-    } else {
-      navigation.catch((error) => console.error(error))
-    }
-  }
-
-  async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
-    if (!startAt || !endAt) return
-
-    const toApiDate = (local) => {
-      const d = new Date(local)
-      if (Number.isNaN(d.getTime())) return null
-      return DateManager.formatDateForAPI(d)
-    }
-    const start = toApiDate(startAt)
-    const end = toApiDate(endAt)
-    if (!start || !end) return
-
-    await this.setDateRange(start, end, { fitBounds })
-  }
-
-  /**
-   * The one place the selected range changes: every enabled layer, the
-   * Timeline feed and family history reload for it.
-   */
-  async setDateRange(startAt, endAt, { fitBounds = true } = {}) {
-    this.startDateValue = startAt
-    this.endDateValue = endAt
-
-    this.layerManager.getLayer("map-editor")?.close()
-    this.timelineBridge.clearDayHighlight()
-    await this.loadMapData({ fitBounds })
-    if (anomaliesVisible(SettingsManager.getSettings())) {
-      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-    }
-    this.refreshTimelineFeedIfActive()
-    this.familyManager.debouncedLoadHistory()
-  }
-
-  /**
-   * The active window realtime points are filtered against. When the range is
-   * still the untouched load-time window that reached the present, the end is
-   * left open so live points recorded after local midnight keep showing.
-   */
-  realtimeDateRange() {
-    const startValue = this.startDateValue
-    const endValue = this.endDateValue
-    const unchanged =
-      this.defaultDateRange &&
-      startValue === this.defaultDateRange.startValue &&
-      endValue === this.defaultDateRange.endValue
-
-    return {
-      startValue,
-      endValue,
-      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
-    }
   }
 
   /**
@@ -640,6 +560,13 @@ const FORWARDED_ACTIONS = {
     "startCreatePlace",
   ],
   infoPanel: ["handleDelete", "deletePoint", "markPointValid"],
+  dateRange: [
+    "monthChanged",
+    "handleTimelineDateNavigated",
+    "navigateTimelineDateRange",
+    "setDateRange",
+    "realtimeDateRange",
+  ],
   layerVisibilityManager: [
     "togglePoints",
     "toggleHeatmap",
