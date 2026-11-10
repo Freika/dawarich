@@ -195,7 +195,7 @@ class Users::ImportData::V1Handler
       line = line.strip
       next if line.blank?
 
-      batch << Oj.load(line)
+      batch << Oj.load(line, mode: :strict)
       if batch.size >= STREAM_BATCH_SIZE
         import_visits_batch(batch)
         batch = []
@@ -226,7 +226,7 @@ class Users::ImportData::V1Handler
       line = line.strip
       next if line.blank?
 
-      importer.add(Oj.load(line))
+      importer.add(Oj.load(line, mode: :strict))
     end
 
     import_stats[:points_created] = importer.finalize.to_i

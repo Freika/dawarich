@@ -46,7 +46,11 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   # response time does not leak account existence.
   def constant_time_authenticate(user, password)
     if user
-      user.valid_password?(password)
+      # Route through Devise lockable: refuse locked accounts and let failed
+      # attempts count toward a lockout, matching the Warden (web) login path.
+      return false if user.access_locked?
+
+      user.valid_for_authentication? { user.valid_password?(password) }
     else
       # Run bcrypt against a dummy hash; result is always false.
       BCrypt::Password.new(DUMMY_PASSWORD_HASH).is_password?(password)
