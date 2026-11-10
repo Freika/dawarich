@@ -38,7 +38,7 @@ import { VisitsManager } from "./maplibre/visits_manager"
  * Main map controller for Maps V2
  * Coordinates between different managers and handles UI interactions
  */
-export default class extends Controller {
+export default class MapController extends Controller {
   static values = {
     apiKey: String,
     startDate: String,
@@ -584,158 +584,11 @@ export default class extends Controller {
     }
   }
 
-  // Settings Controller methods
-  updateMapStyle(event) {
-    return this.settingsController.style.updateMapStyle(event)
-  }
-  applyMapStyle(styleName) {
-    return this.settingsController.applyMapStyle(styleName)
-  }
-  resetSettings() {
-    return this.settingsController.resetSettings()
-  }
-  toggleTileCategory(event) {
-    return this.settingsController.style.toggleTileCategory(event)
-  }
-  togglePoiGroup(event) {
-    return this.settingsController.style.togglePoiGroup(event)
-  }
-  updateDistanceUnit(event) {
-    return this.settingsController.updateDistanceUnit(event)
-  }
-  updateVectorTilesUrl(event) {
-    return this.settingsController.style.updateVectorTilesUrl(event)
-  }
-  updateTilesFallback(event) {
-    return this.settingsController.style.updateTilesFallback(event)
-  }
-  updateTrackColor(event) {
-    return this.settingsController.updateTrackColor(event)
-  }
-  toggleSpeedColoredRoutes(event) {
-    return this.settingsController.toggleSpeedColoredRoutes(event)
-  }
-  updateSpeedColorScale(event) {
-    return this.settingsController.updateSpeedColorScale(event)
-  }
-  resetLayerColors() {
-    return this.settingsController.resetLayerColors()
-  }
-  updateAdvancedSettings(event) {
-    return this.settingsController.updateAdvancedSettings(event)
-  }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
-  updateMinMinutesInCityDisplay(event) {
-    return this.settingsController.updateMinMinutesInCityDisplay(event)
-  }
-  reapplyAnomalyFilter() {
-    return this.settingsController.reapplyAnomalyFilter()
-  }
-  recalculateUserData() {
-    return this.settingsController.recalculateUserData()
-  }
-  toggleGlobe(event) {
-    return this.settingsController.style.toggleGlobe(event)
-  }
-  markTransportationSettingsDirty(event) {
-    return this.settingsController.transportation.markTransportationSettingsDirty(
-      event,
-    )
-  }
-  applyTransportationSettings(event) {
-    return this.settingsController.transportation.applyTransportationSettings(
-      event,
-    )
-  }
-
-  // Area Selection Manager methods
-  startSelectArea() {
-    return this.areaSelectionManager.startSelectArea()
-  }
-  cancelAreaSelection() {
-    return this.areaSelectionManager.cancelAreaSelection()
-  }
-  deleteSelectedPoints() {
-    return this.areaSelectionManager.deleteSelectedPoints()
-  }
-  deleteSelectedAnomalies() {
-    return this.areaSelectionManager.deleteSelectedAnomalies()
-  }
-
-  // Visits Manager methods
-  toggleVisits(event) {
-    return this.visitsManager.toggleVisits(event)
-  }
-  searchVisits(event) {
-    return this.visitsManager.searchVisits(event)
-  }
-  filterVisits(event) {
-    return this.visitsManager.filterVisits(event)
-  }
-  startCreateVisit() {
-    return this.visitsManager.startCreateVisit()
-  }
-
-  // Places Manager methods
-  togglePlaces(event) {
-    return this.placesManager.togglePlaces(event)
-  }
-  toggleArchivedPlaces(event) {
-    return this.placesManager.toggleArchivedPlaces(event)
-  }
-  togglePlaceBoundaries(event) {
-    return this.placesManager.togglePlaceBoundaries(event)
-  }
-  filterPlacesByTags(event) {
-    return this.placesManager.filterPlacesByTags(event)
-  }
-  toggleAllPlaceTags(event) {
-    return this.placesManager.toggleAllPlaceTags(event)
-  }
-  startCreatePlace() {
-    return this.placesManager.startCreatePlace()
-  }
-
-  // Routes Manager methods
-  togglePoints(event) {
-    return this.layerVisibilityManager.togglePoints(event)
-  }
-
-  togglePointsEditing(event) {
-    return this.settingsController.togglePointsEditing(event)
-  }
-
-  toggleHeatmap(event) {
-    return this.layerVisibilityManager.toggleHeatmap(event)
-  }
-  toggleHexagons(event) {
-    return this.layerVisibilityManager.toggleHexagons(event)
-  }
-  toggleFog(event) {
-    return this.layerVisibilityManager.toggleFog(event)
-  }
-  toggleScratch(event) {
-    return this.layerVisibilityManager.toggleScratch(event)
-  }
   async togglePhotos(event) {
     await this.layerVisibilityManager.togglePhotos(event)
     if (!this.replayPanel?.isOpen) return
     if (!event.target.checked) this._photosWasVisible = false
     this.replayPanel.refreshReplayPhotos()
-  }
-  toggleTracks(event) {
-    return this.layerVisibilityManager.toggleTracks(event)
-  }
-  toggleFlights(event) {
-    return this.layerVisibilityManager.toggleFlights(event)
-  }
-  toggleAnomalies(event) {
-    return this.layerVisibilityManager.toggleAnomalies(event)
-  }
-  toggleFamily(event) {
-    return this.layerVisibilityManager.toggleFamily(event)
   }
 
   loadFamilyMembers() {
@@ -941,5 +794,81 @@ export default class extends Controller {
 
     const pointsSource = this.map?.getSource("points-source")
     return pointsSource?.serialize?.()?.data?.features || []
+  }
+}
+
+/**
+ * Actions the views bind (and the private E2E suite calls) that only forward
+ * to the manager owning them: { "path.from.controller": [method names] }.
+ * The manager is looked up on each call, so it may be built after connect.
+ */
+const FORWARDED_ACTIONS = {
+  "settingsController.style": [
+    "updateMapStyle",
+    "toggleTileCategory",
+    "togglePoiGroup",
+    "updateVectorTilesUrl",
+    "updateTilesFallback",
+    "toggleGlobe",
+  ],
+  settingsController: [
+    "applyMapStyle",
+    "resetSettings",
+    "updateDistanceUnit",
+    "updateTrackColor",
+    "toggleSpeedColoredRoutes",
+    "updateSpeedColorScale",
+    "resetLayerColors",
+    "updateAdvancedSettings",
+    "updateGpsAccuracyThresholdDisplay",
+    "updateMinMinutesInCityDisplay",
+    "reapplyAnomalyFilter",
+    "recalculateUserData",
+    "togglePointsEditing",
+  ],
+  "settingsController.transportation": [
+    "markTransportationSettingsDirty",
+    "applyTransportationSettings",
+  ],
+  areaSelectionManager: [
+    "startSelectArea",
+    "cancelAreaSelection",
+    "deleteSelectedPoints",
+    "deleteSelectedAnomalies",
+  ],
+  visitsManager: [
+    "toggleVisits",
+    "searchVisits",
+    "filterVisits",
+    "startCreateVisit",
+  ],
+  placesManager: [
+    "togglePlaces",
+    "toggleArchivedPlaces",
+    "togglePlaceBoundaries",
+    "filterPlacesByTags",
+    "toggleAllPlaceTags",
+    "startCreatePlace",
+  ],
+  layerVisibilityManager: [
+    "togglePoints",
+    "toggleHeatmap",
+    "toggleHexagons",
+    "toggleFog",
+    "toggleScratch",
+    "toggleTracks",
+    "toggleFlights",
+    "toggleAnomalies",
+    "toggleFamily",
+  ],
+}
+
+for (const [path, names] of Object.entries(FORWARDED_ACTIONS)) {
+  const keys = path.split(".")
+  for (const name of names) {
+    MapController.prototype[name] = function (...args) {
+      const owner = keys.reduce((object, key) => object[key], this)
+      return owner[name](...args)
+    }
   }
 }
