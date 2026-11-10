@@ -24,6 +24,9 @@ class ReplayHost extends Controller {}
 const { MapDataManager } = await loadModule(
   "controllers/maps/maplibre/map_data_manager.js",
 )
+const { InfoPanel } = await loadModule(
+  "controllers/maps/maplibre/info_panel.js",
+)
 const { default: MapsController } = await loadModule(
   "controllers/maps/maplibre_controller.js",
 )
@@ -56,6 +59,7 @@ function mapController(fetchPointsData) {
     closeInfo() {},
   })
   controller.mapDataManager = new MapDataManager(controller)
+  controller.infoPanel = new InfoPanel(controller)
   return controller
 }
 

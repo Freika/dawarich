@@ -1,6 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import { deletePlace } from "maps_maplibre/components/place_actions"
 import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
 import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
@@ -23,6 +22,7 @@ import { DateManager } from "./maplibre/date_manager"
 import { EventHandlers } from "./maplibre/event_handlers"
 import { FamilyManager } from "./maplibre/family_manager"
 import { FilterManager } from "./maplibre/filter_manager"
+import { InfoPanel } from "./maplibre/info_panel"
 import { LayerManager } from "./maplibre/layer_manager"
 import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
 import { LoadingBadge } from "./maplibre/loading_badge"
@@ -165,6 +165,7 @@ export default class MapController extends Controller {
     SettingsManager.initialize(this.apiKeyValue)
     this.familyManager = new FamilyManager(this)
     this.loadingBadge = new LoadingBadge(this)
+    this.infoPanel = new InfoPanel(this)
     this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
     await this.loadViewSettings()
@@ -599,75 +600,12 @@ export default class MapController extends Controller {
     return this.familyManager.centerOnMember(event)
   }
 
-  // Info Display methods
   showInfo(title, content, actions = []) {
-    if (!this.hasInfoDisplayTarget) return
-
-    // Reset the tracked entity; area clicks re-tag this after calling showInfo.
-    this._infoEntity = null
-
-    // Set title
-    this.infoTitleTarget.textContent = title
-
-    // Set content
-    this.infoContentTarget.innerHTML = content
-
-    // Set actions
-    if (actions.length > 0) {
-      this.infoActionsTarget.innerHTML = actions
-        .map((action) => {
-          if (action.type === "button") {
-            // For button actions (modals, etc.), create a button with data-action
-            // Use error styling for delete buttons
-            const buttonClass =
-              action.handler === "handleDelete"
-                ? "btn btn-sm btn-error"
-                : "btn btn-sm btn-primary"
-            return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
-          } else {
-            // For link actions, keep the original behavior
-            return `<a href="${action.url}" class="btn btn-sm btn-primary">${action.label}</a>`
-          }
-        })
-        .join("")
-    } else {
-      this.infoActionsTarget.innerHTML = ""
-    }
-
-    // Show info display
-    this.infoDisplayTarget.classList.remove("hidden")
-
-    // Switch to tools tab and open panel
-    this.switchToToolsTab()
+    return this.infoPanel.show(title, content, actions)
   }
 
   closeInfo(options = {}) {
-    if (!this.hasInfoDisplayTarget) return
-    this.infoDisplayTarget.classList.add("hidden")
-
-    if (options.clearSelection !== false && this.eventHandlers) {
-      this.eventHandlers.clearTrackSelection()
-      this.eventHandlers.clearPointSelection()
-    }
-  }
-
-  /**
-   * Handle delete action from info display
-   */
-  handleDelete(event) {
-    const button = event.currentTarget
-    const id = button.dataset.id
-    const entityType = button.dataset.entityType
-
-    switch (entityType) {
-      case "point":
-        this.deletePoint(id)
-        break
-      case "place":
-        return deletePlace(this, id)
-      default:
-        console.warn("[Maps V2] Unknown entity type for delete:", entityType)
-    }
+    return this.infoPanel?.close(options)
   }
 
   /** Open the visit edit modal. Called by the private E2E suite. */
@@ -689,40 +627,6 @@ export default class MapController extends Controller {
       )
     } catch (_error) {
       Toast.error(translate("messages.failed_to_load_visit_details"))
-    }
-  }
-
-  /** Delete a point, then invalidate the tile-backed presentation. */
-  async deletePoint(pointId) {
-    const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
-    if (!confirmed) return
-
-    try {
-      await this.api.deletePoint(pointId)
-      this.mapDataManager?.invalidatePoints()
-      this.layerManager.getLayer("map-editor")?.close()
-      this.layerManager.getLayer("points-mvt")?.refresh()
-      this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.layerManager.getLayer("scratch")?.retryMembership()
-      this.closeInfo()
-      Toast.success(translate("messages.point_deleted_successfully"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_delete_point"))
-    }
-  }
-
-  /** Mark an anomaly as correct, then reload anomalies, points and tracks. */
-  async markPointValid(event) {
-    try {
-      await this.api.markPointValid(event.currentTarget.dataset.id)
-      this.mapDataManager?.invalidatePoints()
-      this.layerManager.getLayer("points-mvt")?.refresh()
-      this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-      this.closeInfo()
-      Toast.success(translate("messages.point_marked_valid"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_mark_point_valid"))
     }
   }
 
@@ -850,6 +754,7 @@ const FORWARDED_ACTIONS = {
     "toggleAllPlaceTags",
     "startCreatePlace",
   ],
+  infoPanel: ["handleDelete", "deletePoint", "markPointValid"],
   layerVisibilityManager: [
     "togglePoints",
     "toggleHeatmap",
