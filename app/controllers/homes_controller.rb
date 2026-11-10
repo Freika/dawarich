@@ -7,6 +7,11 @@ class HomesController < ApplicationController
   before_action :authenticate_user!
 
   def create
+    # Onboarding adds a first Home only; later periods are edited on the Place page.
+    if current_user.homes.exists?
+      return render turbo_stream: stream_flash(:notice, I18n.t('trip_detection.onboarding.home_exists'))
+    end
+
     latitude = coordinate(:latitude, 90)
     longitude = coordinate(:longitude, 180)
 

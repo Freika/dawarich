@@ -65,5 +65,7 @@ en:
       location_denied: "Your location could not be read. Click the map to place your home instead, or set it later on the Places page."
       home_saved: "Your home is saved. Dawarich will look for your trips."
       invalid_location: "Pick a location on the map first."
+      # Onboarding never adds a second Home.
+      home_exists: "You already have a Home. You can change it on the Places page."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Continue"

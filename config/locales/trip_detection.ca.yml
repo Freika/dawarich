@@ -65,5 +65,7 @@ ca:
       location_denied: "No s’ha pogut llegir la teva ubicació. Fes clic al mapa per situar la teva llar o configura-la més tard a la pàgina Llocs."
       home_saved: "La teva llar s’ha desat. Dawarich buscarà els teus viatges."
       invalid_location: "Primer tria un lloc al mapa."
+      # Onboarding never adds a second Home.
+      home_exists: "Ja tens una llar. La pots canviar a la pàgina Llocs."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Continua"

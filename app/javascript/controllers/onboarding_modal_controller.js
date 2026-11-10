@@ -153,6 +153,8 @@ export default class extends Controller {
   homeSaved(event) {
     if (!event.detail.success) return
     this.hasHomeValue = true
+    // A reopened dialog (navbar "Getting started") must not offer the filled form again.
+    this.showChoice()
     this.dismiss()
   }
 

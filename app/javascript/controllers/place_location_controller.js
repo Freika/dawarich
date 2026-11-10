@@ -35,6 +35,14 @@ export default class extends Controller {
         this.setCoordinates(this.marker.getLngLat()),
       )
     }
+    // Fields filled while the map was loading (e.g. an early geolocation answer).
+    if (
+      this.hasLatitudeTarget &&
+      this.latitudeTarget.value &&
+      this.longitudeTarget.value
+    ) {
+      this.coordinatesChanged()
+    }
   }
 
   setCoordinates({ lat, lng }) {

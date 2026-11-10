@@ -20,9 +20,18 @@ RSpec.describe 'Homes', type: :request do
       post homes_path, params:, as: :turbo_stream
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.media_type).to eq(Mime[:turbo_stream])
+      expect(response.body).to include(I18n.t('trip_detection.onboarding.invalid_location'))
     end
     expect(user.homes).to be_empty
     expect(user.places).to be_empty
+  end
+
+  it 'creates nothing for a user who already has a Home' do
+    create(:home, user:)
+    expect { post homes_path, params: { latitude: 48.137, longitude: 11.575 }, as: :turbo_stream }
+      .not_to(change { [user.homes.count, user.places.count] })
+    expect(response.media_type).to eq(Mime[:turbo_stream])
+    expect(response.body).to include(I18n.t('trip_detection.onboarding.home_exists'))
   end
 
   describe 'the home screen of the onboarding modal' do

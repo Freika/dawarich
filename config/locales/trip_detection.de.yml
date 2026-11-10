@@ -65,5 +65,7 @@ de:
       location_denied: "Dein Standort konnte nicht ermittelt werden. Klicke stattdessen auf die Karte, um dein Zuhause zu setzen, oder lege es später auf der Seite „Orte“ fest."
       home_saved: "Dein Zuhause ist gespeichert. Dawarich sucht jetzt nach deinen Reisen."
       invalid_location: "Wähle zuerst einen Ort auf der Karte."
+      # Onboarding never adds a second Home.
+      home_exists: "Du hast bereits ein Zuhause. Du kannst es auf der Seite „Orte“ ändern."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Weiter"
