@@ -127,4 +127,64 @@ RSpec.describe Families::Memberships::Destroy do
       end
     end
   end
+
+  describe '#error_code' do
+    let(:member) { create(:user) }
+
+    before do
+      create(:family_membership, user: user, family: family, role: :owner)
+      create(:family_membership, user: member, family: family, role: :member)
+    end
+
+    it 'is nil after a successful call' do
+      service = described_class.new(user: member)
+      service.call
+      expect(service.error_code).to be_nil
+    end
+
+    it 'is not_in_family for a user without a family' do
+      service = described_class.new(user: create(:user))
+      service.call
+      expect(service.error_code).to eq(:not_in_family)
+    end
+
+    it 'is owner_cannot_leave when the owner leaves' do
+      service.call
+      expect(service.error_code).to eq(:owner_cannot_leave)
+    end
+
+    it 'is owner_required when a member removes someone else' do
+      other = create(:user)
+      create(:family_membership, user: other, family: family, role: :member)
+      service = described_class.new(user: member, member_to_remove: other)
+      service.call
+      expect(service.error_code).to eq(:owner_required)
+    end
+
+    it 'is member_not_found for a member of another family' do
+      outsider = create(:user)
+      create(:family_membership, user: outsider, family: create(:family), role: :member)
+      service = described_class.new(user: user, member_to_remove: outsider)
+      service.call
+      expect(service.error_code).to eq(:member_not_found)
+    end
+
+    it 'is cannot_remove_owner when the target is an owner' do
+      co_owner = create(:user)
+      create(:family_membership, user: co_owner, family: family, role: :owner)
+      service = described_class.new(user: user, member_to_remove: co_owner)
+      service.call
+      expect(service.error_code).to eq(:cannot_remove_owner)
+    end
+
+    [ActiveRecord::RecordInvalid.new, StandardError.new('boom')].each do |error|
+      it "is unexpected_error when #{error.class} is raised" do
+        allow_any_instance_of(Family::Membership).to receive(:destroy!).and_raise(error)
+        allow(ExceptionReporter).to receive(:call)
+        service = described_class.new(user: member)
+        expect(service.call).to be false
+        expect(service.error_code).to eq(:unexpected_error)
+      end
+    end
+  end
 end

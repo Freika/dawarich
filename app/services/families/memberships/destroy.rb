@@ -3,7 +3,7 @@
 module Families
   module Memberships
     class Destroy
-      attr_reader :user, :member_to_remove, :error_message
+      attr_reader :user, :member_to_remove, :error_message, :error_code
 
       def initialize(user:, member_to_remove: nil)
         @user = user
@@ -45,7 +45,7 @@ module Families
       def validate_in_family
         return true if member_to_remove.in_family?
 
-        @error_message = I18n.t('services.families.memberships.destroy.user_is_not_currently_in_a_family')
+        refuse(:not_in_family, 'user_is_not_currently_in_a_family')
         false
       end
 
@@ -66,33 +66,34 @@ module Families
       def validate_owner_can_leave
         return true unless member_to_remove.family_owner?
 
-        @error_message = I18n.t(
-          'services.families.memberships.destroy.family_owners_cannot_remove_their_own_membership_to_leave_the'
-        )
+        refuse(:owner_cannot_leave, 'family_owners_cannot_remove_their_own_membership_to_leave_the')
         false
       end
 
       def validate_remover_is_owner
         return true if user.family_owner?
 
-        @error_message = I18n.t('services.families.memberships.destroy.only_family_owners_can_remove_other_members')
+        refuse(:owner_required, 'only_family_owners_can_remove_other_members')
         false
       end
 
       def validate_same_family
         return true if user.family == member_to_remove.family
 
-        @error_message = I18n.t('services.families.memberships.destroy.cannot_remove_members_from_a_different_family')
+        refuse(:member_not_found, 'cannot_remove_members_from_a_different_family')
         false
       end
 
       def validate_not_removing_owner
         return true unless member_to_remove.family_owner?
 
-        @error_message = I18n.t(
-          'services.families.memberships.destroy.cannot_remove_the_family_owner_the_owner_must_delete_the'
-        )
+        refuse(:cannot_remove_owner, 'cannot_remove_the_family_owner_the_owner_must_delete_the')
         false
+      end
+
+      def refuse(code, message_key)
+        @error_code = code
+        @error_message = I18n.t("services.families.memberships.destroy.#{message_key}")
       end
 
       def remove_membership
@@ -158,6 +159,7 @@ module Families
       end
 
       def handle_record_invalid_error(error)
+        @error_code = :unexpected_error
         @error_message =
           if error.record&.errors&.any?
             error.record.errors.full_messages.first
@@ -167,6 +169,7 @@ module Families
       end
 
       def handle_generic_error(error)
+        @error_code = :unexpected_error
         ExceptionReporter.call(error, "Unexpected error in Families::Memberships::Destroy: #{error.message}")
         @error_message = I18n.t(
           'services.families.memberships.destroy.an_unexpected_error_occurred_while_removing_the_membership_please_try'

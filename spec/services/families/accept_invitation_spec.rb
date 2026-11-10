@@ -189,4 +189,54 @@ RSpec.describe Families::AcceptInvitation do
       end
     end
   end
+
+  describe '#error_code' do
+    it 'is nil after a successful call' do
+      service.call
+      expect(service.error_code).to be_nil
+    end
+
+    it 'is invitation_invalid for an expired invitation' do
+      invitation.update!(expires_at: 1.day.ago)
+      service.call
+      expect(service.error_code).to eq(:invitation_invalid)
+    end
+
+    it 'is email_mismatch for another user' do
+      service = described_class.new(invitation: invitation, user: create(:user))
+      service.call
+      expect(service.error_code).to eq(:email_mismatch)
+    end
+
+    it 'is already_in_family for a member of another family' do
+      create(:family_membership, user: invitee, family: create(:family))
+      service.call
+      expect(service.error_code).to eq(:already_in_family)
+    end
+
+    it 'is plan_inactive when the owner no longer holds the plan' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      family.creator.update!(plan: :pro)
+      service.call
+      expect(service.error_code).to eq(:plan_inactive)
+    end
+
+    it 'is family_full when every cloud seat is taken' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      family.creator.update!(plan: :family, active_until: 1.month.from_now)
+      create(:family_membership, :owner, family: family, user: family.creator)
+      create_list(:family_membership, Family::MAX_MEMBERS - 1, family: family, role: :member)
+      service.call
+      expect(service.error_code).to eq(:family_full)
+    end
+
+    [ActiveRecord::RecordInvalid.new, StandardError.new('boom')].each do |error|
+      it "is unexpected_error when #{error.class} is raised" do
+        allow(Family::Membership).to receive(:create!).and_raise(error)
+        allow(ExceptionReporter).to receive(:call)
+        expect(service.call).to be false
+        expect(service.error_code).to eq(:unexpected_error)
+      end
+    end
+  end
 end
