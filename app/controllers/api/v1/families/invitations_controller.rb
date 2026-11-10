@@ -39,7 +39,7 @@ class Api::V1::Families::InvitationsController < Api::V1::Families::BaseControll
   end
 
   def preview
-    return render_family_error(:invitation_invalid) unless @invitation.can_be_accepted?
+    return render_family_error(:invitation_invalid) unless previewable?
 
     render json: { invitation: preview_json }
   end
@@ -77,6 +77,12 @@ class Api::V1::Families::InvitationsController < Api::V1::Families::BaseControll
     token = string_param(:token)
     @invitation = Family::Invitation.find_by(token: token) if token.present?
     render_family_error(:invitation_not_found) unless @invitation
+  end
+
+  # A deleted account is hidden by User's default scope while its invitations
+  # still exist, so the inviter or the family owner can be missing.
+  def previewable?
+    @invitation.can_be_accepted? && @invitation.invited_by.present? && @invitation.family.creator.present?
   end
 
   def invitation_json(invitation)

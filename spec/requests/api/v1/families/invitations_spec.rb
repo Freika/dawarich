@@ -198,6 +198,15 @@ RSpec.describe 'Api::V1::Families::Invitations', type: :request do
       api_call(:post, '/api/v1/families/invitations/preview', caller, body)
     end
 
+    it 'reads an invitation whose inviter account is gone as invalid' do
+      owner.mark_as_deleted!
+
+      preview(invitee, { token: invitation.token })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json['error']).to eq('invitation_invalid')
+    end
+
     it 'describes the invitation to the invitee' do
       preview(invitee, { token: invitation.token })
 
