@@ -11,7 +11,7 @@ const source = await readFile(
 )
 
 const start = source.indexOf("  async initializeMap() {")
-const end = source.indexOf("  initializeAPI() {", start)
+const end = source.indexOf("\n  }\n", start) + 4
 const initializeMapSource = source.slice(start, end)
 
 async function buildController(initialize) {

@@ -1,38 +1,27 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import { RangeStatistics } from "maps_maplibre/components/range_statistics"
 import { Toast } from "maps_maplibre/components/toast"
-import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
-import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
-import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
-import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
-import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
-import { AreaSelectionManager } from "./maplibre/area_selection_manager"
-import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
-import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
-import { EventHandlers } from "./maplibre/event_handlers"
 import { FamilyManager } from "./maplibre/family_manager"
-import { FilterManager } from "./maplibre/filter_manager"
 import { InfoPanel } from "./maplibre/info_panel"
-import { LayerManager } from "./maplibre/layer_manager"
-import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
 import { LoadingBadge } from "./maplibre/loading_badge"
-import { MapDataManager } from "./maplibre/map_data_manager"
+import {
+  buildMapFeatures,
+  listenToDocument,
+  snapshotInitialDateRange,
+} from "./maplibre/map_bootstrap"
 import { MapInitializer } from "./maplibre/map_initializer"
 import { ensureMapReplayPanel, replayTrackFrom } from "./maplibre/map_replay"
-import { PlacesManager } from "./maplibre/places_manager"
 import { SettingsController } from "./maplibre/settings_manager"
 import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
-import { VisitsManager } from "./maplibre/visits_manager"
 
 /**
  * Main map controller for Maps V2
@@ -182,83 +171,9 @@ export default class MapController extends Controller {
     // when the browser refused a WebGL context.
     if (this._disconnected || !this.map) return
 
-    this.initializeAPI()
-
-    // Initialize managers
-    this.layerManager = new LayerManager(
-      this.map,
-      this.settings,
-      this.api,
-      this,
-    )
-    this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
-    this.eventHandlers = new EventHandlers(this.map, this)
-    this.filterManager = new FilterManager(this.dataLoader)
-    this.mapDataManager = new MapDataManager(this)
-
-    // Initialize feature managers
-    this.areaSelectionManager = new AreaSelectionManager(this)
-    this.visitsManager = new VisitsManager(this)
-    // The moveend viewport-refetch normally attaches when the user flips the
-    // Visits toggle on. When the layer starts enabled by the saved setting,
-    // attach it here so panning keeps the dots in sync with the viewport.
-    if (this.settings.visitsEnabled) {
-      this.visitsManager.attachViewportRefetch()
-    }
-    this.placesManager = new PlacesManager(this)
-    this.placePanel = new PlacePanelBridge(this)
-    consumeCreatePlaceLink(this.placesManager)
-    this.layerVisibilityManager = new LayerVisibilityManager(this)
-
-    this.timelineBridge.connect(this.cleanup)
-
-    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
-      SettingsManager.getSetting("tracksEnabled"),
-    )
-
-    // Initialize search manager
-    this.initializeSearch()
-
-    const documentEvents = {
-      // Tab changes load the timeline feed through its Turbo Frame.
-      "map-panel:tab-changed": (e) => this.handleTabChanged(e),
-      // A Timeline calendar range change refetches every enabled layer
-      // without tearing down the map instance.
-      "timeline-feed:date-navigated": (e) =>
-        this.handleTimelineDateNavigated(e),
-      "visit:created": (e) => this.visitsManager.handleVisitCreated(e),
-      "visit:updated": (e) => this.visitsManager.handleVisitUpdated(e),
-      "place:created": (e) => this.placesManager.handlePlaceCreated(e),
-      "place:updated": (e) => this.placesManager.handlePlaceUpdated(e),
-    }
-    for (const [name, handler] of Object.entries(documentEvents)) {
-      this.cleanup.addEventListener(document, name, handler)
-    }
-
-    const [serverStartDate, serverEndDate] = [
-      this.startDateValue,
-      this.endDateValue,
-    ].map((value) => value.split("T")[0])
-
-    // Format initial dates
-    this.startDateValue = DateManager.formatDateForAPI(
-      new Date(this.startDateValue),
-    )
-    this.endDateValue = DateManager.formatDateForAPI(
-      new Date(this.endDateValue),
-    )
-
-    // Snapshot the load-time window so realtime filtering can tell the default
-    // "today" view (whose frozen end goes stale across local midnight) apart
-    // from an explicitly selected past range.
-    const loadEnd = parseTimestamp(this.endDateValue)
-    this.defaultDateRange = {
-      startValue: this.startDateValue,
-      endValue: this.endDateValue,
-      startDate: serverStartDate,
-      endDate: serverEndDate,
-      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
-    }
+    buildMapFeatures(this)
+    listenToDocument(this)
+    snapshotInitialDateRange(this)
 
     if (this.settings.placesEnabled) {
       await this.placesManager.initializePlaceTagFilters({
@@ -380,36 +295,6 @@ export default class MapController extends Controller {
     this.map = map
     this._persistView = () => saveView(this.map, this.apiKeyValue)
     this.map.on("moveend", this._persistView)
-  }
-
-  /**
-   * Initialize API client
-   */
-  initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
-    const statistics = this.element.querySelector(
-      '[data-testid="map-range-statistics"]',
-    )
-    if (statistics)
-      this.rangeStatistics = new RangeStatistics(statistics, this.api)
-  }
-
-  /**
-   * Initialize location search
-   */
-  initializeSearch() {
-    if (!this.hasSearchInputTarget || !this.hasSearchResultsTarget) {
-      console.warn(
-        "[Maps V2] Search targets not found, search functionality disabled",
-      )
-      return
-    }
-
-    this.searchManager = new SearchManager(this.map, this.apiKeyValue)
-    this.searchManager.initialize(
-      this.searchInputTarget,
-      this.searchResultsTarget,
-    )
   }
 
   /**
