@@ -22,7 +22,7 @@ class Note < ApplicationRecord
   validate :date_within_attachable_range
   validate :attachable_belongs_to_user
 
-  after_create -> { Trip.mark_touched_by_user(attachable_id) }, if: -> { attachable_type == 'Trip' }
+  after_save -> { Trip.mark_touched_by_user(attachable_id) }, if: :attached_to_trip_now?
 
   scope :standalone, -> { where(attachable_id: nil) }
   scope :attached, -> { where.not(attachable_id: nil) }
@@ -68,6 +68,10 @@ class Note < ApplicationRecord
   end
 
   private
+
+  def attached_to_trip_now?
+    attachable_type == 'Trip' && (saved_change_to_attachable_id? || saved_change_to_attachable_type?)
+  end
 
   def build_lonlat_from_coords
     self.lonlat = "POINT(#{@longitude} #{@latitude})"

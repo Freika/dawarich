@@ -46,6 +46,26 @@ RSpec.describe TripDetectionOrigin do
       expect(Trip.replaceable_by_detection).not_to include(trip)
     end
 
+    it 'stays touched after a note attached later is detached again' do
+      trip = detected_trip(0)
+      note = create(:note, user:, noted_at: trip.started_at + 1.hour)
+      previous_update = trip.updated_at
+
+      note.update!(attachable: trip)
+      expect(trip.reload).to have_attributes(user_edited_at: be_present, updated_at: be > previous_update)
+
+      note.update!(attachable: nil)
+      expect(Trip.replaceable_by_detection).not_to include(trip)
+    end
+
+    it 'never marks a manual trip' do
+      trip = create(:trip, user:)
+      create(:note, attachable: trip, user:, noted_at: trip.started_at + 1.hour)
+      create(:shared_link, user:, resource_type: :trip, resource_id: trip.id)
+
+      expect(trip.reload.user_edited_at).to be_nil
+    end
+
     it 'keeps the first mark' do
       edited_at = Time.utc(2024, 12, 1, 10)
       trip = detected_trip(0, user_edited_at: edited_at)
