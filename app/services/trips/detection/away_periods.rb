@@ -35,7 +35,8 @@ module Trips
       attr_reader :user
 
       # ponytail: scans the user's whole visible history on every run; make it incremental
-      # from the last closed trip when a run is measured to be slow
+      # from the last closed trip when a run is measured to be slow. An open-start Home the user
+      # was never recorded at walks the whole history once more (~0.1 s per 200k points).
       def sql
         points = self.class.points_for(user).to_sql
         template = ActiveRecord::Base.sanitize_sql_array(
@@ -46,15 +47,20 @@ module Trips
       end
 
       QUERY = <<~SQL.squish
-        /* MATERIALIZED is load-bearing: inlined, the open-start subplan runs once per point. */
+        /* MATERIALIZED is load-bearing: inlined, the open-start subplan runs once per point.
+           The open start is the user's first point at the Home. ST_Distance instead of ST_DWithin is
+           load-bearing: it keeps the planner off the global lonlat GiST index, which reads every
+           user's points near the Home, and walks this user's points in time order instead. */
         WITH user_homes AS MATERIALIZED (
           SELECT places.lonlat::geography AS geog,
                  GREATEST(places.visit_radius, :home_radius_floor_m) AS radius_m,
                  COALESCE(homes.started_on, (
-                   SELECT (to_timestamp(MIN(seen.timestamp)) AT TIME ZONE :tz)::date
+                   SELECT (to_timestamp(seen.timestamp) AT TIME ZONE :tz)::date
                    FROM (/* points relation */) seen
-                   WHERE ST_DWithin(seen.lonlat, places.lonlat::geography,
-                                    GREATEST(places.visit_radius, :home_radius_floor_m))
+                   WHERE ST_Distance(seen.lonlat, places.lonlat::geography)
+                         <= GREATEST(places.visit_radius, :home_radius_floor_m)
+                   ORDER BY seen.timestamp
+                   LIMIT 1
                  ), 'infinity'::date) AS started_on,
                  COALESCE(homes.ended_on, 'infinity'::date) AS ended_on
           FROM homes JOIN places ON places.id = homes.place_id
