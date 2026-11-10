@@ -46,7 +46,8 @@ module Trips
       end
 
       QUERY = <<~SQL.squish
-        WITH user_homes AS (
+        /* MATERIALIZED is load-bearing: inlined, the open-start subplan runs once per point. */
+        WITH user_homes AS MATERIALIZED (
           SELECT places.lonlat::geography AS geog,
                  GREATEST(places.visit_radius, :home_radius_floor_m) AS radius_m,
                  COALESCE(homes.started_on, (
@@ -76,8 +77,10 @@ module Trips
                    OVER (PARTITION BY device ORDER BY ts) AS run_id,
                  MAX(CASE WHEN at_home THEN ts END)
                    OVER (PARTITION BY device ORDER BY ts) AS home_before,
+                 /* Cumulative MIN in DESC order is load-bearing: a frame whose start moves
+                    forward (CURRENT ROW .. UNBOUNDED FOLLOWING) makes MIN quadratic. */
                  MIN(CASE WHEN at_home THEN ts END)
-                   OVER (PARTITION BY device ORDER BY ts ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS home_after,
+                   OVER (PARTITION BY device ORDER BY ts DESC) AS home_after,
                  MAX(ts) OVER (PARTITION BY device) AS device_last_ts
           FROM classified
         )
