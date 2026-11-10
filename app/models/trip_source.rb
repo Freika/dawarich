@@ -19,17 +19,6 @@ class TripSource < ApplicationRecord
 
   before_validation :normalize_base_url
 
-  # Validate again immediately before an outbound request. This catches a
-  # URL that is now invalid or resolves to a blocked network; the HTTP client
-  # also refuses redirects. IP pinning remains a separate hardening step.
-  def verify_base_url!
-    validate_integration_url!(base_url)
-  end
-
-  def resolved_base_url_ip!
-    resolve_integration_url!(base_url)
-  end
-
   def skips_ssl_verification?
     skip_ssl_verification && base_url.to_s.match?(%r{\Ahttps://}i)
   end

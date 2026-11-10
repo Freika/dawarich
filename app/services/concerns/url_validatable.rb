@@ -63,7 +63,14 @@ module UrlValidatable
     resolve_integration_url!(url)
   end
 
+  # First validated address, for callers that only need one.
   def resolve_integration_url!(url)
+    resolve_integration_addresses!(url)&.first
+  end
+
+  # Every address the host resolves to, all checked against the blocklist.
+  # A caller that pins the connection can try them in order.
+  def resolve_integration_addresses!(url)
     return if url.blank?
 
     uri = URI.parse(url)
@@ -91,7 +98,7 @@ module UrlValidatable
       Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{blocked}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
-    addresses.first.to_s
+    addresses.map(&:to_s)
   rescue URI::InvalidURIError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
   rescue SocketError
