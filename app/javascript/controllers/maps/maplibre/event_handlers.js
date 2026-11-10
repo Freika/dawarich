@@ -355,6 +355,7 @@ export class EventHandlers {
    * Toggle track points layer visibility
    * @param {number} trackId - Track ID
    * @param {boolean} enabled - Whether to show or hide points
+   * The underscore stays: spec/regressions calls it by this name.
    */
   async _toggleTrackPoints(trackId, enabled) {
     if (enabled) {

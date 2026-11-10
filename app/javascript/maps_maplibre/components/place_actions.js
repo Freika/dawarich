@@ -24,7 +24,7 @@ export async function deletePlace(controller, placeId) {
   removePlaceFeature(controller, placeId)
   controller.closeInfo()
   Toast.success(translate("messages.place_deleted_successfully"))
-  await controller.placesManager._refreshPrivacyZones()
+  await controller.placesManager.refreshPrivacyZones()
 }
 
 export function removePlaceFeature(controller, placeId) {

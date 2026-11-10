@@ -932,10 +932,7 @@ export default class extends Controller {
     if (!target) return
     const trackId = target.dataset.trackId
     if (!trackId) return
-    const enabled = !!target.checked
-    if (this.eventHandlers?._toggleTrackPoints) {
-      await this.eventHandlers._toggleTrackPoints(trackId, enabled)
-    }
+    await this.eventHandlers?._toggleTrackPoints(trackId, !!target.checked)
   }
 
   _getLoadedPoints() {

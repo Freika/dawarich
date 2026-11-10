@@ -102,7 +102,7 @@ export class PlacesManager extends PlacesTagFilters {
       }
 
       if (ensureVisible) this._ensurePlacesVisible(placesLayer)
-      await this._refreshPrivacyZones()
+      await this.refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
     }
@@ -114,7 +114,7 @@ export class PlacesManager extends PlacesTagFilters {
    * and the current position is hidden until the next live point because
    * it may now sit inside a zone.
    */
-  async _refreshPrivacyZones() {
+  async refreshPrivacyZones() {
     const { fingerprint, failed } = await this.api.fetchPrivacyZones()
     if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
 
