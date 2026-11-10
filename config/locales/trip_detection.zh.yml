@@ -40,6 +40,7 @@ zh:
       until: "至"
       save: "保存"
       remove: "删除"
+      remove_confirm: "删除这段时间？其日期将被删除，这段时间内自动发现的旅行也可能被删除。"
       add: "添加时间段"
       end_before_start: "“至”不能早于“从”。"
     # The origin filter on the Trips list. Managed Trips count as created by the user.

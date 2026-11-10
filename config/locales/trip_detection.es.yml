@@ -40,6 +40,7 @@ es:
       until: "Hasta"
       save: "Guardar"
       remove: "Eliminar"
+      remove_confirm: "¿Eliminar este periodo? Se borrarán sus fechas y es posible que se eliminen los viajes encontrados automáticamente en ese periodo."
       add: "Añadir un periodo"
       end_before_start: "«Hasta» no puede ser anterior a «Desde»."
     # The origin filter on the Trips list. Managed Trips count as created by the user.

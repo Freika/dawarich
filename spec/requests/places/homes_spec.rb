@@ -48,6 +48,13 @@ RSpec.describe 'Homes of a Place', type: :request do
     expect(home.reload.ended_on).to eq(Date.new(2026, 6, 30))
   end
 
+  it 'asks before removing a Home' do
+    create(:home, user:, place:)
+    get edit_place_path(place)
+    form = Nokogiri::HTML(response.body).at_css("form[action^='#{place_homes_path(place)}/']:has(input[name='_method'][value='delete'])")
+    expect(form['data-turbo-confirm']).to eq(I18n.t('trip_detection.homes.remove_confirm', raise: true))
+  end
+
   it 'removes a Home' do
     home = create(:home, user:, place:)
     expect { delete place_home_path(place, home) }.to change(Home, :count).by(-1)

@@ -42,6 +42,7 @@ pl:
       until: "Do"
       save: "Zapisz"
       remove: "Usuń"
+      remove_confirm: "Usunąć ten okres? Jego daty zostaną usunięte, a podróże znalezione automatycznie w tym okresie mogą zostać usunięte."
       add: "Dodaj okres"
       end_before_start: "Data „Do” nie może być wcześniejsza niż „Od”."
     # The origin filter on the Trips list. Managed Trips count as created by the user.

@@ -40,6 +40,7 @@ de:
       until: "Bis"
       save: "Speichern"
       remove: "Entfernen"
+      remove_confirm: "Diesen Zeitraum entfernen? Seine Datumsangaben werden gelöscht, und automatisch gefundene Reisen aus diesem Zeitraum können entfernt werden."
       add: "Zeitraum hinzufügen"
       end_before_start: "„Bis“ darf nicht vor „Von“ liegen."
     # The origin filter on the Trips list. Managed Trips count as created by the user.

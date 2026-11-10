@@ -40,6 +40,7 @@ ca:
       until: "Fins a"
       save: "Desa"
       remove: "Elimina"
+      remove_confirm: "Vols eliminar aquest període? Se n’esborraran les dates, i és possible que s’eliminin els viatges trobats automàticament en aquest període."
       add: "Afegeix un període"
       end_before_start: "«Fins a» no pot ser anterior a «Des de»."
     # The origin filter on the Trips list. Managed Trips count as created by the user.

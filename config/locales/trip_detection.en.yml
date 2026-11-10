@@ -40,6 +40,7 @@ en:
       until: "Until"
       save: "Save"
       remove: "Remove"
+      remove_confirm: "Remove this period? Its dates will be deleted, and trips found automatically for that period may be removed."
       add: "Add a period"
       end_before_start: "“Until” can't be before “From”."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
