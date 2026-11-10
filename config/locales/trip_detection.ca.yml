@@ -51,5 +51,5 @@ ca:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
-      long_absence: "Dawarich ha omès un període de més de 90 dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
+      long_absence: "Dawarich ha omès un període de més de %{days} dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
       add_home: "Afegeix una llar a la pàgina Llocs"

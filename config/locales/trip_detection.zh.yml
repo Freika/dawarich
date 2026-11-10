@@ -51,5 +51,5 @@ zh:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "添加您的住所，Dawarich 就能自动发现您的旅行。"
-      long_absence: "Dawarich 跳过了一段离家超过 90 天的时间。如果您当时住在别处，请添加那个更早的住所。"
+      long_absence: "Dawarich 跳过了一段离家超过 %{days} 天的时间。如果您当时住在别处，请添加那个更早的住所。"
       add_home: "在“地点”页面添加住所"

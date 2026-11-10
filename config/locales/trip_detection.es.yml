@@ -51,5 +51,5 @@ es:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "Añade tu hogar para que Dawarich pueda encontrar tus viajes automáticamente."
-      long_absence: "Dawarich ha omitido un periodo de más de 90 días fuera de tu hogar. Si entonces vivías en otro lugar, añade ese hogar anterior."
+      long_absence: "Dawarich ha omitido un periodo de más de %{days} días fuera de tu hogar. Si entonces vivías en otro lugar, añade ese hogar anterior."
       add_home: "Añadir un hogar en la página Lugares"

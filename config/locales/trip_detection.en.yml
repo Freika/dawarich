@@ -51,5 +51,5 @@ en:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "Add your Home so Dawarich can find your trips automatically."
-      long_absence: "Dawarich skipped a time away from home longer than 90 days. If you lived somewhere else then, add that earlier Home."
+      long_absence: "Dawarich skipped a time away from home longer than %{days} days. If you lived somewhere else then, add that earlier Home."
       add_home: "Add a Home on the Places page"

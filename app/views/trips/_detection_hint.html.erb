@@ -2,9 +2,12 @@
 <% if settings.trip_detection_enabled? %>
   <% hints = [] %>
   <% hints << t('trip_detection.hints.no_home') unless current_user.homes.exists? %>
-  <% hints << t('trip_detection.hints.long_absence') if settings.trip_detection_long_absence? %>
+  <% if settings.trip_detection_long_absence? %>
+    <% hints << t('trip_detection.hints.long_absence',
+                  days: Trips::Detection::Policy::MAX_TRIP_DURATION.in_days.to_i) %>
+  <% end %>
   <% hints.each do |hint| %>
-    <div role="alert" class="alert mb-4" data-testid="trip-detection-hint">
+    <div role="status" class="alert mb-4" data-testid="trip-detection-hint">
       <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
       <p class="min-w-0 [overflow-wrap:anywhere]">
         <%= hint %>
