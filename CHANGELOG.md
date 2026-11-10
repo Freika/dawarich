@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
 - Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
-- The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. An instance admin can stop it for everyone by adding a disabled `trip_detection` flag at /admin/flipper. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
+- The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
 
 ### Fixed
 

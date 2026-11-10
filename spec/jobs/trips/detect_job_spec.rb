@@ -81,16 +81,6 @@ RSpec.describe Trips::DetectJob do
     expect(user.notifications).to be_empty
   end
 
-  it 'does nothing when an operator switched trip detection off for the instance' do
-    Flipper.add(:trip_detection)
-    expect { described_class.perform_now(user.id) }.not_to change(Trip, :count)
-  end
-
-  it 'runs for a user the operator enabled trip detection for' do
-    Flipper.enable_actor(:trip_detection, user)
-    expect { described_class.perform_now(user.id) }.to change(Trip, :count).by(1)
-  end
-
   def lock_free?
     key = Trips::Detection::RunLock::NAMESPACE | user.id
     config = ActiveRecord::Base.connection_db_config.configuration_hash

@@ -7,10 +7,6 @@
 #
 # Every trigger goes through .schedule (ruling R31): a burst of triggers, such
 # as the files of one multi-file import, becomes one run once they settle.
-#
-# An operator stops it for the whole instance by adding a disabled
-# `trip_detection` flag at /admin/flipper, or limits it to some users through
-# that flag's actor, group or percentage gates; with no flag it runs.
 class Trips::DetectJob < ApplicationJob
   queue_as :trips
   # Each retry rescans the user's whole history; the next trigger or night tries again.
@@ -37,13 +33,6 @@ class Trips::DetectJob < ApplicationJob
     end
   end
 
-  # With a user, whether detection may run for them; without one, whether it may run for anyone.
-  def self.instance_enabled?(user = nil)
-    return true unless Flipper.exist?(:trip_detection)
-
-    user ? Flipper.enabled?(:trip_detection, user) : Flipper[:trip_detection].state != :off
-  end
-
   def self.schedule_key(user_id)
     "trip_detection_run:user:#{user_id}"
   end
@@ -52,7 +41,7 @@ class Trips::DetectJob < ApplicationJob
     # Cleared first, so a trigger from now on schedules the next run.
     Sidekiq.redis { |redis| redis.del(self.class.schedule_key(user_id)) }
     user = User.find_by(id: user_id)
-    return unless user&.safe_settings&.trip_detection_enabled? && self.class.instance_enabled?(user)
+    return unless user&.safe_settings&.trip_detection_enabled?
 
     ran = Trips::Detection::RunLock.try_with(user.id) { detect(user) }
     self.class.set(wait: RETRY_WAIT).perform_later(user_id) unless ran

@@ -70,6 +70,3 @@ zh:
       home_exists: "您已经有住所了。您可以在“地点”页面修改它。"
       # Leaves the import screen for the home step (or closes the modal).
       continue: "继续"
-    # Under "Find trips automatically" when an admin switched it off for the instance.
-    settings:
-      instance_off: "服务器管理员已为所有用户关闭旅行发现，因此 Dawarich 暂时不会发现旅行。"

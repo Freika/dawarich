@@ -10,8 +10,6 @@ class Trips::BulkDetectJob < ApplicationJob
   STAGGER = 5.minutes
 
   def perform
-    return unless Trips::DetectJob.instance_enabled?
-
     user_ids = User.active_or_trial.where(id: Home.select(:user_id)).order(:id).pluck(:id)
     jobs = user_ids.each_slice(BATCH_SIZE).with_index.flat_map do |batch, index|
       batch.map { |user_id| Trips::DetectJob.new(user_id).set(wait: index * STAGGER) }

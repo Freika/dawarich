@@ -70,6 +70,3 @@ en:
       home_exists: "You already have a Home. You can change it on the Places page."
       # Leaves the import screen for the home step (or closes the modal).
       continue: "Continue"
-    # Under "Find trips automatically" when an admin switched it off for the instance.
-    settings:
-      instance_off: "The server admin has switched off finding trips for everyone, so Dawarich finds no trips for now."
