@@ -200,33 +200,4 @@ export class VisitsLayer extends BaseLayer {
     this.map.setFilter(this.id, filter)
     this.labels.setFilter((f) => allowed.includes(f.properties.status))
   }
-
-  /**
-   * Update the day-route polyline. `visitFeatures` is an array of
-   * `{ lng, lat }` in chronological order. Pass `null` or an array
-   * with fewer than 2 points to clear the route.
-   */
-  setDayRoute(visitFeatures) {
-    const source = this.map.getSource(this.dayRouteSourceId)
-    if (!source) return
-
-    if (!visitFeatures || visitFeatures.length < 2) {
-      source.setData({ type: "FeatureCollection", features: [] })
-      return
-    }
-
-    source.setData({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: visitFeatures.map((v) => [v.lng, v.lat]),
-          },
-        },
-      ],
-    })
-  }
 }

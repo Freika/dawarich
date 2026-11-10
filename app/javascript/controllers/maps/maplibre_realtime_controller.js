@@ -231,20 +231,7 @@ export default class extends Controller {
 
     mapsController.layerManager?.getLayer("points-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
-    mapsController.layerManager
-      ?.getLayer("scratch")
-      ?.update()
-      .catch((error) => {
-        console.warn(
-          "[Realtime Controller] Failed to refresh visited countries:",
-          error,
-        )
-        Toast.retry(
-          translate("messages.failed_to_load_visited_countries"),
-          translate("messages.retry"),
-          () => mapsController.layerManager?.getLayer("scratch")?.update(),
-        )
-      })
+    mapsController.layerManager?.getLayer("scratch")?.retryMembership()
   }
 
   /**

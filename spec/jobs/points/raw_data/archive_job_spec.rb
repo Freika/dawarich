@@ -50,7 +50,7 @@ RSpec.describe Points::RawData::ArchiveJob, type: :job do
 
     context 'when an error occurs' do
       before do
-        allow(User).to receive(:find_each).and_raise(StandardError, 'DB error')
+        allow(User).to receive(:ids).and_raise(StandardError, 'DB error')
       end
 
       it 'reports and re-raises the error' do

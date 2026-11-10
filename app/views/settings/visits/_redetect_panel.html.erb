@@ -6,7 +6,7 @@
     <p class="text-sm opacity-80">
       <%= t('.replaces_all_suggested_visits_across_your_entire_history_with_fresh') %>
     </p>
-    <% if current_user.respond_to?(:plan_restricted?) && current_user.plan_restricted? %>
+    <% if current_user.plan_restricted? %>
       <p class="text-xs opacity-70"><%= t('.on_the_lite_plan_re_detection_covers_your_visible_12') %></p>
     <% end %>
 

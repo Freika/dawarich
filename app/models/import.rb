@@ -49,6 +49,13 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  def self.unique_name(original_name)
+    return original_name unless exists?(name: original_name)
+
+    extension = File.extname(original_name)
+    "#{File.basename(original_name, extension)}_#{Time.current.strftime('%Y%m%d_%H%M%S')}#{extension}"
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -61,12 +68,8 @@ class Import < ApplicationRecord
     Users::ImportDataJob.perform_later(id)
   end
 
-  def reverse_geocoded_points_count
-    points.reverse_geocoded.count
-  end
-
   def years_and_months_tracked
-    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
+    quoted_tz = ActiveRecord::Base.connection.quote(user.timezone_iana)
     points
       .select(Arel.sql(
                 "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
@@ -141,10 +144,6 @@ class Import < ApplicationRecord
     Time.zone.parse(started_at.to_s) <= EXTRACTION_STALE_AFTER.ago
   rescue ArgumentError, TypeError
     false
-  end
-
-  def trust_source_for_extraction?
-    additional_data_extraction.dig('options', 'trust_source') != false
   end
 
   # Two rapid submissions both pass the extraction policy before either

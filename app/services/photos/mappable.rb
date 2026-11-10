@@ -27,6 +27,6 @@ class Photos::Mappable
   end
 
   def distance_meters(lat1, lon1, lat2, lon2)
-    Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km) * 1000
+    GeoDistance.meters([lat1, lon1], [lat2, lon2])
   end
 end

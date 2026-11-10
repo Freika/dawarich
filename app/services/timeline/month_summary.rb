@@ -35,7 +35,7 @@ module Timeline
 
     def self.cache_key_for(user, date)
       d = normalize_month(date)
-      tz = user.safe_settings.timezone.presence || 'UTC'
+      tz = user.timezone_or_utc
       plan_segment = user.plan_restricted? ? 'lite' : 'pro'
       ['timeline_month_summary', user.id, d.strftime('%Y-%m'), tz, plan_segment, 'v4']
     end
@@ -51,6 +51,13 @@ module Timeline
         month = month.next_month
       end
       months
+    end
+
+    # Forgets the cached calendar of every month the [from, to] spans touch.
+    def self.expire(user, spans)
+      timezone = user.timezone_or_utc
+      spans.select(&:first).flat_map { |from, to| months_spanning(from, to, timezone) }
+           .uniq.each { |month| Rails.cache.delete(cache_key_for(user, month)) }
     end
 
     def self.normalize_month(date)
@@ -96,7 +103,7 @@ module Timeline
     end
 
     def tz
-      @tz ||= @user.safe_settings.timezone.presence || 'UTC'
+      @tz ||= @user.timezone_or_utc
     end
 
     def month_range
@@ -282,10 +289,8 @@ module Timeline
     end
 
     def disabled_cell?(date)
-      return false unless @user.plan_restricted?
-
-      cutoff = @user.data_window_start.to_date
-      date < cutoff
+      cutoff = @user.data_window_start&.to_date
+      cutoff.present? && date < cutoff
     end
   end
 end

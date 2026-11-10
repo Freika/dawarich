@@ -97,14 +97,8 @@ module Api
         end
 
         def timeline_epoch_range
-          zone = Time.find_zone(link.user.timezone_iana) || Time.find_zone('UTC')
-          start_parsed = zone.parse(link.settings['start_date'].to_s)
-          end_parsed   = zone.parse(link.settings['end_date'].to_s)
-          return nil if start_parsed.nil? || end_parsed.nil?
-
-          start_parsed.beginning_of_day.to_i..end_parsed.end_of_day.to_i
-        rescue ArgumentError, TypeError
-          nil
+          first_instant, last_instant = link.timeline_window
+          first_instant.to_i..last_instant.to_i if first_instant
         end
 
         def serialize(points)

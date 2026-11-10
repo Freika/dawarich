@@ -46,6 +46,20 @@ class Place < ApplicationRecord
   scope :not_archived, -> { where(archived_at: nil) }
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  # Auto-created places nothing holds on to any more, so they can be removed.
+  scope :orphaned, lambda {
+    holders = [
+      Visit.active.where('visits.place_id = places.id'),
+      Tagging.where(taggable_type: 'Place').where('taggings.taggable_id = places.id'),
+      LegacyAreaPlaceMapping.where('legacy_area_place_mappings.place_id = places.id'),
+      Note.where(attachable_type: 'Place').where('notes.attachable_id = places.id'),
+      Achievements::Selection.where('achievement_selections.place_id = places.id'),
+      Home.where('homes.place_id = places.id')
+    ]
+    candidates = photon.not_archived.where(name_locked_at: nil, geofence: false)
+                       .where("NULLIF(BTRIM(places.note), '') IS NULL")
+    holders.reduce(candidates) { |scope, holder| scope.where.not(holder.arel.exists) }
+  }
   scope :containing, lambda { |latitude, longitude|
     where(
       'ST_DWithin(places.lonlat::geography, ' \
@@ -99,6 +113,17 @@ class Place < ApplicationRecord
 
   def legacy_area_id
     legacy_area_place_mappings.map(&:area_id).min
+  end
+
+  # Only hidden visits (tombstones/declines) can still reference orphans;
+  # detach them so the FK allows the delete. Their dedup role survives:
+  # Visit#center falls back to the visit's own points.
+  def self.delete_orphans(ids)
+    transaction do
+      Visit.where(place_id: ids).update_all(place_id: nil)
+      PlaceVisit.where(place_id: ids).delete_all
+      where(id: ids).delete_all
+    end
   end
 
   def archived?

@@ -32,7 +32,7 @@ module TeslaMate
       return true if DawarichSettings.self_hosted?
 
       user.active_until&.future? &&
-        user.entitlements.integrations? &&
+        user.full_access? &&
         !PointsLimitExceeded.new(user).call
     end
 

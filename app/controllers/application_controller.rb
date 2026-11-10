@@ -102,15 +102,9 @@ class ApplicationController < ActionController::Base
   end
 
   def authenticate_active_user!
-    return if current_user&.active_until&.future?
+    return if current_user&.in_good_standing?
 
     redirect_to root_path, notice: I18n.t('controllers.application.your_account_is_not_active'), status: :see_other
-  end
-
-  def authenticate_non_self_hosted!
-    return unless DawarichSettings.self_hosted?
-
-    user_not_authorized
   end
 
   def after_sign_in_path_for(resource)
@@ -333,15 +327,13 @@ status: :see_other
     redirect_to root_path, alert: I18n.t('controllers.application.your_account_has_been_deleted')
   end
 
-  def set_user_time_zone(&block)
-    if current_user
-      timezone = current_user.timezone
-      Time.use_zone(timezone, &block)
-    else
-      yield
-    end
-  rescue ArgumentError
-    yield
+  def set_user_time_zone(&)
+    zone = Time.find_zone(time_zone_owner&.timezone)
+    zone ? Time.use_zone(zone, &) : yield
+  end
+
+  def time_zone_owner
+    current_user
   end
 
   def apply_date_time_preferences(&)

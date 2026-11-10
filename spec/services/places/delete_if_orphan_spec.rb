@@ -111,7 +111,7 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'logs and returns false on InvalidForeignKey' do
       place = create(:place, user: user, source: :photon)
-      allow_any_instance_of(Place).to receive(:delete).and_raise(ActiveRecord::InvalidForeignKey, 'fk')
+      allow(Place).to receive(:delete_orphans).and_raise(ActiveRecord::InvalidForeignKey, 'fk')
 
       expect(Rails.logger).to receive(:warn).with(/DeleteIfOrphan/)
       expect(described_class.call(place.id)).to be(false)

@@ -193,7 +193,7 @@ class Settings::UsersController < ApplicationController
     # Validate that it's a ZIP file
     validate_blob_file_type(blob)
 
-    import_name = generate_unique_import_name(blob.filename.to_s)
+    import_name = current_user.imports.unique_name(blob.filename.to_s)
     import = current_user.imports.build(
       name: import_name,
       source: :user_data_archive
@@ -201,27 +201,6 @@ class Settings::UsersController < ApplicationController
     import.file.attach(blob)
 
     import
-  end
-
-  def generate_unique_import_name(original_name)
-    return original_name unless current_user.imports.exists?(name: original_name)
-
-    # Extract filename and extension
-    basename = File.basename(original_name, File.extname(original_name))
-    extension = File.extname(original_name)
-
-    # Add current datetime
-    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    "#{basename}_#{timestamp}#{extension}"
-  end
-
-  def validate_archive_file(archive_file)
-    unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
-           File.extname(archive_file.original_filename).downcase == '.zip'
-
-      redirect_to edit_user_registration_path,
-                  alert: I18n.t('controllers.settings.users.please_upload_a_valid_zip_file') and return
-    end
   end
 
   def validate_blob_file_type(blob)

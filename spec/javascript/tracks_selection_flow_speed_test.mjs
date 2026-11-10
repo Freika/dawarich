@@ -1,41 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const toDataUrl = (code) =>
-  `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
-
-const baseLayerSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/base_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const flightArcsSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/flight_arcs.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const tracksLayerSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/tracks_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const { TracksLayer } = await import(
-  toDataUrl(
-    tracksLayerSource
-      .replace(
-        'import { BaseLayer } from "./base_layer"',
-        `import { BaseLayer } from "${toDataUrl(baseLayerSource)}"`,
-      )
-      .replace('"../utils/flight_arcs"', `"${toDataUrl(flightArcsSource)}"`),
-  )
-)
+import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 
 const HIGHLIGHT = "rgba(255,255,255,0.5)"
 const LATITUDE = 51.32

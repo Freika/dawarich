@@ -62,7 +62,7 @@ class DemoData::Destroyer
   end
 
   def user_timezone
-    @user.safe_settings.timezone.presence || 'UTC'
+    @user.timezone_or_utc
   end
 
   def cleanup_orphan_demo_tags

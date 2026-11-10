@@ -14,7 +14,7 @@ module ShareLinks
 
     def update
       @share = current_user.shared_links.active.find(params[:id])
-      attrs = params.require(:shared_link).permit(:expires_at, settings: share_setting_keys)
+      attrs = params.require(:shared_link).permit(:expires_at, settings: SharedLink::SETTING_KEYS)
       expires_at = if !attrs.key?(:expires_at)
                      @share.expires_at
                    elsif attrs[:expires_at].present?
@@ -43,8 +43,7 @@ module ShareLinks
 
     def revoke
       share = current_user.shared_links.find(params[:id])
-      share.update!(revoked_at: Time.current)
-      SharedLocationChannel.broadcast_to(share, { revoked: true }) if share.resource_type == 'live'
+      share.revoke!
 
       if hub_request?
         render turbo_stream: render_hub_streams('shared')
@@ -54,10 +53,6 @@ module ShareLinks
     end
 
     private
-
-    def share_setting_keys
-      %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes]
-    end
 
     def live_freshness_setting
       key = SharedLink::LIVE_FRESHNESS_KEY

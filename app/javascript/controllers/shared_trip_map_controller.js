@@ -1,10 +1,10 @@
-import { Controller } from "@hotwired/stimulus"
 import * as maplibregl from "maplibre-gl"
 import { TripRoutesTileLayer } from "maps_maplibre/layers/trip_routes_tile_layer"
+import { ReplayHost } from "maps_maplibre/managers/replay_host"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
-export default class extends Controller {
+export default class extends ReplayHost {
   static values = {
     linkId: String,
     showPhotos: Boolean,
@@ -17,29 +17,7 @@ export default class extends Controller {
     fullBounds: Array,
   }
 
-  static targets = [
-    "map",
-    "replayToggleBtn",
-    "replayPanel",
-    "replayScrubber",
-    "replayScrubberTrack",
-    "replayDensityContainer",
-    "replayDayDisplay",
-    "replayDayCount",
-    "replayPrevDayButton",
-    "replayNextDayButton",
-    "replayTimeDisplay",
-    "replaySpeedDisplay",
-    "replayDataIndicator",
-    "replayPlayButton",
-    "replayFollowButton",
-    "replayPlayIcon",
-    "replayPauseIcon",
-    "replaySpeedSlider",
-    "replaySpeedLabel",
-    "replayCycleControls",
-    "replayPointCounter",
-  ]
+  static targets = ["map", "replayToggleBtn"]
 
   connect() {
     this.selectedDay = null
@@ -248,38 +226,6 @@ export default class extends Controller {
     } finally {
       this.replayToggling = false
     }
-  }
-
-  replayScrubberHover(event) {
-    this.replayPanel?.scrubberHover(event)
-  }
-
-  replayPrevDay() {
-    this.replayPanel?.prevDay()
-  }
-
-  replayNextDay() {
-    this.replayPanel?.nextDay()
-  }
-
-  replayCyclePrev() {
-    this.replayPanel?.cyclePrev()
-  }
-
-  replayCycleNext() {
-    this.replayPanel?.cycleNext()
-  }
-
-  replayTogglePlayback() {
-    this.replayPanel?.togglePlayback()
-  }
-
-  replayRecenterFollow() {
-    this.replayPanel?.recenterFollow()
-  }
-
-  replaySpeedChange(event) {
-    this.replayPanel?.speedChange(event)
   }
 
   markActiveRow() {

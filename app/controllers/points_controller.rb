@@ -67,19 +67,9 @@ class PointsController < ApplicationController
   end
 
   def points
-    params[:import_id].present? ? import_points : user_points
-  end
+    source = params[:import_id].present? ? current_user.imports.find(params[:import_id]).points : current_user.points
 
-  def import_points
-    apply_plan_window(current_user.imports.find(params[:import_id]).points)
-  end
-
-  def user_points
-    Points::ReadSummary.plan_scope(current_user.points, current_user)
-  end
-
-  def apply_plan_window(relation)
-    Points::ReadSummary.plan_scope(relation, current_user)
+    Points::ReadSummary.plan_scope(source, current_user)
   end
 
   def order_by

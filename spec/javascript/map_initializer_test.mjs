@@ -18,6 +18,14 @@ const tileFreshnessSource = await readFile(
   "utf8",
 )
 
+const globeProjectionSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/globe_projection.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+
 // Date.now() collides when two loads land in the same millisecond, and the
 // cached module keeps the previous test's fakes.
 let moduleLoadCount = 0
@@ -38,6 +46,7 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
     ${tileFreshnessSource}
+    ${globeProjectionSource.replace(/^export /gm, "")}
   `
   globalThis.__mapInitializerGetMapStyle = getMapStyle
   globalThis.__mapInitializerToast = Toast

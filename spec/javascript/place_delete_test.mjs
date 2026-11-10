@@ -50,7 +50,7 @@ async function setup({ confirmed = true, ok = true } = {}) {
     layerManager: { getLayer: () => layer },
     closeInfo: () => calls.push(["close"]),
     placesManager: {
-      _refreshPrivacyZones: async () => calls.push(["privacy"]),
+      refreshPrivacyZones: async () => calls.push(["privacy"]),
     },
   }
   return { run: () => deletePlace(controller, "42"), calls, layer }
