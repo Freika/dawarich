@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
-import { firstDayOfWeek } from "i18n"
-import { monthGridStart } from "maps_maplibre/utils/month_grid"
+import { monthPreview } from "./timeline_feed/month_preview"
+import { openEntry } from "./timeline_feed/open_entry"
 import { visitFilters } from "./timeline_feed/visit_filters"
 import { visitSelection } from "./timeline_feed/visit_selection"
 
@@ -154,188 +154,6 @@ export default class TimelineFeedController extends Controller {
     }
   }
 
-  handleOpenVisit(event) {
-    const { visitId, date } = event.detail || {}
-    if (Number.isFinite(Number(visitId))) {
-      this.pendingVisitId = Number(visitId)
-    }
-    if (date) this.selectDayByDate(date)
-  }
-
-  handleOpenTrack(event) {
-    const { trackId, date, startAtMs, endAtMs } = event.detail || {}
-    const tid = Number.parseInt(trackId, 10)
-
-    if (Number.isFinite(tid)) {
-      this.pendingTrackId = tid
-    } else if (Number.isFinite(Number(startAtMs))) {
-      // Route click: no track id, so focus the journey whose time range
-      // overlaps the route's. Both are epoch ms, so the match is tz-safe.
-      this.pendingTrackTime = {
-        startAtMs: Number(startAtMs),
-        endAtMs: Number.isFinite(Number(endAtMs))
-          ? Number(endAtMs)
-          : Number(startAtMs),
-      }
-    } else {
-      return
-    }
-
-    // If the clicked track is on the already-selected day, the journey
-    // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler consumes the pending target once the
-    // new day's entries render.
-    this.keepCameraOnDate = date || this.selectedDate
-    if (date && date !== this.selectedDate) {
-      this.navigateToDay(date, { fitBounds: false })
-    } else {
-      this._tryExpandPendingTrack()
-    }
-  }
-
-  // ---------- URL hydration ----------
-  hydrateFromUrl() {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get("panel") !== "timeline") return
-
-    // Status filter
-    const status = params.get("status")
-    if (status) {
-      for (const cb of this.element.querySelectorAll(
-        'input[type="checkbox"][data-status]',
-      )) {
-        cb.checked = cb.dataset.status === status
-      }
-      this.filterChanged()
-    }
-
-    // Date selection — "today" means the user's local today, not UTC today.
-    // Using toISOString() would shift the date near midnight in non-UTC zones.
-    // Fall back to the range's end date when there's no explicit `date=` param
-    // (arriving via the top date-range form / Search / Last 7 days) so the
-    // panel lands on the most recent day of the range instead of going blank —
-    // keeping the range and the panel in sync (C1).
-    const date = params.get("date") || this.renderedDay()
-    if (date) {
-      const isoDate =
-        date === "today" ? new Date().toLocaleDateString("en-CA") : date
-      requestAnimationFrame(() => this.selectDayByDate(isoDate, false))
-    }
-
-    // Specific visit selection — deferred until the visit list frame loads
-    // (see handleVisitFrameLoad). Supports deep links (`?visit_id=N`) and
-    // same-page navigation dispatched via the `timeline:open-visit` event.
-    const visitId = params.get("visit_id")
-    if (visitId) {
-      const parsedVisit = Number.parseInt(visitId, 10)
-      if (Number.isFinite(parsedVisit)) this.pendingVisitId = parsedVisit
-    }
-  }
-
-  handleVisitFrameLoad() {
-    // Reapply the current filter + search state to newly-rendered rows so
-    // user intent ("hide declined" / "search: café") persists across day switches.
-    this.applyVisibility()
-
-    // Extract the day's bounds from the rendered DOM and re-dispatch
-    // day-selected with bounds so the map can fit to the visits.
-    const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
-    const keepCamera =
-      this.pendingTrackId ||
-      this.pendingTrackTime ||
-      this.keepCameraOnDate === this.selectedDate
-    if (dayEl?.dataset?.bounds && !keepCamera) {
-      try {
-        const bounds = JSON.parse(dayEl.dataset.bounds)
-        if (bounds && typeof bounds === "object") {
-          document.dispatchEvent(
-            new CustomEvent("timeline-feed:day-selected", {
-              detail: { date: this.selectedDate, bounds },
-            }),
-          )
-        }
-      } catch {
-        // Malformed bounds JSON — silently skip fit
-      }
-    }
-
-    if (this.pendingTrackId || this.pendingTrackTime) {
-      this._tryExpandPendingTrack()
-    }
-
-    if (!this.pendingVisitId) return
-    const row = this.element.querySelector(
-      `[data-visit-id="${this.pendingVisitId}"]`,
-    )
-    this.pendingVisitId = null
-    if (!row) return
-    // Synthesize a Stimulus-shaped event and run through the normal path so
-    // visual selection + the `timeline-feed:visit-selected` dispatch are consistent.
-    this.selectVisit({ currentTarget: row, target: row })
-  }
-
-  // Expands the journey entry for `this.pendingTrackId` if it's present in
-  // the currently rendered day. Idempotent — re-clicking the same track
-  // collapses via `toggleTrackInfo`, but programmatic expansion only opens
-  // a closed entry, never collapses an open one.
-  _tryExpandPendingTrack() {
-    let toggle = null
-
-    if (this.pendingTrackId) {
-      const tid = this.pendingTrackId
-      this.pendingTrackId = null
-      toggle = this.element.querySelector(
-        `.journey-leg[data-track-id="${tid}"]`,
-      )
-    } else if (this.pendingTrackTime) {
-      const { startAtMs, endAtMs } = this.pendingTrackTime
-      this.pendingTrackTime = null
-      toggle = this._findJourneyToggleByTime(startAtMs, endAtMs)
-    }
-
-    if (!toggle) return
-
-    const frameId = toggle.dataset.frameId
-    const frame = frameId ? document.getElementById(frameId) : null
-    if (!frame) return
-
-    if (frame.classList.contains("hidden")) {
-      this.toggleTrackInfo({ currentTarget: toggle })
-    }
-
-    toggle.closest(".timeline-entry")?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    })
-  }
-
-  // Find the journey leg whose [started_at, ended_at] window overlaps the most
-  // with a given epoch-ms range (a clicked route). Returns the `.journey-leg`
-  // toggle so `_tryExpandPendingTrack` can open it. Journey timestamps are
-  // ISO8601 with offset, so Date.parse yields a tz-safe epoch.
-  _findJourneyToggleByTime(startAtMs, endAtMs) {
-    const entries = this.element.querySelectorAll(
-      '.timeline-entry[data-entry-type="journey"]',
-    )
-    let best = null
-    let bestOverlap = 0
-    for (const entry of entries) {
-      const s = new Date(entry.dataset.startedAt).getTime()
-      const e = new Date(entry.dataset.endedAt).getTime()
-      if (!Number.isFinite(s) || !Number.isFinite(e)) continue
-      const overlap = Math.min(e, endAtMs) - Math.max(s, startAtMs)
-      if (overlap > bestOverlap) {
-        bestOverlap = overlap
-        best = entry
-      }
-    }
-    return best?.querySelector(".journey-leg[data-track-id]") || null
-  }
-
-  // ---------- Calendar ----------
-  // User-facing actions trigger a full Turbo navigation so the whole map
-  // page (points / routes / fog-of-war / any enabled layer) rebinds to the
-  // new date range — consistent with the existing top-of-page date form.
   selectDay(event) {
     const cell = event.currentTarget
     const date = cell.dataset.day
@@ -565,70 +383,6 @@ export default class TimelineFeedController extends Controller {
     document.dispatchEvent(new CustomEvent("timeline-feed:entry-unhover"))
   }
 
-  // ---------- Calendar month skeleton ----------
-  // Paints a "neutral" version of the target month immediately on click,
-  // so users see the new month structure without waiting for the
-  // turbo_stream round-trip. The stream then swaps this skeleton out for
-  // the real heat-colored cells the moment the response arrives.
-  previewMonth(event) {
-    const link = event.currentTarget
-    const targetMonth = link?.dataset?.targetMonth
-    if (!targetMonth) return
-
-    const calendar = this.element.querySelector(
-      '[data-testid="timeline-calendar"]',
-    )
-    if (!calendar) return
-
-    const grid = calendar.querySelector(
-      ".grid.grid-cols-7.gap-0\\.5:last-child",
-    )
-    const title = calendar.querySelector('[data-testid="calendar-title"]')
-    if (!grid || !title) return
-
-    const [yearStr, monthStr] = targetMonth.split("-")
-    const year = Number.parseInt(yearStr, 10)
-    const monthIdx = Number.parseInt(monthStr, 10) - 1
-    if (!Number.isFinite(year) || !Number.isFinite(monthIdx)) return
-
-    // Force English locale to match the server-rendered title
-    // (`strftime('%B %Y')`) — otherwise users on a non-English browser see
-    // a brief "Январь 2025" → "January 2025" flicker as the turbo_stream
-    // response replaces the skeleton.
-    title.textContent = new Date(year, monthIdx, 1).toLocaleDateString("en", {
-      month: "long",
-      year: "numeric",
-    })
-
-    // 6×7 grid aligned to the first day of week — mirrors MonthSummary.
-    const gridStart = monthGridStart(year, monthIdx, firstDayOfWeek())
-
-    const cells = []
-    for (let i = 0; i < 42; i += 1) {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      const inMonth = d.getMonth() === monthIdx
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      const selected = iso === this.selectedDate
-      const classes = [
-        "cal-cell",
-        "heat-0",
-        "cal-cell--dark-text",
-        inMonth ? null : "out-of-month",
-        selected ? "cal-cell--selected" : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
-      cells.push(
-        `<button type="button" class="${classes}" data-day="${iso}" data-action="click->timeline-feed#selectDay" data-testid="calendar-day" disabled><span class="cal-cell__day">${d.getDate()}</span></button>`,
-      )
-    }
-
-    grid.innerHTML = cells.join("")
-    calendar.classList.add("timeline-calendar--loading")
-  }
-
-  // ---------- Day navigation ----------
   navigateDay(event) {
     const direction = event.currentTarget.dataset.direction
     const current = this.selectedDate || this.renderedDay()
@@ -678,4 +432,10 @@ export default class TimelineFeedController extends Controller {
   }
 }
 
-Object.assign(TimelineFeedController.prototype, visitFilters, visitSelection)
+Object.assign(
+  TimelineFeedController.prototype,
+  visitFilters,
+  visitSelection,
+  openEntry,
+  monthPreview,
+)
