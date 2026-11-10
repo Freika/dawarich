@@ -62,7 +62,7 @@ export const playback = {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        if (date.getHours() * 60 + date.getMinutes() >= currentMinute) {
+        if (this.replayManager.minuteOfDay(date) >= currentMinute) {
           this.replayPointIndex = i
           break
         }
@@ -214,7 +214,7 @@ export const playback = {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        const minute = date.getHours() * 60 + date.getMinutes()
+        const minute = this.replayManager.minuteOfDay(date)
         this.c.replayScrubberTarget.value = minute
         this.updateTimeDisplay(minute, false)
       }

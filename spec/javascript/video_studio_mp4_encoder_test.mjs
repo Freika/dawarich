@@ -158,3 +158,12 @@ test("runtime probe rejects a codec whose first encode throws", async () => {
   assert.equal(frameClosed, true)
   assert.equal(encoderClosed, true)
 })
+
+test("tells the user to keep the tab visible when the browser reclaims the encoder", async () => {
+  const fake = fakeVideoEncoder()
+  const encoder = await createMp4Encoder({ width: 8, height: 8, fps: 30 })
+
+  fake.fail(new DOMException("Codec reclaimed", "QuotaExceededError"))
+
+  await assert.rejects(encoder.addFrame({}, 0), /tab/i)
+})

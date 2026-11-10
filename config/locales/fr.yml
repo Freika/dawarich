@@ -31,6 +31,7 @@ fr:
           komoot_warning: "photon.komoot.io est un serveur public partagé aux limites strictes. Les requêtes sont limitées à une par seconde, le géocodage en masse sera donc lent. Envisagez d'héberger votre propre instance Photon."
           https_locked: "HTTPS est toujours activé pour cet hôte."
           legacy_user_settings: "Certains utilisateurs avaient configuré leur propre géocodage avant son déplacement ici. Leurs réglages n'ont pas été repris, car tous les utilisateurs n'en avaient pas ou ils différaient. Configurez un fournisseur ci-dessous pour réactiver le géocodage pour tout le monde."
+          paused: "Les requêtes sont en pause pendant %{minutes} min, car le fournisseur les a refusées pour dépassement de sa limite."
         providers:
           photon: "Géocodeur open source. Utilisez un serveur hébergé ou le vôtre."
           geoapify: "Service hébergé. Nécessite une clé d'API."
@@ -67,6 +68,7 @@ fr:
         empty: "Le fournisseur a répondu, mais n'a renvoyé aucun résultat pour les coordonnées de test."
         failure: "Échec du test : %{error}"
         rate_limited: "La limite de requêtes du fournisseur est atteinte pour le moment. Réessayez dans un instant."
+        paused: "Le fournisseur a refusé les requêtes pour dépassement de sa limite. Elles restent en pause encore %{seconds} s, aucun test n'a donc été envoyé."
   route_videos:
     route_video:
       download: "Télécharger le MP4"
@@ -2864,6 +2866,7 @@ fr:
       done: Terminé
     links:
       live:
+        last_known: "Dernière position"
         live: "● En direct"
         connecting: En cours de connexion…
       missing_resource:
@@ -2934,6 +2937,14 @@ fr:
     privacy_zones_note:
       text: "Vos zones de confidentialité restent masquées sur ce lien. Chaque zone masquée est décalée du lieu, pour que personne ne puisse savoir où il se trouve."
       manage: "Zones de confidentialité"
+    live_freshness_field:
+      label: "Garder le dernier emplacement connu visible pendant"
+      hint: "Quand votre appareil cesse d'envoyer sa position, toute personne qui ouvre le lien peut encore voir votre dernier emplacement connu pendant cette durée."
+      windows:
+        s900: "15 minutes"
+        s3600: "1 heure"
+        s21600: "6 heures"
+        s86400: "24 heures"
     expires_field:
       expires_optional: Expire (facultatif)
       stays_active_through_the_end_of_the_day_before_the: Reste actif jusqu'à la fin
@@ -2968,7 +2979,7 @@ fr:
         one: "%{count} vue"
         other: "%{count} vues"
     modal_live_create_form:
-      current_location_in_real_time: emplacement actuel en temps réel
+      latest_known_location: "dernier emplacement connu"
       this_shares_your_location_with_anyone_html: Toute personne disposant du lien
         pourra voir votre %{location} jusqu'à l'expiration ou la révocation du lien.
       magic_phrase_optional: Expression magique (facultatif)
@@ -4613,6 +4624,7 @@ fr:
     shared_link:
       is_required_for_this_resource_type: est requis pour ce type de ressource
       must_be_blank_for_this_resource_type: doit être vide pour ce type de ressource
+      live_freshness_not_allowed: "doit être de 15 minutes, 1 heure, 6 heures ou 24 heures"
       must_be_in_the_future: doit se situer dans l'avenir
       must_include_start_date_and_end_date_for_timeline_shares: doit inclure la date
         de début et la date de fin pour les partages de chronologie
@@ -5427,6 +5439,7 @@ fr:
       day_count: Jour %{current} sur %{total}
       point_count: Point %{current} sur %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: Aucune donnée disponible
     places:
       move_pin: "Déplacer le repère du lieu"

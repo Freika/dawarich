@@ -33,6 +33,45 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
         allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
       end
 
+      context 'when an earlier over-limit refusal is still cooling down' do
+        before do
+          allow(ExceptionReporter).to receive(:call)
+          Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+        end
+
+        it 'keeps the place as it is without asking the provider or reporting the skip' do
+          expect { service.call }.not_to(change { place.reload.attributes })
+
+          expect(Geocoder).not_to have_received(:search)
+          expect(ExceptionReporter).not_to have_received(:call)
+        end
+
+        it 'asks for the lookup again when the cooldown ends' do
+          expect { service.call }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('place', place.id)
+            .at(a_value_within(5.seconds).of(Geocoding::Cooldown::BASE_DURATION.from_now))
+        end
+
+        it 'keeps a single retry per place however often the lookup is skipped' do
+          expect { 3.times { described_class.new(place.id).call } }
+            .to have_enqueued_job(ReverseGeocodingJob).with('place', place.id).once
+        end
+      end
+
+      context 'when the provider refuses the lookup as over its limit' do
+        before do
+          allow(ExceptionReporter).to receive(:call)
+          allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+        end
+
+        it 'asks for the lookup again when the cooldown ends and still reports the refusal' do
+          expect { service.call }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('place', place.id)
+            .at(a_value_within(5.seconds).of(Geocoding::Cooldown::BASE_DURATION.from_now))
+          expect(ExceptionReporter).to have_received(:call)
+        end
+      end
+
       it 'fetches geocoded places' do
         service.call
 

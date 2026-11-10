@@ -15,9 +15,9 @@ class Points::SlimCollectionQuery
         Arel.sql('ST_X(points.lonlat::geometry)'),
         Arel.sql('points.timestamp'),
         Arel.sql('points.velocity'),
-        # Precedence mirrors Point#country_name exactly; collapsing onto the
-        # countries join alone happens when the rewrite drops both columns.
-        Arel.sql("COALESCE(points.country_name, countries.name, points.country, '')"),
+        # The linked country beats stored text, as in POINT_NAME_SQL, so map
+        # popups name a country the way stats do.
+        Arel.sql("COALESCE(countries.name, points.country_name, points.country, '')"),
         # A stamped row reads the dimension exclusively, NULLs included —
         # COALESCE would resurrect legacy values the writer cleared. The
         # legacy arm serves only unstamped rows and goes away with the

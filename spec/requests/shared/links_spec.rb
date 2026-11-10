@@ -178,6 +178,15 @@ RSpec.describe 'Shared::Links', type: :request do
       expect(response.body).to include(link.id)
       expect(response.body).not_to include(link.unlock_token.to_s) if link.unlock_token
     end
+
+    it 'renders the Last known badge hidden until the viewer sees an old location' do
+      get "/s/#{link.id}"
+
+      page = Nokogiri::HTML(response.body)
+      expect(page.at_css('[data-shared-live-map-target="liveBadge"]')['class']).not_to include('hidden')
+      expect(page.at_css('[data-shared-live-map-target="lastKnownBadge"]')['class']).to include('hidden')
+      expect(page.at_css('[data-shared-live-map-target="lastKnownBadge"]').text).to eq('Last known')
+    end
   end
 
   describe 'dispatch for a resource_type without a partial' do

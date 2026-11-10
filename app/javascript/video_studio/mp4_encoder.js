@@ -47,6 +47,29 @@ export async function probeVideoEncoderConfig(config) {
   }
 }
 
+// Decode times are the presentation times in sorted order, pulled back by the
+// deepest reorder so no chunk is decoded after it is shown. Without B-frames
+// the shift is zero and every composition offset is zero.
+function muxInDecodeOrder(muxer, chunks) {
+  const decodeTimes = chunks
+    .map(({ chunk }) => chunk.timestamp)
+    .sort((a, b) => a - b)
+  const shift = chunks.reduce(
+    (deepest, { chunk }, i) =>
+      Math.max(deepest, decodeTimes[i] - chunk.timestamp),
+    0,
+  )
+  chunks.forEach(({ chunk, meta }, i) => {
+    const decodeTime = decodeTimes[i] - shift
+    muxer.addVideoChunk(
+      chunk,
+      meta,
+      chunk.timestamp,
+      chunk.timestamp - decodeTime,
+    )
+  })
+}
+
 export async function createMp4Encoder({ width, height, fps }) {
   if (!isVideoExportSupported()) return null
 
@@ -76,10 +99,20 @@ export async function createMp4Encoder({ width, height, fps }) {
     for (const resume of [...parked]) resume()
   }
 
+  // Firefox's H.264 encoder emits B-frames: chunks arrive in decode order but
+  // carry presentation timestamps, which the muxer takes for decode times and
+  // rejects as soon as one goes backwards. Collect them and mux at the end,
+  // when the decode order is known. A 30 s clip stays within tens of MB.
+  const chunks = []
   const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    output: (chunk, meta) => chunks.push({ chunk, meta }),
     error: (error) => {
-      encodeError = error
+      encodeError =
+        error.name === "QuotaExceededError"
+          ? new Error(
+              "The browser released the video encoder while this tab was in the background. Keep the tab visible during the export.",
+            )
+          : error
       wake()
     },
   })
@@ -122,6 +155,8 @@ export async function createMp4Encoder({ width, height, fps }) {
       await encoder.flush()
       encoder.close()
       if (encodeError) throw encodeError
+      muxInDecodeOrder(muxer, chunks)
+      chunks.length = 0
       muxer.finalize()
       return new Blob([target.buffer], { type: "video/mp4" })
     },

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe ReverseGeocodingJob, type: :job do
+  include ActiveSupport::Testing::TimeHelpers
+
   describe '#perform' do
     subject(:perform) { described_class.new.perform('Point', point.id) }
 
@@ -107,6 +109,54 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       described_class.new.perform('place', point.id)
 
       expect(key_exists?).to be true
+    end
+  end
+
+  describe 'when the provider is over its limit' do
+    let(:user) { create(:user) }
+    let!(:point) { create(:point, user:, reverse_geocoded_at: nil, city: nil, country: nil) }
+    let!(:other_point) { create(:point, user:, reverse_geocoded_at: nil, city: nil, country: nil) }
+
+    before do
+      configure_instance_geocoding
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+    end
+
+    it 'leaves the point for later without failing the job' do
+      expect { described_class.new.perform('Point', point.id) }.not_to raise_error
+
+      expect(point.reload.reverse_geocoded_at).to be_nil
+    end
+
+    it 'stops sending lookups to the provider after the refusal' do
+      described_class.new.perform('Point', point.id)
+      described_class.new.perform('Point', other_point.id)
+
+      expect(Geocoder).to have_received(:search).once
+      expect(other_point.reload.reverse_geocoded_at).to be_nil
+    end
+
+    it 'schedules one resume of the backlog for when the cooldown ends' do
+      freeze_time do
+        described_class.new.perform('Point', point.id)
+        described_class.new.perform('Point', other_point.id)
+
+        expect(Points::ResumeReverseGeocodingJob)
+          .to have_been_enqueued.once
+          .at(a_value_within(5.seconds).of(Geocoding::Cooldown::BASE_DURATION.from_now))
+      end
+    end
+
+    it 'releases the claim so the resumed run can queue the point again' do
+      point.async_reverse_geocode
+      described_class.new.perform('Point', point.id)
+
+      expect { Points::NightlyReverseGeocodingJob.new.perform }.not_to have_enqueued_job(described_class)
+      Geocoding::Cooldown.reset!
+      expect { Points::NightlyReverseGeocodingJob.new.perform }
+        .to have_enqueued_job(described_class).with('Point', point.id, force: false)
     end
   end
 

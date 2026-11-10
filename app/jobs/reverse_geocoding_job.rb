@@ -26,6 +26,10 @@ class ReverseGeocodingJob < ApplicationJob
     # Pacing lives in Geocoding::RateLimiter, one layer down: sleeping here
     # only spaced out a single thread while the rest of the pool kept firing.
     fetcher.new(id, force: force).call
+    # A lookup refused as over the provider's limit, or skipped while such a
+    # refusal cools down, leaves the record ungeocoded: pick the backlog up
+    # again when the cooldown ends. Without a running cooldown this is a no-op.
+    Points::ResumeReverseGeocodingJob.schedule(config)
   rescue StandardError
     retrying = true
     raise

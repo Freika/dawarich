@@ -5,13 +5,15 @@ import * as maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
+const LAST_KNOWN_AFTER_SECONDS = 15 * 60
+
 export default class extends Controller {
   static values = {
     linkId: String,
     showRoute: Boolean,
   }
 
-  static targets = ["map", "status", "lastSeen"]
+  static targets = ["map", "status", "lastSeen", "liveBadge", "lastKnownBadge"]
 
   connect() {
     this.initializeMap()
@@ -256,6 +258,15 @@ export default class extends Controller {
       date: formatDateTime(seenAt, { seconds: true }),
       relative: this.relativeTime(this.lastSeenTs),
     })
+    this.renderBadge()
+  }
+
+  renderBadge() {
+    if (!this.hasLiveBadgeTarget || !this.hasLastKnownBadgeTarget) return
+    const age = Math.floor(Date.now() / 1000) - this.lastSeenTs
+    const lastKnown = age > LAST_KNOWN_AFTER_SECONDS
+    this.liveBadgeTarget.classList.toggle("hidden", lastKnown)
+    this.lastKnownBadgeTarget.classList.toggle("hidden", !lastKnown)
   }
 
   relativeTime(ts) {

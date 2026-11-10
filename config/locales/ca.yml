@@ -30,6 +30,7 @@ ca:
           komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
           https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
           legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
+          paused: "Les consultes estan aturades durant %{minutes} min perquè el proveïdor les ha rebutjat per superar el seu límit."
         providers:
           photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
           geoapify: "Servei allotjat. Necessita una clau d'API."
@@ -66,6 +67,7 @@ ca:
         empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
         failure: "La prova ha fallat: %{error}"
         rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
+        paused: "El proveïdor ha rebutjat les consultes per superar el seu límit. Continuaran aturades %{seconds} s més, així que no s'ha enviat cap prova."
   activerecord:
     errors:
       models:
@@ -2050,6 +2052,7 @@ ca:
       done: Fet
     links:
       live:
+        last_known: "Darrera coneguda"
         live: "● En directe"
         connecting: Connectant…
       missing_resource:
@@ -2110,6 +2113,14 @@ ca:
     privacy_zones_note:
       text: "Les teves zones de privadesa continuen amagades en aquest enllaç. Cada àrea amagada està desplaçada del lloc, perquè ningú pugui saber on és."
       manage: "Zones de privadesa"
+    live_freshness_field:
+      label: "Mantén visible la darrera ubicació coneguda durant"
+      hint: "Quan el teu dispositiu deixi d'informar, qui obri l'enllaç encara podrà veure la teva darrera ubicació coneguda durant aquest temps."
+      windows:
+        s900: "15 minuts"
+        s3600: "1 hora"
+        s21600: "6 hores"
+        s86400: "24 hores"
     expires_field:
       expires_optional: Caduca (opcional)
       stays_active_through_the_end_of_the_day_before_the: Es manté actiu fins al final del dia anterior a la data seleccionada.
@@ -2139,7 +2150,7 @@ ca:
         one: "%{count} visualització"
         other: "%{count} visualitzacions"
     modal_live_create_form:
-      current_location_in_real_time: ubicació actual en temps real
+      latest_known_location: "darrera ubicació coneguda"
       this_shares_your_location_with_anyone_html: Això comparteix la teva %{location} amb qualsevol persona que tingui l'enllaç, fins que caduqui o el revoquis.
       magic_phrase_optional: Paraula màgica (opcional)
       leave_blank_to_share_without_a_phrase_or_use_the: Deixa-ho en blanc per compartir sense paraula, o fes servir la generada automàticament.
@@ -3582,6 +3593,7 @@ ca:
     shared_link:
       is_required_for_this_resource_type: és necessari per a aquest tipus de recurs
       must_be_blank_for_this_resource_type: ha d'estar en blanc per a aquest tipus de recurs
+      live_freshness_not_allowed: "ha de ser 15 minuts, 1 hora, 6 hores o 24 hores"
       must_be_in_the_future: ha de ser en el futur
       must_include_start_date_and_end_date_for_timeline_shares: ha d'incloure start_date i end_date per compartir línies de temps
       start_date_and_end_date_must_be_parseable_as_dates: start_date i end_date han de poder interpretar-se com a dates
@@ -4203,6 +4215,7 @@ ca:
       day_count: Dia %{current} de %{total}
       point_count: Punt %{current} de %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: No hi ha dades
     places:
       move_pin: "Mou el marcador del lloc"

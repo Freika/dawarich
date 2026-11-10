@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
+- Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
+- When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
+- Replay playback follows the timezone from Settings instead of the browser's. Thanks @joshuanianji! (#3811)
+- Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
+- Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
+- Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
+- Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes

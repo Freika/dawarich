@@ -1,6 +1,8 @@
 import { translate } from "i18n"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 
+const KM_PER_MILE = 1.609344
+
 /**
  * Replay readouts: day, time, speed, point count, density and cycle controls.
  * Mixed into ReplayPanel; `this` is the ReplayPanel.
@@ -54,12 +56,13 @@ export const displays = {
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
-        this.c.replaySpeedDisplayTarget.textContent = translate(
-          "replay.speed",
-          {
-            speed: Math.round(speedMs * 3.6),
-          },
-        )
+        const kmh = speedMs * 3.6
+        this.c.replaySpeedDisplayTarget.textContent =
+          this._distanceUnit() === "mi"
+            ? translate("replay.speed_mph", {
+                speed: Math.round(kmh / KM_PER_MILE),
+              })
+            : translate("replay.speed", { speed: Math.round(kmh) })
         return
       }
     }

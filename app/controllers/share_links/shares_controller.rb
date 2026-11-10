@@ -30,6 +30,7 @@ module ShareLinks
                      end
                    end
       settings = attrs.fetch(:settings, {}).to_h.transform_values { |value| ActiveModel::Type::Boolean.new.cast(value) }
+      settings = settings.merge(live_freshness_setting) if @share.live?
       if @share.update(expires_at: expires_at, settings: @share.settings.merge(settings))
         render :updated, layout: !turbo_frame_request?
       else
@@ -52,6 +53,11 @@ module ShareLinks
     end
 
     private
+
+    def live_freshness_setting
+      key = SharedLink::LIVE_FRESHNESS_KEY
+      SharedLink.live_freshness_setting(params.fetch(:shared_link, {}).permit(settings: [key]).dig(:settings, key))
+    end
 
     def not_found
       head :not_found

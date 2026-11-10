@@ -19,6 +19,7 @@ export class ReplayPanel {
     this.onDaySync = opts.onDaySync || null
     this.onPlayStateChange = opts.onPlayStateChange || null
     this._getPhotos = opts.getPhotos || null
+    this._distanceUnit = opts.distanceUnit || (() => "km")
     this._onReplayPhotosActive = opts.onReplayPhotosActive || (() => {})
     this._replayPhotoLayer = null
     this._photoIndex = null
@@ -185,7 +186,7 @@ export class ReplayPanel {
       )
       if (pointTime) {
         const date = new Date(pointTime)
-        const pointMinute = date.getHours() * 60 + date.getMinutes()
+        const pointMinute = this.replayManager.minuteOfDay(date)
         if (pointMinute >= minute) {
           targetIndex = i
           break

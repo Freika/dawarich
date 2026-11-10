@@ -122,7 +122,10 @@ module StatsHelper
     return nil if name.blank?
     return name if Country.names_to_iso_a2.key?(name)
 
-    Countries::IsoCodeMapper.standardize_country_name(name) || name
+    canonical = Countries::NameAliases.canonical(name)
+    return canonical unless canonical == name
+
+    Countries::NameAliases.canonical(Countries::IsoCodeMapper.standardize_country_name(name) || name)
   end
 
   def build_distance_by_date_hash(stat)

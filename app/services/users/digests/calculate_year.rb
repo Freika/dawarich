@@ -147,21 +147,24 @@ module Users
         end_of_year = start_of_year.end_of_year
         lower_bound = [start_of_year, user.data_window_start].compact.max.to_i
 
+        country = Countries::NameAliases::POINT_NAME_SQL
+
         sql = <<~SQL
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
-            country_name,
-            MIN(timestamp) as min_timestamp,
-            MAX(timestamp) as max_timestamp
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
+            #{country} as country_name,
+            MIN(points.timestamp) as min_timestamp,
+            MAX(points.timestamp) as max_timestamp
           FROM points
-          WHERE user_id = #{user.id}
-            AND timestamp >= #{lower_bound}
-            AND timestamp <= #{end_of_year.to_i}
-            AND country_name IS NOT NULL
-            AND country_name != ''
-            AND #{CountriesAndCities.not_flyover_sql}
-          GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp, country_name COLLATE "C"
+          #{Countries::NameAliases.point_joins_sql}
+          WHERE points.user_id = #{user.id}
+            AND points.timestamp >= #{lower_bound}
+            AND points.timestamp <= #{end_of_year.to_i}
+            AND points.country_name IS NOT NULL
+            AND points.country_name != ''
+            AND #{CountriesAndCities.not_flyover_sql('points.velocity')}
+          GROUP BY point_date, #{country}
+          ORDER BY point_date, min_timestamp, #{country} COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.execute(sql).to_a

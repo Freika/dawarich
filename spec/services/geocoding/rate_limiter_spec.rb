@@ -165,6 +165,138 @@ RSpec.describe Geocoding::RateLimiter do
     end
   end
 
+  describe 'over-limit refusals' do
+    let(:komoot) { config_for('photon.komoot.io') }
+
+    def refuse
+      described_class.throttle(komoot) { raise Geocoder::OverQueryLimitError }
+    end
+
+    def refuse_quietly
+      refuse
+    rescue Geocoder::OverQueryLimitError
+      nil
+    end
+
+    it "passes the provider's refusal on to the caller" do
+      expect { refuse }.to raise_error(Geocoder::OverQueryLimitError)
+    end
+
+    it 'pauses further lookups to that provider' do
+      refuse_quietly
+      lookups = 0
+
+      expect { described_class.throttle(komoot) { lookups += 1 } }.to raise_error(Geocoding::Cooldown::Active)
+      expect(lookups).to eq(0)
+    end
+
+    it 'tells an interactive caller the provider is busy instead of raising' do
+      refuse_quietly
+
+      expect(described_class.throttle(komoot, max_wait: 1.0) { :never }).to be_nil
+    end
+
+    it 'does not send a lookup that was queued behind the refused one' do
+      allow(described_class).to receive(:sleep) { Geocoding::Cooldown.start(komoot) }
+      described_class.throttle(komoot) { :ok }
+      lookups = 0
+
+      expect { described_class.throttle(komoot) { lookups += 1 } }.to raise_error(Geocoding::Cooldown::Active)
+      expect(lookups).to eq(0)
+    end
+
+    it 'keeps other providers going' do
+      refuse_quietly
+
+      expect(described_class.throttle(config_for('photon.example.com', rps: 10)) { :ok }).to eq(:ok)
+    end
+
+    it 'pauses for the base duration again once the provider has answered' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { [double(cache_hit: false)] }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(1)
+    end
+
+    it 'keeps doubling the pause when the answer only came from the cache' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { [double(cache_hit: true)] }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(2)
+    end
+
+    it 'keeps doubling the pause after a lookup that found nothing' do
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      refuse_quietly
+      Kernel.sleep(1.1)
+      described_class.throttle(komoot) { [] }
+
+      refuse_quietly
+
+      expect(Geocoding::Cooldown.remaining(komoot)).to eq(2)
+    end
+
+    it 'ignores a success that lands after another lookup was refused' do
+      described_class.throttle(komoot) do
+        Geocoding::Cooldown.start(komoot)
+        [double(cache_hit: false)]
+      end
+
+      expect(Geocoding::Cooldown.unanswered_refusal?(komoot)).to be true
+    end
+  end
+
+  describe 'a lookup that reaches the real provider' do
+    let(:coordinates) { [rand(10.0..60.0).round(6), rand(10.0..60.0).round(6)] }
+    let(:provider_request) { a_request(:get, %r{photon\.test\.example\.com/reverse}) }
+
+    def lookup
+      Geocoding::Search.with_config(config: stored_photon, query: coordinates, limit: 1)
+    end
+
+    let(:stored_photon) do
+      Geocoding::Config.new(source: :stored, provider: :photon, host: 'photon.test.example.com')
+    end
+
+    def wait_out_a_refusal
+      Geocoding::Cooldown.start(stored_photon)
+      Kernel.sleep(1.1)
+    end
+
+    before do
+      use_real_geocoding_lookups
+      stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
+      stub_request(:get, %r{photon\.test\.example\.com/reverse}).to_return(
+        status: 200,
+        headers: { 'Content-Type' => 'application/json' },
+        body: {
+          type: 'FeatureCollection',
+          features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: coordinates.reverse },
+                       properties: { name: 'Somewhere', city: 'Town', country: 'Land' } }]
+        }.to_json
+      )
+    end
+
+    it 'counts the answer from the provider but not its cached repeat' do
+      wait_out_a_refusal
+      expect(lookup).to be_present
+      expect(Geocoding::Cooldown.unanswered_refusal?(stored_photon)).to be false
+
+      wait_out_a_refusal
+      expect(lookup).to be_present
+      expect(Geocoding::Cooldown.unanswered_refusal?(stored_photon)).to be true
+      expect(provider_request).to have_been_made.once
+    end
+  end
+
   describe 'concurrent workers' do
     it 'hands every thread its own slot instead of letting two share one' do
       waits = Queue.new

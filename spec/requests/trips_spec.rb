@@ -127,6 +127,15 @@ RSpec.describe '/trips', type: :request do
       expect(toggle['checked']).to be_nil
     end
 
+    it 'hands the replay speed the user distance unit' do
+      user.update!(settings: user.settings.merge('maps' => { 'distance_unit' => 'mi' }))
+
+      get trip_url(trip)
+
+      map = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(map['data-trip-maplibre-distance-unit-value']).to eq('mi')
+    end
+
     it 'offers no stats block before the trip distance is calculated' do
       trip.update_columns(distance: nil)
 

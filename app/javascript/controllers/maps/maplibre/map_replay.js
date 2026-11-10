@@ -8,6 +8,7 @@ function ensureMapReplayPanel(controller) {
     controller,
     map: controller.map,
     timezone: controller.timezoneValue,
+    distanceUnit: () => controller.settings?.distance_unit,
     markerLayer: () => controller.layerManager?.getLayer("replayMarker"),
     loadPoints: async () => {
       await controller.mapDataManager.ensurePointsLoaded()
@@ -106,11 +107,9 @@ async function replayTrackFrom(controller, trackStart) {
   await panel.ensureOpen()
   if (!panel.manager?.hasData()) return
 
-  const pad = (value) => String(value).padStart(2, "0")
-  panel.goToDay(
-    `${trackDate.getFullYear()}-${pad(trackDate.getMonth() + 1)}-${pad(trackDate.getDate())}`,
-  )
-  panel.setMinute(trackDate.getHours() * 60 + trackDate.getMinutes())
+  const { manager } = panel
+  panel.goToDay(manager.dayKey(trackDate))
+  panel.setMinute(manager.minuteOfDay(trackDate))
   panel.startPlayback()
 }
 

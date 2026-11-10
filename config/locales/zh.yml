@@ -32,6 +32,7 @@ zh:
           komoot_warning: "photon.komoot.io 是一个共享的公共实例，速率限制严格。请求被限制为每秒一次，批量地理编码会很慢。建议自行托管 Photon 实例。"
           https_locked: "此主机始终使用 HTTPS。"
           legacy_user_settings: "部分用户在地理编码移至此处之前设置了自己的地理编码。由于并非每位用户都有设置，或各自的设置不同，这些设置没有被迁移。请在下方设置提供商，为所有人重新开启地理编码。"
+          paused: "提供商因超出限额拒绝了查询，查询还将暂停 %{minutes} 分钟。"
         providers:
           photon: "开源地理编码器。可使用托管服务器，也可自行部署。"
           geoapify: "托管服务。需要 API 密钥。"
@@ -68,6 +69,7 @@ zh:
         empty: "提供商已响应，但测试坐标没有返回结果。"
         failure: "测试失败：%{error}"
         rate_limited: "提供商的速率限制当前繁忙——请稍后再试。"
+        paused: "提供商因超出限额拒绝了查询。查询还将暂停 %{seconds} 秒，因此未发送测试。"
   auth:
     account_links:
       challenge:
@@ -2070,6 +2072,7 @@ zh:
       done: 完成
     links:
       live:
+        last_known: "最后已知"
         live: ● 实时
         connecting: 正在连接…
       missing_resource:
@@ -2134,6 +2137,14 @@ zh:
     privacy_zones_note:
       text: "此链接中您的隐私区域保持隐藏。每个隐藏区域都偏离地点中心，查看者无法推断地点的位置。"
       manage: "隐私区域"
+    live_freshness_field:
+      label: "最后已知位置的可见时长"
+      hint: "设备停止上报后，打开该链接的人在这段时间内仍可看到您的最后已知位置。"
+      windows:
+        s900: "15 分钟"
+        s3600: "1 小时"
+        s21600: "6 小时"
+        s86400: "24 小时"
     expires_field:
       expires_optional: 过期（可选）
       stays_active_through_the_end_of_the_day_before_the: 有效期持续到所选日期前一天结束。
@@ -2163,7 +2174,7 @@ zh:
         one: "%{count} 次查看"
         other: "%{count} 次查看"
     modal_live_create_form:
-      current_location_in_real_time: 实时当前位置
+      latest_known_location: "最新已知位置"
       this_shares_your_location_with_anyone_html: 这会与任何知道该链接的人共享您的 %{location}，直到该链接过期或您撤销该链接。
       magic_phrase_optional: 魔法短语（可选）
       leave_blank_to_share_without_a_phrase_or_use_the: 留空则无需短语即可共享，或使用自动生成的短语。
@@ -3634,6 +3645,7 @@ zh:
     shared_link:
       is_required_for_this_resource_type: 此资源类型必填
       must_be_blank_for_this_resource_type: 此资源类型必须为空
+      live_freshness_not_allowed: "必须为 15 分钟、1 小时、6 小时或 24 小时"
       must_be_in_the_future: 必须是未来时间
       must_include_start_date_and_end_date_for_timeline_shares: 必须包含时间线共享的 start_date 和 end_date
       start_date_and_end_date_must_be_parseable_as_dates: start_date 和 end_date 必须可解析为日期
@@ -4268,6 +4280,7 @@ zh:
       day_count: 第 %{current} 天，共 %{total} 天
       point_count: 第 %{current} 个轨迹点，共 %{total} 个
       speed: "%{speed} 公里/小时"
+      speed_mph: "%{speed} 英里/小时"
       no_data: 无数据
     places:
       move_pin: "移动地点标记"

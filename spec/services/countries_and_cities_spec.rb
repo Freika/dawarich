@@ -472,6 +472,14 @@ RSpec.describe CountriesAndCities do
           result = countries_and_cities
           expect(result.map(&:country)).to eq(['Somewhere'])
         end
+
+        it 'files a known alias under its canonical name' do
+          points.each_with_index do |point, index|
+            point.update_columns(country_name: index.even? ? 'United States' : 'United States of America')
+          end
+
+          expect(countries_and_cities.map(&:country)).to eq(['United States of America'])
+        end
       end
     end
   end

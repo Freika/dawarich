@@ -442,6 +442,47 @@ RSpec.describe 'Admin::Settings' do
     end
   end
 
+  describe 'geocoding pause' do
+    let(:status) { response.body[%r{<div[^>]*data-testid="instance-settings-geocoding-status".*?</form>}m] }
+
+    before do
+      configure_instance_geocoding
+      sign_in admin
+    end
+
+    it 'shows how long lookups stay paused while the provider is over its limit' do
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.paused', minutes: 1)))
+    end
+
+    it 'says nothing about a pause when lookups are going out' do
+      get '/admin/settings'
+
+      expect(status).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.paused', minutes: 1)))
+    end
+
+    it 'points at the public komoot limits while that host is paused' do
+      InstanceSetting.find_by!(key: 'photon_api_host').update!(value: 'photon.komoot.io')
+      InstanceSettings::Resolver.reset!
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.komoot_warning')))
+    end
+
+    it 'does not mention komoot while another host is paused' do
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.komoot_warning')))
+    end
+  end
+
   describe 'POST test_geocoding' do
     it 'is refused for a non-admin and makes no lookup' do
       allow(Geocoding::Search).to receive(:with_config)
