@@ -113,4 +113,190 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe 'POST /api/v1/families/mine' do
+    let(:solo) { create(:user) }
+
+    def post_family(caller, body)
+      post '/api/v1/families/mine', params: body.to_json,
+                                    headers: { 'Authorization' => "Bearer #{caller.api_key}",
+                                               'Content-Type' => 'application/json' }
+    end
+
+    it 'creates the family with the caller as owner' do
+      expect { post_family(solo, { name: 'The Solos' }) }.to change(Family, :count).by(1)
+
+      expect(response).to have_http_status(:created)
+      json = JSON.parse(response.body)
+      expect(json['family']['name']).to eq('The Solos')
+      expect(json['me']['owner']).to be true
+      expect(solo.reload.family_owner?).to be true
+    end
+
+    it 'returns already_in_family for a member' do
+      post_family(member, { name: 'Another' })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('already_in_family')
+      expect(JSON.parse(response.body)['message']).to be_present
+    end
+
+    it 'returns family_already_created for a user who created a family before' do
+      create(:family, creator: solo)
+
+      post_family(solo, { name: 'Second' })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('family_already_created')
+    end
+
+    it 'returns invalid_name for an empty body' do
+      post_family(solo, {})
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('invalid_name')
+      expect(JSON.parse(response.body)['message']).to eq('Family name is required')
+    end
+
+    it 'returns invalid_name for a non-string name' do
+      post_family(solo, { name: 5 })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('invalid_name')
+    end
+
+    context 'on cloud' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns family_plan_required with upgrade_url for a user without the plan' do
+        solo.update!(plan: :pro)
+
+        post_family(solo, { name: 'No Plan' })
+
+        expect(response).to have_http_status(:forbidden)
+        json = JSON.parse(response.body)
+        expect(json['error']).to eq('family_plan_required')
+        expect(json).to have_key('upgrade_url')
+      end
+
+      it 'returns family_plan_required for a family plan whose period has ended' do
+        solo.update!(plan: :family, active_until: 1.day.ago)
+
+        post_family(solo, { name: 'Expired' })
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('family_plan_required')
+      end
+
+      it 'creates the family for a user on an active family plan' do
+        solo.update!(plan: :family, active_until: 1.month.from_now)
+
+        post_family(solo, { name: 'Paid' })
+
+        expect(response).to have_http_status(:created)
+      end
+    end
+
+    it 'returns feature_disabled when the family toggle is off' do
+      solo.update!(settings: solo.settings.merge('family_enabled' => false))
+
+      post_family(solo, { name: 'Off' })
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)['error']).to eq('feature_disabled')
+    end
+  end
+
+  describe 'PATCH /api/v1/families/mine' do
+    def patch_family(caller, body)
+      patch '/api/v1/families/mine', params: body.to_json,
+                                     headers: { 'Authorization' => "Bearer #{caller.api_key}",
+                                                'Content-Type' => 'application/json' }
+    end
+
+    it 'renames the family for the owner' do
+      patch_family(user, { name: 'Renamed' })
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['family']['name']).to eq('Renamed')
+      expect(family.reload.name).to eq('Renamed')
+    end
+
+    it 'returns owner_required for a member' do
+      patch_family(member, { name: 'Hijack' })
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)['error']).to eq('owner_required')
+      expect(family.reload.name).not_to eq('Hijack')
+    end
+
+    it 'returns invalid_name for a blank name' do
+      patch_family(user, { name: '  ' })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('invalid_name')
+    end
+
+    it 'returns invalid_name for a 51-character name' do
+      patch_family(user, { name: 'a' * 51 })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('invalid_name')
+    end
+
+    it 'returns 404 for a user without a family' do
+      patch_family(create(:user), { name: 'Nope' })
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe 'DELETE /api/v1/families/mine' do
+    def delete_family(caller)
+      delete '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{caller.api_key}" }
+    end
+
+    it 'returns family_has_members while another member is present' do
+      delete_family(user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(JSON.parse(response.body)['error']).to eq('family_has_members')
+      expect(Family.exists?(family.id)).to be true
+    end
+
+    it 'returns owner_required for a member' do
+      delete_family(member)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)['error']).to eq('owner_required')
+    end
+
+    it 'returns 404 for a user without a family' do
+      delete_family(create(:user))
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    context 'with a lone owner' do
+      before { member_membership.destroy! }
+
+      it 'deletes the family and returns 204' do
+        delete_family(user)
+
+        expect(response).to have_http_status(:no_content)
+        expect(Family.exists?(family.id)).to be false
+      end
+
+      it 'deletes the family for a lapsed cloud owner' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :family, active_until: 1.day.ago)
+        family.update!(access_until: nil)
+
+        delete_family(user)
+
+        expect(response).to have_http_status(:no_content)
+        expect(Family.exists?(family.id)).to be false
+      end
+    end
+  end
 end

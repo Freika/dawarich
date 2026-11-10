@@ -1670,6 +1670,123 @@ paths:
           description: user not in a family
         '403':
           description: user is neither entitled nor in a family
+    post:
+      summary: Creates a family with the current user as owner
+      tags:
+      - Families
+      description: 'Creates a family. The caller must be entitled to the family feature
+        and in no family. Answers with the same body as GET. Refusals carry `error`
+        (a code) and `message` (English): `feature_disabled` and `family_plan_required`
+        (403, the latter with `upgrade_url`), `already_in_family`, `family_already_created`,
+        `invalid_name` (422).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: family created
+        '422':
+          description: invalid name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    patch:
+      summary: Renames the current user's family
+      tags:
+      - Families
+      description: 'Renames the family. Owner only. Answers with the same body as
+        GET. Refusals: `owner_required` (403), `invalid_name` (422); a caller in no
+        family gets 404.'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family renamed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    delete:
+      summary: Deletes the current user's family
+      tags:
+      - Families
+      description: 'Deletes the family. Owner only, and only when the owner is its
+        last member. Reachable while the family plan has lapsed. Refusals: `owner_required`
+        (403), `family_has_members` (422); a caller in no family gets 404.'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '204':
+          description: family deleted
+        '422':
+          description: other members are still in the family
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/sharing":
     patch:
       summary: Updates the current user's family location sharing

@@ -480,7 +480,7 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
-        resource :mine, only: [:show], controller: 'mine'
+        resource :mine, only: %i[show create update destroy], controller: 'mine'
         resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
           collection do
