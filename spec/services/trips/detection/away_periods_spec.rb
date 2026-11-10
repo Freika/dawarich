@@ -115,9 +115,22 @@ RSpec.describe Trips::Detection::AwayPeriods do
     expect(periods.map(&:first_far_at)).to eq([Time.utc(2026, 10, 13, 14)])
   end
 
+  it 'ends a Home in effect on its end date, inclusive' do
+    create(:home, user:, place:, started_on: Date.new(2026, 1, 1), ended_on: Date.new(2026, 10, 12))
+    point_at(13.405, 52.52, Time.utc(2026, 10, 10, 6))
+    on_end_date = point_at(-9.1393, 38.7223, Time.utc(2026, 10, 12, 14))
+    point_at(-9.1393, 38.7223, Time.utc(2026, 10, 13, 14)) # after the Home ended: unknown
+    point_at(13.405, 52.52, Time.utc(2026, 10, 14, 9))
+
+    expect(periods.size).to eq(1)
+    expect(periods.first).to have_attributes(first_far_at: Time.zone.at(on_end_date.timestamp),
+                                             last_far_at: Time.zone.at(on_end_date.timestamp), closed: true)
+  end
+
   it 'is near when any Home in effect is near' do
     create(:home, user:, place:)
     create(:home, user:, place: create(:place, user:, latitude: 38.7223, longitude: -9.1393))
+    point_at(13.405, 52.52, Time.utc(2026, 10, 1, 12)) # puts the Berlin Home in effect too
     point_at(-9.1393, 38.7223, Time.utc(2026, 10, 10, 14))
     expect(periods).to be_empty
   end
