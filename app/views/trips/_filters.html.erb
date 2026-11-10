@@ -48,7 +48,8 @@
       </div>
     <% end %>
 
-    <div class="min-w-0 flex-[1_1_9rem]">
+    <%# grow + basis-48 is flex: 1 1 12rem, wide enough for "Found automatically" (flex-[1_1_12rem] is not in the Tailwind build). %>
+    <div class="min-w-0 grow basis-48">
       <%= f.label :origin, t('trip_detection.filter.label'), class: label_class %>
       <%= f.select :origin,
                    options_for_select(Trips::IndexQuery::ORIGINS.map { [t("trip_detection.filter.#{_1}"), _1] },
