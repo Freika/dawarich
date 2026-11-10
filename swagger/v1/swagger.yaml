@@ -1845,8 +1845,10 @@ paths:
         user''s sharing settings, and active location requests. Requires family membership.
         A member whose entitlement has lapsed still gets 200, with `lapsed: true`
         and a reduced payload carrying only the family name and the user''s role —
-        `members` and `location_requests` are omitted. A user who is neither entitled
-        nor in a family gets 403.'
+        `members` and `location_requests` are omitted; a lapsed owner also gets the
+        other members (`user_id`, `email`, `email_initial`, `owner`) and `invitations`,
+        so they can still dissolve the family. `invitations` is sent to the owner
+        only. A user who is neither entitled nor in a family gets 403.'
       parameters:
       - name: Authorization
         in: header
@@ -1895,6 +1897,10 @@ paths:
                           history_window:
                             type: string
                             nullable: true
+                      inherits_plan:
+                        type: boolean
+                        description: 'Cloud only: the plan comes from the family,
+                          so leaving downgrades the account'
                   members:
                     type: array
                     items:
@@ -1947,6 +1953,39 @@ paths:
                               type: integer
                             created_at:
                               type: string
+                  seats:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        nullable: true
+                        description: null on self-hosted
+                      members:
+                        type: integer
+                      pending:
+                        type: integer
+                  can_invite:
+                    type: boolean
+                    description: The caller is the owner and a seat is free
+                  invitations:
+                    type: array
+                    description: Pending invitations; present for the owner only (also
+                      while lapsed)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        email:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                        url:
+                          type: string
         '404':
           description: user not in a family
         '403':
@@ -6847,6 +6886,9 @@ paths:
                     properties:
                       family:
                         type: boolean
+                      family_management:
+                        type: boolean
+                        description: The server offers the family management endpoints
                       reverse_geocoding:
                         type: boolean
         '401':

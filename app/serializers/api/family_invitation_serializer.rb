@@ -3,6 +3,10 @@
 # A pending invitation as the Family owner sees it. The serializer has no
 # request, so the caller passes `request.base_url` to build the shareable link.
 class Api::FamilyInvitationSerializer
+  def self.pending_for(family, base_url:)
+    family.family_invitations.active.order(:created_at).map { |invitation| new(invitation, base_url:).call }
+  end
+
   def initialize(invitation, base_url:)
     @invitation = invitation
     @base_url = base_url

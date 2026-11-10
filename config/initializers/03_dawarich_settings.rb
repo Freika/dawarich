@@ -117,6 +117,9 @@ class DawarichSettings
       {
         reverse_geocoding: Geocoding::Config.for(user).enabled?,
         family: family_feature_available_for?(user),
+        # What this server can do, not what the user may do: the apps show family
+        # management only on servers that have the endpoints.
+        family_management: true,
         achievements: user.nil? || user.feature_enabled?(:achievements)
       }
     end

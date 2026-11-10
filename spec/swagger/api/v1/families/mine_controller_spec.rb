@@ -20,8 +20,10 @@ RSpec.describe 'Families Mine API', type: :request do
       description 'Returns the family, all members with sharing state, the current user\'s sharing settings, ' \
                   'and active location requests. Requires family membership. A member whose entitlement ' \
                   'has lapsed still gets 200, with `lapsed: true` and a reduced payload carrying only the ' \
-                  'family name and the user\'s role — `members` and `location_requests` are omitted. ' \
-                  'A user who is neither entitled nor in a family gets 403.'
+                  'family name and the user\'s role — `members` and `location_requests` are omitted; a ' \
+                  'lapsed owner also gets the other members (`user_id`, `email`, `email_initial`, `owner`) and ' \
+                  '`invitations`, so they can still dissolve the family. `invitations` is sent to the owner ' \
+                  'only. A user who is neither entitled nor in a family gets 403.'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'
 
@@ -45,6 +47,10 @@ RSpec.describe 'Families Mine API', type: :request do
                          share_history: { type: :boolean },
                          history_window: { type: :string, nullable: true }
                        }
+                     },
+                     inherits_plan: {
+                       type: :boolean,
+                       description: 'Cloud only: the plan comes from the family, so leaving downgrades the account'
                      }
                    }
                  },
@@ -96,15 +102,43 @@ RSpec.describe 'Families Mine API', type: :request do
                        }
                      }
                    }
+                 },
+                 seats: {
+                   type: :object,
+                   properties: {
+                     limit: { type: :integer, nullable: true, description: 'null on self-hosted' },
+                     members: { type: :integer },
+                     pending: { type: :integer }
+                   }
+                 },
+                 can_invite: { type: :boolean, description: 'The caller is the owner and a seat is free' },
+                 invitations: {
+                   type: :array,
+                   description: 'Pending invitations; present for the owner only (also while lapsed)',
+                   items: {
+                     type: :object,
+                     properties: {
+                       id: { type: :integer },
+                       email: { type: :string },
+                       created_at: { type: :string, format: 'date-time' },
+                       expires_at: { type: :string, format: 'date-time' },
+                       url: { type: :string }
+                     }
+                   }
                  }
                }
 
         before do
           family = create(:family, creator: user)
           create(:family_membership, :owner, family: family, user: user)
+          create(:family_invitation, family: family, invited_by: user)
         end
 
-        run_test!
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json['can_invite']).to be true
+          expect(json['invitations'].size).to eq(1)
+        end
       end
 
       response '404', 'user not in a family' do

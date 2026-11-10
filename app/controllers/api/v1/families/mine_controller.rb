@@ -22,7 +22,7 @@ class Api::V1::Families::MineController < Api::V1::Families::BaseController
     service = Families::Create.new(user: current_api_user, name: name_param)
     return render_family_service_error(service) unless service.call
 
-    render json: Api::FamilySerializer.new(current_api_user.reload).call, status: :created
+    render json: Api::FamilySerializer.new(current_api_user.reload, base_url: request.base_url).call, status: :created
   end
 
   def update
@@ -31,7 +31,7 @@ class Api::V1::Families::MineController < Api::V1::Families::BaseController
       return render_family_error(:invalid_name, family.errors.full_messages.first)
     end
 
-    render json: Api::FamilySerializer.new(current_api_user.reload).call
+    render json: Api::FamilySerializer.new(current_api_user.reload, base_url: request.base_url).call
   end
 
   def destroy
@@ -57,7 +57,7 @@ class Api::V1::Families::MineController < Api::V1::Families::BaseController
   end
 
   def ensure_family_owner!
-    return if FamilyPolicy.new(current_api_user, current_api_user.family).destroy?
+    return if FamilyPolicy.new(current_api_user, current_api_user.family).public_send(:"#{action_name}?")
 
     render_family_error(:owner_required)
   end
@@ -74,8 +74,8 @@ class Api::V1::Families::MineController < Api::V1::Families::BaseController
   end
 
   def serializer
-    return Api::LapsedFamilySerializer.new(current_api_user) unless entitled?
+    return Api::LapsedFamilySerializer.new(current_api_user, base_url: request.base_url) unless entitled?
 
-    Api::FamilySerializer.new(current_api_user)
+    Api::FamilySerializer.new(current_api_user, base_url: request.base_url)
   end
 end

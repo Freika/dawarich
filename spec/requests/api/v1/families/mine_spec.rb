@@ -114,6 +114,106 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
     end
   end
 
+  describe 'GET /api/v1/families/mine management fields' do
+    def get_mine(caller)
+      get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{caller.api_key}" }
+      JSON.parse(response.body)
+    end
+
+    let!(:invitation) { create(:family_invitation, family: family, invited_by: user, email: 'p@example.com') }
+
+    it 'gives the owner seats, can_invite and the pending invitations' do
+      create(:family_invitation, :cancelled, family: family, invited_by: user)
+      host! 'family.example.test'
+
+      json = get_mine(user)
+
+      expect(json['seats']).to eq('limit' => nil, 'members' => 2, 'pending' => 1)
+      expect(json['can_invite']).to be true
+      expect(json['invitations'].map { |i| i['id'] }).to eq([invitation.id])
+      row = json['invitations'].first
+      expect(row['email']).to eq('p@example.com')
+      expect(URI.parse(row['url']).host).to eq('family.example.test')
+      expect(row['url']).to end_with("/invitations/#{invitation.token}")
+    end
+
+    it 'gives a member seats and can_invite false, and no invitations' do
+      json = get_mine(member)
+
+      expect(json['seats']).to be_present
+      expect(json['can_invite']).to be false
+      expect(json).not_to have_key('invitations')
+      expect(response.body).not_to include(invitation.token)
+    end
+
+    it 'says inherits_plan false on self-hosted' do
+      expect(get_mine(member)['me']['inherits_plan']).to be false
+    end
+
+    context 'on cloud' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :family, active_until: 1.year.from_now)
+        family.update!(access_until: 1.year.from_now)
+      end
+
+      it 'reports the seat limit and whether a seat is free' do
+        json = get_mine(user)
+
+        expect(json['seats']).to eq('limit' => Family::MAX_MEMBERS, 'members' => 2, 'pending' => 1)
+        expect(json['can_invite']).to be true
+      end
+
+      it 'says can_invite false when every seat is taken' do
+        2.times { |i| create(:family_invitation, family: family, invited_by: user, email: "f#{i}@example.com") }
+
+        expect(get_mine(user)['can_invite']).to be false
+      end
+
+      it 'says inherits_plan true for a member without a subscription of their own' do
+        member.update!(subscription_source: :none)
+
+        expect(get_mine(member)['me']['inherits_plan']).to be true
+      end
+
+      it 'says inherits_plan false for a member with their own subscription' do
+        member.update!(subscription_source: :paddle)
+
+        expect(get_mine(member)['me']['inherits_plan']).to be false
+      end
+
+      it 'says inherits_plan false for the owner' do
+        expect(get_mine(user)['me']['inherits_plan']).to be false
+      end
+
+      context 'when the family has lapsed' do
+        before do
+          user.update!(plan: :family, active_until: 1.day.ago)
+          family.update!(access_until: nil)
+        end
+
+        it 'lists the other members and the pending invitations to the owner' do
+          json = get_mine(user)
+
+          expect(json['lapsed']).to be true
+          expect(json['members']).to eq(
+            [{ 'user_id' => member.id, 'email' => member.email,
+               'email_initial' => member.email.first.upcase, 'owner' => false }]
+          )
+          expect(json['invitations'].map { |i| i['id'] }).to eq([invitation.id])
+          expect(URI.parse(json['invitations'].first['url']).host).to eq('www.example.com')
+        end
+
+        it 'leaves a lapsed member payload unchanged' do
+          json = get_mine(member)
+
+          expect(json.keys).to match_array(%w[lapsed family me])
+          expect(json['me'].keys).to match_array(%w[user_id owner])
+        end
+      end
+    end
+  end
+
   describe 'POST /api/v1/families/mine' do
     let(:solo) { create(:user) }
 

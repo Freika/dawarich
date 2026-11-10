@@ -48,7 +48,7 @@ class Api::V1::Families::InvitationsController < Api::V1::Families::BaseControll
     service = Families::AcceptInvitation.new(invitation: @invitation, user: current_api_user)
     return render_family_service_error(service) unless service.call
 
-    render json: Api::FamilySerializer.new(current_api_user.reload).call
+    render json: Api::FamilySerializer.new(current_api_user.reload, base_url: request.base_url).call
   end
 
   private
