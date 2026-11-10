@@ -23,6 +23,8 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Importing an account archive now ignores record IDs inside the archive, so a crafted archive cannot point its points at someone else's imports, visits or tracks. Account exports no longer include details of an import or visit that belongs to another user.
 - Account archives are now parsed as plain JSON, so a crafted line can no longer create Ruby objects during import.
 - Family location sharing now hides points inside each member's Privacy Zones, both for the latest location and for history.
+- Removing a family member, or regenerating a live-share link's phrase, now stops delivering locations to an already-open connection immediately, instead of only blocking new ones.
+- The Immich photo-matching panel now escapes photo filenames, closing a cross-site scripting hole a malicious or compromised Immich server could trigger through a crafted filename.
 - Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
 - Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
 - A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
@@ -33,6 +35,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above `KML_MAX_PARSE_BYTES` (64 MiB by default) and JSON/TCX above `IMPORT_MAX_PARSE_BYTES` (512 MiB by default). A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
 
 ### Fixed
 
