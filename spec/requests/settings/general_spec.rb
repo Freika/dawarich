@@ -200,6 +200,39 @@ RSpec.describe 'settings/general', type: :request do
       end
     end
 
+    describe 'Find trips automatically' do
+      it 'shows the trip detection toggle, checked by default' do
+        get settings_general_index_url
+
+        toggle = Nokogiri::HTML(response.body).at_css('input[type="checkbox"][name="trip_detection_enabled"]')
+        expect(toggle).to be_present
+        expect(toggle['checked']).to be_present
+      end
+
+      it 'switches trip detection off and removes no Detected Trip' do
+        trip = create(:trip, user:, origin: :detected)
+
+        patch settings_general_path, params: { trip_detection_enabled: '0' }
+
+        expect(user.reload.settings['trip_detection_enabled']).to be(false)
+        expect(user.safe_settings.trip_detection_enabled?).to be(false)
+        expect(Trip.exists?(trip.id)).to be(true)
+      end
+
+      it 'runs Trip Detection when it is switched back on' do
+        user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+
+        expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
+          .to have_enqueued_job(Trips::DetectJob).with(user.id)
+        expect(user.reload.safe_settings.trip_detection_enabled?).to be(true)
+      end
+
+      it 'does not run Trip Detection when the page is saved while it stays on' do
+        expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
+          .not_to have_enqueued_job(Trips::DetectJob)
+      end
+    end
+
     describe 'POST /test_email' do
       let!(:user) { create(:user, :admin, settings: {}) }
 

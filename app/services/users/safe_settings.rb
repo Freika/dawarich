@@ -10,7 +10,7 @@ class Users::SafeSettings
 
   # Features a user can switch off in general settings, stored as
   # "<feature>_enabled". A missing key means the feature is on.
-  TOGGLEABLE_FEATURES = %w[family achievements].freeze
+  TOGGLEABLE_FEATURES = %w[family achievements trip_detection].freeze
 
   def self.feature_enabled?(settings, feature)
     ActiveModel::Type::Boolean.new.cast(settings["#{feature}_enabled"]) != false
@@ -90,7 +90,8 @@ class Users::SafeSettings
     'point_dragging_enabled' => false,
     'points_tiled_rendering' => true,
     'family_enabled' => true,
-    'achievements_enabled' => true
+    'achievements_enabled' => true,
+    'trip_detection_enabled' => true
   }.freeze
 
   # Map look settings that the map's Reset restores by deleting the stored
@@ -152,7 +153,8 @@ class Users::SafeSettings
       visit_min_duration_minutes: visit_min_duration_minutes,
       point_dragging_enabled: point_dragging_enabled?,
       family_enabled: feature_enabled?('family'),
-      achievements_enabled: feature_enabled?('achievements')
+      achievements_enabled: feature_enabled?('achievements'),
+      trip_detection_enabled: trip_detection_enabled?
     }
   end
 

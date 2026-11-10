@@ -1644,6 +1644,8 @@ zh:
         family_feature_hint: "与家庭成员共享位置。关闭后将停止共享你的位置和仅限家庭的行程链接，但你仍是家庭成员。重新开启后，位置共享默认处于关闭状态。"
         achievements_feature: "成就"
         achievements_feature_hint: "已探索的地区和徽章。关闭后将停止计算进度，并停用你的公开成就链接。"
+        trip_detection_feature: "自动查找旅行"
+        trip_detection_feature_hint: "在你的位置历史中查找旅行并将其添加到你的旅行中。关闭后将停止查找，已找到的旅行会保留。重新开启后会立即重新查找。"
     integrations:
       trek:
         title: "TREK 集成"

@@ -2418,6 +2418,8 @@ fr:
         family_feature_hint: "Partage de position avec les membres de la famille. La désactiver arrête le partage de votre position et des liens de voyage réservés à la famille ; vous restez membre. Lorsque vous la réactivez, le partage de position est désactivé."
         achievements_feature: "Succès"
         achievements_feature_hint: "Régions explorées et badges. Les désactiver arrête le calcul de la progression et désactive vos liens publics de succès."
+        trip_detection_feature: "Trouver les voyages automatiquement"
+        trip_detection_feature_hint: "Trouve des voyages dans votre historique de positions et les ajoute à vos voyages. Désactiver cette option arrête la recherche et conserve les voyages déjà trouvés. La réactiver relance la recherche immédiatement."
     integrations:
       trek:
         title: "Intégration TREK"

@@ -1676,6 +1676,8 @@ es:
         family_feature_hint: "Compartir la ubicación con los miembros de la familia. Al desactivarla dejas de compartir tu ubicación y los enlaces de viajes solo para la familia; sigues siendo miembro. Al volver a activarla, el uso compartido de la ubicación empieza desactivado."
         achievements_feature: "Logros"
         achievements_feature_hint: "Regiones exploradas e insignias. Al desactivarlos se deja de calcular el progreso y se desactivan tus enlaces públicos de logros."
+        trip_detection_feature: "Encontrar viajes automáticamente"
+        trip_detection_feature_hint: "Encuentra viajes en tu historial de ubicaciones y los añade a tus viajes. Al desactivarlo se deja de buscar y se conservan los viajes ya encontrados. Al volver a activarlo se busca de nuevo al instante."
     integrations:
       trek:
         title: "Integración con TREK"

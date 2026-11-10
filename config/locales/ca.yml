@@ -1673,6 +1673,8 @@ ca:
         family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació i els enllaços de viatges només per a la família; continues sent-ne membre. Quan la tornis a activar, la compartició de la ubicació començarà desactivada."
         achievements_feature: "Assoliments"
         achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
+        trip_detection_feature: "Troba viatges automàticament"
+        trip_detection_feature_hint: "Troba viatges al teu historial d'ubicacions i els afegeix als teus viatges. Si el desactives, es deixa de cercar i es conserven els viatges ja trobats. Si el tornes a activar, es torna a cercar de seguida."
     integrations:
       trek:
         title: "Integració amb TREK"

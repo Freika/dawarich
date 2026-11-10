@@ -1652,6 +1652,8 @@ en:
         family_feature_hint: "Location sharing with family members. Turning it off stops sharing your location and family-only trip links; you stay a member. When you turn it back on, location sharing starts off."
         achievements_feature: "Achievements"
         achievements_feature_hint: "Explored regions and badges. Turning it off stops progress calculation and disables your public achievement links."
+        trip_detection_feature: "Find trips automatically"
+        trip_detection_feature_hint: "Finds trips in your location history and adds them to your trips. Turning it off stops the search and keeps the trips already found. Turning it back on searches again right away."
     integrations:
       index:
         services_nav: Integration services

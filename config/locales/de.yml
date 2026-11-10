@@ -1676,6 +1676,8 @@ de:
         family_feature_hint: "Standortfreigabe mit Familienmitgliedern. Wenn du sie ausschaltest, werden dein Standort und nur für die Familie geteilte Reiselinks nicht mehr geteilt; du bleibst Mitglied. Wenn du sie wieder einschaltest, ist die Standortfreigabe zunächst aus."
         achievements_feature: "Erfolge"
         achievements_feature_hint: "Erkundete Regionen und Abzeichen. Wenn du sie ausschaltest, wird der Fortschritt nicht mehr berechnet und deine öffentlichen Erfolgslinks werden deaktiviert."
+        trip_detection_feature: "Reisen automatisch finden"
+        trip_detection_feature_hint: "Findet Reisen in deinem Standortverlauf und fügt sie zu deinen Reisen hinzu. Wenn du es ausschaltest, wird nicht mehr gesucht und bereits gefundene Reisen bleiben erhalten. Wenn du es wieder einschaltest, wird sofort erneut gesucht."
     integrations:
       trek:
         title: "TREK-Integration"

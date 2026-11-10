@@ -72,6 +72,7 @@
   "time_format": "auto",
   "time_threshold_minutes": 30,
   "track_color": "#6366F1",
+  "trip_detection_enabled": true,
   "visit_min_duration_minutes": 5,
   "visit_min_points": 3,
   "visit_radius_meters": 100,

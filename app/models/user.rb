@@ -71,6 +71,7 @@ class User < ApplicationRecord
   after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_achievements_recheck, if: :achievements_reenabled?
+  after_update_commit :enqueue_trip_detection, if: :trip_detection_reenabled?
 
   before_save :sanitize_input
   before_save :pause_family_location_sharing, if: :family_reenabled?
@@ -436,6 +437,14 @@ class User < ApplicationRecord
 
   def achievements_reenabled?
     saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'achievements')
+  end
+
+  def trip_detection_reenabled?
+    saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'trip_detection')
+  end
+
+  def enqueue_trip_detection
+    Trips::DetectJob.perform_later(id)
   end
 
   def family_reenabled?

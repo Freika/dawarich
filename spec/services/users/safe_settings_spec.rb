@@ -66,7 +66,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             point_dragging_enabled: false,
             family_enabled: true,
-            achievements_enabled: true
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end
@@ -169,7 +170,8 @@ RSpec.describe Users::SafeSettings do
             'point_dragging_enabled' => false,
             'points_tiled_rendering' => true,
             'family_enabled' => true,
-            'achievements_enabled' => true
+            'achievements_enabled' => true,
+            'trip_detection_enabled' => true
           }
         )
       end
@@ -221,7 +223,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             point_dragging_enabled: false,
             family_enabled: true,
-            achievements_enabled: true
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end

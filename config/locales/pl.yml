@@ -1687,6 +1687,8 @@ pl:
         family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
         achievements_feature: "Osiągnięcia"
         achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
+        trip_detection_feature: "Automatycznie znajduj podróże"
+        trip_detection_feature_hint: "Znajduje podróże w Twojej historii lokalizacji i dodaje je do Twoich podróży. Po wyłączeniu wyszukiwanie zostaje zatrzymane, a już znalezione podróże pozostają. Po ponownym włączeniu wyszukiwanie rusza od razu."
     integrations:
       trek:
         title: "Integracja z TREK"
