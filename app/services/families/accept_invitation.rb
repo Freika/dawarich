@@ -87,8 +87,10 @@ module Families
       invitation.family.access_live?
     end
 
+    # The invitation being accepted already holds its seat, so only members count.
     def validate_family_capacity
-      return true unless invitation.family.full?
+      return true if DawarichSettings.self_hosted?
+      return true if invitation.family.members.count < Family::MAX_MEMBERS
 
       @error_message = I18n.t(
         'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'

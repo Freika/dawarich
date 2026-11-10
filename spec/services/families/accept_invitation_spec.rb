@@ -150,15 +150,38 @@ RSpec.describe Families::AcceptInvitation do
       end
     end
 
-    context 'when family is at max capacity' do
+    context 'when the invitation fills the last seat (cloud)' do
+      let(:owner) { create(:user, plan: :family, active_until: 1.month.from_now, skip_auto_trial: true) }
+      let(:family) { create(:family, creator: owner) }
+
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        # Fill family to max capacity
-        create_list(:family_membership, Family::MAX_MEMBERS, family: family, role: :member)
+        create(:family_membership, :owner, family: family, user: owner)
+        create_list(:family_membership, Family::MAX_MEMBERS - 2, family: family, role: :member)
+        invitation
       end
 
-      it 'returns false' do
+      it 'accepts the invitation that fills the last seat' do
+        expect(service.call).to be(true), service.error_message
+        expect(family.members.count).to eq(Family::MAX_MEMBERS)
+      end
+    end
+
+    context 'when family is at max capacity' do
+      let(:owner) { create(:user, plan: :family, active_until: 1.month.from_now, skip_auto_trial: true) }
+      let(:family) { create(:family, creator: owner) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+        create_list(:family_membership, Family::MAX_MEMBERS - 1, family: family, role: :member)
+      end
+
+      it 'returns false with the capacity message' do
         expect(service.call).to be false
+        expect(service.error_message).to eq(
+          I18n.t('services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members')
+        )
       end
 
       it 'does not create membership' do
