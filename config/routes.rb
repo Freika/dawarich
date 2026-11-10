@@ -488,6 +488,7 @@ Rails.application.routes.draw do
             post :accept
           end
         end
+        resources :members, only: :destroy, param: :user_id
         resources :locations, only: [:index] do
           collection do
             get :history

@@ -1783,6 +1783,59 @@ paths:
                     description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
+  "/api/v1/families/members/{user_id}":
+    delete:
+      summary: Leaves the family, or removes a member from it
+      tags:
+      - Families
+      description: 'With the caller''s own id, the caller leaves the family. With
+        another member''s id, the owner removes that member. Reachable while the family
+        plan has lapsed. Refusals carry `error` (a code) and `message` (English):
+        `owner_required` (403), `member_not_found` (404, also for a user of another
+        family), `owner_cannot_leave` (422); a caller in no family gets 404.'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: member left or was removed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+        '422':
+          description: the owner cannot leave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/mine":
     get:
       summary: Retrieves the current user's family overview
