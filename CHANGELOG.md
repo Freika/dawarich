@@ -42,7 +42,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
 - Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
 - The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
-- The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour.
+- The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour from the apps and 10 an hour from the website.
 
 ### Fixed
 
