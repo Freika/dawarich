@@ -3,14 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { strippedSource } from "./support/stripped_source.mjs"
 
-let source = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/editing/map_editor.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-source = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const source = await strippedSource("maps_maplibre/editing/map_editor.js")
 const editingModule = async (name) =>
   (
     await readFile(
