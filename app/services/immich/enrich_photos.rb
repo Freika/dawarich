@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Immich::EnrichPhotos
-  include SslConfigurable
-
   attr_reader :user, :assets
 
   def initialize(user, assets)
@@ -49,15 +47,10 @@ class Immich::EnrichPhotos
   end
 
   def update_asset(asset)
-    options = {
-      headers:,
-      body: { latitude: asset['latitude'], longitude: asset['longitude'] }.to_json,
-      timeout: 10
-    }
-
-    response = HTTParty.put(
-      "#{immich_url}/api/assets/#{asset['immich_asset_id']}",
-      http_options_with_ssl(user, :immich, options)
+    response = Integrations::Transport.request(
+      :put, "#{immich_url}/api/assets/#{Integrations::Transport.path_segment(asset['immich_asset_id'])}",
+      headers:, body: { latitude: asset['latitude'], longitude: asset['longitude'] }.to_json,
+      skip_ssl_verification: user.safe_settings.immich_skip_ssl_verification
     )
 
     if response.success?
@@ -69,7 +62,8 @@ class Immich::EnrichPhotos
     end
   rescue *Photos::ConnectionErrors::HANDLED => e
     { success: false,
-      error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.class.name) }
+      error: I18n.t('services.immich.connection_tester.immich_connection_failed_message',
+                    message: Photos::ConnectionErrors.describe(e)) }
   end
 
   def immich_url

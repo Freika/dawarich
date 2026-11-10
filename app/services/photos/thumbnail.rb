@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Photos::Thumbnail
-  include SslConfigurable
-
   SUPPORTED_SOURCES = %w[immich photoprism].freeze
 
   def initialize(user, source, id)
@@ -16,14 +14,12 @@ class Photos::Thumbnail
 
     unsupported_source_error unless SUPPORTED_SOURCES.include?(source)
 
-    # follow_redirects: false — a save-time-validated host must not be able to
-    # redirect this server-side fetch into blocked/internal address space (SSRF).
-    HTTParty.get(
-      request_url,
-      http_options_with_ssl(@user, source_type, {
-                              headers: headers,
-                              follow_redirects: false
-                            })
+    # The transport never follows a redirect, so a validated host cannot send
+    # this server-side fetch into blocked address space.
+    Integrations::Transport.request(
+      :get, request_url,
+      headers: headers,
+      skip_ssl_verification: user.safe_settings.public_send("#{source}_skip_ssl_verification")
     )
   end
 
@@ -42,10 +38,10 @@ class Photos::Thumbnail
   def source_path
     case source
     when 'immich'
-      "/api/assets/#{id}/thumbnail?size=preview"
+      "/api/assets/#{escape(id)}/thumbnail?size=preview"
     when 'photoprism'
       preview_token = Rails.cache.read("#{Photoprism::CachePreviewToken::TOKEN_CACHE_KEY}_#{user.id}")
-      "/api/v1/t/#{id}/#{preview_token}/tile_500"
+      "/api/v1/t/#{escape(id)}/#{escape(preview_token)}/tile_500"
     end
   end
 
@@ -67,7 +63,7 @@ class Photos::Thumbnail
     raise ArgumentError, "Unsupported source: #{source}"
   end
 
-  def source_type
-    source == 'immich' ? :immich : :photoprism
+  def escape(segment)
+    Integrations::Transport.path_segment(segment)
   end
 end

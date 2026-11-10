@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠️ Upgrade notes
 
 - A new production install no longer creates its first account with the published default password. Set `INITIAL_ADMIN_PASSWORD` (and, if you like, `INITIAL_ADMIN_EMAIL`) before the first start; otherwise Dawarich generates a password and writes it to the log once. Existing installs are not affected.
+- Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
 
 ### Security
 
@@ -24,6 +25,9 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Removing a family member, or regenerating a live-share link's phrase, now stops delivering locations to an already-open connection immediately, instead of only blocking new ones.
 - The Immich photo-matching panel now escapes photo filenames, closing a cross-site scripting hole a malicious or compromised Immich server could trigger through a crafted filename.
 - Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
+- Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
+- A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
+- TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
