@@ -35,10 +35,11 @@ module Trips
         end
       end
 
+      # A Lite trip that began before the data window is fixed: its points there are unseen (ruling R19).
       def replaceable
         @replaceable ||= begin
           trips = user.trips.replaceable_by_detection
-          user.plan_restricted? ? trips.where(ended_at: user.data_window_start..) : trips
+          user.plan_restricted? ? trips.where(started_at: user.data_window_start..) : trips
         end
       end
 

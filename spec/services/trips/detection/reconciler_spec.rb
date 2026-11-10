@@ -103,6 +103,27 @@ RSpec.describe Trips::Detection::Reconciler do
       expect(Trip.exists?(old.id)).to be(true)
       expect(Trip.exists?(recent.id)).to be(false)
     end
+
+    # Ruling R19
+    it 'keeps a trip that began before the window, and drops the truncated period inside it' do
+      window_start = user.data_window_start
+      straddling = create(:trip, user:, origin: :detected, started_at: window_start - 5.days,
+                                 ended_at: window_start + 5.days)
+      truncated = Trips::Detection::Candidates::Candidate.new(window_start + 1.hour, window_start + 5.days)
+
+      2.times { expect(described_class.new(user, [truncated]).call).to be_empty }
+
+      expect(user.trips.pluck(:id)).to eq([straddling.id])
+      expect(straddling.reload).to have_attributes(started_at: window_start - 5.days, ended_at: window_start + 5.days)
+    end
+
+    it 'replaces an untouched trip inside the window whose period moved, as for Pro' do
+      moved = create(:trip, user:, origin: :detected, started_at: 2.months.ago - 3.days, ended_at: 2.months.ago)
+      period = Trips::Detection::Candidates::Candidate.new(2.months.ago - 3.days, 2.months.ago + 1.day)
+
+      expect(described_class.new(user, [period]).call.size).to eq(1)
+      expect(Trip.exists?(moved.id)).to be(false)
+    end
   end
 
   # Review Focus 3
