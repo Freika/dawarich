@@ -160,6 +160,7 @@ Rails.application.routes.draw do
     end
     resources :homes, controller: 'places/homes', only: %i[create update destroy]
   end
+  resources :homes, only: :create
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]

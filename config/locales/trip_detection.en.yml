@@ -53,3 +53,15 @@ en:
       no_home: "Add your Home so Dawarich can find your trips automatically."
       long_absence: "Dawarich skipped a time away from home longer than %{days} days. If you lived somewhere else then, add that earlier Home."
       add_home: "Add a Home on the Places page"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Home"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Add your home"
+      intro: "Dawarich uses your home to find your trips automatically. Share your location or click the map, then confirm."
+      use_my_location: "Use my location"
+      confirm: "This is my home"
+      skip: "Skip"
+      location_denied: "Your location could not be read. Click the map to place your home instead, or set it later on the Places page."
+      home_saved: "Your home is saved. Dawarich will look for your trips."
+      invalid_location: "Pick a location on the map first."

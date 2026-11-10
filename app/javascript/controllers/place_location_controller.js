@@ -41,6 +41,9 @@ export default class extends Controller {
     this.latitudeTarget.value = lat.toFixed(6)
     this.longitudeTarget.value = lng.toFixed(6)
     this.marker.setLngLat([lng, lat])
+    for (const field of [this.latitudeTarget, this.longitudeTarget]) {
+      field.dispatchEvent(new Event("input", { bubbles: true }))
+    }
   }
 
   coordinatesChanged() {

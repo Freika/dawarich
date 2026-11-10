@@ -53,3 +53,15 @@ zh:
       no_home: "添加您的住所，Dawarich 就能自动发现您的旅行。"
       long_absence: "Dawarich 跳过了一段离家超过 %{days} 天的时间。如果您当时住在别处，请添加那个更早的住所。"
       add_home: "在“地点”页面添加住所"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "家"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "添加您的住所"
+      intro: "Dawarich 根据您的住所自动发现您的旅行。请共享您的位置或点击地图，然后确认。"
+      use_my_location: "使用我的位置"
+      confirm: "这是我的住所"
+      skip: "跳过"
+      location_denied: "无法读取您的位置。您可以点击地图来标出住所，也可以稍后在“地点”页面设置。"
+      home_saved: "您的住所已保存。Dawarich 将查找您的旅行。"
+      invalid_location: "请先在地图上选择一个位置。"

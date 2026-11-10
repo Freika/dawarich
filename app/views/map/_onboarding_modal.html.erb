@@ -1,4 +1,5 @@
 <% if user_signed_in? %>
+<% has_home = current_user.homes.exists? %>
 <div data-controller="onboarding-modal"
      data-onboarding-modal-auto-value="<%= local_assigns.fetch(:auto_open, false) %>"
      data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
@@ -8,6 +9,7 @@
      data-onboarding-modal-demo-description-value="<%= t('ux_p2.demo.description') %>"
      data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
      data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>"
+     data-onboarding-modal-has-home-value="<%= has_home %>"
      data-onboarding-modal-user-id-value="<%= current_user.id %>">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
     <div class="modal-box max-w-2xl bg-base-200">
@@ -217,11 +219,49 @@
         </div>
 
         <div class="flex justify-end mt-4">
-          <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
+          <button class="btn btn-primary" data-action="onboarding-modal#finish">
             <%= t('.got_it_let_s_start') %>
           </button>
         </div>
       </div>
+
+      <%# ═══ Home Screen ═══ %>
+      <%# Only while onboarding is open and no Home exists: its map starts on render, on every page. %>
+      <% if onboarding_modal_showable?(current_user) && !has_home %>
+        <div data-onboarding-modal-target="homeScreen" class="hidden">
+          <h3 class="text-xl font-medium mb-2"><%= t('trip_detection.onboarding.title') %></h3>
+          <p class="text-sm text-base-content/70 mb-4"><%= t('trip_detection.onboarding.intro') %></p>
+
+          <%= form_with url: homes_path, data: { action: 'turbo:submit-end->onboarding-modal#homeSaved' } do |f| %>
+            <div data-controller="place-location" data-place-location-editable-value="true"
+                 data-place-location-latitude-value="0" data-place-location-longitude-value="0"
+                 data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+                 data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"
+                 data-action="input->onboarding-modal#homeLocationChanged change->onboarding-modal#homeLocationChanged">
+              <div class="h-64 rounded-xl overflow-hidden mb-3" data-place-location-target="map"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="form-control min-w-0"><span><%= t('ux_p2.places.latitude') %></span><%= f.number_field :latitude, step: :any, min: -90, max: 90, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'latitude', onboarding_modal_target: 'homeLatitude', action: 'change->place-location#coordinatesChanged' } %></label>
+                <label class="form-control min-w-0"><span><%= t('ux_p2.places.longitude') %></span><%= f.number_field :longitude, step: :any, min: -180, max: 180, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'longitude', onboarding_modal_target: 'homeLongitude', action: 'change->place-location#coordinatesChanged' } %></label>
+              </div>
+            </div>
+
+            <p class="hidden text-sm text-warning mt-3" role="status" data-onboarding-modal-target="homeDeniedHint">
+              <%= t('trip_detection.onboarding.location_denied') %>
+            </p>
+
+            <div class="flex flex-wrap justify-end gap-2 mt-4">
+              <button type="button" class="btn btn-ghost" data-action="onboarding-modal#dismiss">
+                <%= t('trip_detection.onboarding.skip') %>
+              </button>
+              <button type="button" class="btn btn-outline" data-action="onboarding-modal#locateHome">
+                <%= t('trip_detection.onboarding.use_my_location') %>
+              </button>
+              <%= f.submit t('trip_detection.onboarding.confirm'), class: 'btn btn-primary', disabled: true,
+                  data: { onboarding_modal_target: 'homeSubmit' } %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
 
     </div>
 

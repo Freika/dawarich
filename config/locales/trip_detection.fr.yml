@@ -53,3 +53,15 @@ fr:
       no_home: "Ajoutez votre domicile pour que Dawarich puisse trouver vos voyages automatiquement."
       long_absence: "Dawarich a ignoré une absence de plus de %{days} jours hors de votre domicile. Si vous habitiez ailleurs à ce moment-là, ajoutez ce domicile précédent."
       add_home: "Ajouter un domicile sur la page Lieux"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Domicile"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Ajoutez votre domicile"
+      intro: "Dawarich utilise votre domicile pour trouver vos voyages automatiquement. Partagez votre position ou cliquez sur la carte, puis confirmez."
+      use_my_location: "Utiliser ma position"
+      confirm: "J’habite ici"
+      skip: "Passer"
+      location_denied: "Votre position n’a pas pu être lue. Cliquez plutôt sur la carte pour placer votre domicile, ou définissez-le plus tard sur la page Lieux."
+      home_saved: "Votre domicile est enregistré. Dawarich va chercher vos voyages."
+      invalid_location: "Choisissez d’abord un lieu sur la carte."

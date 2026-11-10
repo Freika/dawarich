@@ -53,3 +53,15 @@ de:
       no_home: "Füge dein Zuhause hinzu, damit Dawarich deine Reisen automatisch finden kann."
       long_absence: "Dawarich hat eine Zeit von mehr als %{days} Tagen außerhalb deines Zuhauses übersprungen. Wenn du damals woanders gewohnt hast, füge dieses frühere Zuhause hinzu."
       add_home: "Zuhause auf der Seite „Orte“ hinzufügen"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Zuhause"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Füge dein Zuhause hinzu"
+      intro: "Dawarich nutzt dein Zuhause, um deine Reisen automatisch zu finden. Teile deinen Standort oder klicke auf die Karte und bestätige dann."
+      use_my_location: "Meinen Standort verwenden"
+      confirm: "Hier wohne ich"
+      skip: "Überspringen"
+      location_denied: "Dein Standort konnte nicht ermittelt werden. Klicke stattdessen auf die Karte, um dein Zuhause zu setzen, oder lege es später auf der Seite „Orte“ fest."
+      home_saved: "Dein Zuhause ist gespeichert. Dawarich sucht jetzt nach deinen Reisen."
+      invalid_location: "Wähle zuerst einen Ort auf der Karte."

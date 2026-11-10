@@ -53,3 +53,15 @@ ca:
       no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
       long_absence: "Dawarich ha omès un període de més de %{days} dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
       add_home: "Afegeix una llar a la pàgina Llocs"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Casa"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Afegeix la teva llar"
+      intro: "Dawarich fa servir la teva llar per trobar els teus viatges automàticament. Comparteix la teva ubicació o fes clic al mapa i després confirma."
+      use_my_location: "Utilitza la meva ubicació"
+      confirm: "Aquí visc"
+      skip: "Omet"
+      location_denied: "No s’ha pogut llegir la teva ubicació. Fes clic al mapa per situar la teva llar o configura-la més tard a la pàgina Llocs."
+      home_saved: "La teva llar s’ha desat. Dawarich buscarà els teus viatges."
+      invalid_location: "Primer tria un lloc al mapa."

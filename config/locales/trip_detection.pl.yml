@@ -55,3 +55,15 @@ pl:
       no_home: "Dodaj swój dom, aby Dawarich mógł automatycznie znajdować Twoje podróże."
       long_absence: "Dawarich pominął okres dłuższy niż %{days} dni poza domem. Jeśli mieszkałeś(-aś) wtedy gdzie indziej, dodaj ten wcześniejszy dom."
       add_home: "Dodaj dom na stronie Miejsca"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Dom"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Dodaj swój dom"
+      intro: "Dawarich korzysta z Twojego domu, aby automatycznie znajdować Twoje podróże. Udostępnij swoją lokalizację lub kliknij mapę, a następnie potwierdź."
+      use_my_location: "Użyj mojej lokalizacji"
+      confirm: "Tu mieszkam"
+      skip: "Pomiń"
+      location_denied: "Nie udało się odczytać Twojej lokalizacji. Kliknij mapę, aby wskazać swój dom, albo ustaw go później na stronie Miejsca."
+      home_saved: "Twój dom został zapisany. Dawarich poszuka Twoich podróży."
+      invalid_location: "Najpierw wybierz miejsce na mapie."
