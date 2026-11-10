@@ -1,4 +1,5 @@
 import { translate } from "i18n"
+import { escapeHtml } from "maps_maplibre/utils/escape_html"
 import Flash from "../../flash_controller"
 
 const EXTERNAL_LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>`
@@ -61,14 +62,14 @@ export const matchList = {
              onclick="event.stopPropagation()">
       <div class="flex-shrink-0 enrich-thumb-wrapper"
            data-thumb-url="${thumbUrl}"
-           data-filename="${this.escapeHtml(match.filename)}">
+           data-filename="${escapeHtml(match.filename)}">
         <img src="${thumbUrl}" alt=""
              class="w-10 h-10 rounded-md object-cover ring-1 ring-base-300"
              loading="lazy"
              onerror="this.parentElement.style.display='none'">
       </div>
       <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium truncate leading-tight">${this.escapeHtml(match.filename)}</div>
+        <div class="text-sm font-medium truncate leading-tight">${escapeHtml(match.filename)}</div>
         <div class="text-xs text-base-content/50 leading-tight mt-0.5">
           ${this.formatDatetime(match.photo_timestamp)}
           <span class="mx-0.5">&middot;</span>
@@ -117,16 +118,22 @@ export const matchList = {
       border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.25);
       border: 1px solid var(--fallback-b3, oklch(var(--b3)));
     `
-    tooltip.innerHTML = `
-      <img src="${url}" alt="${name}"
-           style="width: 220px; height: 220px; object-fit: cover; border-radius: 8px; display: block;"
-           onerror="this.parentElement.remove()">
-      <div style="text-align: center; font-size: 11px; padding: 4px 0 2px; opacity: 0.6;
-                  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        ${name}
-      </div>
-    `
+    // Built with DOM APIs, not innerHTML: the filename is attacker-controlled
+    // (it comes from the Immich asset) and must never be parsed as markup.
+    const img = document.createElement("img")
+    img.src = url
+    img.alt = name
+    img.style.cssText =
+      "width: 220px; height: 220px; object-fit: cover; border-radius: 8px; display: block;"
+    img.addEventListener("error", () => tooltip.remove())
 
+    const caption = document.createElement("div")
+    caption.textContent = name
+    caption.style.cssText =
+      "text-align: center; font-size: 11px; padding: 4px 0 2px; opacity: 0.6;" +
+      "max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+
+    tooltip.append(img, caption)
     document.body.appendChild(tooltip)
 
     const rect = wrapper.getBoundingClientRect()

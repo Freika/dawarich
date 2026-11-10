@@ -210,7 +210,7 @@ de:
         current_password: Aktuelles Passwort
         required_to_confirm_your_changes: "(erforderlich, um deine Änderungen zu bestätigen)"
         import_your_data: Daten importieren
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen. Verbindungen zu Integrationen (Immich, Photoprism, AirTrail, TeslaMate) werden nicht wiederhergestellt; verbinde sie unter Einstellungen → Integrationen neu."
         select_zip_archive: ZIP-Archiv auswählen
         file_will_be_uploaded_directly_to_storage_please_be_patient: Die Datei wird direkt in den Speicher hochgeladen. Bitte habe während des Uploads etwas Geduld.
         cancel: Abbrechen

@@ -132,9 +132,9 @@ class Users::ExportData::Points
         vp.longitude as visit_place_longitude
       FROM points p
       LEFT JOIN point_sources ps ON p.source_id = ps.id
-      LEFT JOIN imports i ON p.import_id = i.id
+      LEFT JOIN imports i ON p.import_id = i.id AND i.user_id = p.user_id
       LEFT JOIN countries c ON p.country_id = c.id
-      LEFT JOIN visits v ON p.visit_id = v.id
+      LEFT JOIN visits v ON p.visit_id = v.id AND v.user_id = p.user_id
       LEFT JOIN places vp ON v.place_id = vp.id
       WHERE #{condition}
       ORDER BY p.id

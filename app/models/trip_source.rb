@@ -19,10 +19,6 @@ class TripSource < ApplicationRecord
 
   before_validation :normalize_base_url
 
-  def resolved_base_url_ip!
-    resolve_integration_url!(base_url)
-  end
-
   def skips_ssl_verification?
     skip_ssl_verification && base_url.to_s.match?(%r{\Ahttps://}i)
   end

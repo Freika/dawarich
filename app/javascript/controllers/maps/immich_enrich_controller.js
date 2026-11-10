@@ -258,12 +258,6 @@ export default class ImmichEnrichController extends Controller {
     if (timeDelta < 900) return "badge-warning"
     return "badge-error"
   }
-
-  escapeHtml(text) {
-    const div = document.createElement("div")
-    div.textContent = text
-    return div.innerHTML
-  }
 }
 
 Object.assign(ImmichEnrichController.prototype, matchList, matchMarkers)

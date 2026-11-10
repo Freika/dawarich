@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-# Validates user-supplied integration URLs (immich_url, photoprism_url) at
-# save time. Catches obvious SSRF attempts and configuration mistakes before
-# the URL ever reaches HTTPParty.
+# Validates user-supplied integration URLs (Immich, Photoprism, AirTrail,
+# TeslaMate, TREK). Catches SSRF attempts and configuration mistakes.
 #
 # Two tiers of strictness, chosen at request time from DawarichSettings:
 #
@@ -19,11 +18,10 @@
 #   so a fat-fingered `gopher://` or `http://169.254.169.254/` is still
 #   caught.
 #
-# NOTE: this is a save-time check, not a request-time check. DNS rebinding
-# is still possible: an attacker can serve a public IP to the validator
-# and a private IP to the actual HTTPParty request a moment later. The
-# mitigation lives in the HTTP client (pin the resolved IP) and is
-# tracked separately. (audit C-3)
+# The check runs twice: when a URL is saved, and again on every outbound
+# request inside Integrations::Transport, which then connects to the address
+# it just validated. A DNS answer that changes between the two (rebinding)
+# therefore cannot move the request into a blocked range.
 module UrlValidatable
   extend ActiveSupport::Concern
 
@@ -33,6 +31,7 @@ module UrlValidatable
   # target on either deployment topology.
   ALWAYS_BLOCKED_RANGES = [
     IPAddr.new('0.0.0.0/8'),           # invalid / "this network"
+    IPAddr.new('::/128'),              # IPv6 unspecified (routes to localhost on connect)
     IPAddr.new('169.254.169.254/32'),  # cloud metadata (AWS / GCP / OpenStack)
     IPAddr.new('224.0.0.0/4'),         # IPv4 multicast
     IPAddr.new('240.0.0.0/4'),         # IPv4 reserved
@@ -62,7 +61,14 @@ module UrlValidatable
     resolve_integration_url!(url)
   end
 
+  # First validated address, for callers that only need one.
   def resolve_integration_url!(url)
+    resolve_integration_addresses!(url)&.first
+  end
+
+  # Every address the host resolves to, all checked against the blocklist.
+  # A caller that pins the connection can try them in order.
+  def resolve_integration_addresses!(url)
     return if url.blank?
 
     uri = URI.parse(url)
@@ -90,7 +96,7 @@ module UrlValidatable
       Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{blocked}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
-    addresses.first.to_s
+    addresses.map(&:to_s)
   rescue URI::InvalidURIError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
   rescue SocketError

@@ -9,7 +9,12 @@ RSpec.configure do |config|
     Geocoding::RateLimiter.reset!
     Geocoding::Cooldown.reset!
     Sidekiq.redis do |redis|
-      redis.call('DEL', Points::ResumeReverseGeocodingJob::CLAIM_KEY, Points::ResumeReverseGeocodingJob::FORCED_RUNS_KEY)
+      redis.call('DEL',
+                 Points::ResumeReverseGeocodingJob::CLAIM_KEY,
+                 Points::ResumeReverseGeocodingJob::FORCED_RUNS_KEY,
+                 # Leaked between examples before: a stale first-skip time made a
+                 # later example's forced-run walk enqueue a different set.
+                 Points::ResumeReverseGeocodingJob::FORCED_RUN_STARTS_KEY)
     end
   end
 end
