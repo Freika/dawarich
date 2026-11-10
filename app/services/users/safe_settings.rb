@@ -296,6 +296,14 @@ class Users::SafeSettings
     settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
   end
 
+  def trip_detection_enabled?
+    feature_enabled?('trip_detection')
+  end
+
+  def trip_detection_long_absence?
+    ActiveModel::Type::Boolean.new.cast(settings['trip_detection_long_absence']) == true
+  end
+
   def visits_suggestions_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['visits_suggestions_enabled']) == true
   end

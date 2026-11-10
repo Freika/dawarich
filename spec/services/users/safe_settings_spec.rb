@@ -1029,6 +1029,20 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#trip_detection_enabled?' do
+    it 'is on when the key is absent and off when switched off' do
+      expect(described_class.new({}).trip_detection_enabled?).to be true
+      expect(described_class.new({ 'trip_detection_enabled' => 'false' }).trip_detection_enabled?).to be false
+    end
+  end
+
+  describe '#trip_detection_long_absence?' do
+    it 'is false when the key is absent and true when recorded' do
+      expect(described_class.new({}).trip_detection_long_absence?).to be false
+      expect(described_class.new({ 'trip_detection_long_absence' => true }).trip_detection_long_absence?).to be true
+    end
+  end
+
   describe 'settings defaults' do
     it 'matches the shared defaults fixture for a fresh account' do
       fixture = JSON.parse(Rails.root.join('spec/fixtures/user_settings_defaults.json').read)

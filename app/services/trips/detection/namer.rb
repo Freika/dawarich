@@ -48,7 +48,7 @@ module Trips
         day = "(to_timestamp(points.timestamp) AT TIME ZONE #{Point.connection.quote(@zone)})::date"
 
         @trip.points.not_flyover.where.not(city: [nil, '']).reorder(nil).group(:city)
-             .order(Arel.sql("COUNT(DISTINCT #{day}) DESC, MIN(points.timestamp)"))
+             .order(Arel.sql("COUNT(DISTINCT #{day}) DESC, MIN(points.timestamp), points.city"))
              .pick(:city)
       end
     end
