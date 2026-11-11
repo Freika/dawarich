@@ -41,7 +41,7 @@ class DemoData::Importer
   end
 
   def user_local_beginning_of_day
-    tz = @user.safe_settings.timezone.presence || 'UTC'
+    tz = @user.timezone_or_utc
     Time.use_zone(tz) { Time.zone.now.beginning_of_day }
   end
 
@@ -55,7 +55,7 @@ class DemoData::Importer
   end
 
   def months_from_import(import)
-    tz = @user.safe_settings.timezone.presence || 'UTC'
+    tz = @user.timezone_or_utc
     quoted_tz = ActiveRecord::Base.connection.quote(tz)
     year  = "EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::int"
     month = "EXTRACT(MONTH FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::int"

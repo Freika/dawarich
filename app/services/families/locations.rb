@@ -44,8 +44,14 @@ class Families::Locations
   end
 
   def build_family_locations(sharing_members)
+    # Mask each sharer's own privacy zones, exactly as their own map reads do,
+    # so family sharing never leaks a point inside a privacy zone.
     latest_points =
-      sharing_members.map { _1.points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first }.compact
+      sharing_members.filter_map do |member|
+        Maps::PrivacyZoneMasker.new(member)
+                               .mask_points(member.points.without_raw_data.complete.not_anomaly)
+                               .order(timestamp: :desc).first
+      end
 
     with_address = Geocoding::Config.for(user).enabled?
 
@@ -68,7 +74,8 @@ class Families::Locations
 
   def build_family_history(sharing_members, start_at:, end_at:)
     sharing_members.filter_map do |member|
-      points = member.family_history_points(start_at: start_at, end_at: end_at)
+      points = Maps::PrivacyZoneMasker.new(member)
+                                      .mask_points(member.family_history_points(start_at: start_at, end_at: end_at))
       total = points.count
       next if total.zero?
 

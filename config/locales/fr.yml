@@ -626,9 +626,7 @@ fr:
         current_password: Mot de passe actuel
         required_to_confirm_your_changes: "(obligatoire pour confirmer vos modifications)"
         import_your_data: Importer vos données
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Téléversez une
-          archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos
-          points, vos trajets et vos paramètres.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Téléversez une archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos points, vos trajets et vos paramètres. Les connexions aux intégrations (Immich, Photoprism, AirTrail, TeslaMate) ne sont pas restaurées ; reconnectez-les dans Paramètres → Intégrations."
         select_zip_archive: Sélectionner une archive ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Le fichier sera
           téléversé directement vers le stockage. Veuillez patienter pendant le téléversement.
@@ -2422,6 +2420,8 @@ fr:
         family_feature_hint: "Partage de position avec les membres de la famille. La désactiver arrête le partage de votre position et des liens de voyage réservés à la famille ; vous restez membre. Lorsque vous la réactivez, le partage de position est désactivé."
         achievements_feature: "Succès"
         achievements_feature_hint: "Régions explorées et badges. Les désactiver arrête le calcul de la progression et désactive vos liens publics de succès."
+        trip_detection_feature: "Trouver les voyages automatiquement"
+        trip_detection_feature_hint: "Trouve des voyages dans votre historique de positions et les ajoute à vos voyages. Désactiver cette option arrête la recherche et conserve les voyages déjà trouvés. La réactiver relance la recherche immédiatement."
     integrations:
       trek:
         title: "Intégration TREK"

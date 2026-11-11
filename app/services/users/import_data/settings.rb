@@ -9,10 +9,10 @@ class Users::ImportData::Settings
   def call
     return false unless settings_data.is_a?(Hash)
 
-    Rails.logger.info "Importing settings for user: #{user.email}"
+    Rails.logger.info "Importing settings for user #{user.id}"
 
     current_settings = user.settings || {}
-    updated_settings = current_settings.merge(settings_data)
+    updated_settings = current_settings.merge(importable_settings)
 
     user.update!(settings: updated_settings)
 
@@ -23,4 +23,11 @@ class Users::ImportData::Settings
   private
 
   attr_reader :user, :settings_data
+
+  # An archive never changes the account's integration connections. Importing
+  # a URL without its secret would point a stored key at the archive's host, or
+  # leave a connection that fails on every scheduled sync.
+  def importable_settings
+    settings_data.reject { |key, _value| Users::IntegrationSettingKeys.connection_key?(key) }
+  end
 end

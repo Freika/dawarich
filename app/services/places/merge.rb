@@ -9,6 +9,13 @@ module Places
         @conflicts = conflicts
         super('Visits with the same start time prevent this Place merge')
       end
+
+      def user_message
+        conflict = conflicts.first
+        I18n.t('controllers.places.merge_visit_conflict', first_id: conflict[:survivor_id],
+                                                          second_id: conflict[:duplicate_id],
+                                                          started_at: I18n.l(conflict[:started_at], format: :long))
+      end
     end
 
     def initialize(user:, survivor:, duplicate:)
@@ -20,6 +27,7 @@ module Places
     def call
       validate!
 
+      homes_moved = 0
       Place.transaction do
         lock_places!
         merge_visits
@@ -27,6 +35,7 @@ module Places
         merge_tags
         merge_timeline_notes
         merge_legacy_mappings
+        homes_moved = merge_homes
         Achievements::MergeSelections.call(survivor, duplicate)
         geofence = merge_geofence
 
@@ -42,6 +51,7 @@ module Places
         duplicate.destroy!
         survivor.update!(merged_attributes)
       end
+      Trips::DetectJob.schedule(user.id) if homes_moved.positive?
 
       survivor.reload
     end
@@ -107,6 +117,10 @@ module Places
 
     def merge_legacy_mappings
       LegacyAreaPlaceMapping.where(place_id: duplicate.id).update_all(place_id: survivor.id)
+    end
+
+    def merge_homes
+      Home.where(place_id: duplicate.id).update_all(place_id: survivor.id, updated_at: Time.current)
     end
 
     def merge_geofence

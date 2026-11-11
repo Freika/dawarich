@@ -88,7 +88,7 @@ export class PlacePanelBridge {
         .getControllerForElementAndIdentifier(panel, "place-panel")
         ?.close()
     }
-    await this.controller.placesManager._refreshPrivacyZones()
+    await this.controller.placesManager.refreshPrivacyZones()
   }
 
   destroy() {

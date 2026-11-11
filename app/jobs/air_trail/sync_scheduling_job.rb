@@ -5,8 +5,8 @@ module AirTrail
     queue_as :imports
 
     def perform
-      User.where("settings->>'airtrail_url' <> '' AND settings->>'airtrail_api_key' <> ''")
-          .find_each { |user| AirTrail::ImportFlightsJob.perform_later(user.id) }
+      user_ids = User.where("settings->>'airtrail_url' <> '' AND settings->>'airtrail_api_key' <> ''").ids
+      ActiveJob.perform_all_later(user_ids.map { |user_id| AirTrail::ImportFlightsJob.new(user_id) })
     end
   end
 end

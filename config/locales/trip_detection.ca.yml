@@ -1,0 +1,72 @@
+ca:
+  trip_detection:
+    # A Detected Trip's name: places (a city or up to three countries), then the month.
+    name: "%{places}, %{month}"
+    list_separator: ", "
+    # The name used when no city or country is known.
+    fallback_name: "Viatge, %{range}"
+    formats:
+      month_year: "%b %Y"
+    # Date ranges. Each part is a strftime format localized by I18n.l (%b is the
+    # abbreviated month name); the pattern joins the two dates.
+    range:
+      same_month:
+        pattern: "%{start}–%{end}"
+        start: "%-d"
+        end: "%-d %b %Y"
+      same_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b"
+        end: "%-d %b %Y"
+      cross_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b %Y"
+        end: "%-d %b %Y"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "Viatge trobat: %{name}"
+        content: "Dawarich ha trobat un viatge nou al teu historial. <a href=\"%{url}\">Obre el viatge</a>"
+      many:
+        title:
+          one: "S'ha trobat %{count} viatge"
+          other: "S'han trobat %{count} viatges"
+        content: "Dawarich ha trobat viatges nous al teu historial. <a href=\"%{url}\">Mostra els viatges trobats automàticament</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Hi visc / hi vaig viure"
+      help: "Un «Des de» buit vol dir des que se't va registrar aquí per primera vegada; un «Fins a» buit vol dir que encara hi vius."
+      from: "Des de"
+      until: "Fins a"
+      save: "Desa"
+      remove: "Elimina"
+      remove_confirm: "Vols eliminar aquest període? Se n’esborraran les dates, i és possible que s’eliminin els viatges trobats automàticament en aquest període."
+      add: "Afegeix un període"
+      end_before_start: "«Fins a» no pot ser anterior a «Des de»."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Mostra"
+      all: "Tots els viatges"
+      manual: "Creats per mi"
+      detected: "Trobats automàticament"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
+      long_absence: "Dawarich ha omès un període de més de %{days} dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
+      add_home: "Afegeix una llar a la pàgina Llocs"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Casa"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Afegeix la teva llar"
+      intro: "Dawarich fa servir la teva llar per trobar els teus viatges automàticament. Comparteix la teva ubicació o fes clic al mapa i després confirma."
+      use_my_location: "Utilitza la meva ubicació"
+      confirm: "Aquí visc"
+      skip: "Omet"
+      location_denied: "No s’ha pogut llegir la teva ubicació. Fes clic al mapa per situar la teva llar o configura-la més tard a la pàgina Llocs."
+      home_saved: "La teva llar s’ha desat. Dawarich buscarà els teus viatges."
+      invalid_location: "Primer tria un lloc al mapa."
+      # Onboarding never adds a second Home.
+      home_exists: "Ja tens una llar. La pots canviar a la pàgina Llocs."
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "Continua"

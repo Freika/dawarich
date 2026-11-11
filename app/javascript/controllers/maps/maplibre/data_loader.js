@@ -10,6 +10,16 @@ export class DataLoader {
     this.settings = settings
   }
 
+  fetchPhotosWithTimeout(startDate, endDate) {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
+    )
+    return Promise.race([
+      this.api.fetchPhotos({ start_at: startDate, end_at: endDate }),
+      timeout,
+    ])
+  }
+
   updateSettings(settings) {
     this.settings = settings
   }
@@ -177,15 +187,7 @@ export class DataLoader {
     // Background: Fetch photos
     if (this.settings.photosEnabled && onPhotosLoaded) {
       console.log("[Photos] Starting background fetch...")
-      const photosPromise = this.api.fetchPhotos({
-        start_at: startDate,
-        end_at: endDate,
-      })
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
-      )
-
-      const photosTask = Promise.race([photosPromise, timeoutPromise])
+      const photosTask = this.fetchPhotosWithTimeout(startDate, endDate)
         .then((photos) => {
           console.log(
             `[Photos] Background fetch complete: ${photos.length} photos`,

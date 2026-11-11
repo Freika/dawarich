@@ -40,16 +40,10 @@ export class FilterManager {
     visitsLayer.update(geojson)
   }
 
-  /**
-   * Get current visit filter
-   */
   getCurrentVisitFilter() {
     return this.currentVisitFilter
   }
 
-  /**
-   * Set current visit filter
-   */
   setCurrentVisitFilter(filter) {
     this.currentVisitFilter = filter
   }

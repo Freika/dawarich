@@ -3,6 +3,10 @@
 class Settings::TwoFactorController < ApplicationController
   before_action :authenticate_user!
   before_action :require_two_factor_available
+  # Replacing an already-enabled second factor requires step-up, so a hijacked
+  # session cannot swap the victim's 2FA for its own. Initial enrolment (no 2FA
+  # yet) is unaffected.
+  before_action :require_stepup_to_replace, only: %i[create verify]
 
   def show; end
 
@@ -57,6 +61,14 @@ class Settings::TwoFactorController < ApplicationController
   end
 
   private
+
+  def require_stepup_to_replace
+    return unless current_user.otp_required_for_login?
+    return if current_user.valid_password?(params[:current_password].to_s)
+
+    redirect_to settings_two_factor_path,
+                alert: I18n.t('controllers.settings.two_factor.incorrect_password')
+  end
 
   def require_two_factor_available
     return if DawarichSettings.two_factor_available?

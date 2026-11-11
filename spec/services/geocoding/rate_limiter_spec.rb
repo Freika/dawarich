@@ -214,7 +214,7 @@ RSpec.describe Geocoding::RateLimiter do
     it 'pauses for the base duration again once the provider has answered' do
       stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
       refuse_quietly
-      Kernel.sleep(1.1)
+      expire_geocoding_cooldown
       described_class.throttle(komoot) { [double(cache_hit: false)] }
 
       refuse_quietly
@@ -225,7 +225,7 @@ RSpec.describe Geocoding::RateLimiter do
     it 'keeps doubling the pause when the answer only came from the cache' do
       stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
       refuse_quietly
-      Kernel.sleep(1.1)
+      expire_geocoding_cooldown
       described_class.throttle(komoot) { [double(cache_hit: true)] }
 
       refuse_quietly
@@ -236,7 +236,7 @@ RSpec.describe Geocoding::RateLimiter do
     it 'keeps doubling the pause after a lookup that found nothing' do
       stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
       refuse_quietly
-      Kernel.sleep(1.1)
+      expire_geocoding_cooldown
       described_class.throttle(komoot) { [] }
 
       refuse_quietly
@@ -268,7 +268,7 @@ RSpec.describe Geocoding::RateLimiter do
 
     def wait_out_a_refusal
       Geocoding::Cooldown.start(stored_photon)
-      Kernel.sleep(1.1)
+      expire_geocoding_cooldown
     end
 
     before do

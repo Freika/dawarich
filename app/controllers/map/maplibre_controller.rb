@@ -100,7 +100,7 @@ module Map
 
       @date_param_range =
         if params[:date].present?
-          tz = current_user.safe_settings.timezone.presence || 'UTC'
+          tz = current_user.timezone_or_utc
           Time.use_zone(tz) do
             date = params[:date] == 'today' ? Date.current : safe_parse_date(params[:date])
             date&.all_day

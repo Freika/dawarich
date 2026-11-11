@@ -59,6 +59,11 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       # request is a signup — otherwise a returning customer arriving through a
       # different affiliate link would be re-credited to the wrong partner.
       attribute_partnero_signup(@user) if @user.oauth_newly_created
+
+      # A 2FA-enabled account must still clear the second factor on OAuth sign-in,
+      # mirroring Users::SessionsController#check_otp_required on the password path.
+      return stage_otp_challenge(@user) if DawarichSettings.two_factor_available? && @user.otp_required_for_login?
+
       flash[:notice] = I18n.t 'devise.omniauth_callbacks.success', kind: provider
       sign_in_and_redirect @user, event: :authentication
     elsif @user.nil?
@@ -91,5 +96,14 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
   def oidc_auto_register_enabled?
     OIDC_AUTO_REGISTER
+  end
+
+  # Stage the OTP challenge instead of completing the sign-in, reusing the same
+  # session handshake that Users::OtpChallengeController consumes.
+  def stage_otp_challenge(user)
+    session[:otp_user_id] = user.id
+    session[:otp_challenge_at] = Time.current.to_i
+    self.resource = user
+    switch_locale { render 'devise/sessions/otp_challenge', status: :unprocessable_entity }
   end
 end

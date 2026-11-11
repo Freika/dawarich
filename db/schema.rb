@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_10_090300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -440,6 +440,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.index ["created_at"], name: "index_geofence_events_synthetic_on_created_at", where: "synthetic"
     t.index ["place_id", "occurred_at"], name: "index_geofence_events_on_place_id_and_occurred_at", order: { occurred_at: :desc }
     t.index ["user_id", "occurred_at"], name: "index_geofence_events_on_user_id_and_occurred_at", order: { occurred_at: :desc }
+  end
+
+  create_table "homes", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "place_id", null: false
+    t.date "started_on"
+    t.date "ended_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["place_id"], name: "index_homes_on_place_id"
+    t.index ["user_id"], name: "index_homes_on_user_id"
+    t.check_constraint "ended_on IS NULL OR started_on IS NULL OR ended_on >= started_on", name: "homes_end_not_before_start"
   end
 
   create_table "imports", force: :cascade do |t|
@@ -947,6 +959,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
+  create_table "trip_detection_dismissals", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.datetime "started_at", null: false
+    t.datetime "ended_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_trip_detection_dismissals_on_user_id"
+  end
+
   create_table "trip_sources", force: :cascade do |t|
     t.text "api_key"
     t.string "base_url", null: false
@@ -982,9 +1003,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.jsonb "visited_countries", default: {}, null: false
+    t.integer "origin", default: 0, null: false
+    t.datetime "user_edited_at"
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
     t.index ["trip_source_id", "source_identifier"], name: "index_trips_on_source_identifier", unique: true, where: "((trip_source_id IS NOT NULL) AND (source_identifier IS NOT NULL))"
     t.index ["trip_source_id"], name: "index_trips_on_trip_source_id"
+    t.index ["user_id", "started_at", "ended_at"], name: "index_trips_on_detected_period", unique: true, where: "((origin = 1) AND (user_edited_at IS NULL))"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -1152,6 +1176,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   add_foreign_key "flights", "users"
   add_foreign_key "geofence_events", "places", on_delete: :nullify
   add_foreign_key "geofence_events", "users", on_delete: :cascade
+  add_foreign_key "homes", "places", on_delete: :cascade
+  add_foreign_key "homes", "users"
   add_foreign_key "legacy_area_place_mappings", "areas", on_delete: :cascade
   add_foreign_key "legacy_area_place_mappings", "places", on_delete: :cascade
   add_foreign_key "notes", "users"
@@ -1181,6 +1207,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_120000) do
   add_foreign_key "tags", "users"
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
+  add_foreign_key "trip_detection_dismissals", "users", on_delete: :cascade
   add_foreign_key "trip_sources", "users"
   add_foreign_key "trips", "trip_sources"
   add_foreign_key "trips", "users"

@@ -234,7 +234,7 @@ module TeslaMate
     end
 
     def payloads_within_point_limit(payloads)
-      return payloads if DawarichSettings.self_hosted?
+      return payloads if @user.entitlements.unlimited_points?
 
       existing_keys = existing_point_keys(payloads).index_with(true)
       slots = point_slots_remaining
@@ -268,14 +268,14 @@ module TeslaMate
     end
 
     def consume_point_slots(rows)
-      return if DawarichSettings.self_hosted?
+      return if @user.entitlements.unlimited_points?
 
       inserted = rows.count { |row| row['xmax'].to_i.zero? }
       @point_slots_remaining = [point_slots_remaining - inserted, 0].max
     end
 
     def point_limit_reached?
-      !DawarichSettings.self_hosted? && point_slots_remaining.zero?
+      !@user.entitlements.unlimited_points? && point_slots_remaining.zero?
     end
 
     def point_slots_remaining

@@ -4,6 +4,7 @@ class User < ApplicationRecord
   include UserFamily
   include Omniauthable
   include PlanScopable
+  include VisitedPlaces
   include SoftDeletable # introduces default_scope and soft-delete methods
 
   # Per-record opt-out for the auto-trial / auto-activate after_commit hooks.
@@ -38,10 +39,12 @@ class User < ApplicationRecord
   has_many :visits,         dependent: :destroy
   has_many :visited_places, through: :visits, source: :place
   has_many :places,         dependent: :destroy
+  has_many :homes,          dependent: :destroy
   has_many :tags,           dependent: :destroy
   has_many :service_settings, dependent: :destroy
   has_many :trips, dependent: :destroy
   has_many :trip_sources, dependent: :destroy
+  has_many :trip_detection_dismissals, dependent: :delete_all
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
@@ -69,6 +72,7 @@ class User < ApplicationRecord
   after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
   after_update_commit :enqueue_achievements_recheck, if: :achievements_reenabled?
+  after_update_commit :enqueue_trip_detection, if: :trip_detection_reenabled?
 
   before_save :sanitize_input
   before_save :pause_family_location_sharing, if: :family_reenabled?
@@ -217,26 +221,6 @@ class User < ApplicationRecord
     changelog_consent.nil?
   end
 
-  def countries_visited
-    Rails.cache.fetch("dawarich/user_#{id}_countries_visited", expires_in: 1.day) do
-      countries_visited_uncached
-    end
-  end
-
-  def cities_visited
-    Rails.cache.fetch("dawarich/user_#{id}_cities_visited", expires_in: 1.day) do
-      cities_visited_uncached
-    end
-  end
-
-  def total_countries
-    countries_visited.size
-  end
-
-  def total_cities
-    cities_visited.size
-  end
-
   def total_reverse_geocoded_points
     StatsQuery.new(self).points_stats[:geocoded]
   end
@@ -250,7 +234,7 @@ class User < ApplicationRecord
   end
 
   def years_tracked
-    Rails.cache.fetch("dawarich/user_#{id}_years_tracked", expires_in: 1.day) do
+    Rails.cache.fetch(Cache::UserKeys.years_tracked(id), expires_in: 1.day) do
       sql = <<~SQL
         WITH RECURSIVE tracked_months AS (
           SELECT MAX(timestamp) AS timestamp
@@ -337,65 +321,14 @@ class User < ApplicationRecord
 
   delegate :timezone, to: :safe_settings
 
+  def timezone_or_utc
+    timezone.presence || 'UTC'
+  end
+
   def timezone_iana
     raw = timezone.presence || Time.zone.name
     tz = ActiveSupport::TimeZone[raw] if raw
     tz ? tz.tzinfo.name : 'Etc/UTC'
-  end
-
-  # Aggregate countries from all stats' toponyms
-  # Includes countries even when no city meets the minimum stay threshold
-  def countries_visited_uncached
-    countries = Set.new
-
-    stats.select(:id, :toponyms).find_each do |stat|
-      toponyms = stat.toponyms
-      next unless toponyms.is_a?(Array)
-
-      toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-        next if toponym['country'].blank?
-
-        countries.add(toponym['country'])
-      end
-    end
-
-    countries.to_a.sort
-  end
-
-  # Aggregate cities from all stats' toponyms
-  # This respects min_minutes_spent_in_city since toponyms are already filtered
-  def cities_visited_uncached
-    cities = Set.new
-
-    stats.select(:id, :toponyms).find_each do |stat|
-      toponyms = stat.toponyms
-      next unless toponyms.is_a?(Array)
-
-      toponyms.each do |toponym|
-        next unless toponym.is_a?(Hash)
-        next unless toponym['cities'].is_a?(Array)
-
-        toponym['cities'].each do |city|
-          next unless city.is_a?(Hash)
-
-          cities.add(city['city']) if city['city'].present?
-        end
-      end
-    end
-
-    cities.to_a.sort
-  end
-
-  def home_place_coordinates
-    home_tag = tags.find_by('LOWER(name) = ?', 'home')
-    return nil unless home_tag
-    return nil if home_tag.privacy_zone?
-
-    home_place = home_tag.places.first
-    return nil unless home_place
-
-    [home_place.latitude, home_place.longitude]
   end
 
   def supporter?
@@ -434,6 +367,14 @@ class User < ApplicationRecord
 
   def achievements_reenabled?
     saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'achievements')
+  end
+
+  def trip_detection_reenabled?
+    saved_change_to_settings? && feature_switched_on?(saved_change_to_settings, 'trip_detection')
+  end
+
+  def enqueue_trip_detection
+    Trips::DetectJob.schedule(id)
   end
 
   def family_reenabled?

@@ -55,7 +55,7 @@ module Webhooks
     end
 
     def sendable?
-      webhook.active? && webhook.user.entitlements.pro_api?
+      webhook.active? && webhook.user.full_access?
     end
 
     def drop_delivery

@@ -1,18 +1,9 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 import vm from "node:vm"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = (
-  await readFile(
-    new URL(
-      "../../app/javascript/maps_maplibre/managers/replay_panel.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-)
-  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const source = (await strippedSource("maps_maplibre/managers/replay_panel.js"))
   .replace("export class ReplayPanel", "class ReplayPanel")
   .concat("\nglobalThis.ReplayPanel = ReplayPanel\n")
 

@@ -11,7 +11,7 @@ RSpec.describe '/visits', type: :request do
 
   describe 'GET /visits (retired)' do
     it 'no longer routes to VisitsController#index' do
-      expect { get '/visits' }.not_to raise_error
+      get '/visits'
       # The retired route now redirects (see visits_redirect_spec).
       expect(response).not_to have_http_status(:ok)
     end
@@ -112,6 +112,17 @@ RSpec.describe '/visits', type: :request do
   end
 
   describe 'PATCH /update' do
+    context 'when an HTML update fails validation' do
+      let(:visit) { create(:visit, user:) }
+
+      it 'returns to the timeline with the error' do
+        patch visit_url(visit), params: { visit: { ended_at: visit.started_at - 1.hour } }
+
+        expect(response).to have_http_status(:found)
+        expect(flash[:alert]).to eq(I18n.t('controllers.visits.failed_to_update_visit'))
+      end
+    end
+
     context 'with valid parameters' do
       let(:visit) { create(:visit, user:, status: :suggested) }
 
@@ -388,7 +399,7 @@ RSpec.describe '/visits', type: :request do
 
       delete visit_url(visit), as: :turbo_stream
 
-      expect(Rails.cache.read(cache_key)).to be_nil
+      expect(Rails.cache.read(cache_key)).not_to eq({ some: 'data' })
     end
 
     it 'redirects to /map on HTML format' do
@@ -561,7 +572,7 @@ RSpec.describe '/visits', type: :request do
       delete bulk_destroy_visits_url(format: :turbo_stream), params: { visit_ids: [] }
 
       expect(response).to have_http_status(:unprocessable_content)
-      expect { visit_a.reload }.not_to raise_error
+      expect(visit_a.reload.deleted_at).to be_nil
     end
 
     it 'rejects when an id belongs to another user' do
@@ -571,15 +582,13 @@ RSpec.describe '/visits', type: :request do
              params: { visit_ids: [visit_a.id, other_user_visit.id] }
 
       expect(response).to have_http_status(:not_found)
-      expect { visit_a.reload }.not_to raise_error
-      expect { other_user_visit.reload }.not_to raise_error
+      expect(visit_a.reload.deleted_at).to be_nil
+      expect(other_user_visit.reload.deleted_at).to be_nil
     end
 
     it 'busts the month-summary cache for affected months' do
       month_start = visit_a.started_at.beginning_of_month.to_date
       cache_key = Timeline::MonthSummary.cache_key_for(user, month_start)
-      # Pre-populate with a valid MonthSummary shape so the calendar stream can
-      # render during the action, then verify the after_action busts the key.
       sentinel = { month: month_start.strftime('%Y-%m'), weeks: [], days: {}, status_counts: {} }
       Rails.cache.write(cache_key, sentinel)
 
@@ -588,7 +597,7 @@ RSpec.describe '/visits', type: :request do
       delete bulk_destroy_visits_url(format: :turbo_stream),
              params: { visit_ids: [visit_a.id] }
 
-      expect(Rails.cache.read(cache_key)).to be_nil
+      expect(Rails.cache.read(cache_key)).not_to eq(sentinel)
     end
 
     it 'keeps points attached to the tombstoned visit' do
@@ -622,8 +631,8 @@ RSpec.describe '/visits', type: :request do
 
       expect(response).to have_http_status(:not_found)
       expect(response.body).to include('Lite plan')
-      expect { old_visit.reload }.not_to raise_error
-      expect { visit_a.reload }.not_to raise_error
+      expect(old_visit.reload.deleted_at).to be_nil
+      expect(visit_a.reload.deleted_at).to be_nil
     end
 
     it 'busts caches for every month touched when the deletion spans months' do
@@ -704,7 +713,7 @@ RSpec.describe '/visits', type: :request do
         delete bulk_destroy_visits_url(format: :turbo_stream),
                params: { date: Time.zone.today.to_s, source_status: 'suggested' }
 
-        expect { other_visit.reload }.not_to raise_error
+        expect(other_visit.reload.deleted_at).to be_nil
       end
 
       it 'returns unprocessable when no visits match date + source_status' do

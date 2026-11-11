@@ -7,6 +7,15 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  it 'does not gate map layers for a Lite user on a self-hosted instance' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    user.update!(plan: :lite)
+
+    get map_v2_path
+
+    expect(response.body).not_to include('data-maps--maplibre-user-plan-value="lite"')
+  end
+
   it 'hands the map the layers the server gates for Lite' do
     get map_v2_path
 

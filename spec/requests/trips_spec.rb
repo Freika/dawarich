@@ -95,6 +95,58 @@ RSpec.describe '/trips', type: :request do
         .to be(true)
     end
 
+    describe 'Trip Detection hints' do
+      def long_absence_hint(days = 90)
+        I18n.t('trip_detection.hints.long_absence', days:)
+      end
+
+      it 'asks for a Home when detection is on and there is none' do
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+        expect(Nokogiri::HTML(response.body).at_css('[role="status"] a[href="/places"]')).to be_present
+      end
+
+      it 'shows no hint once there is a Home' do
+        create(:home, user:, place: create(:place, user:))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      end
+
+      it 'shows no hint when detection is off' do
+        user.update!(settings: user.settings.merge('trip_detection_enabled' => false,
+                                                   'trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+        expect(response.body).not_to include(long_absence_hint)
+      end
+
+      it 'explains a skipped long absence' do
+        create(:home, user:, place: create(:place, user:))
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).to include(long_absence_hint)
+      end
+
+      it 'names the longest trip from the detection policy in the long-absence hint' do
+        stub_const('Trips::Detection::Policy::MAX_TRIP_DURATION', 60.days)
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).to include(long_absence_hint(60))
+        expect(long_absence_hint(60)).to include('60')
+      end
+    end
+
+    it 'filters the list by origin' do
+      create(:trip, user:, name: 'Planned by hand')
+      create(:trip, user:, name: 'Found on its own', origin: :detected)
+
+      get trips_path(origin: 'detected')
+
+      names = Nokogiri::HTML(response.body).css('[data-testid="trip-card-name"]').map { _1.text.strip }
+      expect(names).to eq(['Found on its own'])
+      expect(Nokogiri::HTML(response.body).at_css('select[name="origin"] option[selected]')['value']).to eq('detected')
+    end
+
     context 'when trip path is not yet calculated' do
       let!(:trip_without_path) { create(:trip, user:, path: nil, distance: nil) }
 
@@ -674,6 +726,23 @@ RSpec.describe '/trips', type: :request do
 
         expect(response).to redirect_to(trip_url(trip))
       end
+
+      it 'marks a Detected Trip as edited' do
+        trip = create(:trip, user:, origin: :detected)
+        patch trip_path(trip), params: { trip: { name: 'Portugal with Anna' } }
+
+        expect(trip.reload).to have_attributes(user_edited_at: be_present, origin: 'detected')
+      end
+
+      it 'lets a Detected Trip take the exact period of another Detected Trip' do
+        other = create(:trip, user:, origin: :detected)
+        trip = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        patch trip_path(trip), params: { trip: { started_at: other.started_at, ended_at: other.ended_at } }
+
+        expect(response).to redirect_to(trip_url(trip))
+        expect(trip.reload).to have_attributes(started_at: other.started_at, ended_at: other.ended_at)
+      end
     end
 
     context 'with invalid parameters' do
@@ -699,6 +768,13 @@ RSpec.describe '/trips', type: :request do
       delete trip_url(trip)
 
       expect(response).to redirect_to(trips_url)
+    end
+
+    it 'dismisses the period when a Detected Trip is deleted' do
+      detected = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+      expect { delete trip_path(detected) }.to change(user.trip_detection_dismissals, :count).by(1)
+      expect(Trip.exists?(detected.id)).to be(false)
     end
   end
 

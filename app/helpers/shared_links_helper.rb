@@ -41,10 +41,6 @@ module SharedLinksHelper
     I18n.t('helpers.shared_links.timeline_subtitle', range:)
   end
 
-  def trip_share_subtitle(trip)
-    I18n.t('helpers.shared_links.trip_subtitle', trip: trip.name)
-  end
-
   def track_share_label(track, unit)
     mode = track.dominant_mode.presence
     mode = mode ? I18n.t("transportation_modes.#{mode}") : I18n.t('helpers.shared_links.track')

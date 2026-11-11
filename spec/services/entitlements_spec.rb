@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Entitlements do
   let(:user) { create(:user) }
-  let(:entitlements) { described_class.for(user) }
+  let(:entitlements) { described_class.new(user) }
 
   describe 'when self-hosted' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
@@ -14,10 +14,7 @@ RSpec.describe Entitlements do
 
       expect(entitlements.full_access?).to be true
       expect(entitlements.restricted?).to be false
-      expect(entitlements.write_api?).to be true
-      expect(entitlements.pro_api?).to be true
-      expect(entitlements.integrations?).to be true
-      expect(entitlements.public_sharing?).to be true
+      expect(entitlements.full_access?).to be true
       expect(entitlements.families?).to be true
     end
 
@@ -53,10 +50,7 @@ RSpec.describe Entitlements do
       it 'grants pro capabilities' do
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
-        expect(entitlements.pro_api?).to be true
-        expect(entitlements.integrations?).to be true
-        expect(entitlements.public_sharing?).to be true
+        expect(entitlements.full_access?).to be true
       end
 
       it 'does not grant family creation' do
@@ -84,10 +78,7 @@ RSpec.describe Entitlements do
       it 'denies pro capabilities' do
         expect(entitlements.full_access?).to be false
         expect(entitlements.restricted?).to be true
-        expect(entitlements.write_api?).to be false
-        expect(entitlements.pro_api?).to be false
-        expect(entitlements.integrations?).to be false
-        expect(entitlements.public_sharing?).to be false
+        expect(entitlements.full_access?).to be false
         expect(entitlements.families?).to be false
       end
 
@@ -108,8 +99,7 @@ RSpec.describe Entitlements do
       it 'grants pro capabilities during the trial' do
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
-        expect(entitlements.pro_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.data_window).to be_nil
       end
     end
@@ -124,7 +114,7 @@ RSpec.describe Entitlements do
 
       it 'grants pro capabilities and family creation' do
         expect(entitlements.full_access?).to be true
-        expect(entitlements.write_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.families?).to be true
         expect(entitlements.data_window).to be_nil
       end
@@ -154,7 +144,7 @@ RSpec.describe Entitlements do
         expect(entitlements.effective_plan).to eq(:family)
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.data_window).to be_nil
       end
     end

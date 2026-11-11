@@ -13,9 +13,7 @@ class TrackSegments::GeometryRecalculator
   end
 
   def self.distance_between(first, second)
-    Geocoder::Calculations.distance_between(
-      [first.lat, first.lon], [second.lat, second.lon], units: :km
-    ) * 1000
+    GeoDistance.meters([first.lat, first.lon], [second.lat, second.lon])
   end
 
   def initialize(track, points)

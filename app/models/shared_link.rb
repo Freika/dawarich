@@ -10,6 +10,7 @@ class SharedLink < ApplicationRecord
 
   enum :resource_type, { trip: 0, track: 1, timeline: 2, live: 3 }
 
+  SETTING_KEYS = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes].freeze
   DEFAULT_SETTINGS = {
     trip: {
       'show_photos' => false, 'show_stats' => false
@@ -45,6 +46,9 @@ class SharedLink < ApplicationRecord
   validate :expires_at_in_future
   validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
   validate :allowed_live_freshness, if: -> { live? && (new_record? || will_save_change_to_settings?) }
+
+  after_save -> { Trip.mark_touched_by_user(resource_id) },
+             if: -> { trip? && (saved_change_to_resource_id? || saved_change_to_resource_type?) }
 
   scope :active, lambda {
     where(revoked_at: nil)
@@ -98,6 +102,32 @@ class SharedLink < ApplicationRecord
 
   # Value stored in the visitor's unlock cookie. Derived from the current
   # phrase so regenerating it invalidates everyone's prior unlock.
+  def unlock_cookie_name
+    "shared_link_#{id}"
+  end
+
+  def revoke!
+    update!(revoked_at: Time.current)
+    broadcast_live_share_ended
+  end
+
+  def broadcast_live_share_ended
+    SharedLocationChannel.broadcast_to(self, { revoked: true }) if resource_type == 'live'
+  end
+
+  # First and last instant of the shared timeline in the owner's zone, or nil
+  # when the settings hold no usable dates.
+  def timeline_window
+    zone = Time.find_zone(user.timezone_iana) || Time.find_zone('UTC')
+    first_day = zone.parse(settings['start_date'].to_s)
+    last_day = zone.parse(settings['end_date'].to_s)
+    return if first_day.nil? || last_day.nil?
+
+    [first_day.beginning_of_day, last_day.end_of_day]
+  rescue ArgumentError, TypeError
+    nil
+  end
+
   def unlock_token
     return if magic_phrase.blank?
 

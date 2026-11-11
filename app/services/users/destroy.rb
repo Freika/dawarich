@@ -171,9 +171,10 @@ class Users::Destroy
 
   def cleanup_user_cache(user_id)
     cache_keys = [
-      "dawarich/user_#{user_id}_countries_visited",
-      "dawarich/user_#{user_id}_cities_visited",
-      "dawarich/user_#{user_id}_years_tracked"
+      Cache::UserKeys.countries_visited(user_id),
+      Cache::UserKeys.cities_visited(user_id),
+      Cache::UserKeys.years_tracked(user_id),
+      Cache::UserKeys.points_geocoded_stats(user_id)
     ]
 
     cache_keys.each { |key| Rails.cache.delete(key) }

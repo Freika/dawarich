@@ -43,7 +43,7 @@ module Visits
     end
 
     def distance_meters(lat, lon, other_lat, other_lon)
-      Geocoder::Calculations.distance_between([lat, lon], [other_lat, other_lon], units: :km) * 1000
+      GeoDistance.meters([lat, lon], [other_lat, other_lon])
     end
 
     def create_default_place(lat, lon, suggested_name)

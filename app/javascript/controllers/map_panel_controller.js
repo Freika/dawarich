@@ -278,16 +278,6 @@ export default class extends Controller {
   }
 
   /**
-   * Switch to a different tab
-   */
-  switchTab(event) {
-    const button = event.currentTarget
-    const tabName = button.dataset.tab
-
-    this.activateTab(tabName)
-  }
-
-  /**
    * Programmatically switch to a tab by name
    */
   switchToTab(tabName) {

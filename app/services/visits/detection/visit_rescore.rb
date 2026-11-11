@@ -50,7 +50,7 @@ module Visits
         return 15 if points.empty? || center.nil?
 
         max = points.map do |point|
-          Geocoder::Calculations.distance_between(center, [point.lat, point.lon], units: :km) * 1000
+          GeoDistance.meters(center, [point.lat, point.lon])
         end.max
         [max, 15].max
       end

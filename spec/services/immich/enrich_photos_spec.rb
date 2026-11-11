@@ -116,3 +116,42 @@ RSpec.describe Immich::EnrichPhotos do
     end
   end
 end
+
+RSpec.describe Immich::EnrichPhotos, 'request safety' do
+  let(:user) { create(:user, settings: { 'immich_url' => 'http://immich.app', 'immich_api_key' => '123456' }) }
+
+  it 'escapes the asset id in the request path' do
+    request = stub_request(:put, 'http://immich.app/api/assets/..%2Fadmin')
+              .to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+    described_class.new(user, [{ 'immich_asset_id' => '../admin', 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+
+    expect(request).to have_been_requested
+  end
+
+  def error_for(asset_id = 'uuid-1')
+    result = described_class.new(user, [{ 'immich_asset_id' => asset_id, 'latitude' => 1.0, 'longitude' => 2.0 }]).call
+    result[:errors].first[:error]
+  end
+
+  it 'names the underlying network failure, never its message, which can echo a credential' do
+    stub_request(:put, 'http://immich.app/api/assets/uuid-1').to_raise(Errno::ECONNREFUSED.new('token=abc'))
+
+    expect(error_for).to include('Errno::ECONNREFUSED')
+    expect(error_for).not_to include('token=abc', 'Transport')
+  end
+
+  it 'says that the host does not resolve' do
+    stub_unresolvable_host('immich.app')
+
+    expect(error_for).to match(/resolve/i)
+    expect(error_for).not_to include('BlockedUrlError')
+  end
+
+  it 'passes on the redirect hint' do
+    stub_request(:put, 'http://immich.app/api/assets/uuid-1')
+      .to_return(status: 301, headers: { 'Location' => 'https://immich.app/api/assets/uuid-1' })
+
+    expect(error_for).to include('https://immich.app', 'final URL')
+  end
+end

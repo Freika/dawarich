@@ -158,7 +158,9 @@ Rails.application.routes.draw do
       post :bulk_merge
       get 'nearby'
     end
+    resources :homes, controller: 'places/homes', only: %i[create update destroy]
   end
+  resources :homes, only: :create
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]
@@ -295,6 +297,7 @@ Rails.application.routes.draw do
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions',
+    passwords: 'users/passwords',
     omniauth_callbacks: 'users/omniauth_callbacks'
   }
 

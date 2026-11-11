@@ -163,7 +163,7 @@ pl:
         current_password: Aktualne hasło
         required_to_confirm_your_changes: "(wymagane do potwierdzenia zmian)"
         import_your_data: Zaimportuj swoje dane
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia. Połączenia integracji (Immich, Photoprism, AirTrail, TeslaMate) nie są przywracane; połącz je ponownie w Ustawienia → Integracje."
         select_zip_archive: Wybierz archiwum ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Plik zostanie przesłany bezpośrednio do magazynu. Prosimy o cierpliwość.
         cancel: Anuluj
@@ -1691,6 +1691,8 @@ pl:
         family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
         achievements_feature: "Osiągnięcia"
         achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
+        trip_detection_feature: "Automatycznie znajduj podróże"
+        trip_detection_feature_hint: "Znajduje podróże w Twojej historii lokalizacji i dodaje je do Twoich podróży. Po wyłączeniu wyszukiwanie zostaje zatrzymane, a już znalezione podróże pozostają. Po ponownym włączeniu wyszukiwanie rusza od razu."
     integrations:
       trek:
         title: "Integracja z TREK"

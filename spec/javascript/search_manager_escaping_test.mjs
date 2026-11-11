@@ -1,23 +1,15 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/search_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const stubbedSource = source
-  .replace(
-    /^import \{[^}]*\} from "i18n"$/m,
-    "const translate = (key) => key\nconst formatDate = (value) => String(value)\nconst formatTime = (value) => String(value)\nconst formatDateTime = (value) => String(value)\nconst firstDayOfWeek = () => 1",
-  )
-  .replace(
-    'import { LocationSearchService } from "../services/location_search_service.js"',
-    "class LocationSearchService {}",
-  )
+const stubbedSource = `
+const translate = (key) => key
+const formatDate = (value) => String(value)
+const formatTime = (value) => String(value)
+const formatDateTime = (value) => String(value)
+const firstDayOfWeek = () => 1
+class LocationSearchService {}
+${await strippedSource("maps_maplibre/utils/search_manager.js")}`
 const { SearchManager } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
 )
