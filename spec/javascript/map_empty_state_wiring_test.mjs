@@ -17,7 +17,7 @@ const RangeStatistics = Stub, PlacePanelBridge = Stub,
   SettingsManager = Stub, AreaSelectionManager = Stub, DataLoader = Stub,
   EventHandlers = Stub, FilterManager = Stub, LayerManager = Stub,
   LayerVisibilityManager = Stub, MapDataManager = Stub, PlacesManager = Stub,
-  VisitsManager = Stub
+  VisitsManager = Stub, NotesManager = Stub
 const consumeCreatePlaceLink = () => {}
 `
 const source = await strippedSource(

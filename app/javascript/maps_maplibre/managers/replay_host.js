@@ -11,6 +11,7 @@ export class ReplayHost extends Controller {
     "replayScrubber",
     "replayScrubberTrack",
     "replayDensityContainer",
+    "replayDaySegments",
     "replayDayDisplay",
     "replayDayCount",
     "replayPrevDayButton",

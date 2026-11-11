@@ -3,12 +3,15 @@
 module Timeline
   class DayAssembler
     include VisitEntries
+    include NoteEntries
     include DayBounds
 
     # Hard cap on the requested window. The UI consumes day-by-day; ranges
     # this large would otherwise materialize thousands of LINESTRINGs in
     # memory just to compute bounds.
-    MAX_RANGE = 31.days
+    # Calendar days, both ends counted: what "Last month" comes to at its
+    # longest, and the API's 31-day range when it does not start at midnight.
+    MAX_DAYS = 32
 
     PHANTOM_STATIONARY_DISTANCE_M = 100
 
@@ -31,12 +34,14 @@ module Timeline
 
     def call
       return [] if start_at.nil? || end_at.nil?
-      return [] if (end_at - start_at) > MAX_RANGE
+      # Counted in days, not seconds: a month with a clock change is still a month.
+      return [] if (end_at.to_date - start_at.to_date).to_i >= MAX_DAYS
 
       visits = fetch_visits
       tracks = fetch_tracks
+      notes = fetch_notes
 
-      return [] if visits.empty? && tracks.empty?
+      return [] if visits.empty? && tracks.empty? && notes.empty?
 
       @segment_stats = load_segment_stats(tracks)
 
@@ -46,7 +51,7 @@ module Timeline
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
       @local_timezones = Timezones::Lookup.call(local_zone_coordinates(visits, tracks))
 
-      days = group_by_day(visits, tracks)
+      days = group_by_day(visits, tracks, notes)
       build_days(days)
     end
 
@@ -104,7 +109,7 @@ module Timeline
       }
     end
 
-    def group_by_day(visits, tracks)
+    def group_by_day(visits, tracks, notes)
       Time.use_zone(timezone) do
         grouped = {}
         window = start_at.in_time_zone.to_date..end_at.in_time_zone.to_date
@@ -131,12 +136,19 @@ module Timeline
           end
         end
 
+        notes.each do |note|
+          day_key = note.noted_at.in_time_zone.to_date
+          next unless window.cover?(day_key)
+
+          (grouped[day_key] ||= empty_day_bucket)[:notes] << note
+        end
+
         grouped.sort_by(&:first)
       end
     end
 
     def empty_day_bucket
-      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {} }
+      { visits: [], tracks: [], originating_tracks: [], track_shares: {}, visit_shares: {}, notes: [] }
     end
 
     def build_days(days)
@@ -145,11 +157,13 @@ module Timeline
 
     def build_day(date, data)
       entries = interleave(date, data, data[:track_shares])
+      summary = build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares])
       {
         date: date.to_s,
-        summary: build_summary(data[:visits], data[:tracks], data[:track_shares], data[:visit_shares]),
+        summary: summary.merge(facts: facts_line(data[:visits], summary[:total_distance])),
         bounds: build_bounds(data[:visits], data[:originating_tracks]),
-        entries: entries
+        entries: entries,
+        notes: data[:notes].map { |note| build_note_entry(note) }
       }
     end
 

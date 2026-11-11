@@ -1307,6 +1307,16 @@ zh:
         previous_day: 前一天
         next_day: 第二天
       feed:
+        latest_days_only:
+          one: "较长时间段中最近的 %{count} 天"
+          other: "较长时间段中最近的 %{count} 天"
+        all_days: 所有日期
+        day_count:
+          one: "%{count} 天"
+          other: "%{count} 天"
+        note_count:
+          one: "%{count} 条笔记"
+          other: "%{count} 条笔记"
         no_visits_tracked_this_day: 当天没有记录到到访记录。
         visits_are_auto_detected_daily_from_your_location_data: 系统每天根据您的位置数据自动检测到访记录。
       gap_entry:
@@ -2142,6 +2152,8 @@ zh:
         shared_from_dawarich: 从 Dawarich 共享
     map:
       date_navigation_v2:
+        note_days: "有笔记的日期"
+        choose_period: 选择时间段
         share: 共享
         start_date_and_time: 开始日期和时间
         end_date_and_time: 结束日期和时间

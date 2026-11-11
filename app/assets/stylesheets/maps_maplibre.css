@@ -79,23 +79,16 @@
 
 /* Shift the loading badge so it stays centered over the VISIBLE map area
    when the side panel is open. The badge is a sibling of the map container
-   inside #maps-maplibre-container; the container gets `panel-open` /
-   `panel-timeline-expanded` and takes width = 100% - <panel width>. The
-   offset below nudges the badge by half the panel width. */
+   inside #maps-maplibre-container; the container gets `panel-open` and
+   takes width = 100% - <panel width>. The offset below nudges the badge by
+   half the panel width. */
 .maps-maplibre-container.panel-open ~ .map-progress-badge {
   left: calc(50% + 240px);
-}
-
-.maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-  left: calc(50% + 360px);
 }
 
 @media (max-width: 1280px) {
   .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: calc(50% + 210px);
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 310px);
   }
 }
 
@@ -103,15 +96,11 @@
   .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: calc(50% + 190px);
   }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 260px);
-  }
 }
 
 @media (max-width: 768px) {
   /* Panel overlays the map on mobile; keep the badge centered. */
-  .maps-maplibre-container.panel-open ~ .map-progress-badge,
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: 50%;
   }
 }
@@ -220,51 +209,40 @@ html.dark .map-progress-badge-dot {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
-/* Light theme (default) */
+/* Colours come from the theme, like every panel on the map. */
 .maplibregl-popup-content {
-  background-color: #ffffff;
-  color: #111827;
+  background-color: oklch(var(--b1));
+  color: oklch(var(--bc));
+  border: 1px solid oklch(var(--bc) / 0.15);
 }
 
 .maplibregl-popup-close-button {
-  color: #6b7280;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .maplibregl-popup-close-button:hover {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: oklch(var(--bc) / 0.1);
+  color: oklch(var(--bc));
 }
 
-.maplibregl-popup-tip {
-  border-top-color: #ffffff;
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: oklch(var(--b1));
 }
 
-/* Dark theme */
-html[data-theme="dark"] .maplibregl-popup-content,
-html[data-theme="dawarich-dark"] .maplibregl-popup-content,
-html.dark .maplibregl-popup-content {
-  background-color: #1f2937;
-  color: #f9fafb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: oklch(var(--b1));
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button,
-html[data-theme="dawarich-dark"] .maplibregl-popup-close-button,
-html.dark .maplibregl-popup-close-button {
-  color: #d1d5db;
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: oklch(var(--b1));
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button:hover,
-html[data-theme="dawarich-dark"] .maplibregl-popup-close-button:hover,
-html.dark .maplibregl-popup-close-button:hover {
-  background-color: #374151;
-  color: #f9fafb;
-}
-
-html[data-theme="dark"] .maplibregl-popup-tip,
-html[data-theme="dawarich-dark"] .maplibregl-popup-tip,
-html.dark .maplibregl-popup-tip {
-  border-top-color: #1f2937;
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: oklch(var(--b1));
 }
 
 @keyframes pulse {
@@ -538,8 +516,8 @@ html.dark .map-html-label {
 }
 
 /* Explains an empty period; toggled by the range statistics result. It sits
-   right above the period totals, so it stays on the visible map at every
-   side-panel width and clear of the rail on phones. */
+   at the right edge, above the replay dock's tab, so it stays on the visible
+   map at every side-panel width and clear of the rail on phones. */
 .map-empty-state {
   position: absolute;
   right: 12px;
@@ -568,13 +546,70 @@ html.dark .map-html-label {
   font-weight: 600;
 }
 
-/* Persistent period totals sit above MapLibre's attribution and scale. */
-.map-range-statistics {
+/* Replay dock: sits above MapLibre's attribution and scale, inside the part
+   of the map the side panel leaves visible. The period totals are its pull
+   tab; the replay panel opens under the tab. */
+.replay-dock {
+  --replay-dock-panel: 0px;
   position: absolute;
+  /* Centred on the part of the map the side panel leaves visible, and no
+     wider than a scale is comfortable to read. */
+  left: calc(var(--replay-dock-panel) + 12px);
   right: 12px;
-  bottom: 48px;
-  z-index: 10;
-  max-width: calc(100% - 24px);
+  /* Closed, the tab rests at the foot of the map. */
+  bottom: 12px;
+  z-index: 460;
+  width: min(900px, calc(100% - var(--replay-dock-panel) - 24px));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* Open, the panel stays above MapLibre's attribution. */
+.replay-dock:has(.replay-panel:not(.hidden)) {
+  bottom: 40px;
+}
+
+/* The demo data notice sits at the bottom of the page; stay clear of it. */
+body:has(#demo-data-banner) .replay-dock {
+  bottom: 60px;
+}
+
+.replay-dock > * {
+  pointer-events: auto;
+}
+
+.maps-maplibre-container.panel-open ~ .replay-dock {
+  --replay-dock-panel: 480px;
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock {
+    --replay-dock-panel: 420px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock {
+    --replay-dock-panel: 380px;
+  }
+}
+
+/* On mobile the side panel overlays the map. */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock,
+  .maps-maplibre-container.panel-timeline-expanded ~ .replay-dock {
+    --replay-dock-panel: 0px;
+  }
+}
+
+.map-range-statistics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
   padding: 7px 10px;
   border: 1px solid oklch(var(--bc) / 0.15);
   border-radius: 8px;
@@ -582,4 +617,48 @@ html.dark .map-html-label {
   color: oklch(var(--bc));
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.replay-tab__icon,
+.replay-tab__chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  transition: transform 0.15s;
+}
+
+.replay-tab__icon {
+  color: oklch(var(--p));
+}
+
+/* Open: the tab fuses with the panel and the chevron points down. */
+.replay-dock:has(.replay-panel:not(.hidden)) .map-range-statistics {
+  margin-bottom: -1px;
+  border-bottom-color: oklch(var(--b1));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.replay-dock:has(.replay-panel:not(.hidden)) .replay-tab__chevron {
+  transform: rotate(180deg);
+}
+
+.replay-dock .replay-panel {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+/* The tab closes the dock. */
+.replay-dock .replay-close {
+  display: none;
+}
+
+.replay-dock .replay-controls-row {
+  padding-right: 0;
 }

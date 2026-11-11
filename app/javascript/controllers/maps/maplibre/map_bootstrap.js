@@ -12,6 +12,7 @@ import { FilterManager } from "./filter_manager"
 import { LayerManager } from "./layer_manager"
 import { LayerVisibilityManager } from "./layer_visibility_manager"
 import { MapDataManager } from "./map_data_manager"
+import { NotesManager } from "./notes_manager"
 import { PlacesManager } from "./places_manager"
 import { VisitsManager } from "./visits_manager"
 
@@ -88,6 +89,7 @@ export function buildMapFeatures(controller) {
     controller.visitsManager.attachViewportRefetch()
   }
   controller.placesManager = new PlacesManager(controller)
+  controller.notesManager = new NotesManager(controller)
   controller.placePanel = new PlacePanelBridge(controller)
   consumeCreatePlaceLink(controller.placesManager)
   controller.layerVisibilityManager = new LayerVisibilityManager(controller)

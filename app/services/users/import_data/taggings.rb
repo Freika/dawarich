@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Taggings
+  include Users::ImportData::PlaceLookup
+
   def initialize(user, taggings_data)
     @user = user
     @taggings_data = taggings_data
@@ -66,17 +68,8 @@ class Users::ImportData::Taggings
   end
 
   def find_place(tagging_data)
-    name = tagging_data['taggable_name']
-    latitude = tagging_data['taggable_latitude']&.to_f
-    longitude = tagging_data['taggable_longitude']&.to_f
-
-    return nil unless name.present? && latitude.present? && longitude.present?
-
-    user.places.find_by(name: name, latitude: latitude, longitude: longitude) ||
-      user.places.where(
-        'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?',
-        latitude - 0.0001, latitude + 0.0001,
-        longitude - 0.0001, longitude + 0.0001
-      ).first
+    find_place_by_reference(
+      tagging_data['taggable_name'], tagging_data['taggable_latitude'], tagging_data['taggable_longitude']
+    )
   end
 end

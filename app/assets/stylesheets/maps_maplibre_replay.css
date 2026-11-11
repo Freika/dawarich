@@ -19,17 +19,6 @@
     left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Shift replay panel right when side panel is open so it stays visible */
-.maps-maplibre-container.panel-open ~ .replay-panel {
-  left: calc(50% + 240px);
-}
-
-/* When the Timeline tab is open the panel is 720px wide — push the replay
-   panel further right so it stays centered over the visible map area. */
-.maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
-  left: calc(50% + 360px);
-}
-
 .replay-panel.hidden {
   display: none;
 }
@@ -515,33 +504,6 @@
   }
 }
 
-/* Responsive: adjust replay panel shift for narrower side panels */
-@media (max-width: 1280px) {
-  .maps-maplibre-container.panel-open ~ .replay-panel {
-    left: calc(50% + 210px);
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
-    left: calc(50% + 310px);
-  }
-}
-
-@media (max-width: 1024px) {
-  .maps-maplibre-container.panel-open ~ .replay-panel {
-    left: calc(50% + 190px);
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
-    left: calc(50% + 260px);
-  }
-}
-
-/* On mobile, side panel overlays instead of shrinking map — no shift needed */
-@media (max-width: 768px) {
-  .maps-maplibre-container.panel-open ~ .replay-panel,
-  .maps-maplibre-container.panel-timeline-expanded ~ .replay-panel {
-    left: 50%;
-  }
-}
-
 /* Responsive styles */
 @media (max-width: 768px) {
   .replay-panel {
@@ -688,4 +650,82 @@
   .replay-photo-stack-pop .replay-photo-stack-img {
     animation: none;
   }
+}
+
+/* ── One scrubber for several days ──
+   The day labels sit over the track, each over its own stretch of it, so the
+   00:00 / 23:59 end labels (true for one day only) step aside. */
+.replay-day-segments {
+  display: flex;
+  margin-bottom: 2px;
+}
+
+.replay-day-segments:empty {
+  display: none;
+}
+
+/* Each day is a tab over its stretch of the scale: a filled chip, so it
+   reads as something to press, with the current day in the accent colour.
+   The gap between tabs is drawn inside them, so their edges stay exactly on
+   the day boundaries of the scale. */
+.replay-day-segment {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3px 8px;
+  overflow: hidden;
+  border: none;
+  border-radius: 5px 5px 0 0;
+  background: oklch(var(--bc) / 0.1);
+  box-shadow: inset 1px 0 0 oklch(var(--b1));
+  color: oklch(var(--bc) / 0.85);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.replay-day-segment:hover {
+  background: oklch(var(--bc) / 0.2);
+  color: oklch(var(--bc));
+}
+
+.replay-day-segment[aria-current] {
+  background: oklch(var(--p));
+  color: oklch(var(--pc));
+  font-weight: 700;
+}
+
+.replay-panel--range .replay-time-label {
+  display: none;
+}
+
+.replay-panel--range .replay-density-bar {
+  min-width: 0;
+}
+
+.replay-scrubber-wrapper {
+  position: relative;
+}
+
+.replay-scrubber-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: oklch(var(--n));
+  color: oklch(var(--nc));
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.replay-scrubber-tip[hidden] {
+  display: none;
 }

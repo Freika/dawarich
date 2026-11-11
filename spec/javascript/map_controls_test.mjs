@@ -199,3 +199,31 @@ test("map day arrows keep the seconds of an absolute range applied by Studio", (
   assert.equal(params.get("start_at"), "2026-10-17T00:00:00")
   assert.equal(params.get("end_at"), "2026-10-17T23:59:59")
 })
+
+test("the Share link offers the period on screen after it changes", (t) => {
+  const link = {
+    href: "https://example.test/share_links?tab=timeline&start_date=2026-07-01&end_date=2026-07-01",
+  }
+  const originals = { document: globalThis.document, window: globalThis.window }
+  globalThis.document = {
+    querySelector: (selector) =>
+      selector.includes("timeline-share-button") ? link : null,
+  }
+  globalThis.window = { location: { href: "https://example.test/map/v2" } }
+  t.after(() => Object.assign(globalThis, originals))
+
+  const controller = new MapControlsController()
+  controller.dayLinkTargets = []
+  controller.startTarget = { value: "" }
+  controller.endTarget = { value: "" }
+  controller.hasMobileLabelTarget = false
+  controller.timezoneValue = "Europe/Berlin"
+  controller.dateNavigated({
+    detail: { startAt: "2026-07-11T00:00:00", endAt: "2026-07-14T23:59:59" },
+  })
+
+  const shared = new URL(link.href).searchParams
+  assert.equal(shared.get("start_date"), "2026-07-11")
+  assert.equal(shared.get("end_date"), "2026-07-14")
+  assert.equal(shared.get("tab"), "timeline")
+})

@@ -361,86 +361,15 @@
 /* Two-column layout: calendar/filter rail (260px) + visit list main.
    No bottom padding so the day column reaches the panel edge; top + sides
    keep the breathing room. */
+/* One column: search and tags, then the days. */
 .timeline-tab-content {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0.75rem 0.75rem 0;
-  align-items: start;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-}
-
-/* Collapse to single column when the panel gets narrow (≤1024px panel) */
-@media (max-width: 1024px) {
-  .timeline-tab-content {
-    grid-template-columns: 1fr;
-  }
-  .timeline-rail {
-    gap: 0.5rem;
-  }
-}
-
-/* --- Calendar grid (sits inside the 260px timeline-rail) --- */
-.timeline-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-}
-
-/* Optimistic skeleton state — applied by `timeline-feed#previewMonth`
-   when the user clicks the prev/next month chevron. Removed implicitly
-   when the turbo_stream replaces the calendar frame with real data. */
-.timeline-calendar--loading .cal-cell {
-  opacity: 0.55;
-  cursor: progress;
-  transition: opacity 0.15s ease;
-}
-
-.timeline-calendar--loading .cal-cell:not(.cal-cell--selected) {
-  background: oklch(var(--bc) / 0.05);
-}
-
-.timeline-calendar-grid__weekday {
-  text-align: center;
-  font-size: 9px;
-  text-transform: uppercase;
-  color: oklch(var(--bc) / 0.5);
-  padding: 2px 0;
-}
-
-.cal-cell {
-  position: relative;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 500;
-  border: 0;
-  cursor: pointer;
-  background: transparent;
-  color: oklch(var(--bc));
-}
-
-.cal-cell:hover:not(.cal-cell--disabled) {
-  outline: 1px solid oklch(var(--bc) / 0.2);
-}
-
-.cal-cell--out-of-month {
-  color: oklch(var(--bc) / 0.25);
-}
-
-.cal-cell--disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.cal-cell--selected {
-  outline: 2px solid oklch(var(--p));
-  outline-offset: 1px;
 }
 
 /* Heat buckets — transparent through emerald-88%.
@@ -1292,4 +1221,533 @@
 .timeline-lowconf-toggle[aria-expanded="true"] {
   color: oklch(var(--bc) / 0.8);
   border-style: solid;
+}
+
+/* ── Day facts line: the places of the day, in order ── */
+.timeline-day-facts {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  color: var(--tl-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* ── Map note: the user's own words, at the moment they describe ── */
+.timeline-entry--note {
+  display: block;
+  padding: 0;
+}
+
+/* Same columns as a journey leg, so the note's time and text line up with
+   every other row. Top-aligned: a note is often several lines long. */
+.note-leg {
+  display: grid;
+  grid-template-columns: var(--tl-time-col) var(--tl-rail-col) minmax(0, 1fr) auto;
+  gap: var(--tl-col-gap);
+  align-items: start;
+  padding: 0.4rem var(--tl-pad-x);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.note-leg--selected {
+  background: oklch(var(--p) / 0.12);
+}
+
+.note-leg__edit {
+  padding: 0.2rem;
+  border-radius: 4px;
+  color: var(--tl-text-2);
+}
+
+.note-leg__edit:hover,
+.note-leg__edit:focus-visible {
+  background: oklch(var(--bc) / 0.1);
+  color: oklch(var(--bc));
+}
+
+.note-leg:hover,
+.note-leg:focus-visible {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.note-leg__time {
+  text-align: right;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+  padding-top: 0.15rem;
+}
+
+.note-leg__rail-col {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.1rem;
+}
+
+.note-leg__icon {
+  width: 14px;
+  height: 14px;
+  color: #f59e0b;
+}
+
+.note-leg__body {
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* ── On this day: notes about this date in earlier years ── */
+.on-this-day {
+  margin-top: 0.75rem;
+  padding: 0.75rem var(--tl-pad-x) 0;
+  border-top: 1px solid oklch(var(--bc) / 0.08);
+}
+
+.on-this-day__title {
+  margin-bottom: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tl-text-2);
+}
+
+.on-this-day__list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.on-this-day__note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.6rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.on-this-day__note:hover,
+.on-this-day__note:focus-visible {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.on-this-day__year {
+  font-variant-numeric: tabular-nums;
+  color: var(--tl-text-2);
+}
+
+.on-this-day__body {
+  min-width: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* ── A period of several days ──
+   Every day is a <details>: one line when closed, the selected day when open. */
+.timeline-range-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 0.5rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.timeline-range-head [hidden] {
+  display: none;
+}
+
+.timeline-range-head__meta {
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+details.timeline-day {
+  display: block;
+  min-height: 0;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+details.timeline-day[open] {
+  padding-bottom: 0.5rem;
+}
+
+.timeline-day-header--range {
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.15rem 0.5rem;
+  padding: 0.5rem;
+  border-bottom: none;
+  cursor: pointer;
+  list-style: none;
+}
+
+.timeline-day-header--range::-webkit-details-marker {
+  display: none;
+}
+
+.timeline-day-header--range:hover {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.timeline-day-header--range .timeline-day-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timeline-day-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s;
+}
+
+details.timeline-day[open] .timeline-day-chevron {
+  transform: rotate(180deg);
+}
+
+/* ── A day of a period, read like a diary entry ── */
+.timeline-diary-day {
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.timeline-diary-day details.timeline-day {
+  border-bottom: none;
+}
+
+.timeline-diary-head {
+  justify-content: flex-start;
+  gap: 0.25rem 0.6rem;
+}
+
+/* Where the day went, on its own line under the date. */
+.timeline-diary-head__facts {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.66);
+  overflow-wrap: anywhere;
+}
+
+.timeline-diary-head__number {
+  flex: none;
+  min-width: 2rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-diary-head__weekday,
+.timeline-diary-head__month {
+  display: block;
+  line-height: 1.25;
+}
+
+.timeline-diary-head__weekday {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.timeline-diary-head__month {
+  font-size: 0.7rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+/* The notes of a closed day, set to be read. */
+.timeline-diary-notes {
+  padding-bottom: 0.5rem;
+}
+
+.timeline-diary-notes > *::before {
+  display: none;
+}
+
+.timeline-diary-notes .note-leg__body {
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+details.timeline-day[open] + .timeline-diary-notes {
+  display: none;
+}
+
+/* With a day selected the rest of the period steps back. */
+:has(> .timeline-diary-day details[open])
+  > .timeline-diary-day:not(:has(details[open])) {
+  opacity: 0.55;
+}
+
+/* Notes found by a search. */
+.timeline-note-result {
+  display: block;
+  padding: 0.6rem 0.5rem;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.timeline-note-result:hover {
+  background: oklch(var(--bc) / 0.05);
+}
+
+.timeline-note-result__date {
+  display: block;
+  font-size: 0.7rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.timeline-note-result__body {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* ── The map's period: a button with a calendar behind it, on the map ── */
+.map-period {
+  --map-panel-width: 0px;
+  position: absolute;
+  top: 12px;
+  /* To the right of the button cluster, which sits at the panel's edge. */
+  left: calc(var(--map-panel-width) + 74px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - var(--map-panel-width) - 140px);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.maps-maplibre-container.panel-open ~ .map-period {
+  --map-panel-width: 480px;
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .map-period {
+    --map-panel-width: 420px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .map-period {
+    --map-panel-width: 380px;
+  }
+}
+
+/* On a phone the panel overlays the map, and the arrows give way to the date. */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .map-period {
+    --map-panel-width: 0px;
+  }
+
+  .map-period__step {
+    display: none;
+  }
+}
+
+.map-period__button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(6px);
+  color: oklch(var(--bc));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.map-period__button:hover {
+  background: oklch(var(--b2));
+}
+
+.map-period__button--square {
+  justify-content: center;
+  width: 36px;
+  padding: 0;
+}
+
+.period-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.period-picker > summary {
+  list-style: none;
+}
+
+.period-picker > summary::-webkit-details-marker {
+  display: none;
+}
+
+.period-picker[open] > summary {
+  border-color: oklch(var(--p));
+}
+
+.period-picker__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 0.75rem;
+  background: oklch(var(--b1));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.period-picker__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  font-size: 10px;
+  color: oklch(var(--bc) / 0.55);
+}
+
+.period-picker__times {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: oklch(var(--bc) / 0.6);
+}
+
+/* A time field brings its own vertical padding, which pushes the digits out
+   of a field this small; centre them on the field's height instead. */
+.period-picker__times input {
+  height: 1.75rem;
+  min-height: 1.75rem;
+  padding-block: 0;
+  font-size: 0.8125rem;
+  line-height: 1.75rem;
+  color: oklch(var(--bc));
+}
+
+.period-picker__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Air Datepicker in the app's theme. */
+.period-picker .air-datepicker {
+  --adp-font-family: inherit;
+  --adp-font-size: 0.8125rem;
+  --adp-width: 17rem;
+  --adp-padding: 0;
+  --adp-background-color: transparent;
+  --adp-background-color-hover: oklch(var(--bc) / 0.08);
+  --adp-background-color-active: oklch(var(--bc) / 0.14);
+  --adp-background-color-in-range: transparent;
+  --adp-background-color-in-range-focused: transparent;
+  --adp-background-color-selected-other-month: oklch(var(--p) / 0.6);
+  --adp-background-color-selected-other-month-focused: oklch(var(--p) / 0.6);
+  --adp-color: oklch(var(--bc));
+  --adp-color-secondary: oklch(var(--bc) / 0.55);
+  --adp-color-other-month: oklch(var(--bc) / 0.35);
+  --adp-color-other-month-hover: oklch(var(--bc) / 0.5);
+  --adp-color-current-date: oklch(var(--bc));
+  --adp-color-disabled: oklch(var(--bc) / 0.25);
+  --adp-color-disabled-in-range: oklch(var(--bc) / 0.35);
+  --adp-accent-color: oklch(var(--p));
+  --adp-day-name-color: oklch(var(--bc) / 0.55);
+  --adp-day-name-color-hover: oklch(var(--bc) / 0.55);
+  --adp-nav-arrow-color: oklch(var(--bc) / 0.7);
+  --adp-nav-color-secondary: oklch(var(--bc) / 0.55);
+  --adp-border-color: transparent;
+  --adp-border-color-inner: oklch(var(--bc) / 0.1);
+  --adp-border-color-inline: transparent;
+  --adp-cell-border-radius: 4px;
+  --adp-cell-background-color-hover: oklch(var(--bc) / 0.12);
+  --adp-cell-background-color-selected: oklch(var(--p));
+  --adp-cell-background-color-selected-hover: oklch(var(--p));
+  --adp-cell-background-color-in-range: transparent;
+  --adp-cell-background-color-in-range-hover: oklch(var(--bc) / 0.12);
+  --adp-cell-border-color-in-range: oklch(var(--p));
+  border: none;
+}
+
+/* A day keeps the colour of how much was tracked; the period is drawn as a
+   band over it, so both stay readable. */
+.period-picker .air-datepicker-cell.-day- {
+  position: relative;
+  margin: 1px;
+}
+
+.period-picker .air-datepicker-cell.-day-.-in-range-,
+.period-picker .air-datepicker-cell.-day-.-range-from-,
+.period-picker .air-datepicker-cell.-day-.-range-to- {
+  box-shadow: inset 0 -3px 0 oklch(var(--p));
+}
+
+/* The library paints its own background on hover and inside a range; the
+   heat of the day has to win over it. */
+.period-picker .air-datepicker-cell.-day-.heat-1:not(.-selected-) {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.period-picker .air-datepicker-cell.-day-.heat-2:not(.-selected-) {
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.period-picker .air-datepicker-cell.-day-.heat-3:not(.-selected-) {
+  background: rgba(34, 197, 94, 0.5);
+  color: white;
+}
+
+.period-picker .air-datepicker-cell.-day-.heat-4:not(.-selected-) {
+  background: rgba(34, 197, 94, 0.7);
+  color: white;
+}
+
+.period-picker .air-datepicker-cell.-day-.heat-5:not(.-selected-) {
+  background: rgba(34, 197, 94, 0.88);
+  color: white;
+}
+
+.period-picker .air-datepicker-cell.-day-.-selected- {
+  color: oklch(var(--pc));
+  font-weight: 700;
+}
+
+.period-picker .air-datepicker-cell.-day-.-current- {
+  text-decoration: underline;
+}
+
+/* A day the user wrote about. */
+.period-picker .air-datepicker-cell.-noted-::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.period-picker__noted::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  background: currentcolor;
+  vertical-align: middle;
 }

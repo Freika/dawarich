@@ -83,6 +83,7 @@ module Map
 
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?
+      return diary_month.begin.to_i if diary_month
       return date_param_range.begin.to_i if date_param_range
       return import_window_start if import_window_start
 
@@ -91,6 +92,7 @@ module Map
 
     def end_at
       return safe_timestamp(params[:end_at]) if params[:end_at].present?
+      return diary_month.end.to_i if diary_month
       return date_param_range.end.to_i if date_param_range
       return import_window_end if import_window_end
 
@@ -112,6 +114,23 @@ module Map
           Time.use_zone(tz) do
             date = params[:date] == 'today' ? Date.current : safe_parse_date(params[:date])
             date&.all_day
+          end
+        end
+    end
+
+    # `?month=2026-11` opens that month, `?month=latest` the month of the
+    # latest note (the Diary menu item). A `date=` beside it only picks the
+    # day to select inside the month.
+    def diary_month
+      return @diary_month if defined?(@diary_month)
+
+      @diary_month =
+        if params[:month].present? && params[:start_at].blank?
+          tz = current_user.safe_settings.timezone.presence || 'UTC'
+          Time.use_zone(tz) do
+            day = safe_parse_date("#{params[:month]}-01") if params[:month].match?(/\A\d{4}-\d{2}\z/)
+            day ||= current_user.notes.standalone.maximum(:noted_at)&.in_time_zone&.to_date
+            (day || Date.current).in_time_zone.all_month
           end
         end
     end

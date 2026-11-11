@@ -74,6 +74,7 @@ export default class MapController extends Controller {
     "familyToggle",
     "flightsToggle",
     "tracksToggle",
+    "notesToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -100,6 +101,7 @@ export default class MapController extends Controller {
     "replayScrubber",
     "replayScrubberTrack",
     "replayDensityContainer",
+    "replayDaySegments",
     "replayDayDisplay",
     "replayDayCount",
     "replayTimeDisplay",
@@ -202,6 +204,7 @@ export default class MapController extends Controller {
     this.replayPanel?.destroy()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.notesManager?.destroy()
     this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
@@ -218,6 +221,7 @@ export default class MapController extends Controller {
   async loadMapData(options = {}) {
     this.rangeStatistics?.setUnit(this.settings?.distance_unit || "km")
     this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
+    this.notesManager?.reload()
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
@@ -426,6 +430,7 @@ const FORWARDED_ACTIONS = {
     "filterVisits",
     "startCreateVisit",
   ],
+  notesManager: ["toggleNotes", "startCreateNote"],
   placesManager: [
     "togglePlaces",
     "toggleArchivedPlaces",

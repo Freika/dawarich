@@ -10,7 +10,8 @@ class SharedLink < ApplicationRecord
 
   enum :resource_type, { trip: 0, track: 1, timeline: 2, live: 3 }
 
-  SETTING_KEYS = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes].freeze
+  SETTING_KEYS = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes
+                    show_map_notes].freeze
   DEFAULT_SETTINGS = {
     trip: {
       'show_photos' => false, 'show_stats' => false

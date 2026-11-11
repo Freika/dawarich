@@ -15,6 +15,7 @@ require 'oj'
 # ├── imports.jsonl              # One import record per line
 # ├── exports.jsonl              # One export record per line
 # ├── trips.jsonl                # One trip per line
+# ├── notes.jsonl                # One note per line
 # ├── notifications.jsonl        # One notification per line
 # ├── places.jsonl               # One place per line
 # ├── raw_data_archives.jsonl    # One archive record per line
@@ -62,6 +63,7 @@ class Users::ImportData::V2Handler
     import_digests_from_files
     import_notifications
     import_visits_from_files
+    import_notes
     import_tracks_from_files
     import_points_from_files
     import_raw_data_archives
@@ -180,6 +182,13 @@ class Users::ImportData::V2Handler
     import_jsonl_file('trips.jsonl') do |trips_data|
       trips_created = Users::ImportData::Trips.new(user, trips_data).call.to_i
       import_stats[:trips_created] += trips_created
+    end
+  end
+
+  # After trips, places and visits: a note is re-attached to an imported record.
+  def import_notes
+    import_jsonl_file('notes.jsonl') do |notes_data|
+      import_stats[:notes_created] += Users::ImportData::Notes.new(user, notes_data).call.to_i
     end
   end
 
