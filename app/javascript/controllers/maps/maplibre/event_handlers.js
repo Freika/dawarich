@@ -309,6 +309,10 @@ export class EventHandlers {
     const clickedFeature = e.features[0]
     if (!clickedFeature) return
 
+    // Opening the Timeline below shifts the map before the empty-map click
+    // handler runs for this same event; claim it so that handler keeps the
+    // selection made here.
+    e.preventDefault?.()
     const properties = clickedFeature.properties
     // The on-map highlight and segments are feedback for the click itself,
     // independent of the info surface.

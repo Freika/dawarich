@@ -157,7 +157,7 @@ export const periodDays = {
     if (!this.showRange()) this.applySelectedDayUI(day)
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { startAt, endAt, fitBounds: true },
+        detail: { startAt, endAt, fitBounds: true, timelineLoaded: true },
       }),
     )
   },

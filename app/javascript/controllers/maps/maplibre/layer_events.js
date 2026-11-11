@@ -74,6 +74,8 @@ export const layerEvents = {
     subscribe("mouseleave", "track-points", () => setCursor(""))
     // Map-level click clears the focused track selection.
     subscribe("click", (e) => {
+      // A track's own click handler claimed this event (see handleTrackClick).
+      if (e.defaultPrevented) return
       // Track points are part of a selected track — clicking them should not clear the selection
       const trackPointFeatures = this.map.getLayer("track-points")
         ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })

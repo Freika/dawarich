@@ -45,10 +45,14 @@ export default class extends Controller {
   }
 
   onMapHover(event) {
-    if (event.detail.segmentId !== this.segmentIdValue) return
+    const { segmentId, trackId } = event.detail || {}
+    if (Number(trackId) !== this.trackIdValue) return
+    // Leaving the segments on the map names only the track, so an unhover
+    // clears every row of it; a hover highlights just its own row.
     this.element.classList.toggle(
       "highlighted",
-      event.type === "dawarich:segment-hover",
+      event.type === "dawarich:segment-hover" &&
+        segmentId === this.segmentIdValue,
     )
   }
 

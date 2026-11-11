@@ -67,7 +67,12 @@ export class MapDateRange {
     }
   }
 
-  async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
+  async navigateTimelineDateRange({
+    startAt,
+    endAt,
+    fitBounds = true,
+    timelineLoaded = false,
+  }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -79,14 +84,21 @@ export class MapDateRange {
     const end = toApiDate(endAt)
     if (!start || !end) return
 
-    await this.setDateRange(start, end, { fitBounds })
+    await this.setDateRange(start, end, {
+      fitBounds,
+      refreshTimeline: !timelineLoaded,
+    })
   }
 
   /**
    * The one place the selected range changes: every enabled layer, the
    * Timeline feed and family history reload for it.
    */
-  async setDateRange(startAt, endAt, { fitBounds = true } = {}) {
+  async setDateRange(
+    startAt,
+    endAt,
+    { fitBounds = true, refreshTimeline = true } = {},
+  ) {
     const controller = this.controller
     controller.startDateValue = startAt
     controller.endDateValue = endAt
@@ -97,7 +109,9 @@ export class MapDateRange {
     if (anomaliesVisible(SettingsManager.getSettings())) {
       controller.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
-    controller.refreshTimelineFeedIfActive()
+    // The Timeline loads its own list when it starts the navigation; a second
+    // load would replace that list, and an entry opened in it, a moment later.
+    if (refreshTimeline) controller.refreshTimelineFeedIfActive()
     controller.familyManager.debouncedLoadHistory()
   }
 

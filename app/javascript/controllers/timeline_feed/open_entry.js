@@ -36,7 +36,7 @@ export const openEntry = {
     // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
     if (date && this.selectInRange(date, { keepCamera: true })) {
-      this._tryExpandPendingTrack()
+      this._expandPendingTrackSoon()
       return
     }
 
@@ -44,8 +44,19 @@ export const openEntry = {
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date, { fitBounds: false })
     } else {
-      this._tryExpandPendingTrack()
+      this._expandPendingTrackSoon()
     }
+  },
+
+  // The click that opens the Timeline tab also starts reloading its list, and
+  // Turbo marks the frame busy only after this handler returns. One frame
+  // later the reload is visible, so the track waits for the new list instead
+  // of opening in the one being replaced.
+  _expandPendingTrackSoon() {
+    const expand = () => this._tryExpandPendingTrack()
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(expand)
+    else expand()
   },
 
   // ---------- URL hydration ----------
@@ -149,6 +160,10 @@ export const openEntry = {
   // collapses via `toggleTrackInfo`, but programmatic expansion only opens
   // a closed entry, never collapses an open one.
   _tryExpandPendingTrack() {
+    // A reload is still on its way and will replace this list; keep the track
+    // pending until the last one lands (Turbo clears busy before it renders).
+    if (this.visitListFrameTarget?.hasAttribute?.("busy")) return
+
     let toggle = null
 
     if (this.pendingTrackId) {

@@ -197,7 +197,15 @@ export default class TimelineFeedController extends Controller {
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { date, startAt: startAtLocal, endAt: endAtLocal, fitBounds },
+        // timelineLoaded: the list for this day is already on its way, so the
+        // map must not reload it once more (see MapDateRange#setDateRange).
+        detail: {
+          date,
+          startAt: startAtLocal,
+          endAt: endAtLocal,
+          fitBounds,
+          timelineLoaded: true,
+        },
       }),
     )
   }

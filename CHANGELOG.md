@@ -64,6 +64,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 
 ### Fixed
 
+- Clicking a track on the map keeps its mode colours and markers, and its Timeline entry stays open, instead of both resetting as the Timeline opens. Moving the pointer off the track also clears the highlighted segment row.
 - Hovering over a notification no longer marks it as read.
 - A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.
 - Opening a location request that no longer exists takes you to the family page instead of an error page.
