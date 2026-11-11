@@ -88,7 +88,13 @@ module Families
     end
 
     def validate_family_capacity
-      return true unless invitation.family.full?
+      return true if DawarichSettings.self_hosted?
+
+      # This invitation already reserved a seat. Convert that reservation into
+      # membership rather than counting it twice when accepting the fifth seat.
+      family = invitation.family
+      reserved = family.family_invitations.active.where.not(id: invitation.id).count
+      return true if family.members.count + reserved < Family::MAX_MEMBERS
 
       @error_message = I18n.t(
         'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'

@@ -477,6 +477,12 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
+        resource :manage, only: %i[show create update destroy], controller: 'manage'
+        resources :invitations, param: :token, only: %i[index show create destroy] do
+          post :accept, on: :member
+        end
+        resources :members, only: :destroy
+        delete 'membership', to: 'members#leave'
         resource :mine, only: [:show], controller: 'mine'
         resource :sharing, only: [:update], controller: 'sharing'
         resources :locations, only: [:index] do
