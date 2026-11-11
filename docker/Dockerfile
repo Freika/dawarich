@@ -115,11 +115,13 @@ RUN cp -r public $APP_PATH/public_dist
 FROM base AS runtime
 
 # wget is kept for the compose healthcheck; psql/createdb for the entrypoints;
-# gosu for the PUID/PGID privilege drop.
+# gosu for the PUID/PGID privilege drop; procps for `pgrep -f sidekiq`, the
+# usual healthcheck of a separate Sidekiq container.
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
+    procps \
     postgresql-client \
     libpq5 \
     libxml2 \
