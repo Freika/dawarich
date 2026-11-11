@@ -64,4 +64,6 @@ ru:
       not_locked: "не был заблокирован"
       not_saved:
         one: "1 ошибка не позволила сохранить %{resource}:"
-        other: "%{count} ошибок не позволили сохранить %{resource}:"
+        few: "%{count} ошибки не позволили сохранить %{resource}:"
+        many: "%{count} ошибок не позволили сохранить %{resource}:"
+        other: "%{count} ошибки не позволили сохранить %{resource}:"
