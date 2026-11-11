@@ -14,10 +14,9 @@ module Families
       message: ->(*) { I18n.t('services.families.create.family_name_must_be_50_characters_or_less') }
     }
 
-    def initialize(user:, name:, notify: true)
+    def initialize(user:, name:)
       @user = user
       @name = name&.strip
-      @notify = notify
       @error_message = nil
     end
 
@@ -29,7 +28,6 @@ module Families
       ActiveRecord::Base.transaction do
         create_family
         create_owner_membership
-        send_notification
       end
 
       true
@@ -82,22 +80,6 @@ module Families
         user: user,
         role: :owner
       )
-    end
-
-    def send_notification
-      return unless @notify
-
-      I18n.with_locale(user.locale) do
-        Notification.create!(
-          user: user,
-          kind: :info,
-          title: I18n.t('services.families.create.family_created'),
-          content: I18n.t('services.families.create.you_ve_successfully_created_the_family_name', name: family.name)
-        )
-      end
-    rescue StandardError => e
-      # Don't fail the entire operation if notification fails
-      ExceptionReporter.call(e, "Unexpected error in Families::Create: #{e.message}")
     end
 
     def handle_record_invalid_error(error)

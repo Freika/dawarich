@@ -1339,15 +1339,18 @@ pl:
       and: oraz
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: kontenerów Dockera. Dziękujemy!
+      contact_support_html: "Jeśli to się powtórzy, napisz do nas na %{email}."
     index:
       notifications: Powiadomienia
       mark_all_as_read: Oznacz wszystkie jako przeczytane
       delete_all: Usuń wszystkie
       are_you_sure_you_want_to_delete_all_notifications: Na pewno chcesz usunąć wszystkie powiadomienia?
+      read_are_deleted: "Przeczytane powiadomienia są usuwane po %{days} dniach."
     show:
       back_to_notifications: Powrót do powiadomień
       destroy_this_notification: Usuń to powiadomienie
       are_you_sure: Czy na pewno chcesz kontynuować?
+      open: Otwórz
   places:
     management:
       create: "Utwórz miejsce"
@@ -3749,7 +3752,7 @@ pl:
         export_finished: Eksport zakończony
         export_name_successfully_finished: Eksport "%{name}" zakończył się pomyślnie.
         export_failed: Eksport nie powiódł się
-        export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "Eksport \"%{name}\" nie powiódł się: %{message}"
         unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
     families:
       auto_create:
@@ -3774,8 +3777,6 @@ pl:
         you_must_leave_your_current_family_before_creating_a_new: Musisz opuścić obecną rodzinę przed utworzeniem nowej
         you_have_already_created_a_family_each_user_can_only: Utworzyłeś już rodzinę. Każdy użytkownik może utworzyć tylko jedną rodzinę
         family_feature_requires_an_active_subscription: Funkcja rodziny wymaga aktywnej subskrypcji
-        family_created: Rodzina utworzona
-        you_ve_successfully_created_the_family_name: Pomyślnie utworzyłeś rodzinę '%{name}'
         a_family_with_this_name_already_exists_for_your_account: Rodzina o tej nazwie już istnieje dla Twojego konta
         an_unexpected_error_occurred_while_creating_the_family_please_try: Wystąpił nieoczekiwany błąd podczas tworzenia rodziny. Spróbuj ponownie
         failed_to_create_family: 'Nie udało się utworzyć rodziny: %{message}'
@@ -3798,7 +3799,6 @@ pl:
         user_already_in_family: Użytkownik już należy do rodziny
         invitation_already_sent: Zaproszenie zostało już wysłane na ten adres e-mail
         sent_self_hosted: Zaproszenie do rodziny wysłano do %{email}, jeśli SMTP jest poprawnie skonfigurowane. Jeśli nie używasz SMTP, skopiuj link zaproszenia ze strony rodziny i udostępnij go ręcznie.
-        sent: Zaproszenie do rodziny wysłano do %{email}
         failed_to_create: 'Nie udało się utworzyć zaproszenia: %{message}'
       memberships:
         destroy:
@@ -3807,14 +3807,10 @@ pl:
           only_family_owners_can_remove_other_members: Tylko właściciele rodziny mogą usuwać innych członków.
           cannot_remove_members_from_a_different_family: Nie można usuwać członków z innej rodziny.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Nie można usunąć właściciela rodziny. Właściciel musi usunąć rodzinę albo odejść samodzielnie.
-          left_family: Opuścili rodzinę
-          you_ve_left_the_family_family_name: Opuściłeś rodzinę "%{family_name}"
           family_member_left: Członek rodziny odszedł
           email_has_left_the_family_family_name: '%{email} opuścił rodzinę "%{family_name}"'
           removed_from_family: Usunięto z rodziny
           you_have_been_removed_from_the_family_family_name_by: Zostałeś usunięty z rodziny "%{family_name}" przez %{email}
-          member_removed: Członek usunięty
-          email_has_been_removed_from_the_family_family_name: '%{email} został usunięty z rodziny "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Wystąpił nieoczekiwany błąd podczas usuwania członkostwa. Spróbuj ponownie
           failed_to_leave: 'Nie udało się opuścić rodziny: %{message}'
       respond_to_location_request:
@@ -3896,7 +3892,6 @@ pl:
           one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
           other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
-        import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: Import "%{name}" zakończył się i wszystkie punkty zostały zapisane, ale etap %{step} nie powiódł się. Statystyki, trasy lub sugestie wizyt mogą być niepełne albo nieaktualne. Możesz uruchomić przeliczenie w Ustawieniach.
         your_file_name_contained_raw_points_points_all_of_which: Plik %{name} zawierał %{raw_points} punktów, które już istnieją na Twojej osi czasu pod tymi samymi współrzędnymi i znacznikami czasu. Nic nie zostało zaimportowane. Jeśli to nieoczekiwane, usuń istniejące punkty dla tego zakresu dat i zaimportuj ponownie.
@@ -3973,7 +3968,6 @@ pl:
     stats:
       calculate_month:
         stats_update_failed: Aktualizacja statystyk nie powiodła się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: Nie można usunąć użytkownika, który jest właścicielem rodziny z innymi członkami
@@ -4077,18 +4071,15 @@ pl:
     stats:
       calculating_job:
         stats_update_failed: Aktualizacja statystyk nie powiodła się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Obliczanie podsumowania miesięcznego nie powiodło się
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Podsumowanie roczne
             period_label_calculation_failed: Obliczanie %{period_label} nie powiodło się
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
       import_data_job:
         data_import_failed: Import danych nie powiódł się
         your_data_import_failed_with_error_message_please_check_the: 'Import danych nie powiódł się z błędem: %{message}. Sprawdź format archiwum i spróbuj ponownie.'
@@ -4103,7 +4094,6 @@ pl:
           other: "%{count} lat"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Statystyki, trasy i podsumowania zostały przeliczone dla %{year_label}.
         data_recalculation_failed: Przeliczanie danych nie powiodło się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Ponowne wykrywanie wizyt zajęte

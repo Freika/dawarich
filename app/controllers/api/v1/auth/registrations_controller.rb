@@ -62,7 +62,7 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
   def accept_family_invitation(user)
     return false unless joining_family?
 
-    Families::AcceptInvitation.new(invitation: invitation, user: user).call
+    Families::AcceptInvitation.new(invitation: invitation, user: user, welcome_notification: true).call
   end
 
   def require_payment_from(user)

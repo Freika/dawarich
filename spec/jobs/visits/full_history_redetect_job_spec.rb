@@ -186,5 +186,13 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       expect { described_class.new.perform(empty_user.id) }.not_to raise_error
       expect(empty_user.notifications.where(kind: :info)).to exist
     end
+
+    it 'leads to the visit settings, where re-detection is started' do
+      empty_user = create(:user).tap { |u| u.update_columns(visits_redetected_at: nil) }
+
+      described_class.new.perform(empty_user.id)
+
+      expect(empty_user.notifications.last.action_path).to eq('/settings/visits')
+    end
   end
 end

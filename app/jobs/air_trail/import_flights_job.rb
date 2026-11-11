@@ -26,7 +26,8 @@ module AirTrail
             'jobs.air_trail.import_flights_job.your_airtrail_flight_sync_failed_with_error_message_check_your',
             message: error.message
           ),
-          kind: :error
+          kind: :error,
+          action_path: Notifications.paths.settings_integrations_path
         ).call
       end
     end

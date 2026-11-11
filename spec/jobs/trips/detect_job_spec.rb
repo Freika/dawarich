@@ -35,6 +35,7 @@ RSpec.describe Trips::DetectJob do
     trip = user.trips.origin_detected.last
     expect(user.notifications.last).to have_attributes(kind: 'info', content: include(trip_path(trip)))
     expect(user.notifications.last.title).to include(trip.name)
+    expect(user.notifications.last.action_path).to eq('/trips?origin=detected')
   end
 
   it 'sends one summary for several new trips' do
@@ -47,7 +48,8 @@ RSpec.describe Trips::DetectJob do
     expect(user.notifications.last).to have_attributes(
       kind: 'info',
       title: I18n.t('trip_detection.notifications.many.title', count: 2),
-      content: include(trips_path(origin: 'detected'))
+      content: include(trips_path(origin: 'detected')),
+      action_path: '/trips?origin=detected'
     )
   end
 

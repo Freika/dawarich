@@ -58,7 +58,11 @@ class Trips::DetectJob < ApplicationJob
     return if trips.empty?
 
     I18n.with_locale(user.locale) do
-      Notifications::Create.new(user:, kind: :info, **message(trips)).call
+      # The list, not the trip: a detected trip can be deleted, the list cannot.
+      Notifications::Create.new(
+        user:, kind: :info, **message(trips),
+        action_path: Rails.application.routes.url_helpers.trips_path(origin: 'detected')
+      ).call
     end
   end
 

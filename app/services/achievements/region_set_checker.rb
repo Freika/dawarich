@@ -242,7 +242,8 @@ module Achievements
             achievement: achievement_name(definition),
             count: [(definition.region_codes & earned.keys).size, definition.target].min,
             total: definition.target
-          )
+          ),
+          action_path: ::Notifications.paths.achievements_path
         ).call
       end
     end
@@ -251,7 +252,8 @@ module Achievements
       ::Notifications::Create.new(
         user: user, kind: :info,
         title: I18n.t('achievements.notifications.digest_title', count: newly_earned.size),
-        content: I18n.t('achievements.notifications.digest_content')
+        content: I18n.t('achievements.notifications.digest_content'),
+        action_path: ::Notifications.paths.achievements_path
       ).call
     end
 
@@ -263,7 +265,8 @@ module Achievements
       ::Notifications::Create.new(
         user: user, kind: :info,
         title: I18n.t('achievements.notifications.completion_title', achievement: achievement_name(definition)),
-        content: completion_content(definition)
+        content: completion_content(definition),
+        action_path: ::Notifications.paths.achievements_path
       ).call
     end
 
