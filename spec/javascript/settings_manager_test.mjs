@@ -279,7 +279,6 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const isGatedPlan = globalThis.__settingsManagerIsGatedPlan ?? (() => false)
     const LAYER_NAME_MAP = ${JSON.stringify(LAYER_NAME_MAP ?? {})}
     const SettingsManager = globalThis.__settingsManagerTestDouble
-    const TransportationSettings = class { syncTransportationSettings() {} }
     const applyGlobeProjection = () => {}
     const globeEnabled = () => false
     const getMapStyle = globalThis.__settingsManagerGetMapStyle

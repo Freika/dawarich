@@ -230,9 +230,7 @@
 
       <!-- Settings Tab -->
       <div class="tab-content" data-tab-content="settings" data-map-panel-target="tabContent">
-        <form data-controller="map-settings-dirty"
-              data-action="submit->maps--maplibre#updateAdvancedSettings input->map-settings-dirty#check change->map-settings-dirty#check"
-              class="space-y-4">
+        <div class="space-y-4">
           <details open class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
@@ -515,179 +513,15 @@
             </div>
           </details>
 
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
-            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
-              <span class="flex items-center gap-2">
-                <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
-                <%= t('.track_generation') %>
-                <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
-              </span>
-            </summary>
-            <div class="collapse-content space-y-4">
-              <div class="form-control w-full">
-                <label class="label" for="meters-between-routes">
-                  <span class="label-text font-medium"><%= t('.track_split_distance') %></span>
-                </label>
-                <label class="input input-bordered flex items-center gap-2">
-                  <input type="number"
-                         id="meters-between-routes"
-                         name="metersBetweenRoutes"
-                         min="1"
-                         step="1"
-                         value="500"
-                         required
-                         class="grow" />
-                  <span class="text-base-content/60"><%= t('.track_split_distance_unit') %></span>
-                </label>
-                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_distance_hint') %></p>
-              </div>
-
-              <div class="form-control w-full">
-                <label class="label" for="minutes-between-routes">
-                  <span class="label-text font-medium"><%= t('.track_split_time') %></span>
-                </label>
-                <label class="input input-bordered flex items-center gap-2">
-                  <input type="number"
-                         id="minutes-between-routes"
-                         name="minutesBetweenRoutes"
-                         min="1"
-                         max="1440"
-                         step="1"
-                         value="30"
-                         required
-                         class="grow" />
-                  <span class="text-base-content/60"><%= t('.track_split_time_unit') %></span>
-                </label>
-                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_time_hint') %></p>
-              </div>
-
-              <div class="form-control">
-                <label class="label cursor-pointer justify-start gap-3">
-                  <input type="checkbox"
-                         name="splitTracksAtMidnight"
-                         class="toggle toggle-primary" />
-                  <span class="label-text font-medium"><%= t('.split_tracks_at_midnight') %></span>
-                </label>
-                <p class="text-xs text-base-content/60 mt-1"><%= t('.split_tracks_at_midnight_hint') %></p>
-              </div>
-
-              <button type="button"
-                      class="btn btn-sm btn-outline btn-block"
-                      data-action="click->maps--maplibre#recalculateUserData">
-                <%= icon 'refresh-ccw' %>
-                <%= t('.recalculate_tracks_stats') %>
-              </button>
-              <p class="text-xs text-base-content/60"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
-            </div>
-          </details>
-
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
               <%= icon 'cloud-fog', class: 'h-4 w-4 opacity-70 shrink-0' %>
               <%= t('.fog_of_war') %>
-              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
             <div class="collapse-content space-y-4">
               <p class="text-sm"><%= t('achievements.collections.fog_rules') %></p>
-            </div>
-          </details>
-
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
-            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
-              <span class="flex items-center gap-2">
-              <%= icon 'satellite', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              <%= t('.gps_noise_filtering') %>
-              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
-              </span>
-            </summary>
-            <div class="collapse-content space-y-4">
-          <!-- GPS Noise Filtering -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="gpsFilteringEnabled"
-                     class="toggle toggle-primary"
-                     data-maps--maplibre-target="gpsFilteringToggle" />
-              <span class="label-text font-medium"><%= t('.gps_noise_filtering') %></span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_readings_that_cannot_be_a_real_position_impossible_jumps') %></p>
-          </div>
-
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="gpsAccuracyFilterEnabled"
-                     class="toggle toggle-primary" />
-              <span class="label-text font-medium"><%= t('.hide_inaccurate_points') %></span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1"><%= t('.hide_inaccurate_points_hint') %></p>
-          </div>
-
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.accuracy_threshold') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="gpsAccuracyThresholdValue">100m</span>
-            </label>
-            <input type="range"
-                   name="gpsAccuracyThreshold"
-                   min="50"
-                   max="1000"
-                   step="10"
-                   value="100"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateGpsAccuracyThresholdDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>50m</span>
-              <span>500m</span>
-              <span>1000m</span>
-            </div>
-          </div>
-
-          <button type="button"
-                  class="btn btn-sm btn-outline btn-block"
-                  data-action="click->maps--maplibre#reapplyAnomalyFilter">
-            <%= icon 'rotate-ccw' %>
-            <%= t('.re_evaluate_past_data') %>
-          </button>
-          <p class="text-xs text-base-content/60 mt-1"><%= t('.clears_existing_anomaly_flags_and_re_runs_the_filter_on') %></p>
-
-            </div>
-          </details>
-
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
-            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
-              <span class="flex items-center gap-2">
-              <%= icon 'chart-column', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              <%= t('.city_statistics') %>
-              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
-              </span>
-            </summary>
-            <div class="collapse-content space-y-4">
-          <!-- City Statistics Settings -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.min_minutes_in_city') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="minMinutesInCityValue"><%= t('.min_5') %></span>
-            </label>
-            <input type="range"
-                   name="minMinutesSpentInCity"
-                   min="5"
-                   max="120"
-                   step="5"
-                   value="60"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateMinMinutesInCityDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span><%= t('.min_6') %></span>
-              <span><%= t('.min') %></span>
-              <span><%= t('.min_7') %></span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1"><%= t('.how_long_you_must_stay_for_a_city_to_count') %></p>
-          </div>
-
-
             </div>
           </details>
 
@@ -713,12 +547,6 @@
             </div>
           </details>
 
-          <!-- Update Button -->
-          <button type="submit" class="btn btn-sm btn-primary btn-block">
-            <%= icon 'save' %>
-            <%= t('.apply_settings') %>
-          </button>
-
           <!-- Reset Settings -->
           <button type="button"
                   class="btn btn-sm btn-outline btn-block"
@@ -727,99 +555,11 @@
             <%= t('.reset_to_defaults_2') %>
           </button>
 
-          <div class="divider"></div>
-
-          <!-- Transportation Mode Detection Thresholds -->
-          <details class="collapse collapse-arrow bg-base-200 rounded-lg"
-                   data-map-settings-dirty-target="section"
-                   data-dirty-scope="transportation">
-            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
-              <span class="flex items-center gap-2">
-              <%= icon 'car', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              <%= t('.transportation_mode_detection') %>
-              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
-              </span>
-            </summary>
-            <div class="collapse-content">
-              <!-- Recalculation Status Alert -->
-              <div role="alert"
-                   class="text-xs text-warning bg-warning/10 rounded p-2 mb-4 hidden"
-                   data-maps--maplibre-target="transportationRecalculationAlert">
-                <span class="loading loading-spinner loading-xs"></span>
-                <span><%= t('.checking_status') %></span>
-              </div>
-
-              <!-- Locked Message -->
-              <div role="alert"
-                   class="text-xs text-info bg-info/10 rounded p-2 mb-4 hidden"
-                   data-maps--maplibre-target="transportationLockedMessage">
-                <span><%= t('.settings_are_locked_while_recalculation_is_in_progress') %></span>
-              </div>
-
-              <!-- Warning about recalculation -->
-              <div class="text-xs text-warning bg-warning/10 rounded p-2 mb-4">
-                <strong><%= t('.note') %></strong> <%= t('.changing_these_thresholds_will_trigger_a_recalculation_of_transportation') %>
-              </div>
-
-              <fieldset class="form-control mb-4" data-testid="enabled-modes-fieldset">
-                <legend class="font-medium mb-1 text-sm"><%= t('.detected_modes') %></legend>
-                <p class="text-xs text-base-content/60 mb-2">
-                  <%= t('.disabled_modes_won_t_be_detected_existing_tracks_aren_t') %>
-                </p>
-                <div class="grid grid-cols-2 gap-1">
-                  <% Track::TRANSPORTATION_MODES.keys.map(&:to_s).each do |mode| %>
-                    <label class="cursor-pointer label justify-start gap-2 py-0.5">
-                      <input type="checkbox"
-                             name="enabledTransportationModes[]"
-                             value="<%= mode %>"
-                             class="checkbox checkbox-sm"
-                             <%= 'checked' if current_user.safe_settings.enabled_transportation_modes.include?(mode) %>
-                             data-maps--maplibre-target="enabledModeCheckbox"
-                             data-action="change->maps--maplibre#markTransportationSettingsDirty"
-                             data-testid="enabled-mode-<%= mode %>" />
-                      <span class="text-sm">
-                        <%= mode_emoji(mode) %> <%= t("transportation_modes.#{mode}") %>
-                      </span>
-                    </label>
-                  <% end %>
-                </div>
-              </fieldset>
-
-              <!-- Apply Button -->
-              <div class="mt-4 pt-4 border-t border-base-300">
-                <button type="button"
-                        class="btn btn-primary btn-sm w-full"
-                        data-maps--maplibre-target="transportationApplyButton"
-                        data-action="click->maps--maplibre#applyTransportationSettings"
-                        disabled>
-                  <%= t('.apply_settings') %>
-                </button>
-                <p class="text-xs text-base-content/60 mt-2 text-center"
-                   data-maps--maplibre-target="transportationDirtyMessage">
-                  <%= t('.make_changes_to_enable_the_apply_button') %>
-                </p>
-              </div>
-
-              <div class="mt-4 pt-4 border-t border-base-300">
-                <%# button_to renders a nested <form>. The HTML5 parser implicitly closes
-                    the outer <form data-action="submit->maps--maplibre#updateAdvancedSettings">
-                    here, so any controls placed inside this <details> or after this
-                    block are orphaned from outer-form submission. Keep the outer
-                    submit button BEFORE the Transportation Mode <details>. %>
-                <%= button_to t('.re_classify_my_history'),
-                              tracks_recalculation_path,
-                              method: :post,
-                              disabled: Tracks::TransportationRecalculationStatus.new(current_user.id).in_progress?,
-                              class: 'btn btn-secondary btn-sm w-full',
-                              form: { data: { turbo_frame: '_top' } },
-                              data: { testid: 'reclassify-history-button' } %>
-                <p class="text-xs text-base-content/60 mt-1">
-                  <%= t('.re_runs_auto_classification_across_all_your_tracks_manually_corrected') %>
-                </p>
-              </div>
-            </div>
-          </details>
-        </form>
+          <%= link_to settings_data_processing_path, class: 'flex items-center justify-between gap-2 rounded-lg bg-base-200 px-4 py-3 text-sm hover:bg-base-300', data: { turbo_frame: '_top', testid: 'data-processing-link' } do %>
+            <span class="min-w-0"><%= t('.data_processing_link') %></span>
+            <%= icon 'arrow-right', class: 'h-4 w-4 shrink-0 opacity-70' %>
+          <% end %>
+        </div>
       </div>
 
       <!-- Timeline Feed Tab -->

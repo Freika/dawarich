@@ -38,7 +38,6 @@ function formHarness(settings, controllerExtras = {}) {
       syncStyleDependentToggles() {},
     },
     getDistanceUnit: () => "mi",
-    transportation: { syncTransportationSettings() {} },
   }
   syncSettingsForm(manager)
   return { field, events, visitsSearch, controller }
@@ -47,21 +46,15 @@ function formHarness(settings, controllerExtras = {}) {
 test("settings inputs and panels follow the loaded settings", () => {
   const { field, events, visitsSearch, controller } = formHarness({
     visitsEnabled: true,
-    splitTracksAtMidnight: true,
-    gpsAccuracyThreshold: 30,
     vectorTilesUrl: "https://tiles.example/{z}/{x}/{y}.mvt",
     mapStyle: "dark",
   })
 
   assert.equal(controller.visitsToggleTarget.checked, true)
   assert.equal(visitsSearch.style.display, "block")
-  assert.equal(field('input[name="splitTracksAtMidnight"]').checked, true)
-  assert.equal(field('input[name="gpsFilteringEnabled"]').checked, true)
-  assert.equal(field('input[name="gpsAccuracyThreshold"]').value, 30)
-  assert.equal(field('input[name="minMinutesSpentInCity"]').value, 60)
   assert.equal(field('input[name="distanceUnit"][value="mi"]').checked, true)
   assert.equal(field('select[name="mapStyle"]').value, "dark")
-  assert.deepEqual(events, ["map-style:synced", "map-settings:synced"])
+  assert.deepEqual(events, ["map-style:synced"])
 })
 
 test("a Lite plan keeps gated layer toggles off", () => {

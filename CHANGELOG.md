@@ -51,6 +51,9 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Error notifications no longer include a stack trace. It is written to the application log instead, and reported to us on Dawarich Cloud.
 - On Dawarich Cloud, error notifications point to hi@dawarich.app instead of asking you to attach Docker container logs to a GitHub issue.
 - Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
+- Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page.
+- Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
+- A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
 
 ### Fixed
 

@@ -927,6 +927,18 @@ zh:
       shared_on_dawarich: 在 Dawarich 上共享
       dawarich_logo: Dawarich 徽标
   map:
+    keyboard_shortcuts:
+      title: "键盘快捷键"
+      open_timeline: "打开时间线"
+      open_layers: "打开图层"
+      search_places: "搜索地点"
+      open_family: "打开家庭"
+      open_tools: "打开工具"
+      open_settings: "打开地图设置"
+      toggle_replay: "开始或停止回放"
+      previous_next_day: "时间线打开时，切换到前一天或后一天"
+      show_shortcuts: "显示此列表"
+      close: "关闭"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "不知道您的应用把导出功能放在哪里？"
       step_by_step_export_guides: "分步导出指南"
@@ -983,6 +995,7 @@ zh:
         links: 链接
         video_studio: 视频工作室
       settings_panel:
+        data_processing_link: "路线、GPS 噪声、城市和交通方式的设置已移至“设置 → 数据处理”"
         speed_colored_tracks: 按速度为轨迹着色
         edit_speed_colors: 编辑速度颜色
         close_panel: 关闭面板
@@ -1065,7 +1078,6 @@ zh:
         points_of_interest: 兴趣点
         choose_which_poi_categories_appear_on_the_map: 选择地图上显示的 POI 类别。
         distance_threshold_for_route_splitting: 路线拆分距离阈值
-        min: 60 分钟
         min_2: 1 分钟
         min_3: 90 分钟
         min_4: 180 分钟
@@ -1096,9 +1108,6 @@ zh:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: 请先保存这些阈值。新轨迹会自动使用它们；若要应用到已有历史记录，请选择“重新计算轨迹和统计数据”。
         city_statistics: 城市统计数据
         min_minutes_in_city: 城市最短停留分钟数
-        min_5: 60 分钟
-        min_6: 5 分钟
-        min_7: 120 分钟
         how_long_you_must_stay_for_a_city_to_count: 您必须在某个城市停留多长时间才能计入统计数据
         max_gap_between_points: 轨迹点之间的最大间隔
         min_8: 120 分钟
@@ -1112,7 +1121,6 @@ zh:
         apply_settings: 应用设置
         reset_to_defaults_2: 重置为默认值
         transportation_mode_detection: 交通方式检测
-        checking_status: 正在检查状态...
         settings_are_locked_while_recalculation_is_in_progress: 重新计算进行期间，设置会被锁定。
         note: 注意：
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: 更改这些阈值将触发对所有轨迹的交通方式重新计算，可能需要一些时间，具体取决于轨迹数量。
@@ -1143,7 +1151,6 @@ zh:
         sec_2: 180 秒
         min_flight_distance: 最短飞行距离
         km: 100 公里
-        make_changes_to_enable_the_apply_button: 请先进行更改，以启用“应用”按钮
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: 将重新对所有轨迹运行自动分类。手动更正过的分段会保留。可能需要几分钟。
         loading_calendar: 正在加载日历…
         less: 更少
@@ -1533,6 +1540,13 @@ zh:
       residential_roads: 住宅道路
       track: 轨迹
   settings:
+    data_processing:
+      show:
+        title: "数据处理"
+        intro: "Dawarich 如何把轨迹点连成路线、哪些读数算作 GPS 噪声，以及停留多久才计入一座城市。这里的更改可能会重新计算已有数据；地图颜色和图层仍在地图自己的设置中。"
+        existing_data: "应用到已有数据"
+        existing_data_hint: "上面的更改只作用于新的轨迹点。如需应用到历史数据，请重新计算。两者都在后台运行，数据量大的账户可能需要一段时间。"
+        rebuilds_need_pro: "重新计算历史数据是 Dawarich Pro 的功能。"
     geofencing_paused_while_archived: 归档期间暂停
     trek_sources:
       select_trips:
@@ -1556,6 +1570,7 @@ zh:
       destroy:
         source_removed_trips_kept: "TREK 已断开连接。你受管理的旅程已保留，将不再同步。"
     navigation:
+      data_processing: "数据处理"
       general: 常规
       integrations: 集成
       map: 地图
@@ -1988,6 +2003,8 @@ zh:
         no_thanks: 不用了
         yes_notify_me: 是，请通知我
       help_links:
+        documentation: "文档"
+        keyboard_shortcuts: "键盘快捷键"
         need_help_ping_us: 需要帮助吗？联系我们！
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -4133,13 +4150,9 @@ zh:
       failed_to_load_flights: 无法加载航班
       failed_to_load_anomalies: 无法加载异常轨迹点
       cannot_update_recalculation_is_already_in_progress: 无法更新：重新计算已在进行中
-      transportation_settings_saved: 已保存交通设置
       globe_view_will_be_applied_after_page_reload: 重新加载页面后将应用地球视图
-      settings_updated_successfully: 设置已成功更新
       reloading_map_data_with_new_settings: 正在使用新设置重新加载地图数据...
       api_key_not_available_please_reload_the_page: API 密钥不可用；请重新加载页面。
-      could_not_queue_re_evaluation_please_try_again: 无法将重新评估加入队列。请重试。
-      could_not_queue_recalculation_please_try_again: 无法将重新计算加入队列。请重试。
       click_on_the_map_to_place_a_visit_esc_to: 点击地图以添加到访记录（Esc 取消）
       visit_creation_modal_not_available: 到访记录创建模式不可用
       visit_creation_controller_not_available: 到访记录创建控制器不可用
@@ -4901,6 +4914,7 @@ zh:
         show_description: 描述
         show_photos: 照片
     import:
+      failed_reason_in_list: "导入未能完成。打开它查看参考编号和后续操作。"
       technical_details: 技术详情
       failed: 导入失败
       format_error: 无法读取文件格式。请检查文件是否有效并使用受支持的格式。

@@ -928,6 +928,18 @@ pl:
       shared_on_dawarich: Udostępniono w Dawarich
       dawarich_logo: Logo Dawarich
   map:
+    keyboard_shortcuts:
+      title: "Skróty klawiszowe"
+      open_timeline: "Otwórz Oś czasu"
+      open_layers: "Otwórz Warstwy"
+      search_places: "Szukaj miejsc"
+      open_family: "Otwórz Rodzinę"
+      open_tools: "Otwórz Narzędzia"
+      open_settings: "Otwórz ustawienia mapy"
+      toggle_replay: "Uruchom lub zatrzymaj odtwarzanie"
+      previous_next_day: "Poprzedni lub następny dzień, gdy Oś czasu jest otwarta"
+      show_shortcuts: "Pokaż tę listę"
+      close: "Zamknij"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "Nie wiesz, gdzie Twoja aplikacja ukrywa eksport?"
       step_by_step_export_guides: "Instrukcje eksportu krok po kroku"
@@ -984,6 +996,7 @@ pl:
         settings_s: Ustawienia (S)
         links: Linki
       settings_panel:
+        data_processing_link: "Ustawienia tras, szumu GPS, miast i środków transportu są w Ustawieniach → Przetwarzanie danych"
         speed_colored_tracks: Koloruj ślady według prędkości
         edit_speed_colors: Edytuj kolory prędkości
         close_panel: Zamknij panel
@@ -1067,7 +1080,6 @@ pl:
         points_of_interest: Punkty zainteresowania
         choose_which_poi_categories_appear_on_the_map: Wybierz kategorie POI widoczne na mapie.
         distance_threshold_for_route_splitting: Próg odległości do dzielenia tras
-        min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
@@ -1098,9 +1110,6 @@ pl:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Najpierw zapisz te progi. Nowe ślady będą ich używać automatycznie; wybierz „Przelicz ślady i statystyki”, aby zastosować je do istniejącej historii.
         city_statistics: Statystyki miast
         min_minutes_in_city: Minimalny czas w mieście
-        min_5: 60 min
-        min_6: 5 min
-        min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
         min_12: 720 min
         live_mode: Tryb na żywo
@@ -1108,7 +1117,6 @@ pl:
         apply_settings: Zastosuj ustawienia
         reset_to_defaults_2: Przywróć ustawienia domyślne
         transportation_mode_detection: Wykrywanie trybu transportu
-        checking_status: Sprawdzanie statusu...
         settings_are_locked_while_recalculation_is_in_progress: Ustawienia są zablokowane podczas przeliczania.
         note: 'Uwaga:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Zmiana tych progów uruchomi ponowne przeliczenie trybów transportu dla wszystkich tras. To może chwilę potrwać, zależnie od liczby tras.
@@ -1139,7 +1147,6 @@ pl:
         sec_2: 180 sec
         min_flight_distance: Minimalny dystans lotu
         km: 100 km
-        make_changes_to_enable_the_apply_button: Wprowadź zmiany, aby aktywować przycisk Zastosuj
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Ponownie uruchamia automatyczną klasyfikację dla wszystkich tras. Segmenty poprawione ręcznie zostają zachowane. Może potrwać kilka minut.
         loading_calendar: Ładowanie kalendarza…
         less: mniej
@@ -1579,6 +1586,13 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
+    data_processing:
+      show:
+        title: "Przetwarzanie danych"
+        intro: "Jak Dawarich łączy Twoje punkty w trasy, które odczyty uznaje za szum GPS i jak długo trzeba przebywać w mieście, żeby się liczyło. Zmiany tutaj mogą przeliczyć dane, które już masz; kolory i warstwy mapy zostają w ustawieniach mapy."
+        existing_data: "Zastosuj do istniejących danych"
+        existing_data_hint: "Powyższe zmiany dotyczą nowych punktów. Aby objęły też historię, przelicz ją. Oba procesy działają w tle i przy dużym koncie mogą potrwać."
+        rebuilds_need_pro: "Przeliczanie wcześniejszych danych jest częścią Dawarich Pro."
     geofencing_paused_while_archived: wstrzymane, gdy miejsce jest zarchiwizowane
     trek_sources:
       select_trips:
@@ -1602,6 +1616,7 @@ pl:
       destroy:
         source_removed_trips_kept: "TREK został rozłączony. Zarządzane podróże zostały zachowane i nie będą już synchronizowane."
     navigation:
+      data_processing: "Przetwarzanie danych"
       general: Ogólne
       integrations: Integracje
       map: Mapa
@@ -1982,6 +1997,8 @@ pl:
         no_thanks: Nie, dziękuję
         yes_notify_me: Tak, powiadamiaj mnie
       help_links:
+        documentation: "Dokumentacja"
+        keyboard_shortcuts: "Skróty klawiszowe"
         need_help_ping_us: Potrzebujesz pomocy? Napisz do nas!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -4214,13 +4231,9 @@ pl:
       failed_to_load_flights: Nie udało się załadować lotów
       failed_to_load_anomalies: Nie udało się załadować anomalii
       cannot_update_recalculation_is_already_in_progress: 'Nie można zaktualizować: przeliczanie już trwa'
-      transportation_settings_saved: Ustawienia transportu zapisane
       globe_view_will_be_applied_after_page_reload: Widok globu zostanie zastosowany po odświeżeniu strony
-      settings_updated_successfully: Ustawienia zaktualizowane pomyślnie
       reloading_map_data_with_new_settings: Odświeżanie danych mapy z nowymi ustawieniami...
       api_key_not_available_please_reload_the_page: Klucz API niedostępny; odśwież stronę.
-      could_not_queue_re_evaluation_please_try_again: Nie udało się dodać ponownej oceny do kolejki. Spróbuj ponownie.
-      could_not_queue_recalculation_please_try_again: Nie udało się dodać przeliczenia do kolejki. Spróbuj ponownie.
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
       visit_creation_modal_not_available: Okno tworzenia wizyty jest niedostępne
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
@@ -5005,6 +5018,7 @@ pl:
         show_description: Opis
         show_photos: Zdjęcia
     import:
+      failed_reason_in_list: "Importu nie udało się dokończyć. Otwórz go, aby zobaczyć numer referencyjny i dalsze kroki."
       technical_details: Szczegóły techniczne
       failed: Import nie powiódł się
       format_error: Nie udało się odczytać formatu pliku. Sprawdź, czy plik jest poprawny i ma obsługiwany format.

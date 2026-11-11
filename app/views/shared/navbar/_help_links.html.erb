@@ -1,3 +1,7 @@
+<li><%= link_to t('.documentation'), 'https://dawarich.app/docs/', target: '_blank', rel: 'noopener noreferrer', data: { testid: 'help-documentation' } %></li>
+<% if controller_path == 'map/maplibre' %>
+  <li><button type="button" onclick="document.getElementById('keyboard-shortcuts')?.showModal()" data-testid="help-keyboard-shortcuts"><%= t('.keyboard_shortcuts') %> <kbd class="kbd kbd-xs">?</kbd></button></li>
+<% end %>
 <li><p><%= t('.need_help_ping_us') %> <%= icon 'arrow-big-down' %></p></li>
 <li><%= link_to t('.x_twitter'), 'https://x.com/freymakesstuff', target: '_blank', rel: 'noopener noreferrer' %></li>
 <li><%= link_to t('.mastodon'), 'https://mastodon.social/@dawarich', target: '_blank', rel: 'noopener noreferrer' %></li>
