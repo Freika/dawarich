@@ -26,6 +26,19 @@ function countFormatterBuilds(run) {
   return builds
 }
 
+test("range density lays the days side by side, each in its own segments", () => {
+  const manager = new ReplayManager({ timezone: "UTC" })
+  manager.setPoints([
+    { timestamp: "2025-01-15T00:10:00Z", longitude: 13, latitude: 52 },
+    { timestamp: "2025-01-15T00:20:00Z", longitude: 13, latitude: 52 },
+    { timestamp: "2025-01-16T18:00:00Z", longitude: 13, latitude: 52 },
+  ])
+
+  // Two days, four 6-hour segments each: two minutes in the first segment of
+  // day one, one minute in the last segment of day two.
+  assert.deepEqual(manager.getRangeDensity(4), [1, 0, 0, 0, 0, 0, 0, 0.5])
+})
+
 test("uses the configured timezone east of UTC", () => {
   const manager = new ReplayManager({ timezone: "Asia/Tokyo" })
   assert.equal(manager.minuteOfDay(date), 540)

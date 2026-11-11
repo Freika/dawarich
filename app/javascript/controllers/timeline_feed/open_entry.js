@@ -35,6 +35,11 @@ export const openEntry = {
     // entry is already rendered — expand it immediately. Otherwise navigate
     // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
+    if (date && this.selectInRange(date, { keepCamera: true })) {
+      this._tryExpandPendingTrack()
+      return
+    }
+
     this.keepCameraOnDate = date || this.selectedDate
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date, { fitBounds: false })
@@ -65,6 +70,10 @@ export const openEntry = {
     // (arriving via the top date-range form / Search / Last 7 days) so the
     // panel lands on the most recent day of the range instead of going blank —
     // keeping the range and the panel in sync (C1).
+    // A period of several days opens as a whole; a `date=` beside it picks
+    // the day to select once the period has rendered (see applyUrlDay).
+    if (this.showRange()) return
+
     const date = params.get("date") || this.renderedDay()
     if (date) {
       const isoDate =
@@ -89,7 +98,14 @@ export const openEntry = {
 
     // Extract the day's bounds from the rendered DOM and re-dispatch
     // day-selected with bounds so the map can fit to the visits.
-    const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
+    this.syncRange()
+
+    // A period has no single day to fit the map to.
+    const dayEl = this.visitListFrameTarget.querySelector(
+      ".timeline-range-head",
+    )
+      ? null
+      : this.visitListFrameTarget.querySelector(".timeline-day")
     const keepCamera =
       this.pendingTrackId ||
       this.pendingTrackTime ||
@@ -113,6 +129,10 @@ export const openEntry = {
       this._tryExpandPendingTrack()
     }
 
+    this.selectPendingVisit()
+  },
+
+  selectPendingVisit() {
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
       `[data-visit-id="${this.pendingVisitId}"]`,

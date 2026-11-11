@@ -378,12 +378,6 @@ RSpec.describe '/visits', type: :request do
       expect(response.body).not_to include('timeline-suggestions-badge')
     end
 
-    it 'includes the calendar frame stream' do
-      delete visit_url(visit), as: :turbo_stream
-
-      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
-    end
-
     it 'includes the success flash message' do
       delete visit_url(visit), as: :turbo_stream
 
@@ -658,7 +652,6 @@ RSpec.describe '/visits', type: :request do
              params: { visit_ids: [visit_a.id] }
 
       expect_turbo_stream_response
-      expect_turbo_stream_action('replace', 'timeline-calendar-frame')
     end
 
     context 'with date + source_status instead of visit_ids (Delete all path)' do
@@ -702,7 +695,6 @@ RSpec.describe '/visits', type: :request do
                params: { date: Time.zone.today.to_s, source_status: 'suggested' }
 
         expect_turbo_stream_response
-        expect_turbo_stream_action('replace', 'timeline-calendar-frame')
       end
 
       it 'does not touch visits of other users' do

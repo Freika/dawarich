@@ -79,6 +79,6 @@ RSpec.describe 'Map layers tab', type: :request do
     expect(cards.values).to all(be_present)
     expect(cards['Points'].text).to include(I18n.t('map.maplibre.settings_panel.show_individual_location_points'))
     expect(cards['Points'].at_css('img')['data-src']).to match(%r{layer_previews/points.*\.gif})
-    expect(cards.reject { |_, card| card.at_css('img') }.keys).to eq(['Photos'])
+    expect(cards.reject { |_, card| card.at_css('img') }.keys).to eq(%w[Photos Notes])
   end
 end

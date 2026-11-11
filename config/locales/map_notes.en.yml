@@ -1,0 +1,59 @@
+en:
+  notes:
+    flash:
+      saved: Note saved
+      deleted: Note deleted
+      pick_a_point_on_the_map: Pick a point on the map for this note
+    form:
+      note: Note
+      what_happened_here: What happened here?
+      when: When
+      delete: Delete
+      delete_this_note: Delete this note?
+      cancel: Cancel
+      save: Save
+    index:
+      notes: Diary
+      search: Search
+      search_placeholder: Search your notes
+      from: From
+      to: To
+      clear: Clear
+      nothing_found: No notes match this search
+      no_notes_yet: No notes yet
+      no_notes_yet_hint: Open the map, choose Add note in Tools and click the spot you want to remember.
+      open_the_map: Open the map
+    note:
+      trip: 'Trip: %{name}'
+      open_this_day_on_the_map: Open this day on the map
+  map:
+    maplibre:
+      note_modal:
+        map_note: Map note
+      settings_panel:
+        notes: Notes
+        show_your_map_notes: Show the notes you wrote on the map
+        add_note: Add note
+    timeline_feeds:
+      note_entry:
+        edit: Edit
+      on_this_day:
+        on_this_day: On this day
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Click on the map to place a note. Esc to cancel.
+      failed_to_load_notes: Failed to load notes
+  shared:
+    navbar:
+      notes: Diary
+    links:
+      map_notes:
+        notes: Notes
+  shared_links:
+    map_notes_toggle:
+      label: Show my map notes
+      hint: Shows the text and time of notes about this period, not where they were written. Notes you write later about this period will appear too.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Map notes

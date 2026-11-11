@@ -1285,6 +1285,16 @@ ca:
         previous_day: Dia anterior
         next_day: Dia següent
       feed:
+        latest_days_only:
+          one: "L'últim %{count} dia d'un període més llarg"
+          other: "Els últims %{count} dies d'un període més llarg"
+        all_days: Tots els dies
+        day_count:
+          one: "%{count} dia"
+          other: "%{count} dies"
+        note_count:
+          one: "%{count} nota"
+          other: "%{count} notes"
         no_visits_tracked_this_day: No hi ha visites registrades aquest dia.
         visits_are_auto_detected_daily_from_your_location_data: Les visites es detecten automàticament cada dia a partir de les teves dades d'ubicació.
       gap_entry:
@@ -2105,6 +2115,8 @@ ca:
         shared_from_dawarich: Compartit des de Dawarich
     map:
       date_navigation_v2:
+        note_days: "dia amb notes"
+        choose_period: Tria el període
         share: Comparteix
         start_date_and_time: Data i hora d'inici
         end_date_and_time: Data i hora de finalització

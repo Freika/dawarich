@@ -1335,6 +1335,16 @@ es:
         previous_day: Día anterior
         next_day: Día siguiente
       feed:
+        latest_days_only:
+          one: "El último %{count} día de un periodo más largo"
+          other: "Los últimos %{count} días de un periodo más largo"
+        all_days: Todos los días
+        day_count:
+          one: "%{count} día"
+          other: "%{count} días"
+        note_count:
+          one: "%{count} nota"
+          other: "%{count} notas"
         no_visits_tracked_this_day: No se registraron visitas este día.
         visits_are_auto_detected_daily_from_your_location_data: Las visitas se detectan automáticamente todos los días a partir de tus datos de ubicación.
       gap_entry:
@@ -2108,6 +2118,8 @@ es:
         shared_from_dawarich: Compartido desde Dawarich
     map:
       date_navigation_v2:
+        note_days: "día con notas"
+        choose_period: Elegir el periodo
         share: Compartir
         start_date_and_time: Fecha y hora de inicio
         end_date_and_time: Fecha y hora de fin

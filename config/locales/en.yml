@@ -1285,6 +1285,16 @@ en:
         previous_day: Previous day
         next_day: Next day
       feed:
+        latest_days_only:
+          one: "The latest %{count} day of a longer period"
+          other: "The latest %{count} days of a longer period"
+        all_days: All days
+        day_count:
+          one: "%{count} day"
+          other: "%{count} days"
+        note_count:
+          one: "%{count} note"
+          other: "%{count} notes"
         no_visits_tracked_this_day: No visits tracked this day.
         visits_are_auto_detected_daily_from_your_location_data: Visits are auto-detected daily from your location data.
       gap_entry:
@@ -2105,6 +2115,8 @@ en:
         shared_from_dawarich: Shared from Dawarich
     map:
       date_navigation_v2:
+        note_days: "a day with notes"
+        choose_period: Choose the period
         share: Share
         start_date_and_time: Start date and time
         end_date_and_time: End date and time

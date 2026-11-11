@@ -1297,6 +1297,22 @@ pl:
         previous_day: Poprzedni dzień
         next_day: Następny dzień
       feed:
+        latest_days_only:
+          one: "Ostatni %{count} dzień dłuższego okresu"
+          few: "Ostatnie %{count} dni dłuższego okresu"
+          many: "Ostatnie %{count} dni dłuższego okresu"
+          other: "Ostatnie %{count} dnia dłuższego okresu"
+        all_days: Wszystkie dni
+        day_count:
+          one: "%{count} dzień"
+          few: "%{count} dni"
+          many: "%{count} dni"
+          other: "%{count} dnia"
+        note_count:
+          one: "%{count} notatka"
+          few: "%{count} notatki"
+          many: "%{count} notatek"
+          other: "%{count} notatki"
         no_visits_tracked_this_day: Brak zarejestrowanych wizyt tego dnia.
         visits_are_auto_detected_daily_from_your_location_data: Wizyty są automatycznie wykrywane codziennie na podstawie Twoich danych lokalizacji.
       gap_entry:
@@ -2121,6 +2137,8 @@ pl:
         shared_from_dawarich: Udostępniono z Dawarich
     map:
       date_navigation_v2:
+        note_days: "dzień z notatkami"
+        choose_period: Wybierz okres
         share: Udostępnij
         start_date_and_time: Data i godzina początkowa
         end_date_and_time: Data i godzina końcowa

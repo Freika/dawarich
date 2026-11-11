@@ -24,6 +24,42 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       .to eq(Users::PlanSettingsGate::GATED_MAP_LAYERS)
   end
 
+  describe 'opening a month' do
+    def period
+      map = Nokogiri::HTML(response.body).at_css('#maps-maplibre-container')
+      %w[start end].map { |edge| Time.zone.parse(map["data-maps--maplibre-#{edge}-date-value"]).utc.to_date.to_s }
+    end
+
+    before do
+      create(:note, user: user, body: 'Old', noted_at: Time.utc(2025, 3, 10, 12), latitude: 52.5, longitude: 13.4)
+      create(:note, user: user, body: 'Latest', noted_at: Time.utc(2025, 6, 10, 12), latitude: 52.5, longitude: 13.4)
+    end
+
+    it 'opens the month of the latest note for the Diary menu item' do
+      get map_v2_path(panel: 'timeline', month: 'latest')
+
+      expect(period).to eq(%w[2025-06-01 2025-06-30])
+    end
+
+    it 'takes the month of the latest note from the user time zone' do
+      user.update!(settings: user.settings.merge('timezone' => 'Asia/Tokyo'))
+      # 16:00 UTC on June 30 is already July 1 in Tokyo.
+      create(:note, user: user, body: 'Late', noted_at: Time.utc(2025, 6, 30, 16), latitude: 35.68, longitude: 139.76)
+
+      get map_v2_path(panel: 'timeline', month: 'latest')
+
+      map = Nokogiri::HTML(response.body).at_css('#maps-maplibre-container')
+      first_day = Time.zone.parse(map['data-maps--maplibre-start-date-value']).in_time_zone('Asia/Tokyo').to_date
+      expect(first_day.to_s).to eq('2025-07-01')
+    end
+
+    it 'opens the month asked for, whatever day is to be selected in it' do
+      get map_v2_path(panel: 'timeline', month: '2025-03', date: '2025-03-10')
+
+      expect(period).to eq(%w[2025-03-01 2025-03-31])
+    end
+  end
+
   it 'renders the place editor only inside the left map panel' do
     get map_v2_path
 
@@ -318,11 +354,12 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('2026-05-20T00:00')
     end
 
-    it 'keeps the Timeline panel open across the date-range form (preserves panel param)' do
+    it 'keeps the Timeline panel open across the day arrows and presets of the period picker' do
       get map_v2_path(date: 'today', panel: 'timeline')
 
-      expect(response.body).to include('name="panel"')
-      expect(response.body).to include('value="timeline"')
+      links = Nokogiri::HTML(response.body).css('.map-period a').map { |link| link['href'] }
+      expect(links.size).to eq(5)
+      expect(links).to all(include('panel=timeline'))
     end
   end
 

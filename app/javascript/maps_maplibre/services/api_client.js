@@ -51,6 +51,25 @@ export class ApiClient {
     return response.json()
   }
 
+  /**
+   * Fetch the map notes describing a moment in the date range.
+   * @returns {Promise<Array>} notes
+   */
+  async fetchNotes({ start_at, end_at }) {
+    const params = new URLSearchParams({ standalone: "true", start_at, end_at })
+
+    maskPrivacyZones(params)
+    const response = await fetch(`${this.baseURL}/notes?${params}`, {
+      headers: this.getHeaders(),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch notes: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
   async fetchVisitedCountries({ start_at, end_at }) {
     const params = new URLSearchParams({ start_at, end_at })
     if (this.importId) params.set("import_id", this.importId)

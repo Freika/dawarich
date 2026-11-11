@@ -15,6 +15,11 @@ function ensureMapReplayPanel(controller) {
       return controller._getLoadedPoints()
     },
     onPlayStateChange: updateTrackReplayButton,
+    initialDay: () => controller.timelineBridge.highlightedDay,
+    onDaySync: (day) =>
+      document.dispatchEvent(
+        new CustomEvent("replay:day-changed", { detail: { day } }),
+      ),
     getPhotos: () => {
       const layer = controller.layerManager?.getLayer("photos")
       const features = layer?.visible ? layer.data?.features : null

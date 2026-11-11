@@ -82,7 +82,13 @@ export const displays = {
   renderDensity() {
     if (!this.c.hasReplayDensityContainerTarget || !this.replayManager) return
     const container = this.c.replayDensityContainerTarget
-    const density = this.replayManager.getDataDensity(48)
+    const density = this._rangeDensity || this.replayManager.getDataDensity(48)
+    if (this.c.hasReplayDaySegmentsTarget) {
+      const current = this.replayManager.getCurrentDay()
+      for (const segment of this.c.replayDaySegmentsTarget.children) {
+        segment.toggleAttribute("aria-current", segment.dataset.day === current)
+      }
+    }
 
     while (container.firstChild) container.removeChild(container.firstChild)
 

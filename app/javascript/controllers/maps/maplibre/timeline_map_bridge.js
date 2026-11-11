@@ -1,4 +1,5 @@
 import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
+import { DateManager } from "./date_manager"
 
 const TIMELINE_EVENTS = {
   "timeline-feed:day-expanded": "handleDayExpanded",
@@ -66,6 +67,12 @@ export class TimelineMapBridge {
     if (day) {
       this.applyDayHighlight(day)
       this._showDayVisits(day)
+      // The selected day is shared: replay jumps to it, the totals count it.
+      this.controller.replayPanel?.syncToDay(day)
+      this.controller.rangeStatistics?.load(
+        DateManager.formatDateForAPI(new Date(`${day}T00:00:00`)),
+        DateManager.formatDateForAPI(new Date(`${day}T23:59:59`)),
+      )
     }
   }
 
@@ -74,6 +81,10 @@ export class TimelineMapBridge {
    */
   handleDayCollapsed() {
     this.clearDayHighlight()
+    this.controller.rangeStatistics?.load(
+      this.controller.startDateValue,
+      this.controller.endDateValue,
+    )
   }
 
   /**
