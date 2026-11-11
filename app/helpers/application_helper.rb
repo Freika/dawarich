@@ -284,10 +284,23 @@ module ApplicationHelper
 
     return badge unless record.failed? && record.respond_to?(:error_message) && record.error_message.present?
 
-    error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),
-                             class: 'tooltip tooltip-left cursor-help inline-flex items-center',
-                             data: { tip: record.error_message })
-    content_tag(:span, safe_join([badge, error_icon]),
+    content_tag(:span, safe_join([badge, failure_reason_icon(record)]),
                 class: 'inline-flex items-center gap-1 whitespace-nowrap')
+  end
+
+  private
+
+  # An import explains its failure in words and links to its page, which has
+  # the reference and next steps; the raw exception stays on that page.
+  def failure_reason_icon(record)
+    alert_icon = icon('circle-alert', class: %w[w-3.5 h-3.5 text-error])
+    tooltip_class = 'tooltip tooltip-left inline-flex items-center'
+    if record.respond_to?(:failure_summary_in_list)
+      summary = record.failure_summary_in_list
+      return link_to(alert_icon, record, class: tooltip_class, aria: { label: summary },
+                                         data: { tip: summary, testid: 'import-failure-link' })
+    end
+
+    content_tag(:span, alert_icon, class: "#{tooltip_class} cursor-help", data: { tip: record.error_message })
   end
 end

@@ -22,8 +22,7 @@ const LAYER_TOGGLES = {
 const capitalize = (name) => name.charAt(0).toUpperCase() + name.slice(1)
 
 /**
- * Seed the settings panel's controls from the loaded settings, then tell the
- * dirty tracker the form is ready.
+ * Seed the settings panel's controls from the loaded settings.
  */
 export function syncSettingsForm(manager) {
   const { controller, settings } = manager
@@ -101,36 +100,4 @@ export function syncSettingsForm(manager) {
       ? false
       : settings.globeProjection || false
   }
-
-  for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
-    const el = input(name)
-    if (el) el.value = settings[name]
-  }
-  setChecked("splitTracksAtMidnight", settings.splitTracksAtMidnight === true)
-
-  const minMinutes = input("minMinutesSpentInCity")
-  if (minMinutes) {
-    minMinutes.value = settings.minMinutesSpentInCity || 60
-    if (controller.hasMinMinutesInCityValueTarget) {
-      controller.minMinutesInCityValueTarget.textContent = `${minMinutes.value} min`
-    }
-  }
-
-  setChecked("gpsFilteringEnabled", settings.gpsFilteringEnabled !== false)
-  setChecked(
-    "gpsAccuracyFilterEnabled",
-    settings.gpsAccuracyFilterEnabled === true,
-  )
-  const gpsAccuracy = input("gpsAccuracyThreshold")
-  if (gpsAccuracy) {
-    gpsAccuracy.value = settings.gpsAccuracyThreshold || 100
-    if (controller.hasGpsAccuracyThresholdValueTarget) {
-      controller.gpsAccuracyThresholdValueTarget.textContent = `${gpsAccuracy.value}m`
-    }
-  }
-
-  manager.transportation.syncTransportationSettings()
-
-  // All form inputs are seeded now; the dirty tracker snapshots them.
-  document.dispatchEvent(new CustomEvent("map-settings:synced"))
 }

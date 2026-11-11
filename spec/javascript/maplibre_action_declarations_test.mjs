@@ -53,7 +53,7 @@ const { default: MapController } = await import(
 
 test("every action the views bind exists on the maps--maplibre controller", async () => {
   const bound = await boundActionNames()
-  assert.ok(bound.size > 50, `found only ${bound.size} bound actions`)
+  assert.ok(bound.size > 40, `found only ${bound.size} bound actions`)
   const missing = [...bound].filter(
     (name) => typeof MapController.prototype[name] !== "function",
   )

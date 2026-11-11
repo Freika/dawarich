@@ -2,6 +2,7 @@
   items = [
     [t('.general'), settings_general_index_path, active_tab?(settings_general_index_path)],
     [t('.integrations'), settings_integrations_path, active_tab?(settings_integrations_path)],
+    [t('.data_processing'), settings_data_processing_path, active_tab?(settings_data_processing_path)],
     [t('.visits'), settings_visits_path, active_tab?(settings_visits_path)],
     [t('.geofencing'), settings_geofencing_path, controller_path.in?(%w[settings/geofencing settings/webhooks]) ? 'tab-active' : '']
   ]

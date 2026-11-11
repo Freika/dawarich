@@ -55,9 +55,6 @@ export default class MapController extends Controller {
     "visitsSearch",
     "placesFilters",
     "enableAllPlaceTagsToggle",
-    "minMinutesInCityValue",
-    "gpsFilteringToggle",
-    "gpsAccuracyThresholdValue",
     // Search
     "searchInput",
     "searchResults",
@@ -98,16 +95,6 @@ export default class MapController extends Controller {
     "infoTitle",
     "infoContent",
     "infoActions",
-    // Transportation mode detection
-    "transportationCollapseToggle",
-    // Transportation recalculation status
-    "transportationRecalculationAlert",
-    "transportationLockedMessage",
-    // Transportation apply button
-    "transportationApplyButton",
-    "transportationDirtyMessage",
-    // Transportation enabled modes allowlist
-    "enabledModeCheckbox",
     // Replay panel. Not inherited from ReplayHost: the protected
     // spec/regressions harnesses load this file with only a bare Controller.
     "replayPanel",
@@ -215,7 +202,6 @@ export default class MapController extends Controller {
     this.familyManager?.disconnect()
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
-    this.settingsController?.transportation.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
     this.notesManager?.destroy()
@@ -430,16 +416,7 @@ const FORWARDED_ACTIONS = {
     "toggleSpeedColoredRoutes",
     "updateSpeedColorScale",
     "resetLayerColors",
-    "updateAdvancedSettings",
-    "updateGpsAccuracyThresholdDisplay",
-    "updateMinMinutesInCityDisplay",
-    "reapplyAnomalyFilter",
-    "recalculateUserData",
     "togglePointsEditing",
-  ],
-  "settingsController.transportation": [
-    "markTransportationSettingsDirty",
-    "applyTransportationSettings",
   ],
   areaSelectionManager: [
     "startSelectArea",

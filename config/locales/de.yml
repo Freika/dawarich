@@ -970,6 +970,18 @@ de:
       shared_on_dawarich: Auf Dawarich geteilt
       dawarich_logo: Dawarich-Logo
   map:
+    keyboard_shortcuts:
+      title: "Tastenkürzel"
+      open_timeline: "Zeitleiste öffnen"
+      open_layers: "Ebenen öffnen"
+      search_places: "Orte suchen"
+      open_family: "Familie öffnen"
+      open_tools: "Werkzeuge öffnen"
+      open_settings: "Karteneinstellungen öffnen"
+      toggle_replay: "Wiedergabe starten oder stoppen"
+      previous_next_day: "Vorheriger oder nächster Tag, solange die Zeitleiste offen ist"
+      show_shortcuts: "Diese Liste anzeigen"
+      close: "Schließen"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "Du weißt nicht, wo deine App den Export versteckt?"
       step_by_step_export_guides: "Schritt-für-Schritt-Anleitungen zum Export"
@@ -1026,6 +1038,7 @@ de:
         settings_s: Einstellungen (S)
         links: Links
       settings_panel:
+        data_processing_link: "Einstellungen für Tracks, GPS-Rauschen, Städte und Fortbewegungsarten findest du unter Einstellungen → Datenverarbeitung"
         speed_colored_tracks: Tracks nach Geschwindigkeit einfärben
         edit_speed_colors: Geschwindigkeitsfarben bearbeiten
         close_panel: Fenster schließen
@@ -1109,7 +1122,6 @@ de:
         points_of_interest: Sehenswürdigkeiten
         choose_which_poi_categories_appear_on_the_map: Wähle aus, welche POI-Kategorien auf der Karte angezeigt werden.
         distance_threshold_for_route_splitting: Schwellenwert für die Routenunterteilung
-        min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
@@ -1140,9 +1152,6 @@ de:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Speichere diese Schwellenwerte zuerst. Neue Tracks verwenden sie automatisch; wähle „Tracks und Statistiken neu berechnen“, um sie auf bestehende Daten anzuwenden.
         city_statistics: Stadtstatistiken
         min_minutes_in_city: Min. Minuten in der Stadt
-        min_5: 60 min
-        min_6: 5 min
-        min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Wie lange du in einer Stadt bleiben musst, damit sie in den Statistiken gezählt wird
         min_12: 720 min
         live_mode: Live-Modus
@@ -1150,7 +1159,6 @@ de:
         apply_settings: Einstellungen anwenden
         reset_to_defaults_2: Zurücksetzen auf Standardwerte
         transportation_mode_detection: Verkehrsmittel-Erkennung
-        checking_status: Status prüfen...
         settings_are_locked_while_recalculation_is_in_progress: Einstellungen werden während der Neuberechnung gesperrt.
         note: 'Hinweis:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Wenn du diese Schwellenwerte änderst, werden die Fortbewegungsarten aller Tracks neu berechnet. Je nach Anzahl der Tracks kann dies einige Zeit dauern.
@@ -1181,7 +1189,6 @@ de:
         sec_2: 180 sec
         min_flight_distance: Minimale Flugdistanz
         km: 100 km
-        make_changes_to_enable_the_apply_button: Nimm Änderungen vor, um die Schaltfläche „Anwenden“ zu aktivieren
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Führt die automatische Klassifizierung für alle Tracks erneut aus. Manuell korrigierte Abschnitte bleiben erhalten. Der Vorgang kann mehrere Minuten dauern.
         loading_calendar: Kalender wird geladen…
         less: weniger
@@ -1578,6 +1585,13 @@ de:
       residential_roads: Wohnstraßen
       track: Track
   settings:
+    data_processing:
+      show:
+        title: "Datenverarbeitung"
+        intro: "Wie Dawarich aus deinen Punkten Tracks macht, welche Messungen als GPS-Rauschen gelten und wie lange ein Aufenthalt für eine Stadt zählt. Änderungen hier können bereits vorhandene Daten neu berechnen; Kartenfarben und Ebenen bleiben in den Einstellungen der Karte."
+        existing_data: "Auf vorhandene Daten anwenden"
+        existing_data_hint: "Die Änderungen oben gelten für neue Punkte. Damit sie auch für deinen Verlauf gelten, berechne ihn neu. Beides läuft im Hintergrund und kann bei einem großen Konto dauern."
+        rebuilds_need_pro: "Das Neuberechnen vorhandener Daten gehört zu Dawarich Pro."
     geofencing_paused_while_archived: pausiert, solange der Ort archiviert ist
     trek_sources:
       select_trips:
@@ -1601,6 +1615,7 @@ de:
       destroy:
         source_removed_trips_kept: "TREK wurde getrennt. Deine verwalteten Reisen bleiben erhalten und werden nicht mehr synchronisiert."
     navigation:
+      data_processing: "Datenverarbeitung"
       general: Allgemein
       integrations: Integrationen
       map: Karte
@@ -1981,6 +1996,8 @@ de:
         no_thanks: Danke, nein
         yes_notify_me: Ja, benachrichtige mich
       help_links:
+        documentation: "Dokumentation"
+        keyboard_shortcuts: "Tastenkürzel"
         need_help_ping_us: Hilfe benötigt? Ping uns!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -4133,13 +4150,9 @@ de:
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
       cannot_update_recalculation_is_already_in_progress: 'Aktualisierung nicht möglich: Eine Neuberechnung läuft bereits.'
-      transportation_settings_saved: Transporteinstellungen gespeichert
       globe_view_will_be_applied_after_page_reload: Globusansicht wird nach Neuladen der Seite angewendet
-      settings_updated_successfully: Einstellungen wurden erfolgreich aktualisiert
       reloading_map_data_with_new_settings: Kartendaten werden mit den neuen Einstellungen neu geladen...
       api_key_not_available_please_reload_the_page: API-Schlüssel nicht verfügbar; bitte die Seite neu laden.
-      could_not_queue_re_evaluation_please_try_again: Die erneute Auswertung konnte nicht gestartet werden. Bitte versuche es erneut.
-      could_not_queue_recalculation_please_try_again: Die Neuberechnung konnte nicht gestartet werden. Bitte versuche es erneut.
       click_on_the_map_to_place_a_visit_esc_to: Klicke auf die Karte, um einen Aufenthalt zu platzieren (Esc zum Abbrechen)
       visit_creation_modal_not_available: Dialog zum Erstellen eines Aufenthalts ist nicht verfügbar
       visit_creation_controller_not_available: Controller für Aufenthalt-Erstellung nicht verfügbar
@@ -4854,6 +4867,7 @@ de:
         show_description: Beschreibung
         show_photos: Fotos
     import:
+      failed_reason_in_list: "Der Import konnte nicht abgeschlossen werden. Öffne ihn, um die Referenz und die nächsten Schritte zu sehen."
       technical_details: Technische Details
       failed: Import fehlgeschlagen
       format_error: Das Dateiformat konnte nicht gelesen werden. Prüfe, ob die Datei gültig ist und ein unterstütztes Format hat.

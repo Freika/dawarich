@@ -58,6 +58,9 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
 - The date bar above the map is replaced by a period button on the map: the first click in its calendar sets the start, the second the end, and exact times sit under the calendar. Share moved into the map's button column, and the Timeline panel is narrower.
 - The Notes page is replaced by the Diary in the Timeline, and `/notes` redirects there. Trip day notes are listed only on their trips.
+- Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page.
+- Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
+- A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
 
 ### Fixed
 

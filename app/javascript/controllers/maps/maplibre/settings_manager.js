@@ -4,7 +4,6 @@ import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { MapStyleSettings } from "./map_style_settings"
 import { syncSettingsForm } from "./settings_form_sync"
-import { TransportationSettings } from "./transportation_settings"
 
 /**
  * Handles all settings-related operations for Maps V2
@@ -14,7 +13,6 @@ export class SettingsController {
   constructor(controller) {
     this.controller = controller
     this.settings = controller.settings
-    this.transportation = new TransportationSettings(controller)
     this.style = new MapStyleSettings(controller, this)
   }
 
@@ -191,130 +189,5 @@ export class SettingsController {
     this.settings.distance_unit = unit
     this.controller.rangeStatistics?.setUnit(unit)
     SettingsManager.updateSetting("distance_unit", unit)
-  }
-
-  /**
-   * Update advanced settings from form submission
-   */
-  async updateAdvancedSettings(event) {
-    event.preventDefault()
-
-    const formData = new FormData(event.target)
-
-    const settings = {
-      metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
-      minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
-      splitTracksAtMidnight: formData.get("splitTracksAtMidnight") === "on",
-      minMinutesSpentInCity: parseInt(
-        formData.get("minMinutesSpentInCity"),
-        10,
-      ),
-      gpsFilteringEnabled: formData.get("gpsFilteringEnabled") === "on",
-      gpsAccuracyFilterEnabled:
-        formData.get("gpsAccuracyFilterEnabled") === "on",
-      gpsAccuracyThreshold: parseInt(formData.get("gpsAccuracyThreshold"), 10),
-    }
-
-    // Update controller settings and dataLoader BEFORE applying,
-    // so that loadMapData() sees the new values
-    Object.assign(this.controller.settings, settings)
-    this.settings = this.controller.settings
-    if (this.controller.dataLoader) {
-      this.controller.dataLoader.updateSettings(this.controller.settings)
-    }
-
-    // Apply settings to current map (may trigger loadMapData)
-
-    await SettingsManager.updateSettings(settings)
-
-    this.controller.rangeStatistics?.refresh()
-    document.dispatchEvent(
-      new CustomEvent("map-settings:saved", { detail: { scope: "form" } }),
-    )
-
-    Toast.success(translate("messages.settings_updated_successfully"))
-  }
-
-  // Display value update methods
-  updateGpsAccuracyThresholdDisplay(event) {
-    if (this.controller.hasGpsAccuracyThresholdValueTarget) {
-      this.controller.gpsAccuracyThresholdValueTarget.textContent = `${event.target.value}m`
-    }
-  }
-
-  updateMinMinutesInCityDisplay(event) {
-    if (this.controller.hasMinMinutesInCityValueTarget) {
-      this.controller.minMinutesInCityValueTarget.textContent = `${event.target.value} min`
-    }
-  }
-
-  async reapplyAnomalyFilter() {
-    if (!window.confirm(translate("settings.confirm_reapply_anomaly_filter"))) {
-      return
-    }
-
-    const apiKey = this.controller.apiKeyValue
-    if (!apiKey) {
-      Toast.error(
-        translate("messages.api_key_not_available_please_reload_the_page"),
-      )
-      return
-    }
-
-    try {
-      const response = await fetch("/api/v1/points/reapply_anomaly_filter", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`)
-      }
-
-      Toast.success(translate("settings.re_evaluation_queued"))
-    } catch (error) {
-      console.error("[Settings] reapplyAnomalyFilter failed:", error)
-      Toast.error(
-        translate("messages.could_not_queue_re_evaluation_please_try_again"),
-      )
-    }
-  }
-
-  async recalculateUserData() {
-    if (!window.confirm(translate("settings.confirm_recalculate_user_data"))) {
-      return
-    }
-
-    const apiKey = this.controller.apiKeyValue
-    if (!apiKey) {
-      Toast.error(
-        translate("messages.api_key_not_available_please_reload_the_page"),
-      )
-      return
-    }
-
-    try {
-      const response = await fetch("/api/v1/recalculations", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`)
-      }
-
-      Toast.success(translate("settings.recalculation_queued"))
-    } catch (error) {
-      console.error("[Settings] recalculateUserData failed:", error)
-      Toast.error(
-        translate("messages.could_not_queue_recalculation_please_try_again"),
-      )
-    }
   }
 }

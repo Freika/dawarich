@@ -1,0 +1,27 @@
+<%# Opened by "?" on the map (map_panel_controller) and from the Help menu. %>
+<% shortcuts = [
+     [%w[T], t('.open_timeline')],
+     [%w[L], t('.open_layers')],
+     [%w[/], t('.search_places')],
+     ([%w[F], t('.open_family')] if family_feature_available? && current_user.in_family?),
+     [%w[C], t('.open_tools')],
+     [%w[S], t('.open_settings')],
+     [%w[R], t('.toggle_replay')],
+     [%w[← →], t('.previous_next_day')],
+     [%w[?], t('.show_shortcuts')]
+   ].compact %>
+<dialog id="keyboard-shortcuts" class="modal" aria-labelledby="keyboard-shortcuts-title">
+  <div class="modal-box max-w-md">
+    <h3 id="keyboard-shortcuts-title" class="font-semibold text-lg mb-4"><%= t('.title') %></h3>
+    <dl class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
+      <% shortcuts.each do |keys, description| %>
+        <dt class="flex gap-1"><% keys.each do |key| %><kbd class="kbd kbd-sm"><%= key %></kbd><% end %></dt>
+        <dd class="min-w-0"><%= description %></dd>
+      <% end %>
+    </dl>
+    <div class="modal-action">
+      <form method="dialog"><button class="btn btn-sm"><%= t('.close') %></button></form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button><%= t('.close') %></button></form>
+</dialog>

@@ -970,6 +970,18 @@ es:
       shared_on_dawarich: Compartido en Dawarich
       dawarich_logo: Logo de Dawarich
   map:
+    keyboard_shortcuts:
+      title: "Atajos de teclado"
+      open_timeline: "Abrir la Cronología"
+      open_layers: "Abrir Capas"
+      search_places: "Buscar lugares"
+      open_family: "Abrir Familia"
+      open_tools: "Abrir Herramientas"
+      open_settings: "Abrir la configuración del mapa"
+      toggle_replay: "Iniciar o detener la reproducción"
+      previous_next_day: "Día anterior o siguiente, con la Cronología abierta"
+      show_shortcuts: "Mostrar esta lista"
+      close: "Cerrar"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "¿No sabes dónde guarda tu aplicación la exportación?"
       step_by_step_export_guides: "Guías de exportación paso a paso"
@@ -1026,6 +1038,7 @@ es:
         settings_s: Configuración (S)
         links: Enlaces
       settings_panel:
+        data_processing_link: "La configuración de trayectos, ruido GPS, ciudades y modos de transporte está en Configuración → Procesamiento de datos"
         speed_colored_tracks: Colorear recorridos según la velocidad
         edit_speed_colors: Editar colores de velocidad
         close_panel: Cerrar panel
@@ -1109,7 +1122,6 @@ es:
         points_of_interest: Puntos de Interés
         choose_which_poi_categories_appear_on_the_map: Elegir qué categorías de POI aparecen en el mapa.
         distance_threshold_for_route_splitting: Umbral de distancia para la división de rutas
-        min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
@@ -1140,9 +1152,6 @@ es:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Guarda primero estos umbrales. Los nuevos trayectos los usarán automáticamente; selecciona «Recalcular trayectos y estadísticas» para aplicarlos al historial existente.
         city_statistics: Estadísticas de ciudad
         min_minutes_in_city: Minutos en ciudad
-        min_5: 60 min
-        min_6: 5min
-        min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: "¿Cuánto tiempo debes quedarte en una ciudad para contar en estadísticas?"
         min_12: 720min
         live_mode: Modo en vivo
@@ -1150,7 +1159,6 @@ es:
         apply_settings: Aplicar configuración
         reset_to_defaults_2: Restablecer a valores por defecto
         transportation_mode_detection: Deteción de modo de transporte
-        checking_status: Verificando...
         settings_are_locked_while_recalculation_is_in_progress: La configuración está bloqueada mientras se realiza el recálculo.
         note: 'Nota: '
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Estás cambiando estos umbrales, lo que desencadenará un recálculo de los modos de transporte para todos tus rastros. Esto puede tardar algún tiempo dependiendo del número de rastros que tengas.
@@ -1181,7 +1189,6 @@ es:
         sec_2: 180 sec
         min_flight_distance: Distancia mínima de vuelo
         km: 100 km
-        make_changes_to_enable_the_apply_button: Haz cambios para habilitar el botón Aplicar
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Re-runs la clasificación automática en todos tus rastros. Los segmentos corregidos manualmente se mantienen. Puede tardar varios minutos.
         loading_calendar: Cargando calendario…
         less: menos
@@ -1578,6 +1585,13 @@ es:
       residential_roads: Vías residenciales
       track: Trayecto
   settings:
+    data_processing:
+      show:
+        title: "Procesamiento de datos"
+        intro: "Cómo Dawarich convierte tus puntos en trayectos, qué lecturas trata como ruido GPS y cuánto tiempo debe durar una estancia para contar en una ciudad. Los cambios aquí pueden recalcular datos que ya tienes; los colores y capas del mapa siguen en la configuración del mapa."
+        existing_data: "Aplicar a los datos que ya tienes"
+        existing_data_hint: "Los cambios de arriba se aplican a los puntos nuevos. Para aplicarlos a tu historial, recálculalo. Ambos procesos se ejecutan en segundo plano y pueden tardar en una cuenta grande."
+        rebuilds_need_pro: "Recalcular los datos anteriores es parte de Dawarich Pro."
     geofencing_paused_while_archived: en pausa mientras esté archivado
     trek_sources:
       select_trips:
@@ -1601,6 +1615,7 @@ es:
       destroy:
         source_removed_trips_kept: "TREK se ha desconectado. Tus viajes gestionados se conservaron y ya no se sincronizarán."
     navigation:
+      data_processing: "Procesamiento de datos"
       general: General
       integrations: Integraciones
       map: Mapa
@@ -1981,6 +1996,8 @@ es:
         no_thanks: No gracias
         yes_notify_me: Sí, notificarme
       help_links:
+        documentation: "Documentación"
+        keyboard_shortcuts: "Atajos de teclado"
         need_help_ping_us: "¿Necesitas ayuda? Escríbenos."
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -4078,13 +4095,9 @@ es:
       failed_to_load_flights: No se pudo cargar los vuelos
       failed_to_load_anomalies: No se pudo cargar las anomalías
       cannot_update_recalculation_is_already_in_progress: 'No se puede actualizar: la recálculo ya está en curso'
-      transportation_settings_saved: Configuración de transporte guardada
       globe_view_will_be_applied_after_page_reload: La vista del globo se aplicará después de recargar la página
-      settings_updated_successfully: Ajustes actualizados correctamente
       reloading_map_data_with_new_settings: Recargando los datos del mapa con los nuevos ajustes…
       api_key_not_available_please_reload_the_page: No está disponible la clave API; por favor, recarga la página.
-      could_not_queue_re_evaluation_please_try_again: No se pudo programar la re-evaluación. Por favor, inténtalo de nuevo.
-      could_not_queue_recalculation_please_try_again: No se pudo programar la recálculo. Por favor, inténtalo de nuevo.
       click_on_the_map_to_place_a_visit_esc_to: Haz clic en el mapa para colocar una visita (Pulsa Esc para cancelar)
       visit_creation_modal_not_available: Modal de creación de visitas no disponible
       visit_creation_controller_not_available: No se puede crear la visita
@@ -4798,6 +4811,7 @@ es:
         show_description: Descripción
         show_photos: Fotos
     import:
+      failed_reason_in_list: "La importación no pudo completarse. Ábrela para ver la referencia y qué hacer a continuación."
       technical_details: Detalles técnicos
       failed: La importación falló
       format_error: No se pudo leer el formato del archivo. Comprueba que el archivo es válido y usa un formato compatible.

@@ -119,8 +119,13 @@ class Import < ApplicationRecord
   end
 
   def failure_summary
-    key = error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
-    I18n.t("ux_p2.import.#{key}")
+    I18n.t("ux_p2.import.#{failure_key}")
+  end
+
+  # The list has no reference beside it, so a generic failure points to the
+  # import page instead; a format error reads the same everywhere.
+  def failure_summary_in_list
+    I18n.t("ux_p2.import.#{failure_key == 'failed_reason' ? 'failed_reason_in_list' : failure_key}")
   end
 
   def extraction_error_message
@@ -158,6 +163,10 @@ class Import < ApplicationRecord
   end
 
   private
+
+  def failure_key
+    error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current
