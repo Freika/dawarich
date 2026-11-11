@@ -17,7 +17,8 @@ module PhotoSourceFailureNotifiable
         kind: :error,
         title: I18n.t("services.#{source}.import_geodata.import_was_not_created"),
         content: I18n.t("services.#{source}.connection_tester.#{source}_connection_failed_message",
-                        message: error.message)
+                        message: error.message),
+        action_path: Notifications.paths.settings_integrations_path
       ).call
     end
   end

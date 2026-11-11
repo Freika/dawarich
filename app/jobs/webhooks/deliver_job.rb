@@ -118,10 +118,11 @@ module Webhooks
     def trip_breaker(hook)
       hook.update_columns(active: false, updated_at: Time.current)
       Notifications::Create.new(
-        user: hook.user, kind: :warning, deduplicate: true,
+        user: hook.user, kind: :warning,
         title: I18n.t('webhooks.notifications.deactivated.title', locale: hook.user.locale),
         content: I18n.t('webhooks.notifications.deactivated.content', name: hook.name,
-                                                                      locale: hook.user.locale)
+                                                                      locale: hook.user.locale),
+        action_path: Notifications.paths.settings_geofencing_path
       ).call
     end
 

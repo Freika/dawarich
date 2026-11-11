@@ -183,6 +183,7 @@ RSpec.describe Geojson::Importer do
 
         notification = user.notifications.last
         expect(notification.kind).to eq('warning')
+        expect(notification.action_path).to eq('/imports')
         expect(notification.content).to include('4')
       end
     end

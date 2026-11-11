@@ -1342,15 +1342,18 @@ zh:
       and: 和
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker 容器。谢谢！
+      contact_support_html: "如果问题再次出现，请写信至 %{email}。"
     index:
       notifications: 通知
       mark_all_as_read: 将全部标记为已读
       delete_all: 删除所有
       are_you_sure_you_want_to_delete_all_notifications: 您确定要删除所有通知吗？
+      read_are_deleted: "已读通知会在 %{days} 天后删除。"
     show:
       back_to_notifications: 返回通知
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
+      open: 打开
   places:
     management:
       create: "创建地点"
@@ -3686,7 +3689,7 @@ zh:
         export_finished: 导出已完成
         export_name_successfully_finished: 导出“%{name}”已成功完成。
         export_failed: 导出失败
-        export_name_failed_message_stacktrace_n: 导出“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
+        export_name_failed_message: "导出“%{name}”失败：%{message}"
         unsupported_file_format: 不支持的文件格式：%{format}
     families:
       auto_create:
@@ -3711,8 +3714,6 @@ zh:
         you_must_leave_your_current_family_before_creating_a_new: 在创建新家庭之前，您必须离开当前家庭
         you_have_already_created_a_family_each_user_can_only: 您已创建家庭。每个用户只能创建一个家庭
         family_feature_requires_an_active_subscription: 家庭功能需要有效订阅
-        family_created: 家庭已创建
-        you_ve_successfully_created_the_family_name: 您已成功创建家庭“%{name}”
         a_family_with_this_name_already_exists_for_your_account: 您的帐户已存在同名家庭
         an_unexpected_error_occurred_while_creating_the_family_please_try: 创建家庭时发生意外错误。请重试
         failed_to_create_family: 无法创建家庭：%{message}
@@ -3735,7 +3736,6 @@ zh:
         user_already_in_family: 用户已在家庭中
         invitation_already_sent: 邀请已发送至该邮箱
         sent_self_hosted: 如果 SMTP 配置正确，家庭邀请已发送至 %{email}。如果您不使用 SMTP，请从家庭页面复制邀请链接并手动共享。
-        sent: 家庭邀请已发送至 %{email}
         failed_to_create: 无法创建邀请：%{message}
       memberships:
         destroy:
@@ -3744,14 +3744,10 @@ zh:
           only_family_owners_can_remove_other_members: 只有家庭所有者才能移除其他成员。
           cannot_remove_members_from_a_different_family: 无法移除其他家庭的成员。
           cannot_remove_the_family_owner_the_owner_must_delete_the: 无法移除家庭所有者。所有者必须删除该家庭或自行离开。
-          left_family: 离开家庭
-          you_ve_left_the_family_family_name: 您已离开家庭“%{family_name}”
           family_member_left: 家庭成员离开
           email_has_left_the_family_family_name: "%{email} 已离开家庭“%{family_name}”"
           removed_from_family: 已从家庭中移除
           you_have_been_removed_from_the_family_family_name_by: 您已被 %{email} 从家庭“%{family_name}”中删除
-          member_removed: 成员已移除
-          email_has_been_removed_from_the_family_family_name: "%{email} 已从家庭“%{family_name}”中移除"
           an_unexpected_error_occurred_while_removing_the_membership_please_try: 移除成员资格时发生意外错误。请重试
           failed_to_leave: 无法离开家庭：%{message}
       update_location_sharing:
@@ -3828,7 +3824,6 @@ zh:
           one: 您的文件 %{name} 导入了 0 个轨迹点。它包含 %{count} 个航点（收藏或已保存的地点），但没有已记录的轨迹。Dawarich 目前仅导入轨迹。
           other: 您的文件 %{name} 导入了 0 个轨迹点。它包含 %{count} 个航点（收藏或已保存的地点），但没有已记录的轨迹。Dawarich 目前仅导入轨迹。
         zero_points: 您的文件 %{name} 导入了 0 个轨迹点。未在该文件中找到新的轨迹点。
-        import_failed_self_hosted: 导入“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
         import_failed_cloud: 导入“%{name}”失败，请通过 hi@dawarich.com 联系我们
         your_import_name_finished_and_all_points_were_saved_but: 您的导入“%{name}”已完成，所有轨迹点均已保存，但
           %{step} 步骤失败。统计数据、轨迹或到访建议可能缺失或过期。您可以到“设置”中触发重新计算。
@@ -3916,7 +3911,6 @@ zh:
     stats:
       calculate_month:
         stats_update_failed: 统计信息更新失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: 无法删除拥有其他成员的家庭的用户
@@ -4020,18 +4014,15 @@ zh:
     stats:
       calculating_job:
         stats_update_failed: 统计更新失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: 每月摘要计算失败
-            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: 年终摘要
             period_label_calculation_failed: "%{period_label} 计算失败"
-            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
       import_data_job:
         data_import_failed: 数据导入失败
         your_data_import_failed_with_error_message_please_check_the: 您的数据导入失败，出现错误：%{message}。请检查存档格式并重试。
@@ -4044,7 +4035,6 @@ zh:
           other: "%{count} 年"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: 已重新计算 %{year_label} 的统计数据、轨迹和摘要。
         data_recalculation_failed: 数据重新计算失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: 到访记录重新检测正在进行

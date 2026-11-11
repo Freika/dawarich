@@ -80,9 +80,21 @@ RSpec.describe 'Family::LocationRequests', type: :request do
     context 'when signed in as target user requesting non-existent record' do
       before { sign_in target_user }
 
-      it 'returns 404 for non-existent record' do
+      # A notification can outlive its request (the requester deleted their
+      # account), so a missing request is an ordinary case, not an error page.
+      it 'goes to the family page and says the request is gone' do
         get family_location_request_path(id: 999_999)
-        expect(response).to have_http_status(:not_found)
+
+        expect(response).to redirect_to(family_path)
+        expect(flash[:alert]).to eq('This request has expired or already been responded to')
+      end
+
+      it 'answers accept and decline for a missing request the same way' do
+        patch accept_family_location_request_path(id: 999_999)
+        expect(response).to redirect_to(family_path)
+
+        patch decline_family_location_request_path(id: 999_999)
+        expect(response).to redirect_to(family_path)
       end
     end
   end

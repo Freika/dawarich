@@ -41,6 +41,7 @@ RSpec.describe StaleJobsRecoveryJob do
 
       it 'creates a notification for stale exports' do
         expect { described_class.new.perform }.to change { Notification.count }.by(1)
+        expect(Notification.last.action_path).to eq('/exports')
       end
 
       it 'persists the error and notification in the recipient saved locale' do
@@ -89,6 +90,7 @@ RSpec.describe StaleJobsRecoveryJob do
 
       it 'creates a notification for stale imports' do
         expect { described_class.new.perform }.to change { Notification.count }.by(1)
+        expect(Notification.last.action_path).to eq('/imports')
       end
 
       it 'persists the error and notification in the recipient saved locale' do

@@ -42,7 +42,8 @@ module TeslaMate
           user: user,
           title: I18n.t('jobs.tesla_mate.sync_job.teslamate_sync_failed'),
           content: I18n.t('jobs.tesla_mate.sync_job.your_teslamate_sync_failed', message: error.message),
-          kind: :error
+          kind: :error,
+          action_path: Notifications.paths.settings_integrations_path
         ).call
       end
     end

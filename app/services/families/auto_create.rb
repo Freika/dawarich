@@ -12,7 +12,7 @@ module Families
       return false unless eligible?
 
       ActiveRecord::Base.transaction do
-        raise ActiveRecord::Rollback unless Families::Create.new(user: user, name: default_name, notify: false).call
+        raise ActiveRecord::Rollback unless Families::Create.new(user: user, name: default_name).call
 
         enable_owner_sharing
         Families::SyncMembers.new(family: user.reload.family).call
@@ -44,7 +44,7 @@ module Families
 
     def notify_owner
       I18n.with_locale(user.locale) do
-        Notification.create!(
+        Notifications::Create.new(
           user: user,
           kind: :info,
           title: I18n.t('services.families.auto_create.notification_title'),
@@ -52,8 +52,9 @@ module Families
             'services.families.auto_create.notification_content',
             name: user.family.name,
             seats: Family::MAX_MEMBERS - 1
-          )
-        )
+          ),
+          action_path: Notifications.paths.family_path
+        ).call
       end
     rescue StandardError => e
       ExceptionReporter.call(e, "Unexpected error in Families::AutoCreate: #{e.message}")

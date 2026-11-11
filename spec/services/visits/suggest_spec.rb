@@ -160,13 +160,37 @@ RSpec.describe Visits::Suggest do
         expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
       end
 
-      it 'notifies again once the dedup window has passed' do
+      it 'notifies again once the dedup window has passed and the earlier one was read' do
+        described_class.new(user, start_at:, end_at:).call
+        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+        user.notifications.update_all(read_at: Time.current)
+
+        described_class.new(user, start_at:, end_at:).call
+
+        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(2)
+      end
+
+      it 'stays quiet after the window while the earlier notification is still unread' do
         described_class.new(user, start_at:, end_at:).call
         Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
 
         described_class.new(user, start_at:, end_at:).call
 
-        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(2)
+        expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+      end
+
+      context 'on Cloud' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+          allow(ExceptionReporter).to receive(:call)
+        end
+
+        it 'reports to the error tracker and does not tell the user' do
+          described_class.new(user, start_at:, end_at:).call
+
+          expect(user.notifications).to be_empty
+          expect(ExceptionReporter).to have_received(:call).with(an_instance_of(StandardError))
+        end
       end
 
       it 'suppresses the notification when another run already claimed the window' do

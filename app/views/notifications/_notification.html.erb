@@ -8,6 +8,7 @@
 
     <% if show_content %>
       <div class="mt-2">
+        <%# Notifications no longer carry a stack trace; this folds the ones stored before that. %>
         <% if notification.error? && notification.content.to_s.include?('stacktrace:') %>
           <% message, diagnostic = notification.content.split('stacktrace:', 2) %>
           <%= sanitize message %>
@@ -18,7 +19,11 @@
 
         <% if notification.error? %>
           <div class="mt-2">
-            <%= t('.please_when_reporting_a_bug_to') %> <a href="https://github.com/Freika/dawarich/issues" class="link hover:no-underline text-blue-600"><%= t('.github_issues') %></a><%= t('.don_t_forget_to_include_logs_from') %> <code><%= t('.dawarich_app') %></code> <%= t('.and') %> <code><%= t('.dawarich_sidekiq') %></code> <%= t('.docker_containers_thank_you') %>
+            <% if DawarichSettings.self_hosted? %>
+              <%= t('.please_when_reporting_a_bug_to') %> <a href="https://github.com/Freika/dawarich/issues" class="link hover:no-underline text-blue-600"><%= t('.github_issues') %></a><%= t('.don_t_forget_to_include_logs_from') %> <code><%= t('.dawarich_app') %></code> <%= t('.and') %> <code><%= t('.dawarich_sidekiq') %></code> <%= t('.docker_containers_thank_you') %>
+            <% else %>
+              <%= t('.contact_support_html', email: mail_to('hi@dawarich.app', nil, class: 'link hover:no-underline text-blue-600')) %>
+            <% end %>
           </div>
         <% end %>
       </div>

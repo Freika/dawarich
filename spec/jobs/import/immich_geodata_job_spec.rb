@@ -36,6 +36,7 @@ RSpec.describe Import::ImmichGeodataJob, 'a refused redirect', type: :job do
     expect { described_class.perform_now(user.id) }.to change { user.notifications.error.count }.by(1)
 
     expect(user.notifications.last.content).to include('https://photos.example.com', 'final URL')
+    expect(user.notifications.last.action_path).to eq('/settings/integrations')
   end
 
   it 'does not retry, because trying again cannot help' do

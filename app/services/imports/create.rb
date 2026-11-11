@@ -91,7 +91,8 @@ class Imports::Create
         kind: :warning,
         title: I18n.t('services.imports.create.import_post_processing_incomplete'),
         content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
-                        name: import.name, step: step.tr('_', ' '))
+                        name: import.name, step: step.tr('_', ' ')),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   rescue StandardError => e
@@ -140,22 +141,24 @@ class Imports::Create
 
     if import.doubles.to_i.positive?
       I18n.with_locale(import.user.locale) do
-        Notification.create!(
-          user_id: import.user_id,
+        Notifications::Create.new(
+          user: import.user,
+          kind: :info,
           title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
           content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
                           name: import.name, raw_points: import.raw_points),
-          kind: :info
-        )
+          action_path: Notifications.paths.imports_path
+        ).call
       end
     else
       I18n.with_locale(import.user.locale) do
-        Notification.create!(
-          user_id: import.user_id,
+        Notifications::Create.new(
+          user: import.user,
+          kind: :warning,
           title: I18n.t('services.imports.create.import_completed_with_no_points'),
           content: zero_points_content(import),
-          kind: :warning
-        )
+          action_path: Notifications.paths.imports_path
+        ).call
       end
     end
   end
@@ -245,7 +248,8 @@ class Imports::Create
         user:,
         kind: :error,
         title: I18n.t('services.imports.create.import_failed'),
-        content: import_failed_message(import, error)
+        content: import_failed_message(import, error),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end
