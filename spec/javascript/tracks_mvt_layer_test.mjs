@@ -1,33 +1,8 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { expression } from "@maplibre/maplibre-gl-style-spec"
-
-const base = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/base_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const tracks = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/tracks_mvt_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const freshness = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const stripImports = (value) =>
-  value.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const url = `data:text/javascript;base64,${Buffer.from([base, freshness, tracks].map(stripImports).join("\n")).toString("base64")}`
-const { TracksMvtLayer, withTileVersion } = await import(url)
+import { TracksMvtLayer } from "maps_maplibre/layers/tracks_mvt_layer"
+import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
 function fakeMap() {
   const layers = []

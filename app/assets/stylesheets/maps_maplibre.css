@@ -79,23 +79,16 @@
 
 /* Shift the loading badge so it stays centered over the VISIBLE map area
    when the side panel is open. The badge is a sibling of the map container
-   inside #maps-maplibre-container; the container gets `panel-open` /
-   `panel-timeline-expanded` and takes width = 100% - <panel width>. The
-   offset below nudges the badge by half the panel width. */
+   inside #maps-maplibre-container; the container gets `panel-open` and
+   takes width = 100% - <panel width>. The offset below nudges the badge by
+   half the panel width. */
 .maps-maplibre-container.panel-open ~ .map-progress-badge {
   left: calc(50% + 240px);
-}
-
-.maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-  left: calc(50% + 360px);
 }
 
 @media (max-width: 1280px) {
   .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: calc(50% + 210px);
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 310px);
   }
 }
 
@@ -103,15 +96,11 @@
   .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: calc(50% + 190px);
   }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 260px);
-  }
 }
 
 @media (max-width: 768px) {
   /* Panel overlays the map on mobile; keep the badge centered. */
-  .maps-maplibre-container.panel-open ~ .map-progress-badge,
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: 50%;
   }
 }
@@ -524,6 +513,37 @@ html.dark .map-html-label {
   .photo-cluster-gallery__grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
+}
+
+/* Explains an empty period; toggled by the range statistics result. It sits
+   at the right edge, above the replay dock's tab, so it stays on the visible
+   map at every side-panel width and clear of the rail on phones. */
+.map-empty-state {
+  position: absolute;
+  right: 12px;
+  bottom: 92px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: calc(100% - 24px);
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  font-size: 12px;
+  text-align: right;
+}
+
+.map-empty-state.hidden {
+  display: none;
+}
+
+.map-empty-state-action {
+  color: oklch(var(--p));
+  font-weight: 600;
 }
 
 /* Replay dock: sits above MapLibre's attribution and scale, inside the part

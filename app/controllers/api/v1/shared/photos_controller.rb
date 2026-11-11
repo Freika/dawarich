@@ -115,15 +115,8 @@ module Api
 
             [track.start_at.iso8601, track.end_at.iso8601]
           when :timeline
-            zone = Time.find_zone(link.user.timezone_iana) || Time.find_zone('UTC')
-            start_at = zone.parse(link.settings['start_date'].to_s)
-            end_at   = zone.parse(link.settings['end_date'].to_s)
-            return nil if start_at.nil? || end_at.nil?
-
-            [start_at.beginning_of_day.iso8601, end_at.end_of_day.iso8601]
+            link.timeline_window&.map(&:iso8601)
           end
-        rescue ArgumentError, TypeError
-          nil
         end
 
         def serialize(photo)

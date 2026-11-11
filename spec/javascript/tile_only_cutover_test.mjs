@@ -12,7 +12,9 @@ test("main-map code has no classic Point, Track, or Route renderer switch", asyn
       read("../../app/javascript/controllers/maps/maplibre/layer_manager.js"),
       read("../../app/javascript/maps_maplibre/layers/tracks_layer.js"),
       read("../../app/views/map/maplibre/_settings_panel.html.erb"),
-      read("../../app/javascript/controllers/maps/maplibre_controller.js"),
+      read(
+        "../../app/javascript/controllers/maps/maplibre/timeline_map_bridge.js",
+      ),
     ])
 
   assert.doesNotMatch(

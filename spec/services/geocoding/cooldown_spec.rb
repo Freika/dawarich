@@ -35,7 +35,7 @@ RSpec.describe Geocoding::Cooldown do
     end
 
     def after_cooldown
-      Kernel.sleep(1.1)
+      expire_geocoding_cooldown
     end
 
     it 'doubles the pause when the provider refuses again after one' do

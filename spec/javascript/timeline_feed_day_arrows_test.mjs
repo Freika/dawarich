@@ -1,5 +1,4 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 globalThis.CustomEvent ??= class CustomEvent extends Event {
@@ -9,18 +8,7 @@ globalThis.CustomEvent ??= class CustomEvent extends Event {
   }
 }
 
-const source = (
-  await readFile(
-    new URL(
-      "../../app/javascript/controllers/timeline_feed_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-).replace(/^import .*\n/gm, "")
-const { default: TimelineFeedController } = await import(
-  `data:text/javascript;base64,${Buffer.from(`class Controller {}\n${source}`).toString("base64")}`
-)
+import TimelineFeedController from "controllers/timeline_feed_controller"
 
 function setup(
   t,

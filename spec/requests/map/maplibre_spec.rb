@@ -7,6 +7,15 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  it 'does not gate map layers for a Lite user on a self-hosted instance' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    user.update!(plan: :lite)
+
+    get map_v2_path
+
+    expect(response.body).not_to include('data-maps--maplibre-user-plan-value="lite"')
+  end
+
   it 'hands the map the layers the server gates for Lite' do
     get map_v2_path
 
@@ -255,6 +264,75 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       get map_v2_path
 
       expect(response.body).to include('Order a printed poster')
+    end
+  end
+
+  describe 'empty period state' do
+    def empty_state
+      get map_v2_path
+      Nokogiri::HTML(response.body).at_css('[data-testid="map-empty-state"]')
+    end
+
+    it 'offers a jump to the day of the latest point, hidden until the map reports an empty period' do
+      create(:point, user: user, timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+
+      state = empty_state
+
+      expect(state['class']).to include('hidden')
+      expect(state['href']).to eq(map_v2_path(date: '2025-10-16'))
+    end
+
+    it 'keeps the open panel when jumping' do
+      create(:point, user: user, timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+
+      get map_v2_path(panel: 'timeline')
+      link = Nokogiri::HTML(response.body).at_css('a[data-testid="map-empty-state"]')
+
+      expect(link['href']).to eq(map_v2_path(date: '2025-10-16', panel: 'timeline'))
+    end
+
+    it 'jumps to the latest day outside a Privacy Zone' do
+      tag = create(:tag, :privacy_zone, user: user, privacy_radius_meters: 500)
+      place = create(:place, user: user, latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      create(:tagging, tag: tag, taggable: place)
+      create(:point, user: user, lonlat: 'POINT(13.405 52.52)', timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+      create(:point, user: user, lonlat: 'POINT(11.57 48.13)', timestamp: Time.zone.parse('2025-09-02 12:00').to_i)
+
+      expect(empty_state['href']).to eq(map_v2_path(date: '2025-09-02'))
+    end
+
+    it 'offers no jump when every point is inside a Privacy Zone' do
+      tag = create(:tag, :privacy_zone, user: user, privacy_radius_meters: 500)
+      place = create(:place, user: user, latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      create(:tagging, tag: tag, taggable: place)
+      create(:point, user: user, lonlat: 'POINT(13.405 52.52)', timestamp: Time.zone.parse('2025-10-16 12:00').to_i)
+
+      expect(empty_state.name).to eq('div')
+    end
+
+    it 'reads the latest day in the timezone from settings' do
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      create(:point, user: user, timestamp: Time.utc(2025, 10, 16, 3, 0).to_i)
+
+      expect(empty_state['href']).to eq(map_v2_path(date: '2025-10-15'))
+    end
+
+    it 'does not claim nothing was recorded when the data is outside the Lite window' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update_column(:plan, User.plans[:lite])
+      create(:point, user: user, timestamp: 2.years.ago.to_i)
+
+      state = empty_state
+
+      expect(state.name).to eq('div')
+      expect(state.text.strip).to eq(I18n.t('map.maplibre.index.no_data_in_period'))
+    end
+
+    it 'points an account without any data to the getting-started guide' do
+      state = empty_state
+
+      expect(state.name).to eq('button')
+      expect(state['onclick']).to eq('getting_started.showModal()')
     end
   end
 

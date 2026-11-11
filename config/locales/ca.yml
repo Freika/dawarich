@@ -163,7 +163,7 @@ ca:
         current_password: Contrasenya actual
         required_to_confirm_your_changes: "(necessària per confirmar els teus canvis)"
         import_your_data: Importa les teves dades
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Puja un arxiu ZIP amb les dades exportades de Dawarich per restaurar els teus punts, viatges i configuració.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Puja un arxiu ZIP amb les dades exportades de Dawarich per restaurar els teus punts, viatges i configuració. Les connexions d'integracions (Immich, Photoprism, AirTrail, TeslaMate) no es restauren; torna a connectar-les a Configuració → Integracions."
         select_zip_archive: Selecciona l'arxiu ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: L'arxiu es pujarà directament a l'emmagatzematge. Tingues paciència durant la pujada.
         cancel: Cancel·la
@@ -984,7 +984,7 @@ ca:
         enter_name_of_a_place: Introdueix el nom d'un lloc
         search_for_a_location_to_find_places_you_visited: Cerca una ubicació per trobar llocs que has visitat
         points: Punts
-        show_individual_location_points: Mostra els punts d'ubicació individuals
+        show_individual_location_points: "Cada posició que han enregistrat els teus dispositius, un punt per cadascuna."
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
         editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
@@ -995,35 +995,35 @@ ca:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Mostra els punts de soroll GPS filtrats
         tracks: Trajectes
-        show_backend_calculated_tracks: Mostra els trajectes calculats pel servidor
+        show_backend_calculated_tracks: "Els teus punts units en els trajectes que has recorregut."
         flights: Vols
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Mostra els vols d'AirTrail com a arcs (amaga el GPS superposat)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Els teus vols d'AirTrail com a arcs. Amaguen els punts GPS que se superposen."
         heatmap: Mapa de calor
-        show_density_heatmap: Mostra el mapa de calor de densitat
+        show_density_heatmap: "Brilla més on tens més punts."
         hexagons: Hexàgons
-        show_point_density_as_hexagonal_cells: Mostra la densitat de punts com a cel·les hexagonals
+        show_point_density_as_hexagonal_cells: "Compta els teus punts per cel·la hexagonal per a una visió més general."
         visits: Visites
-        show_detected_area_visits: Mostra les visites a àrees detectades
+        show_detected_area_visits: "Visites detectades per Dawarich: moments en què vas romandre en un mateix lloc."
         filter_by_name: Filtra per nom...
         all_visits: Totes les visites
         confirmed_only: Només confirmades
         suggested_only: Només suggerides
         places: Llocs
-        show_your_saved_places: Mostra els teus llocs desats
+        show_your_saved_places: "Llocs amb nom que has desat. Les visites s'hi associen."
         enable_all_tags: Activa totes les etiquetes
         show_place_boundaries: Mostra els límits dels llocs
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
-        show_geotagged_photos: Mostra les fotos geolocalitzades
+        show_geotagged_photos: "Les teves fotos geolocalitzades, situades on es van fer."
         areas: Àrees
         show_defined_areas: Mostra les àrees definides
         fog_of_war: Boira de guerra
-        show_explored_areas: Mostra les àrees explorades
+        show_explored_areas: "Enfosqueix el mapa excepte on ja has estat."
         per_point: Per punt
         per_hexagon: Per hexàgon
         scratch_map: Països visitats
-        show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
+        show_scratched_countries: "Els països que has visitat durant el període seleccionat, acolorits."
         family_members: Membres de la família
         manage_family: "Gestiona la família"
         show_family_member_locations: Mostra les ubicacions dels membres de la família
@@ -1243,6 +1243,10 @@ ca:
       index:
         loading: Carregant...
         pick_a_day: Tria un dia
+        no_data_in_period: "No hi ha dades d'ubicació en aquest període"
+        jump_to_latest_data: "Ves a les teves dades més recents"
+        nothing_recorded_yet: "Encara no s'ha enregistrat ni importat res."
+        get_started: "Comença"
         map: Mapa
     residency:
       show:
@@ -1337,15 +1341,18 @@ ca:
       and: i
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: dels contenidors Docker. Gràcies!
+      contact_support_html: "Si torna a passar, escriu-nos a %{email}."
     index:
       notifications: Notificacions
       mark_all_as_read: Marca-ho tot com a llegit
       delete_all: Suprimeix-ho tot
       are_you_sure_you_want_to_delete_all_notifications: Estàs segur que vols suprimir totes les notificacions?
+      read_are_deleted: "Les notificacions llegides s'eliminen al cap de %{days} dies."
     show:
       back_to_notifications: Torna a les notificacions
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
+      open: Obre
   places:
     management:
       create: "Crear lloc"
@@ -1683,6 +1690,8 @@ ca:
         family_feature_hint: "Compartir la ubicació amb els membres de la família. Si la desactives, deixes de compartir la teva ubicació i els enllaços de viatges només per a la família; continues sent-ne membre. Quan la tornis a activar, la compartició de la ubicació començarà desactivada."
         achievements_feature: "Assoliments"
         achievements_feature_hint: "Regions explorades i insígnies. Si els desactives, es deixa de calcular el progrés i es desactiven els teus enllaços públics d'assoliments."
+        trip_detection_feature: "Troba viatges automàticament"
+        trip_detection_feature_hint: "Troba viatges al teu historial d'ubicacions i els afegeix als teus viatges. Si el desactives, es deixa de cercar i es conserven els viatges ja trobats. Si el tornes a activar, es torna a cercar de seguida."
     integrations:
       trek:
         title: "Integració amb TREK"
@@ -3644,7 +3653,7 @@ ca:
         export_finished: Exportació finalitzada
         export_name_successfully_finished: "L'exportació \"%{name}\" ha finalitzat correctament."
         export_failed: Exportació fallida
-        export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
+        export_name_failed_message: "L'exportació \"%{name}\" ha fallat: %{message}"
         unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
     families:
       auto_create:
@@ -3669,8 +3678,6 @@ ca:
         you_must_leave_your_current_family_before_creating_a_new: Has d'abandonar la teva família actual abans de crear-ne una de nova
         you_have_already_created_a_family_each_user_can_only: Ja has creat una família. Cada usuari només pot crear una família
         family_feature_requires_an_active_subscription: La funció de família requereix una subscripció activa
-        family_created: Família creada
-        you_ve_successfully_created_the_family_name: "Has creat correctament la família '%{name}'"
         a_family_with_this_name_already_exists_for_your_account: Ja existeix una família amb aquest nom per al teu compte
         an_unexpected_error_occurred_while_creating_the_family_please_try: S'ha produït un error inesperat en crear la família. Torna-ho a provar
         failed_to_create_family: 'No s''ha pogut crear la família: %{message}'
@@ -3693,7 +3700,6 @@ ca:
         user_already_in_family: L'usuari ja forma part d'una família
         invitation_already_sent: Ja s'ha enviat una invitació a aquest correu electrònic
         sent_self_hosted: "S'ha enviat una invitació de família a %{email} si l'SMTP està configurat correctament. Si no fas servir SMTP, copia l'enllaç d'invitació des de la pàgina de la família i comparteix-lo manualment."
-        sent: "S'ha enviat una invitació de família a %{email}"
         failed_to_create: 'No s''ha pogut crear la invitació: %{message}'
       memberships:
         destroy:
@@ -3702,14 +3708,10 @@ ca:
           only_family_owners_can_remove_other_members: Només els propietaris de família poden eliminar altres membres.
           cannot_remove_members_from_a_different_family: No es poden eliminar membres d'una família diferent.
           cannot_remove_the_family_owner_the_owner_must_delete_the: No es pot eliminar el propietari de la família. El propietari ha de suprimir la família o abandonar-la ell mateix.
-          left_family: Família abandonada
-          you_ve_left_the_family_family_name: "Has abandonat la família \"%{family_name}\""
           family_member_left: Un membre ha abandonat la família
           email_has_left_the_family_family_name: '%{email} ha abandonat la família "%{family_name}"'
           removed_from_family: Eliminat de la família
           you_have_been_removed_from_the_family_family_name_by: "T'han eliminat de la família \"%{family_name}\" %{email}"
-          member_removed: Membre eliminat
-          email_has_been_removed_from_the_family_family_name: '%{email} s''ha eliminat de la família "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: S'ha produït un error inesperat en eliminar la pertinença. Torna-ho a provar
           failed_to_leave: 'No s''ha pogut abandonar la família: %{message}'
       update_location_sharing:
@@ -3785,7 +3787,6 @@ ca:
           one: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punt, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
           other: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punts, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
-        import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: "La teva importació \"%{name}\" ha finalitzat i tots els punts s'han desat, però el pas de %{step} ha fallat. Pot ser que faltin estadístiques, trajectes o suggeriments de visita, o que estiguin desactualitzats. Pots iniciar un recàlcul des de la Configuració."
         your_file_name_contained_raw_points_points_all_of_which: "El teu arxiu %{name} contenia %{raw_points} punts, tots els quals ja existien a la teva línia de temps amb les mateixes coordenades i marques de temps. No s'ha importat res. Si això no era el que esperaves, suprimeix els punts existents d'aquest interval de dates i torna a importar."
@@ -3862,7 +3863,6 @@ ca:
     stats:
       calculate_month:
         stats_update_failed: L'actualització de les estadístiques ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: No es pot suprimir un usuari propietari d'una família amb altres membres
@@ -3966,18 +3966,15 @@ ca:
     stats:
       calculating_job:
         stats_update_failed: L'actualització de les estadístiques ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: El càlcul del resum mensual ha fallat
-            message_stacktrace_backtrace: "%{message}, traça: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Resum de fi d'any
             period_label_calculation_failed: "El càlcul de %{period_label} ha fallat"
-            message_stacktrace_backtrace: "%{message}, traça: %{backtrace}"
       import_data_job:
         data_import_failed: La importació de dades ha fallat
         your_data_import_failed_with_error_message_please_check_the: 'La importació de les teves dades ha fallat amb l''error: %{message}. Comprova el format de l''arxiu i torna-ho a provar.'
@@ -3990,7 +3987,6 @@ ca:
           other: "%{count} anys"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: "S'han recalculat les estadístiques, els trajectes i els resums de %{year_label}."
         data_recalculation_failed: El recàlcul de dades ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Redetecció de visites ocupada

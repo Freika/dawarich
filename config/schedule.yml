@@ -90,9 +90,7 @@ lite_archival_warning_job:
   queue: archival
   active_job: true
 
-# Raw data archival pipeline — enable when ready for production use.
 # Pipeline: archive (1st) → verify (daily) → clear (8th, 7 days after archive).
-# See https://github.com/Freika/dawarich/issues/XXXX for tracking.
 raw_data_archive_job:
   cron: "0 3 1 * *" # 1st of month at 03:00
   class: "Points::RawData::ArchiveJob"
@@ -129,6 +127,19 @@ pending_imports_cleanup:
   queue: low_priority
   active_job: true
   description: "Sweep expired or old-claimed pending imports"
+
+notifications_cleanup_job:
+  cron: "0 4 * * *" # every day at 04:00 UTC
+  class: "Notifications::CleanupJob"
+  queue: low_priority
+  active_job: true
+  description: "Delete notifications that were read more than 30 days ago"
+
+trip_detecting_job:
+  cron: "35 0 * * *" # every day at 00:35 UTC
+  class: "Trips::BulkDetectJob"
+  queue: trips
+  active_job: true
 
 achievements_bulk_check_job:
   cron: "30 1 * * *" # every day at 01:30

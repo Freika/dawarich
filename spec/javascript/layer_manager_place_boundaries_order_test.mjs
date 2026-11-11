@@ -1,15 +1,10 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
+const withoutImports = await strippedSource(
+  "controllers/maps/maplibre/layer_manager.js",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(withoutImports).toString("base64")}`
 const { LayerManager } = await import(moduleUrl)
 

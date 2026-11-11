@@ -14,6 +14,8 @@ module Map
       @end_at = parsed_end_at
       @import_id = import_record&.id
       @current_position = current_position
+      @latest_data_date = latest_data_date
+      @data_outside_view = @latest_data_date.nil? && current_user.points.exists?
       @exploration_bounds = exploration_bounds
       @exploration_snapshot_id = exploration_snapshot_id if @exploration_bounds
 
@@ -50,8 +52,30 @@ module Map
       [[west, south], [east, north]]
     end
 
+    def latest_points
+      current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc)
+    end
+
+    def latest_point
+      return @latest_point if defined?(@latest_point)
+
+      @latest_point = latest_points.first
+    end
+
+    # The day the empty-period state offers to jump to, in the same zone
+    # `?date=` is read in. It is the latest day the map can actually show:
+    # a day spent inside a Privacy Zone would open as another empty period.
+    def latest_data_date
+      masker = current_privacy_zone_masker
+      point = masker.any? ? masker.mask_points(latest_points).first : latest_point
+      return unless point
+
+      zone = current_user.safe_settings.timezone.presence || 'UTC'
+      Time.zone.at(point.timestamp).in_time_zone(zone).to_date
+    end
+
     def current_position
-      point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
+      point = latest_point
       return if point.nil? || current_privacy_zone_masker.in_zone?(point.lon, point.lat)
 
       { longitude: point.lon, latitude: point.lat, timestamp: point.timestamp }
@@ -86,7 +110,7 @@ module Map
 
       @date_param_range =
         if params[:date].present?
-          tz = current_user.safe_settings.timezone.presence || 'UTC'
+          tz = current_user.timezone_or_utc
           Time.use_zone(tz) do
             date = params[:date] == 'today' ? Date.current : safe_parse_date(params[:date])
             date&.all_day

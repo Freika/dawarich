@@ -215,16 +215,4 @@ export class Toast {
   static info(message, duration = 3000) {
     return Toast.show(message, "info", duration)
   }
-
-  /**
-   * Clear all toasts
-   */
-  static clearAll() {
-    if (!Toast.container) return
-
-    const toasts = Toast.container.querySelectorAll(".toast")
-    toasts.forEach((toast) => {
-      Toast.dismiss(toast)
-    })
-  }
 }

@@ -420,6 +420,14 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         expect(response).to have_http_status(:not_found)
       end
 
+      it 'renders a slot for the selected point of this track' do
+        track = create(:track, user: user)
+
+        get track_info_map_timeline_feed_path(track)
+
+        expect(response.body).to include(%(id="track-point-info-container-#{track.id}"))
+      end
+
       it 'renders a Share button targeting the share-link-modal frame' do
         track = create(:track, user: user)
 

@@ -626,9 +626,7 @@ fr:
         current_password: Mot de passe actuel
         required_to_confirm_your_changes: "(obligatoire pour confirmer vos modifications)"
         import_your_data: Importer vos données
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Téléversez une
-          archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos
-          points, vos trajets et vos paramètres.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Téléversez une archive ZIP contenant vos données exportées depuis Dawarich pour restaurer vos points, vos trajets et vos paramètres. Les connexions aux intégrations (Immich, Photoprism, AirTrail, TeslaMate) ne sont pas restaurées ; reconnectez-les dans Paramètres → Intégrations."
         select_zip_archive: Sélectionner une archive ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Le fichier sera
           téléversé directement vers le stockage. Veuillez patienter pendant le téléversement.
@@ -1665,7 +1663,7 @@ fr:
         search_for_a_location_to_find_places_you_visited: Rechercher une localisation
           pour trouver les endroits visités
         points: Points
-        show_individual_location_points: Afficher les points individuels de localisation
+        show_individual_location_points: "Chaque position enregistrée par vos appareils, un point pour chacune."
         edit_points: Éditer les points
         allow_dragging_points_to_correct_their_position: Autoriser la traînée des
           points pour corriger leur position.
@@ -1679,36 +1677,35 @@ fr:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Afficher les points bruit GPS filtrés
         tracks: Trajets
-        show_backend_calculated_tracks: Afficher les trajets calculés par Dawarich
+        show_backend_calculated_tracks: "Vos points reliés pour former les trajets que vous avez parcourus."
         flights: Vols
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Afficher les vols AirTrail
-          sous forme d'arc (masque les points GPS superposés)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Vos vols AirTrail sous forme d'arcs. Ils masquent les points GPS qu'ils recouvrent."
         heatmap: Carte de chaleur
-        show_density_heatmap: Afficher la carte de chaleur de densité
+        show_density_heatmap: "Plus lumineux là où vous avez plus de points."
         hexagons: Hexagones
-        show_point_density_as_hexagonal_cells: Afficher la densité des points en hexagones
+        show_point_density_as_hexagonal_cells: "Compte vos points par cellule hexagonale pour une vue plus générale."
         visits: Visites
-        show_detected_area_visits: Afficher les visites détectées dans une zone
+        show_detected_area_visits: "Visites détectées par Dawarich : les moments où vous êtes resté au même endroit."
         filter_by_name: Filtrer par nom...
         all_visits: Toutes les Visites
         confirmed_only: Seulement confirmé
         suggested_only: Seulement suggéré
         places: Endroits
-        show_your_saved_places: Afficher vos endroits sauvegardés
+        show_your_saved_places: "Lieux nommés que vous avez enregistrés. Les visites y sont rattachées."
         enable_all_tags: Activer toutes les étiquettes
         show_place_boundaries: Afficher les limites des lieux
         untagged: "\U0001F3F7️ Sans étiquette"
         click_tags_to_filter_places: Cliquez sur les étiquettes pour filtrer les endroits
         photos: Photos
-        show_geotagged_photos: Afficher les photos géotagées
+        show_geotagged_photos: "Vos photos géolocalisées, placées là où elles ont été prises."
         areas: Zones
         show_defined_areas: Afficher les zones définies
         fog_of_war: Brouillard de guerre
-        show_explored_areas: Afficher les zones explorées
+        show_explored_areas: "Assombrit la carte, sauf là où vous êtes déjà allé."
         per_point: Par point
         per_hexagon: Par hexagone
         scratch_map: Pays visités
-        show_scratched_countries: Mettre en évidence les pays visités dans la période sélectionnée
+        show_scratched_countries: "Les pays que vous avez visités pendant la période sélectionnée, colorés."
         family_members: Membres de la famille
         manage_family: "Gérer la famille"
         show_family_member_locations: Afficher les emplacements des membres de la
@@ -1978,6 +1975,10 @@ fr:
       index:
         loading: Chargement...
         pick_a_day: Choisissez une journée
+        no_data_in_period: "Aucune donnée de localisation sur cette période"
+        jump_to_latest_data: "Aller à vos données les plus récentes"
+        nothing_recorded_yet: "Rien n'a encore été enregistré ni importé."
+        get_started: "Commencer"
         map: Carte
     residency:
       show:
@@ -2079,16 +2080,19 @@ fr:
       and: et
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: conteneurs Docker. Merci !
+      contact_support_html: "Si cela se reproduit, écrivez-nous à %{email}."
     index:
       notifications: Notifications
       mark_all_as_read: Marquer toutes comme lues
       delete_all: Tout supprimer
       are_you_sure_you_want_to_delete_all_notifications: Êtes-vous sûr de vouloir
         supprimer toutes les notifications ?
+      read_are_deleted: "Les notifications lues sont supprimées après %{days} jours."
     show:
       back_to_notifications: Retour aux notifications
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
+      open: Ouvrir
   places:
     management:
       create: "Créer un lieu"
@@ -2428,6 +2432,8 @@ fr:
         family_feature_hint: "Partage de position avec les membres de la famille. La désactiver arrête le partage de votre position et des liens de voyage réservés à la famille ; vous restez membre. Lorsque vous la réactivez, le partage de position est désactivé."
         achievements_feature: "Succès"
         achievements_feature_hint: "Régions explorées et badges. Les désactiver arrête le calcul de la progression et désactive vos liens publics de succès."
+        trip_detection_feature: "Trouver les voyages automatiquement"
+        trip_detection_feature_hint: "Trouve des voyages dans votre historique de positions et les ajoute à vos voyages. Désactiver cette option arrête la recherche et conserve les voyages déjà trouvés. La réactiver relance la recherche immédiatement."
     integrations:
       trek:
         title: "Intégration TREK"
@@ -4683,8 +4689,7 @@ fr:
         export_name_successfully_finished: L'export "%{name}" s'est effectué avec
           succès.
         export_failed: Export échoué
-        export_name_failed_message_stacktrace_n: 'L''export "%{name}" a échoué : %{message},
-          trace d''exécution : %{backtrace}'
+        export_name_failed_message: "L'export \"%{name}\" a échoué : %{message}"
         unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
     families:
       auto_create:
@@ -4719,9 +4724,6 @@ fr:
           une famille. Chaque utilisateur ne peut créer qu'une seule famille.
         family_feature_requires_an_active_subscription: La fonctionnalité de la famille
           nécessite une souscription active
-        family_created: Famille créée
-        you_ve_successfully_created_the_family_name: Vous avez créé avec succès la
-          famille « %{name} »
         a_family_with_this_name_already_exists_for_your_account: Une famille avec
           ce nom existe déjà pour votre compte
         an_unexpected_error_occurred_while_creating_the_family_please_try: Une erreur
@@ -4757,7 +4759,6 @@ fr:
         sent_self_hosted: L'invitation de la famille a été envoyée à %{email} si SMTP
           est configuré correctement. Si vous n'utilisez pas SMTP, copiez le lien
           d'invitation depuis la page de la famille et partagez-le manuellement.
-        sent: L'invitation de la famille a été envoyée à %{email}
         failed_to_create: 'Échec de création de l''invitation : %{message}'
       memberships:
         destroy:
@@ -4773,16 +4774,11 @@ fr:
           cannot_remove_the_family_owner_the_owner_must_delete_the: Impossible de
             supprimer le propriétaire de la famille. Le propriétaire doit supprimer
             la famille ou quitter seul.
-          left_family: Famille quittée
-          you_ve_left_the_family_family_name: Vous avez quitté la famille « %{family_name} »
           family_member_left: Un membre a quitté la famille
           email_has_left_the_family_family_name: '%{email} a quitté la famille « %{family_name} »'
           removed_from_family: Retrait de la famille
           you_have_been_removed_from_the_family_family_name_by: Vous avez été retiré
             de la famille « %{family_name} » par %{email}
-          member_removed: Membre retiré
-          email_has_been_removed_from_the_family_family_name: '%{email} a été retiré
-            de la famille « %{family_name} »'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Une
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
@@ -4869,8 +4865,6 @@ fr:
           other: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} points, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
         zero_points: Votre fichier « %{name} » n'a importé aucun point. Aucun nouveau
           point de localisation n'a été trouvé dans ce fichier.
-        import_failed_self_hosted: 'L''importation « %{name} » a échoué : %{message},
-          détail de l''erreur : %{backtrace}'
         import_failed_cloud: L'importation « %{name} » a échoué. Contactez-nous à
           hi@dawarich.com.
         your_import_name_finished_and_all_points_were_saved_but: Votre import "%{name}"
@@ -5000,7 +4994,6 @@ fr:
     stats:
       calculate_month:
         stats_update_failed: L'actualisation des statistiques a échoué
-        message_stacktrace_n: "%{message}, trace d’appels : %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Activez au moins un mode de transport
@@ -5133,18 +5126,15 @@ fr:
     stats:
       calculating_job:
         stats_update_failed: Échec de la mise à jour des statistiques
-        message_stacktrace_n: "%{message}, détail de l'erreur : %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Échec du calcul du récapitulatif mensuel
-            message_stacktrace_backtrace: "%{message}, détail de l'erreur : %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: récapitulatif annuel
             period_label_calculation_failed: Échec du calcul du %{period_label}
-            message_stacktrace_backtrace: "%{message}, détail de l'erreur : %{backtrace}"
       import_data_job:
         data_import_failed: Échec de l'importation des données
         your_data_import_failed_with_error_message_please_check_the: 'L’importation
@@ -5161,7 +5151,6 @@ fr:
           one: "%{count} année"
           other: "%{count} années"
         data_recalculation_failed: Échec du recalcul des données
-        message_stacktrace_n: "%{message}, détail de l'erreur : %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Redétection des visites en cours

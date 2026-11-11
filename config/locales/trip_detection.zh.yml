@@ -1,0 +1,72 @@
+zh:
+  trip_detection:
+    # A Detected Trip's name: places (a city or up to three countries), then the month.
+    name: "%{places}，%{month}"
+    list_separator: "、"
+    # The name used when no city or country is known.
+    fallback_name: "旅行，%{range}"
+    formats:
+      month_year: "%Y年%b"
+    # Date ranges. Each part is a strftime format localized by I18n.l (%b is the
+    # abbreviated month name); the pattern joins the two dates.
+    range:
+      same_month:
+        pattern: "%{start}–%{end}"
+        start: "%Y年%b%-d日"
+        end: "%-d日"
+      same_year:
+        pattern: "%{start}–%{end}"
+        start: "%Y年%b%-d日"
+        end: "%b%-d日"
+      cross_year:
+        pattern: "%{start}–%{end}"
+        start: "%Y年%b%-d日"
+        end: "%Y年%b%-d日"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "发现旅行：%{name}"
+        content: "Dawarich 在您的历史记录中发现了一次新旅行。<a href=\"%{url}\">打开旅行</a>"
+      many:
+        title:
+          one: "发现 %{count} 次旅行"
+          other: "发现 %{count} 次旅行"
+        content: "Dawarich 在您的历史记录中发现了新的旅行。<a href=\"%{url}\">查看自动发现的旅行</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "我住在 / 曾住在这里"
+      help: "“从”留空表示从您首次在此处被记录起；“至”留空表示您仍住在这里。"
+      from: "从"
+      until: "至"
+      save: "保存"
+      remove: "删除"
+      remove_confirm: "删除这段时间？其日期将被删除，这段时间内自动发现的旅行也可能被删除。"
+      add: "添加时间段"
+      end_before_start: "“至”不能早于“从”。"
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "显示"
+      all: "全部旅行"
+      manual: "我创建的"
+      detected: "自动发现的"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "添加您的住所，Dawarich 就能自动发现您的旅行。"
+      long_absence: "Dawarich 跳过了一段离家超过 %{days} 天的时间。如果您当时住在别处，请添加那个更早的住所。"
+      add_home: "在“地点”页面添加住所"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "家"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "添加您的住所"
+      intro: "Dawarich 根据您的住所自动发现您的旅行。请共享您的位置或点击地图，然后确认。"
+      use_my_location: "使用我的位置"
+      confirm: "这是我的住所"
+      skip: "跳过"
+      location_denied: "无法读取您的位置。您可以点击地图来标出住所，也可以稍后在“地点”页面设置。"
+      home_saved: "您的住所已保存。Dawarich 将查找您的旅行。"
+      invalid_location: "请先在地图上选择一个位置。"
+      # Onboarding never adds a second Home.
+      home_exists: "您已经有住所了。您可以在“地点”页面修改它。"
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "继续"

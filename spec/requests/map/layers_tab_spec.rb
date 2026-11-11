@@ -68,4 +68,17 @@ RSpec.describe 'Map layers tab', type: :request do
 
     expect(tile_for(layers_tab, 'flightsToggle').size).to eq(1)
   end
+
+  it 'gives every tile a card with its description, and a preview loop where one exists' do
+    get map_v2_path
+
+    cards = Nokogiri::HTML(response.body).css('label.layer-tile').to_h do |tile|
+      [tile.at_css('.layer-tile__label').text, tile.at_css('[data-layer-preview-target="card"]')]
+    end
+
+    expect(cards.values).to all(be_present)
+    expect(cards['Points'].text).to include(I18n.t('map.maplibre.settings_panel.show_individual_location_points'))
+    expect(cards['Points'].at_css('img')['data-src']).to match(%r{layer_previews/points.*\.gif})
+    expect(cards.reject { |_, card| card.at_css('img') }.keys).to eq(%w[Photos Notes])
+  end
 end

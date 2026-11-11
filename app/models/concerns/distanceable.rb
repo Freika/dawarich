@@ -190,26 +190,6 @@ module Distanceable
     end
   end
 
-  def distance_to(other_point, unit = :km)
-    unless ::DISTANCE_UNITS.key?(unit.to_sym)
-      raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
-    end
-
-    other_lonlat = extract_point(other_point)
-    return nil if other_lonlat.nil?
-
-    # Calculate distance in meters using PostGIS
-    distance_in_meters = self.class.connection.select_value(<<~SQL.squish)
-      SELECT ST_Distance(
-        ST_GeomFromEWKT('#{lonlat}')::geography,
-        ST_GeomFromEWKT('#{other_lonlat}')::geography
-      )
-    SQL
-
-    # Convert to requested unit
-    distance_in_meters.to_f / ::DISTANCE_UNITS[unit.to_sym]
-  end
-
   # In-memory distance calculation using Geocoder (no SQL dependency)
   def distance_to_geocoder(other_point, unit = :km)
     unless ::DISTANCE_UNITS.key?(unit.to_sym)
@@ -293,22 +273,6 @@ module Distanceable
     rescue StandardError => e
       Rails.logger.error "Error calculating distance from lonlat: #{e.message}"
       0
-    end
-  end
-
-  private
-
-  def extract_point(point)
-    case point
-    when Array
-      unless point.length == 2
-        raise ArgumentError,
-              'Coordinates array must contain exactly 2 elements [latitude, longitude]'
-      end
-
-      RGeo::Geographic.spherical_factory(srid: 4326).point(point[1], point[0])
-    when self.class
-      point.lonlat
     end
   end
 end

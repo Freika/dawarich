@@ -133,17 +133,13 @@ RSpec.describe Fit::Importer do
     end
 
     context 'with corrupted FIT file' do
-      it 'sets import to failed without raising' do
+      it 'raises a parsing error so the import is reported as failed' do
         bad_file = Tempfile.new(['bad', '.fit'])
         bad_file.write('not a valid fit file at all')
         bad_file.rewind
 
-        expect do
-          described_class.new(import, user.id, bad_file.path).call
-        end.not_to raise_error
-
-        expect(import.reload.status).to eq('failed')
-        expect(import.error_message).to be_present
+        expect { described_class.new(import, user.id, bad_file.path).call }
+          .to raise_error(Fit::Importer::ParseError, /FIT parsing error/)
       ensure
         bad_file&.close
         bad_file&.unlink

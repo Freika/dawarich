@@ -49,6 +49,8 @@
     <% end %>
   </div>
 
+  <div id="track-point-info-container-<%= track.id %>"></div>
+
   <%= turbo_frame_tag "track-#{track.id}-segments",
                       class: "track-info-segments",
                       src: track_segments_path(track),

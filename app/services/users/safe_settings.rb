@@ -10,7 +10,7 @@ class Users::SafeSettings
 
   # Features a user can switch off in general settings, stored as
   # "<feature>_enabled". A missing key means the feature is on.
-  TOGGLEABLE_FEATURES = %w[family achievements].freeze
+  TOGGLEABLE_FEATURES = %w[family achievements trip_detection].freeze
 
   def self.feature_enabled?(settings, feature)
     ActiveModel::Type::Boolean.new.cast(settings["#{feature}_enabled"]) != false
@@ -90,7 +90,8 @@ class Users::SafeSettings
     'point_dragging_enabled' => false,
     'points_tiled_rendering' => true,
     'family_enabled' => true,
-    'achievements_enabled' => true
+    'achievements_enabled' => true,
+    'trip_detection_enabled' => true
   }.freeze
 
   # Map look settings that the map's Reset restores by deleting the stored
@@ -123,12 +124,12 @@ class Users::SafeSettings
       merge_threshold_minutes: merge_threshold_minutes,
       live_map_enabled: live_map_enabled,
       track_color: track_color,
-      immich_url: immich_url,
-      immich_api_key: immich_api_key,
-      photoprism_url: photoprism_url,
-      photoprism_api_key: photoprism_api_key,
-      airtrail_url: airtrail_url,
-      airtrail_api_key: airtrail_api_key,
+      immich_url: Users::IntegrationSettingKeys.without_credentials(immich_url),
+      immich_configured: immich_url.present? && immich_api_key.present?,
+      photoprism_url: Users::IntegrationSettingKeys.without_credentials(photoprism_url),
+      photoprism_configured: photoprism_url.present? && photoprism_api_key.present?,
+      airtrail_url: Users::IntegrationSettingKeys.without_credentials(airtrail_url),
+      airtrail_configured: airtrail_url.present? && airtrail_api_key.present?,
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
@@ -152,7 +153,8 @@ class Users::SafeSettings
       visit_min_duration_minutes: visit_min_duration_minutes,
       point_dragging_enabled: point_dragging_enabled?,
       family_enabled: feature_enabled?('family'),
-      achievements_enabled: feature_enabled?('achievements')
+      achievements_enabled: feature_enabled?('achievements'),
+      trip_detection_enabled: trip_detection_enabled?
     }
   end
 
@@ -294,6 +296,14 @@ class Users::SafeSettings
 
   def distance_unit
     settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
+  end
+
+  def trip_detection_enabled?
+    feature_enabled?('trip_detection')
+  end
+
+  def trip_detection_long_absence?
+    ActiveModel::Type::Boolean.new.cast(settings['trip_detection_long_absence']) == true
   end
 
   def visits_suggestions_enabled?

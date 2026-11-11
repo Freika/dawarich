@@ -210,7 +210,7 @@ es:
         current_password: Contraseña actual
         required_to_confirm_your_changes: "(requerido para confirmar tus cambios)"
         import_your_data: Importar tus datos
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Sube un archivo ZIP que contenga tus datos exportados de Dawarich para restaurar tus puntos, viajes y ajustes.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Sube un archivo ZIP que contenga tus datos exportados de Dawarich para restaurar tus puntos, viajes y ajustes. Las conexiones de integraciones (Immich, Photoprism, AirTrail, TeslaMate) no se restauran; vuelve a conectarlas en Ajustes → Integraciones."
         select_zip_archive: Selecciona archivo ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: El archivo se subirá directamente al almacenamiento. Ten paciencia durante la subida.
         cancel: Cancelar
@@ -1034,7 +1034,7 @@ es:
         enter_name_of_a_place: Introduce el nombre de un lugar
         search_for_a_location_to_find_places_you_visited: Busca una ubicación para encontrar los lugares que has visitado
         points: Puntos
-        show_individual_location_points: Muestra puntos individuales
+        show_individual_location_points: "Cada posición que registraron tus dispositivos, un punto por cada una."
         edit_points: Editar puntos
         allow_dragging_points_to_correct_their_position: Permite arrastrar puntos para corregir su posición.
         editing_points_is_a_pro_feature_this_stays_on_for: La edición de puntos está disponible con el plan Pro.
@@ -1046,35 +1046,35 @@ es:
         anomalies: Anomalías
         show_filtered_gps_noise_points: Muestra puntos de ruido GPS filtrados
         tracks: Trayectos
-        show_backend_calculated_tracks: Mostrar trayectos calculados por el servidor
+        show_backend_calculated_tracks: "Tus puntos unidos en los trayectos que recorriste."
         flights: Vuelos
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Muestra vuelos como arcos (oculta señales GPS superpuestas)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Tus vuelos de AirTrail como arcos. Ocultan los puntos GPS que se superponen."
         heatmap: Calor gráfico
-        show_density_heatmap: Muestra calor gráfico de densidad
+        show_density_heatmap: "Brilla más donde tienes más puntos."
         hexagons: Hexágonos
-        show_point_density_as_hexagonal_cells: Muestra densidad de puntos como celdas hexagonales
+        show_point_density_as_hexagonal_cells: "Cuenta tus puntos por celda hexagonal para una vista más general."
         visits: Visitas
-        show_detected_area_visits: Muestra visitas detectadas en áreas
+        show_detected_area_visits: "Visitas detectadas por Dawarich: momentos en que permaneciste en un mismo lugar."
         filter_by_name: Filtrar por nombre...
         all_visits: Todas las visitas
         confirmed_only: Solo confirmadas
         suggested_only: Solo sugeridas
         places: Lugares
-        show_your_saved_places: Muestra lugares guardados
+        show_your_saved_places: "Lugares con nombre que guardaste. Las visitas se asocian a ellos."
         enable_all_tags: Habilita todos los etiquetas
         show_place_boundaries: Mostrar los límites de los lugares
         untagged: "\U0001F3F7️ Sin etiquetar"
         click_tags_to_filter_places: Haz clic en las etiquetas para filtrar lugares
         photos: Fotos
-        show_geotagged_photos: Mostrar fotos geotagadas
+        show_geotagged_photos: "Tus fotos geoetiquetadas, situadas donde se tomaron."
         areas: Áreas
         show_defined_areas: Mostrar áreas definidas
         fog_of_war: Niebla de guerra
-        show_explored_areas: Mostrar áreas exploradas
+        show_explored_areas: "Oscurece el mapa salvo donde ya has estado."
         per_point: Por punto
         per_hexagon: Por hexágono
         scratch_map: Países visitados
-        show_scratched_countries: Resaltar los países visitados en el intervalo seleccionado
+        show_scratched_countries: "Los países que visitaste en el periodo seleccionado, rellenados."
         family_members: Miembros de la familia
         manage_family: "Gestionar la familia"
         show_family_member_locations: Mostrar ubicaciones de miembros de la familia
@@ -1293,6 +1293,10 @@ es:
       index:
         loading: Cargando…
         pick_a_day: Elige un día
+        no_data_in_period: "No hay datos de ubicación en este periodo"
+        jump_to_latest_data: "Ir a tus datos más recientes"
+        nothing_recorded_yet: "Todavía no se ha registrado ni importado nada."
+        get_started: "Empezar"
         map: Mapa
     residency:
       show:
@@ -1387,15 +1391,18 @@ es:
       and: "y"
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: contenedores de Docker. ¡Gracias!
+      contact_support_html: "Si vuelve a ocurrir, escríbenos a %{email}."
     index:
       notifications: Notificaciones
       mark_all_as_read: Marcar todas como leídas
       delete_all: Eliminar todo
       are_you_sure_you_want_to_delete_all_notifications: "¿Estás seguro de que quieres eliminar todas las notificaciones?"
+      read_are_deleted: "Las notificaciones leídas se eliminan después de %{days} días."
     show:
       back_to_notifications: Volver a notificaciones
       destroy_this_notification: Destruir esta notificación
       are_you_sure: "¿Estás seguro?"
+      open: Abrir
   places:
     management:
       create: "Crear lugar"
@@ -1686,6 +1693,8 @@ es:
         family_feature_hint: "Compartir la ubicación con los miembros de la familia. Al desactivarla dejas de compartir tu ubicación y los enlaces de viajes solo para la familia; sigues siendo miembro. Al volver a activarla, el uso compartido de la ubicación empieza desactivado."
         achievements_feature: "Logros"
         achievements_feature_hint: "Regiones exploradas e insignias. Al desactivarlos se deja de calcular el progreso y se desactivan tus enlaces públicos de logros."
+        trip_detection_feature: "Encontrar viajes automáticamente"
+        trip_detection_feature_hint: "Encuentra viajes en tu historial de ubicaciones y los añade a tus viajes. Al desactivarlo se deja de buscar y se conservan los viajes ya encontrados. Al volver a activarlo se busca de nuevo al instante."
     integrations:
       trek:
         title: "Integración con TREK"
@@ -3651,7 +3660,7 @@ es:
         export_finished: Exportación finalizada
         export_name_successfully_finished: La exportación "%{name}" ha finalizado con éxito.
         export_failed: No se pudo exportar
-        export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "La exportación \"%{name}\" ha fallado: %{message}"
         unsupported_file_format: 'Formato de archivo no soportado: %{format}'
     families:
       auto_create:
@@ -3676,8 +3685,6 @@ es:
         you_must_leave_your_current_family_before_creating_a_new: Debes dejar tu familia actual antes de crear una nueva.
         you_have_already_created_a_family_each_user_can_only: Ya has creado una Familia. Cada usuario solo puede crear una Familia.
         family_feature_requires_an_active_subscription: La característica de la Familia requiere una suscripción activa
-        family_created: Familia creada
-        you_ve_successfully_created_the_family_name: Has creado con éxito la familia '%{name}'
         a_family_with_this_name_already_exists_for_your_account: Ya existe una Familia con este nombre para tu cuenta.
         an_unexpected_error_occurred_while_creating_the_family_please_try: Ha ocurrido un error inesperado al crear la Familia. Por favor, vuelve a intentarlo.
         failed_to_create_family: 'Falló crear familia: %{message}'
@@ -3700,7 +3707,6 @@ es:
         user_already_in_family: El usuario ya está en una familia
         invitation_already_sent: Ya se envió invitación a este correo electrónico
         sent_self_hosted: Se envió invitación de familia a %{email} si SMTP está configurado correctamente. Si no estás usando SMTP, copia el enlace de invitación desde la página de la familia y compártelo manualmente.
-        sent: Se envió invitación de familia a %{email}
         failed_to_create: 'Falló crear invitación: %{message}'
       memberships:
         destroy:
@@ -3709,14 +3715,10 @@ es:
           only_family_owners_can_remove_other_members: Solo los dueños de la familia pueden eliminar a otros miembros.
           cannot_remove_members_from_a_different_family: No se puede eliminar a miembros de otra familia.
           cannot_remove_the_family_owner_the_owner_must_delete_the: No se puede eliminar al dueño de la familia. El dueño debe borrar la familia o dejarla por su cuenta.
-          left_family: Dejó Familia
-          you_ve_left_the_family_family_name: Has dejado la familia "%{family_name}"
           family_member_left: Miembro de la familia se fue
           email_has_left_the_family_family_name: '%{email} ha dejado la familia "%{family_name}"'
           removed_from_family: Eliminado de Familia
           you_have_been_removed_from_the_family_family_name_by: Has sido eliminado de la familia "%{family_name}" por %{email}
-          member_removed: Miembro eliminado
-          email_has_been_removed_from_the_family_family_name: '%{email} ha sido eliminado de la familia "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Ocurrió un error inesperado al eliminar la membresía. Por favor, inténtalo de nuevo
           failed_to_leave: 'Falló dejar la familia: %{message}'
       respond_to_location_request:
@@ -3797,7 +3799,6 @@ es:
           one: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} punto, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
           other: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} puntos, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
         zero_points: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación nuevos en este archivo."
-        import_failed_self_hosted: "La importación \"%{name}\" falló: %{message}, traza: %{backtrace}"
         import_failed_cloud: "La importación \"%{name}\" falló, contáctanos en hi@dawarich.com"
       source_detector:
         amazon_order: Este es un archivo de exportación de pedidos de Amazon, no contiene datos de ubicación. Dawarich importa historiales de ubicaciones de Google Takeout, OwnTracks, GPX y fuentes similares.
@@ -3869,7 +3870,6 @@ es:
     stats:
       calculate_month:
         stats_update_failed: No se pudieron actualizar las estadísticas
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Activa al menos un modo de transporte
@@ -3973,17 +3973,14 @@ es:
     stats:
       calculating_job:
         stats_update_failed: No se pudieron actualizar las estadísticas
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Cálculo del resumen mensual fallido
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             period_label_calculation_failed: "%{period_label} cálculo fallido"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
             year_end_digest: "Resumen anual"
       import_data_job:
         data_import_failed: No se pudieron importar los datos
@@ -3994,7 +3991,6 @@ es:
         data_recalculation_completed: Recálculo de datos completado
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Se han recalculado las estadísticas, los trayectos y los resúmenes de %{year_label}.
         data_recalculation_failed: El recálculo de datos ha fallado
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
         year_count:
           one: "%{count} año"
           other: "%{count} años"

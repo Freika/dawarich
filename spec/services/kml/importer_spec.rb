@@ -322,6 +322,13 @@ RSpec.describe Kml::Importer do
         expect(notification.title).to eq('KML Import Error')
         expect(notification.kind).to eq('error')
         expect(notification.content).to include('Database error')
+        expect(notification.action_path).to eq('/imports')
+      end
+
+      it 'reports the same failure once while it is unread' do
+        parser
+
+        expect { described_class.new(import, user.id, file_path).call }.not_to change(Notification, :count)
       end
     end
   end

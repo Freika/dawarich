@@ -33,17 +33,6 @@ module Maps
       { success: true, data: result, pre_calculated: true }
     end
 
-    def recalculate_h3_hex_ids
-      Stats::HexagonCalculator.new(user.id, stat.year, stat.month).call
-    end
-
-    def update_stat_with_new_hex_ids(new_hex_ids)
-      stat.update(h3_hex_ids: new_hex_ids)
-      result = build_hexagons_from_h3_ids(new_hex_ids)
-      Rails.logger.debug "Successfully recalculated H3 hex IDs: #{new_hex_ids.size} hexagons"
-      { success: true, data: result, pre_calculated: true }
-    end
-
     def build_hexagons_from_h3_ids(hex_ids)
       # Convert stored H3 IDs back to hexagon polygons
       # Array format: [[h3_index, point_count, earliest, latest], ...]

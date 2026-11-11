@@ -9,6 +9,7 @@ module Trips
       'distance' => 'trips.distance DESC NULLS LAST, trips.id DESC'
     }.freeze
     DEFAULT_SORT = 'newest'
+    ORIGINS = %w[manual detected].freeze
     QUERY_MAX_LENGTH = 100
     YEARS = (1900..2200)
 
@@ -68,9 +69,9 @@ module Trips
       )
     SQL
 
-    Filters = Data.define(:q, :sort, :year, :month, :country) do
+    Filters = Data.define(:q, :sort, :year, :month, :country, :origin) do
       def active?
-        q.present? || year.present? || country.present?
+        q.present? || year.present? || country.present? || origin.present?
       end
     end
 
@@ -86,6 +87,7 @@ module Trips
       scope = search(scope) if filters.q.present?
       scope = within_period(scope) if filters.year
       scope = visiting(scope) if filters.country.present?
+      scope = scope.where(origin: filters.origin) if filters.origin
       scope.order(Arel.sql(SORTS.fetch(filters.sort)))
     end
 
@@ -120,7 +122,8 @@ module Trips
         sort: SORTS.key?(params[:sort]) ? params[:sort] : DEFAULT_SORT,
         year:,
         month:,
-        country: Countries::NameAliases.canonical(params[:country].to_s.delete("\0").strip.presence)
+        country: Countries::NameAliases.canonical(params[:country].to_s.delete("\0").strip.presence),
+        origin: ORIGINS.include?(params[:origin]) ? params[:origin] : nil
       )
     end
 

@@ -154,7 +154,7 @@ zh:
         current_password: 当前密码
         required_to_confirm_your_changes: （确认更改时需要）
         import_your_data: 导入您的数据
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: 上传包含已导出 Dawarich 数据的 ZIP 文件，即可恢复您的轨迹点、行程和设置。
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "上传包含已导出 Dawarich 数据的 ZIP 文件，即可恢复您的轨迹点、行程和设置。集成连接（Immich、Photoprism、AirTrail、TeslaMate）不会恢复，请在“设置 → 集成”中重新连接。"
         select_zip_archive: 选择 ZIP 压缩包
         file_will_be_uploaded_directly_to_storage_please_be_patient: 文件将直接上传到存储。上传时请耐心等待。
         cancel: 取消
@@ -991,7 +991,7 @@ zh:
         enter_name_of_a_place: 输入地点名称
         search_for_a_location_to_find_places_you_visited: 搜索位置以查找您到访过的地点
         points: 轨迹点
-        show_individual_location_points: 显示各个轨迹点
+        show_individual_location_points: "您的设备记录的每一个位置，每个位置显示为一个点。"
         edit_points: 编辑轨迹点
         allow_dragging_points_to_correct_their_position: 允许拖动轨迹点来修正位置。
         editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点功能可在 Pro 计划中使用。
@@ -1002,35 +1002,35 @@ zh:
         anomalies: 异常
         show_filtered_gps_noise_points: 显示过滤后的 GPS 噪声点
         tracks: 轨迹
-        show_backend_calculated_tracks: 显示后端计算的轨迹
+        show_backend_calculated_tracks: "将您的轨迹点连接成您走过的路线。"
         flights: 航班
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: 显示 AirTrail 飞行轨迹为弧线（隐藏重叠的 GPS）
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "以弧线显示您的 AirTrail 航班，并隐藏与之重叠的 GPS 点。"
         heatmap: 热图
-        show_density_heatmap: 显示密度热图
+        show_density_heatmap: "轨迹点越多的地方越亮。"
         hexagons: 六边形
-        show_point_density_as_hexagonal_cells: 以六边形单元显示轨迹点密度
+        show_point_density_as_hexagonal_cells: "按六边形单元统计轨迹点，提供更概括的视图。"
         visits: 到访记录
-        show_detected_area_visits: 显示检测到的区域到访记录
+        show_detected_area_visits: "Dawarich 检测到的停留：您在同一地点逗留的时段。"
         filter_by_name: 按名称筛选...
         all_visits: 所有到访记录
         confirmed_only: 仅已确认
         suggested_only: 仅建议
         places: 地点
-        show_your_saved_places: 显示您保存的地点
+        show_your_saved_places: "您保存的已命名地点，到访记录会与其关联。"
         enable_all_tags: 启用所有标签
         show_place_boundaries: 显示地点边界
         untagged: 🏷️ 未标记
         click_tags_to_filter_places: 点击标签以筛选地点
         photos: 照片
-        show_geotagged_photos: 显示地理标记照片
+        show_geotagged_photos: "您带有地理标记的照片，显示在拍摄位置。"
         areas: 区域
         show_defined_areas: 显示已定义的区域
         fog_of_war: 战争迷雾
-        show_explored_areas: 显示探索过的区域
+        show_explored_areas: "将地图变暗，只显示您去过的区域。"
         per_point: 按轨迹点
         per_hexagon: 按六边形
         scratch_map: 已访问国家/地区
-        show_scratched_countries: 突出显示所选时间范围内访问过的国家/地区
+        show_scratched_countries: "所选时间段内您到访过的国家/地区，以填色显示。"
         family_members: 家庭成员
         manage_family: "管理家庭"
         show_family_member_locations: 显示家庭成员位置
@@ -1258,6 +1258,10 @@ zh:
       index:
         loading: 正在加载...
         pick_a_day: 选择一天
+        no_data_in_period: "此时间段内没有位置数据"
+        jump_to_latest_data: "跳转到最新数据"
+        nothing_recorded_yet: "尚未记录或导入任何数据。"
+        get_started: "开始使用"
         map: 地图
     residency:
       show:
@@ -1352,15 +1356,18 @@ zh:
       and: 和
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker 容器。谢谢！
+      contact_support_html: "如果问题再次出现，请写信至 %{email}。"
     index:
       notifications: 通知
       mark_all_as_read: 将全部标记为已读
       delete_all: 删除所有
       are_you_sure_you_want_to_delete_all_notifications: 您确定要删除所有通知吗？
+      read_are_deleted: "已读通知会在 %{days} 天后删除。"
     show:
       back_to_notifications: 返回通知
       destroy_this_notification: 删除此通知
       are_you_sure: 您确定吗？
+      open: 打开
   places:
     management:
       create: "创建地点"
@@ -1654,6 +1661,8 @@ zh:
         family_feature_hint: "与家庭成员共享位置。关闭后将停止共享你的位置和仅限家庭的行程链接，但你仍是家庭成员。重新开启后，位置共享默认处于关闭状态。"
         achievements_feature: "成就"
         achievements_feature_hint: "已探索的地区和徽章。关闭后将停止计算进度，并停用你的公开成就链接。"
+        trip_detection_feature: "自动查找旅行"
+        trip_detection_feature_hint: "在你的位置历史中查找旅行并将其添加到你的旅行中。关闭后将停止查找，已找到的旅行会保留。重新开启后会立即重新查找。"
     integrations:
       trek:
         title: "TREK 集成"
@@ -3696,7 +3705,7 @@ zh:
         export_finished: 导出已完成
         export_name_successfully_finished: 导出“%{name}”已成功完成。
         export_failed: 导出失败
-        export_name_failed_message_stacktrace_n: 导出“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
+        export_name_failed_message: "导出“%{name}”失败：%{message}"
         unsupported_file_format: 不支持的文件格式：%{format}
     families:
       auto_create:
@@ -3721,8 +3730,6 @@ zh:
         you_must_leave_your_current_family_before_creating_a_new: 在创建新家庭之前，您必须离开当前家庭
         you_have_already_created_a_family_each_user_can_only: 您已创建家庭。每个用户只能创建一个家庭
         family_feature_requires_an_active_subscription: 家庭功能需要有效订阅
-        family_created: 家庭已创建
-        you_ve_successfully_created_the_family_name: 您已成功创建家庭“%{name}”
         a_family_with_this_name_already_exists_for_your_account: 您的帐户已存在同名家庭
         an_unexpected_error_occurred_while_creating_the_family_please_try: 创建家庭时发生意外错误。请重试
         failed_to_create_family: 无法创建家庭：%{message}
@@ -3745,7 +3752,6 @@ zh:
         user_already_in_family: 用户已在家庭中
         invitation_already_sent: 邀请已发送至该邮箱
         sent_self_hosted: 如果 SMTP 配置正确，家庭邀请已发送至 %{email}。如果您不使用 SMTP，请从家庭页面复制邀请链接并手动共享。
-        sent: 家庭邀请已发送至 %{email}
         failed_to_create: 无法创建邀请：%{message}
       memberships:
         destroy:
@@ -3754,14 +3760,10 @@ zh:
           only_family_owners_can_remove_other_members: 只有家庭所有者才能移除其他成员。
           cannot_remove_members_from_a_different_family: 无法移除其他家庭的成员。
           cannot_remove_the_family_owner_the_owner_must_delete_the: 无法移除家庭所有者。所有者必须删除该家庭或自行离开。
-          left_family: 离开家庭
-          you_ve_left_the_family_family_name: 您已离开家庭“%{family_name}”
           family_member_left: 家庭成员离开
           email_has_left_the_family_family_name: "%{email} 已离开家庭“%{family_name}”"
           removed_from_family: 已从家庭中移除
           you_have_been_removed_from_the_family_family_name_by: 您已被 %{email} 从家庭“%{family_name}”中删除
-          member_removed: 成员已移除
-          email_has_been_removed_from_the_family_family_name: "%{email} 已从家庭“%{family_name}”中移除"
           an_unexpected_error_occurred_while_removing_the_membership_please_try: 移除成员资格时发生意外错误。请重试
           failed_to_leave: 无法离开家庭：%{message}
       update_location_sharing:
@@ -3838,7 +3840,6 @@ zh:
           one: 您的文件 %{name} 导入了 0 个轨迹点。它包含 %{count} 个航点（收藏或已保存的地点），但没有已记录的轨迹。Dawarich 目前仅导入轨迹。
           other: 您的文件 %{name} 导入了 0 个轨迹点。它包含 %{count} 个航点（收藏或已保存的地点），但没有已记录的轨迹。Dawarich 目前仅导入轨迹。
         zero_points: 您的文件 %{name} 导入了 0 个轨迹点。未在该文件中找到新的轨迹点。
-        import_failed_self_hosted: 导入“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
         import_failed_cloud: 导入“%{name}”失败，请通过 hi@dawarich.com 联系我们
         your_import_name_finished_and_all_points_were_saved_but: 您的导入“%{name}”已完成，所有轨迹点均已保存，但
           %{step} 步骤失败。统计数据、轨迹或到访建议可能缺失或过期。您可以到“设置”中触发重新计算。
@@ -3926,7 +3927,6 @@ zh:
     stats:
       calculate_month:
         stats_update_failed: 统计信息更新失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: 无法删除拥有其他成员的家庭的用户
@@ -4030,18 +4030,15 @@ zh:
     stats:
       calculating_job:
         stats_update_failed: 统计更新失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: 每月摘要计算失败
-            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: 年终摘要
             period_label_calculation_failed: "%{period_label} 计算失败"
-            message_stacktrace_backtrace: "%{message}，堆栈跟踪：%{backtrace}"
       import_data_job:
         data_import_failed: 数据导入失败
         your_data_import_failed_with_error_message_please_check_the: 您的数据导入失败，出现错误：%{message}。请检查存档格式并重试。
@@ -4054,7 +4051,6 @@ zh:
           other: "%{count} 年"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: 已重新计算 %{year_label} 的统计数据、轨迹和摘要。
         data_recalculation_failed: 数据重新计算失败
-        message_stacktrace_n: "%{message}，堆栈跟踪：%{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: 到访记录重新检测正在进行

@@ -24,7 +24,7 @@ module Timeline
     # the day chips — a 200 m jog across a parking lot is not a story.
     CHIP_MIN_DISTANCE = 0.5
 
-    def initialize(user, start_at:, end_at:, privacy_zone_masker:, distance_unit: 'km')
+    def initialize(user, privacy_zone_masker:, start_at: nil, end_at: nil, distance_unit: 'km')
       @user = user
       @privacy_zone_masker = privacy_zone_masker
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil

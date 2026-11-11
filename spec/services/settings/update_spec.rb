@@ -11,6 +11,19 @@ RSpec.describe Settings::Update do
     stub_host_addresses('airtrail.test', '93.184.216.34')
   end
 
+  # The connection testers are exercised for real; only the integration
+  # servers are stubbed.
+  def stub_immich_search(status: 200)
+    stub_request(:post, 'https://immich.test/api/search/metadata')
+      .to_return(status:, body: { assets: { items: [] } }.to_json, headers: { 'Content-Type' => 'application/json' })
+  end
+
+  def stub_photoprism_photos(status: 200)
+    stub_request(:get, 'https://photoprism.test/api/v1/photos')
+      .with(query: hash_including({}))
+      .to_return(status:, body: '[]', headers: { 'Content-Type' => 'application/json' })
+  end
+
   describe '#call' do
     context 'when airtrail settings change' do
       let(:settings_params) do
@@ -19,9 +32,8 @@ RSpec.describe Settings::Update do
       let(:service) { described_class.new(user, settings_params) }
 
       it 'tests the AirTrail connection and reports the result' do
-        tester = instance_double(AirTrail::ConnectionTester,
-                                 call: { success: true, message: 'AirTrail connection verified' })
-        allow(AirTrail::ConnectionTester).to receive(:new).and_return(tester)
+        stub_request(:get, 'https://airtrail.test/api/flight/list?scope=mine')
+          .to_return(status: 200, body: { success: true, flights: [] }.to_json)
 
         result = service.call
 
@@ -43,8 +55,8 @@ RSpec.describe Settings::Update do
           'teslamate_processing_pending_url' => 'https://teslamate-old.test'
         ))
         stub_host_addresses('teslamate-new.test', '93.184.216.34')
-        allow_any_instance_of(TeslaMate::ConnectionTester).to receive(:call)
-          .and_return({ success: true, message: 'TeslaMateApi connection verified' })
+        stub_request(:get, 'https://teslamate-new.test/api/v1/cars')
+          .to_return(status: 200, body: { data: { cars: [] } }.to_json)
       end
 
       it 'clears the previous source checkpoint' do
@@ -118,8 +130,7 @@ RSpec.describe Settings::Update do
 
       context 'when connection test succeeds' do
         before do
-          allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
-            .and_return({ success: true, message: 'Immich connection verified' })
+          stub_immich_search
         end
 
         it 'includes success message in notices' do
@@ -138,8 +149,7 @@ RSpec.describe Settings::Update do
 
       context 'when connection test fails' do
         before do
-          allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
-            .and_return({ success: false, error: 'Immich connection failed: 500' })
+          stub_immich_search(status: 500)
         end
 
         it 'includes error message in alerts' do
@@ -162,8 +172,7 @@ RSpec.describe Settings::Update do
 
       context 'when connection test succeeds' do
         before do
-          allow_any_instance_of(Photoprism::ConnectionTester).to receive(:call)
-            .and_return({ success: true, message: 'Photoprism connection verified' })
+          stub_photoprism_photos
         end
 
         it 'includes success message in notices' do
@@ -176,8 +185,7 @@ RSpec.describe Settings::Update do
 
       context 'when connection test fails' do
         before do
-          allow_any_instance_of(Photoprism::ConnectionTester).to receive(:call)
-            .and_return({ success: false, error: 'Photoprism connection failed: 401' })
+          stub_photoprism_photos(status: 401)
         end
 
         it 'includes error message in alerts' do
@@ -193,10 +201,10 @@ RSpec.describe Settings::Update do
       let(:service) { described_class.new(user, settings_params) }
 
       before do
-        allow_any_instance_of(Immich::ConnectionTester).to receive(:call) do
+        stub_request(:post, 'https://immich.test/api/search/metadata').to_return do
           concurrent_user = User.find(user.id)
           concurrent_user.update!(settings: concurrent_user.settings.merge('concurrent_key' => 'kept'))
-          { success: true, message: 'Immich connection verified' }
+          { status: 200, body: { assets: { items: [] } }.to_json, headers: { 'Content-Type' => 'application/json' } }
         end
       end
 
@@ -215,8 +223,7 @@ RSpec.describe Settings::Update do
 
       before do
         user.update(settings: { 'immich_url' => 'https://immich.test', 'immich_api_key' => 'existing-key' })
-        allow_any_instance_of(Immich::ConnectionTester).to receive(:call)
-          .and_return({ success: true, message: 'Immich connection verified' })
+        stub_immich_search
       end
 
       it 'retests the connection and refreshes the recorded status' do

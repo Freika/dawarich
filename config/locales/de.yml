@@ -210,7 +210,7 @@ de:
         current_password: Aktuelles Passwort
         required_to_confirm_your_changes: "(erforderlich, um deine Änderungen zu bestätigen)"
         import_your_data: Daten importieren
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen. Verbindungen zu Integrationen (Immich, Photoprism, AirTrail, TeslaMate) werden nicht wiederhergestellt; verbinde sie unter Einstellungen → Integrationen neu."
         select_zip_archive: ZIP-Archiv auswählen
         file_will_be_uploaded_directly_to_storage_please_be_patient: Die Datei wird direkt in den Speicher hochgeladen. Bitte habe während des Uploads etwas Geduld.
         cancel: Abbrechen
@@ -1034,7 +1034,7 @@ de:
         enter_name_of_a_place: Gib den Namen eines Ortes ein
         search_for_a_location_to_find_places_you_visited: Suche nach einem Ort, um Orte zu finden, die du besucht hast
         points: Punkte
-        show_individual_location_points: Zeige einzelne Standortpunkte
+        show_individual_location_points: "Jede Position, die deine Geräte aufgezeichnet haben, als einzelner Punkt."
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
         editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
@@ -1046,35 +1046,35 @@ de:
         anomalies: Anomalien
         show_filtered_gps_noise_points: Zeige gefilterte GPS-Rauschpunkte
         tracks: Tracks
-        show_backend_calculated_tracks: Im Hintergrund berechnete Tracks anzeigen
+        show_backend_calculated_tracks: "Deine Punkte, verbunden zu den Wegen, die du zurückgelegt hast."
         flights: Flüge
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Flüge von AirTrail als Bögen anzeigen (überlappende GPS-Daten verbergen)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Deine AirTrail-Flüge als Bögen. Sie verdecken die GPS-Punkte, die sie überlagern."
         heatmap: Heatmap
-        show_density_heatmap: Dichtegradienten-Heatmap anzeigen
+        show_density_heatmap: "Leuchtet heller, wo du mehr Punkte hast."
         hexagons: Hexagone
-        show_point_density_as_hexagonal_cells: Punktdichte als hexagonale Zellen anzeigen
+        show_point_density_as_hexagonal_cells: "Zählt deine Punkte pro Sechseck-Zelle für einen gröberen Überblick."
         visits: Aufenthalte
-        show_detected_area_visits: Erkannte Aufenthaltsorte anzeigen
+        show_detected_area_visits: "Von Dawarich erkannte Aufenthalte: Zeiten, in denen du an einem Ort geblieben bist."
         filter_by_name: Nach Namen filtern...
         all_visits: Alle Aufenthalte
         confirmed_only: Nur bestätigte
         suggested_only: Nur vorgeschlagene
         places: Orte
-        show_your_saved_places: Deine gespeicherten Orte anzeigen
+        show_your_saved_places: "Benannte Orte, die du gespeichert hast. Aufenthalte werden ihnen zugeordnet."
         enable_all_tags: Alle Tags aktivieren
         show_place_boundaries: Ortsgrenzen anzeigen
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
-        show_geotagged_photos: Geotagte Fotos anzeigen
+        show_geotagged_photos: "Deine Fotos mit Geotag, dort angeheftet, wo sie aufgenommen wurden."
         areas: Gebiete
         show_defined_areas: Definierte Gebiete anzeigen
         fog_of_war: Kartennebel
-        show_explored_areas: Erkundete Flächen anzeigen
+        show_explored_areas: "Verdunkelt die Karte, außer dort, wo du schon warst."
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
         scratch_map: Besuchte Länder
-        show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
+        show_scratched_countries: "Die Länder, die du im gewählten Zeitraum besucht hast, ausgefüllt."
         family_members: Familienmitglieder
         manage_family: "Familie verwalten"
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen
@@ -1293,6 +1293,10 @@ de:
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
+        no_data_in_period: "Keine Standortdaten in diesem Zeitraum"
+        jump_to_latest_data: "Zu den neuesten Daten springen"
+        nothing_recorded_yet: "Bisher wurde nichts aufgezeichnet oder importiert."
+        get_started: "Loslegen"
         map: Karte
     residency:
       show:
@@ -1387,15 +1391,18 @@ de:
       and: und
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker containers. Danke!
+      contact_support_html: "Wenn das wieder passiert, schreib uns an %{email}."
     index:
       notifications: Benachrichtigungen
       mark_all_as_read: Alle markieren als gelesen
       delete_all: Alle löschen
       are_you_sure_you_want_to_delete_all_notifications: Bist du sicher, dass du alle Benachrichtigungen löschen möchtest?
+      read_are_deleted: "Gelesene Benachrichtigungen werden nach %{days} Tagen gelöscht."
     show:
       back_to_notifications: Zurück zu den Benachrichtigungen
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
+      open: Öffnen
   places:
     management:
       create: "Ort erstellen"
@@ -1686,6 +1693,8 @@ de:
         family_feature_hint: "Standortfreigabe mit Familienmitgliedern. Wenn du sie ausschaltest, werden dein Standort und nur für die Familie geteilte Reiselinks nicht mehr geteilt; du bleibst Mitglied. Wenn du sie wieder einschaltest, ist die Standortfreigabe zunächst aus."
         achievements_feature: "Erfolge"
         achievements_feature_hint: "Erkundete Regionen und Abzeichen. Wenn du sie ausschaltest, wird der Fortschritt nicht mehr berechnet und deine öffentlichen Erfolgslinks werden deaktiviert."
+        trip_detection_feature: "Reisen automatisch finden"
+        trip_detection_feature_hint: "Findet Reisen in deinem Standortverlauf und fügt sie zu deinen Reisen hinzu. Wenn du es ausschaltest, wird nicht mehr gesucht und bereits gefundene Reisen bleiben erhalten. Wenn du es wieder einschaltest, wird sofort erneut gesucht."
     integrations:
       trek:
         title: "TREK-Integration"
@@ -3706,7 +3715,7 @@ de:
         export_finished: Export beendet
         export_name_successfully_finished: Export „%{name}“ wurde erfolgreich beendet.
         export_failed: Export fehlgeschlagen
-        export_name_failed_message_stacktrace_n: 'Export „%{name}“ fehlgeschlagen: %{message}, Stapelverfolgung: %{backtrace}'
+        export_name_failed_message: "Export „%{name}“ fehlgeschlagen: %{message}"
         unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{format}'
     families:
       auto_create:
@@ -3731,8 +3740,6 @@ de:
         you_must_leave_your_current_family_before_creating_a_new: Du musst deine aktuelle Familie verlassen, bevor du eine neue erstellen kannst
         you_have_already_created_a_family_each_user_can_only: Du hast bereits eine Familie erstellt. Jeder Benutzer kann nur eine Familie erstellen
         family_feature_requires_an_active_subscription: Die Familien-Funktion erfordert ein aktives Abonnement
-        family_created: Familie erstellt
-        you_ve_successfully_created_the_family_name: Du hast die Familie '%{name}' erfolgreich erstellt
         a_family_with_this_name_already_exists_for_your_account: Eine Familie mit diesem Namen existiert bereits für dein Konto
         an_unexpected_error_occurred_while_creating_the_family_please_try: Beim Erstellen der Familie ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
         failed_to_create_family: 'Familie konnte nicht erstellt werden: %{message}'
@@ -3755,7 +3762,6 @@ de:
         user_already_in_family: Benutzer ist bereits in einer Familie
         invitation_already_sent: Einladung wurde bereits an diese E-Mail gesendet
         sent_self_hosted: Die Familieneinladung an %{email} wurde gesendet, sofern SMTP korrekt konfiguriert ist. Falls du kein SMTP verwendest, kopiere den Einladungslink von der Familienseite und teile ihn manuell.
-        sent: Familien-Einladung an %{email} gesendet
         failed_to_create: 'Einladung konnte nicht erstellt werden: %{message}'
       memberships:
         destroy:
@@ -3764,14 +3770,10 @@ de:
           only_family_owners_can_remove_other_members: Nur Familieninhaber können andere Mitglieder entfernen.
           cannot_remove_members_from_a_different_family: Man kann Mitglieder aus einer anderen Familie nicht entfernen.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Der Familieninhaber kann nicht entfernt werden. Er muss die Familie stattdessen löschen.
-          left_family: Familie verlassen
-          you_ve_left_the_family_family_name: Du hast die Familie "%{family_name}" verlassen
           family_member_left: Familienmitglied ausgetreten
           email_has_left_the_family_family_name: '%{email} hat die Familie "%{family_name}" verlassen'
           removed_from_family: Von der Familie entfernt
           you_have_been_removed_from_the_family_family_name_by: Du wurdest von %{email} aus der Familie „%{family_name}“ entfernt
-          member_removed: Mitglied entfernt
-          email_has_been_removed_from_the_family_family_name: '%{email} wurde von der Familie "%{family_name}" entfernt'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Beim Entfernen der Mitgliedschaft ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
           failed_to_leave: 'Verlassen fehlgeschlagen: %{message}'
       respond_to_location_request:
@@ -3852,7 +3854,6 @@ de:
           one: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkt, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
           other: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkten, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
         zero_points: "Deine Datei %{name} hat 0 Punkte importiert. In dieser Datei wurden keine neuen Standortpunkte gefunden."
-        import_failed_self_hosted: "Import \"%{name}\" fehlgeschlagen: %{message}, Stacktrace: %{backtrace}"
         import_failed_cloud: "Import \"%{name}\" fehlgeschlagen, bitte kontaktiere uns unter hi@dawarich.com"
       source_detector:
         amazon_order: Dies ist eine Amazon-Exportdatei, nicht Standortdaten. Dawarich importiert Standortverläufe aus Google Takeout, OwnTracks, GPX und ähnlichen Quellen.
@@ -3924,7 +3925,6 @@ de:
     stats:
       calculate_month:
         stats_update_failed: Statistikaktualisierung fehlgeschlagen
-        message_stacktrace_n: "%{message}, Stacktrace: %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Aktiviere mindestens ein Verkehrsmittel
@@ -4028,17 +4028,14 @@ de:
     stats:
       calculating_job:
         stats_update_failed: Statistikupdate fehlgeschlagen
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Der Monatsrückblick konnte nicht berechnet werden
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             period_label_calculation_failed: "%{period_label} Berechnung fehlgeschlagen"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
             year_end_digest: "Jahresrückblick"
       import_data_job:
         data_import_failed: Datenimport fehlgeschlagen
@@ -4052,7 +4049,6 @@ de:
           other: "%{count} Jahre"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Statistiken, Tracks und Zusammenfassungen wurden für %{year_label} berechnet.
         data_recalculation_failed: Datenberechnung fehlgeschlagen
-        message_stacktrace_n: "%{message}, Stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Aufenthalte werden bereits neu erkannt

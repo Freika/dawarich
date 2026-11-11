@@ -27,7 +27,7 @@ function manager(t, { start, end, selectedDay, timezone }) {
     startDateValue: start,
     endDateValue: end,
     timezoneValue: timezone,
-    _highlightedDay: selectedDay,
+    timelineBridge: { highlightedDay: selectedDay },
   })
 }
 

@@ -77,7 +77,7 @@ export class NotesManager {
     return this.controller.settings.notesEnabled === true
   }
 
-  async toggle(event) {
+  async toggleNotes(event) {
     this.setEnabled(event.target.checked)
     await this.reload()
   }
@@ -111,7 +111,7 @@ export class NotesManager {
     this.layer.show()
   }
 
-  startCreate() {
+  startCreateNote() {
     this.disarm()
     this.map.getCanvas().style.cursor = "crosshair"
     Toast.info(translate("messages.click_on_the_map_to_place_a_note_esc_to"))
@@ -155,7 +155,7 @@ export class NotesManager {
       if (!Number.isNaN(date.getTime())) return date.toISOString()
     }
 
-    const selectedDay = this.controller._highlightedDay
+    const selectedDay = this.controller.timelineBridge?.highlightedDay
     if (selectedDay) {
       // The day is one of the account's calendar. So is "today", and the
       // noon sent without a zone is read by the server on the same clock.

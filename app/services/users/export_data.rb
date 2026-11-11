@@ -144,7 +144,8 @@ class Users::ExportData
     settings_path = export_directory.join('settings.jsonl')
     File.open(settings_path, 'w') do |file|
       # Unmasked: the export must carry the stored Pro-only settings of a Lite user.
-      file.puts(Users::SafeSettings.new(user.settings).settings.to_json)
+      # Integration secrets stay out of the archive; the URLs still record what was connected.
+      file.puts(Users::IntegrationSettingKeys.redact(Users::SafeSettings.new(user.settings).settings).to_json)
     end
     Rails.logger.info 'Exported settings'
   end
@@ -237,7 +238,7 @@ class Users::ExportData
     count = 0
     File.open(notifications_path, 'w') do |file|
       user.notifications.find_each do |notification|
-        file.puts(notification.as_json(except: %w[user_id id]).to_json)
+        file.puts(notification.as_json(except: Notification::EXPORT_EXCLUDED).to_json)
         count += 1
       end
     end
@@ -475,7 +476,8 @@ class Users::ExportData
         title: I18n.t('services.users.export_data.export_completed'),
         content: I18n.t('services.users.export_data.your_data_export_has_been_processed_successfully_summary_you_can',
                         summary: summary),
-        kind: :info
+        kind: :info,
+        action_path: ::Notifications.paths.exports_path
       ).call
     end
   end

@@ -1,16 +1,8 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = (
-  await readFile(
-    new URL(
-      "../../app/javascript/maps_maplibre/managers/replay_manager.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-).replace(/^import[\s\S]*?from "[^"]+"\n/m, "")
+const source = await strippedSource("maps_maplibre/managers/replay_manager.js")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 const { ReplayManager } = await import(moduleUrl)
 

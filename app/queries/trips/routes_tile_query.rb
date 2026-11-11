@@ -2,7 +2,7 @@
 
 module Trips
   class RoutesTileQuery
-    class InvalidTileCoordinatesError < StandardError; end
+    include TileCoordinates
 
     LAYER_NAME = 'trip_routes'
     EXTENT = Tracks::VectorTileQuery::EXTENT
@@ -193,21 +193,6 @@ module Trips
                         'TripRoutesTileQuery Timeout')
         yield conn
       end
-    end
-
-    def parse_integer(value)
-      return value if value.is_a?(Integer)
-
-      Integer(value, 10)
-    rescue ArgumentError, TypeError
-      raise InvalidTileCoordinatesError
-    end
-
-    def validate_tile_coordinates!
-      raise InvalidTileCoordinatesError if z.negative? || z > 22
-
-      max_index = (1 << z) - 1
-      raise InvalidTileCoordinatesError if x.negative? || y.negative? || x > max_index || y > max_index
     end
   end
 end

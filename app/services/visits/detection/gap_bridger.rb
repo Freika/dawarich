@@ -64,7 +64,7 @@ module Visits
       end
 
       def within_stay_radius?(from, to)
-        Geocoder::Calculations.distance_between(from, to, units: :km) * 1000 <= policy.stay_radius_m
+        GeoDistance.meters(from, to) <= policy.stay_radius_m
       end
 
       def merge_into(previous, current)

@@ -8,13 +8,7 @@ class InsightsController < ApplicationController
   def index
     authorize :insights, :index?
 
-    set_available_years
-    @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
-    @all_time = @selected_year == 'all'
-    @year_locked = year_locked?
-
-    load_year_stats
-    @has_insight_data = current_user.scoped_points.exists? || @year_stats.where('distance > 0').exists?
+    load_selected_year
     return if @year_locked || !@has_insight_data
 
     load_year_totals
@@ -25,13 +19,7 @@ class InsightsController < ApplicationController
   def details
     authorize :insights, :details?
 
-    set_available_years
-    @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
-    @all_time = @selected_year == 'all'
-    @year_locked = year_locked?
-
-    load_year_stats
-    @has_insight_data = current_user.scoped_points.exists? || @year_stats.where('distance > 0').exists?
+    load_selected_year
     return if @year_locked || current_user.plan_restricted? || !@has_insight_data
 
     load_year_totals
@@ -59,6 +47,16 @@ class InsightsController < ApplicationController
   end
 
   private
+
+  def load_selected_year
+    set_available_years
+    @selected_year = params[:year] || @available_years.first&.to_s || Time.current.year.to_s
+    @all_time = @selected_year == 'all'
+    @year_locked = year_locked?
+
+    load_year_stats
+    @has_insight_data = current_user.scoped_points.exists? || @year_stats.where('distance > 0').exists?
+  end
 
   def set_available_years
     @available_years = current_user.stats.where(month: 1..12).distinct.pluck(:year).sort.reverse
@@ -142,7 +140,7 @@ class InsightsController < ApplicationController
     travel_patterns = yearly_digest&.travel_patterns || {}
 
     @time_of_day = travel_patterns['time_of_day'] || {}
-    @day_of_week = calculate_yearly_day_of_week
+    @day_of_week = Insights::WeeklyDistanceTotals.new(current_user, @selected_year).call
     @seasonality = travel_patterns['seasonality'] || {}
     @activity_breakdown = travel_patterns['activity_breakdown'] || {}
     @top_visited_locations = fetch_yearly_top_visits
@@ -182,42 +180,8 @@ class InsightsController < ApplicationController
     digest.updated_at < latest_stat_update
   end
 
-  def calculate_yearly_day_of_week
-    # Load only required columns for weekly_pattern calculation
-    # weekly_pattern is a model method that uses monthly_distances, year, and month
-    digests = current_user.digests.monthly
-                          .where(year: @selected_year)
-                          .select(:id, :year, :month, :monthly_distances)
-
-    digests.each_with_object(Array.new(7, 0)) do |digest, weekly_totals|
-      pattern = digest.weekly_pattern
-      next unless pattern.is_a?(Array) && pattern.size == 7
-
-      pattern.each_with_index do |distance, idx|
-        weekly_totals[idx] += distance.to_i
-      end
-    end
-  end
-
   def fetch_yearly_top_visits
-    start_time = Time.zone.local(@selected_year, 1, 1)
-    end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
-
-    display_name_sql = Visit.display_name_sql
-    order_sql = "visit_count DESC, total_duration DESC, (#{display_name_sql}) COLLATE \"C\" ASC"
-
-    current_user.scoped_visits.confirmed.where(started_at: start_time..end_time)
-                .left_joins(:place, :area)
-                .group(Arel.sql(display_name_sql))
-                .select("#{display_name_sql} AS display_name, COUNT(*) as visit_count, SUM(duration) as total_duration")
-                .order(Arel.sql(order_sql)).limit(5)
-                .map do |visit|
-                  {
-                    name: visit.read_attribute(:display_name),
-                    visit_count: visit.visit_count,
-                    total_duration: visit.total_duration
-                  }
-                end
+    Insights::TopVisitedLocations.new(current_user, @selected_year).call
   end
 
   def load_monthly_digest

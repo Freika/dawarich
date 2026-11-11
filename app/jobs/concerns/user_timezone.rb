@@ -5,11 +5,7 @@ module UserTimezone
 
   private
 
-  def with_user_timezone(user, &block)
-    timezone = user.timezone
-    Time.use_zone(timezone, &block)
-  rescue ArgumentError
-    fallback = ENV.fetch('TIME_ZONE', 'UTC')
-    Time.use_zone(fallback, &block)
+  def with_user_timezone(user, &)
+    Time.use_zone(Time.find_zone(user.timezone) || ENV.fetch('TIME_ZONE', 'UTC'), &)
   end
 end

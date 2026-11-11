@@ -1,4 +1,4 @@
-<%= form_with model: @place, url: (@place.persisted? ? place_path(@place, place_list_context) : places_path(place_list_context)), data: { turbo: false }, class: 'space-y-4' do |f| %>
+<%= form_with model: @place, url: (@place.persisted? ? place_path(@place, place_list_params) : places_path(place_list_params)), data: { turbo: false }, class: 'space-y-4' do |f| %>
   <% if @place.errors.any? %><p role="alert" class="alert alert-error"><%= @place.errors.full_messages.join(', ') %></p><% end %>
   <div data-controller="place-location" data-place-location-editable-value="true"
        data-place-location-latitude-value="<%= @place.lonlat ? @place.lat : 0 %>"
@@ -21,5 +21,5 @@
       <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[tag_ids][]', tag.id, @place.tags.include?(tag), class: 'checkbox checkbox-sm' %><%= tag.name %></label>
     <% end %>
   </fieldset>
-  <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_context), class: 'btn btn-ghost' %></div>
+  <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_params), class: 'btn btn-ghost' %></div>
 <% end %>

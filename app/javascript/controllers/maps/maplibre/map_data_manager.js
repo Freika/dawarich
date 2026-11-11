@@ -1,12 +1,10 @@
 import { translate } from "i18n"
-import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 import { flightWindows } from "maps_maplibre/utils/flight_mask"
-import { trimOutlierCoords } from "maps_maplibre/utils/geometry"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
-import { overlayAwarePadding } from "maps_maplibre/utils/map_padding"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { mapFit } from "./map_fit"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
 
@@ -55,7 +53,7 @@ export class MapDataManager {
     performanceMonitor.mark("load-map-data")
 
     if (showLoading) {
-      this.controller.showProgress()
+      this.controller.loadingBadge.show()
     }
 
     // Hoisted out of `try` so the `finally` block can await background
@@ -65,7 +63,6 @@ export class MapDataManager {
     try {
       this.layerManager.updatePointTileRange(startDate, endDate)
 
-      // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers(
         {
           visitsGeoJSON: EMPTY_GEOJSON,
@@ -92,12 +89,11 @@ export class MapDataManager {
         }
       }
 
-      // 2. Fetch data with incremental callbacks
       data = await this.dataLoader.fetchMapData(startDate, endDate, {
         viewportBounds,
         onUpdate: showLoading
           ? (info) => {
-              if (isCurrent()) this.controller.updateLoadingCounts(info)
+              if (isCurrent()) this.controller.loadingBadge.update(info)
             }
           : null,
         onLayerData: (source, geoJSON) => {
@@ -113,19 +109,17 @@ export class MapDataManager {
       })
       if (!isCurrent()) return null
 
-      // 3. Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
-      // 4. Store data for replay and other features
       this.lastLoadedData = data
       this.applyFlightMask()
 
-      // 5. Show upsell banner for Lite users when searching outside the 12-month window
+      // Show upsell banner for Lite users when searching outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
         this._showDataWindowBanner()
       }
 
-      // 6. Fit bounds if requested.
+      // Fit bounds if requested.
       if (fitBounds) {
         const historyBounds = await historyBoundsPromise
         if (isCurrent()) {
@@ -140,7 +134,7 @@ export class MapDataManager {
       }
       if (!isCurrent()) return null
 
-      // 7. Reload hexagons if currently visible — they own their own fetch
+      // Reload hexagons if currently visible — they own their own fetch
       // pipeline (raw points + h3 aggregation), so they need a date-range
       // reload separate from the main data flow.
       const hexagonLayer = this.layerManager.getLayer("hexagons")
@@ -152,19 +146,16 @@ export class MapDataManager {
           })
       }
 
-      // 8. Reload fog hexagons if fog is visible in hexagon mode — same
-      // reasoning: they own their own fetch pipeline.
-      const fogLayer = this.layerManager.getLayer("fog")
-      if (fogLayer?.visible && fogLayer.mode === "hexagons") {
-        fogLayer.reloadHexagons()
-      }
+      // Reload fog hexagons if fog is visible — same reasoning: they own
+      // their own fetch pipeline.
+      this.layerManager.getLayer("fog")?.reloadHexagons()
 
       return data
     } catch (error) {
       if (!isCurrent()) return null
       console.error("[MapDataManager] Failed to load map data:", error)
       if (showLoading) {
-        this.controller.hideProgress()
+        this.controller.loadingBadge.hide()
       }
       Toast.error(
         translate("messages.failed_to_load_location_data_please_try_again"),
@@ -189,19 +180,8 @@ export class MapDataManager {
       // Safety net: if the counter didn't complete (e.g. no sources expected,
       // or the user has every layer disabled), ensure the badge is dismissed
       // after a short delay so it doesn't linger forever.
-      if (
-        isCurrent() &&
-        showLoading &&
-        this.controller.hasProgressBadgeTarget
-      ) {
-        const badge = this.controller.progressBadgeTarget
-        if (
-          badge.classList.contains("visible") &&
-          !badge.classList.contains("complete")
-        ) {
-          badge.classList.add("complete")
-          setTimeout(() => this.controller.hideProgress(), 800)
-        }
+      if (isCurrent() && showLoading) {
+        this.controller.loadingBadge.dismissIfIncomplete()
       }
     }
   }
@@ -250,11 +230,7 @@ export class MapDataManager {
       loadGeneration === this._loadGeneration &&
       pointsGeneration === this._pointsGeneration
     try {
-      this.controller.showProgress()
-      this.controller.updateLoadingCounts({
-        counts: { points: 0 },
-        isComplete: false,
-      })
+      this.controller.loadingBadge.start("points")
 
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const arrivalGeneration = this._pointsArrivalGeneration
@@ -272,10 +248,7 @@ export class MapDataManager {
         this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
         this._pointsStale = stale
 
-        this.controller.updateLoadingCounts({
-          counts: { points: points.length },
-          isComplete: true,
-        })
+        this.controller.loadingBadge.finish("points", points.length)
         return
       }
     } finally {
@@ -284,7 +257,7 @@ export class MapDataManager {
         (pointsGeneration === this._pointsGeneration ||
           !this._pointsLoadPromise)
       )
-        this.controller.hideProgress()
+        this.controller.loadingBadge.hide()
     }
   }
 
@@ -428,99 +401,6 @@ export class MapDataManager {
    * @returns {boolean} true if bounds were fitted
    * @private
    */
-  _fitToFirstAvailable(geojsonSources) {
-    for (const geojson of geojsonSources) {
-      if (geojson?.features?.length > 0) {
-        return this._fitMapToBounds(geojson)
-      }
-    }
-    return false
-  }
-
-  _fitToHistoryBounds(bounds) {
-    const values = bounds
-      ? [bounds.min_lng, bounds.min_lat, bounds.max_lng, bounds.max_lat].map(
-          Number,
-        )
-      : []
-    if (values.length !== 4 || values.some((value) => !Number.isFinite(value)))
-      return false
-
-    const [minLng, minLat, maxLng, maxLat] = values
-    return this._fitMapToBounds({
-      type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [minLng, minLat] },
-          properties: {},
-        },
-        {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [maxLng, maxLat] },
-          properties: {},
-        },
-      ],
-    })
-  }
-
-  /**
-   * Fit map to data bounds. Handles Point, LineString, and Polygon geometries.
-   * Sparse extreme outliers (stray GPS points, lone far-away arcs) are trimmed
-   * first so one bad coordinate can't drag the viewport into the ocean.
-   * @private
-   */
-  _fitMapToBounds(geojson, { animate = false, skipIfCovered = false } = {}) {
-    if (!geojson?.features?.length) return false
-
-    const coords = []
-
-    for (const feature of geojson.features) {
-      const { type, coordinates } = feature.geometry
-      if (type === "Point") {
-        coords.push(coordinates)
-      } else if (type === "LineString") {
-        coords.push(...coordinates)
-      } else if (type === "Polygon" || type === "MultiLineString") {
-        for (const ring of coordinates) {
-          coords.push(...ring)
-        }
-      }
-    }
-
-    const bounds = new maplibregl.LngLatBounds()
-    for (const coord of trimOutlierCoords(coords)) {
-      bounds.extend(coord)
-    }
-
-    if (bounds.isEmpty()) return false
-    if (skipIfCovered && this._boundsCovered(bounds)) return false
-
-    const mapRect = this.map.getContainer()?.getBoundingClientRect()
-    const toolbarRect = document
-      .querySelector(".map-button-cluster")
-      ?.getBoundingClientRect()
-
-    this.map.fitBounds(bounds, {
-      padding: overlayAwarePadding(mapRect, toolbarRect),
-      maxZoom: 15,
-      animate,
-    })
-    return true
-  }
-
-  /**
-   * Whether the current viewport already contains the given bounds.
-   * @private
-   */
-  _boundsCovered(bounds) {
-    const view = this.map.getBounds()
-    return (
-      view.contains(bounds.getSouthWest()) &&
-      view.contains(bounds.getNorthEast())
-    )
-  }
-
   /**
    * Show a persistent upgrade banner for Lite users when the queried date
    * range extends beyond the 12-month data window.
@@ -541,3 +421,5 @@ export class MapDataManager {
     }
   }
 }
+
+Object.assign(MapDataManager.prototype, mapFit)

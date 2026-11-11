@@ -9,7 +9,6 @@ class VisitsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_visit, only: %i[update destroy]
   before_action :reject_unknown_source_status, only: %i[bulk_update bulk_destroy]
-  after_action :bust_timeline_month_cache, only: %i[update bulk_update bulk_destroy destroy merge]
 
   def bulk_update
     status = params[:status]
@@ -29,7 +28,6 @@ class VisitsController < ApplicationController
       return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
     end
 
-    @affected_started_at = scope.pluck(:started_at)
     visit_ids = scope.pluck(:id)
 
     result = Visits::BulkUpdate.new(current_user, visit_ids, status).call
@@ -79,16 +77,12 @@ class VisitsController < ApplicationController
       return render_unprocessable(I18n.t('controllers.visits.select_visit_to_delete'))
     end
 
-    visits = current_user.scoped_visits.where(id: visit_ids)
-    @affected_spans = visits.pluck(:started_at, :ended_at)
-    @affected_started_at = @affected_spans.map(&:first)
-
     service = Visits::BulkDestroy.new(current_user, visit_ids)
     result = service.call
 
     if result
       respond_to do |format|
-        format.turbo_stream { render turbo_stream: build_bulk_destroy_streams(result[:count]) }
+        format.turbo_stream { render turbo_stream: build_bulk_destroy_streams(result) }
         format.html do
           redirect_back(fallback_location: build_timeline_url(date: 'today'),
                         notice: bulk_destroy_success_message(result[:count]),
@@ -107,35 +101,7 @@ class VisitsController < ApplicationController
       params_to_update[:name] = stripped.empty? ? nil : stripped
     end
 
-    if params_to_update[:place_id].present? && params_to_update[:area_id].present?
-      return render_unprocessable(I18n.t('controllers.visits.conflicting_place_and_area'))
-    end
-
-    if params_to_update[:area_id].present?
-      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
-
-      mapped_place = Places::LegacyAreaAdapter.new(user: current_user).resolve(selected_area)
-      params_to_update[:place_id] = mapped_place.id
-      params_to_update[:area_id] = nil
-    end
-
-    if params_to_update[:place_id].present?
-      raw_place_id = params_to_update[:place_id]
-      allowed = current_user.places.where(id: raw_place_id).exists? ||
-                @visit.suggested_places.where(id: raw_place_id).exists?
-      return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
-
-      params_to_update[:area_id] = nil
-    end
-
-    # Capture both old and new month so cache busts cover edits that move
-    # a visit across month boundaries.
-    @affected_started_at = [@visit.started_at]
-    if params_to_update[:started_at].present?
-      new_started_at = parse_time_safely(params_to_update[:started_at])
-      @affected_started_at << new_started_at if new_started_at
-    end
+    params_to_update = Visits::ResolvePlaceSelection.new(current_user, visit: @visit).call(params_to_update)
 
     if params_to_update[:place_id].present?
       update_visit_label_from_place(params_to_update[:place_id])
@@ -163,13 +129,17 @@ class VisitsController < ApplicationController
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, I18n.t('controllers.visits.failed_to_update_visit'))
         end
-        format.html { render :edit, status: :unprocessable_content }
+        format.html do
+          redirect_back(fallback_location: build_timeline_url(date: 'today'),
+                        alert: I18n.t('controllers.visits.failed_to_update_visit'))
+        end
       end
     end
+  rescue Visits::ResolvePlaceSelection::Invalid => e
+    render_unprocessable(I18n.t("controllers.visits.#{e.reason}"))
   end
 
   def destroy
-    @affected_started_at = [@visit.started_at]
     # Soft delete: the row stays as a tombstone so visit detection never
     # re-suggests it; the user's points are untouched either way.
     @visit.soft_delete!
@@ -190,8 +160,6 @@ class VisitsController < ApplicationController
     return render_not_found(message_for_missing_visits(visit_ids)) if visits.length != visit_ids.length
 
     return render_unprocessable(I18n.t('controllers.visits.visits_must_share_day')) unless same_day?(visits)
-
-    @affected_started_at = visits.map(&:started_at)
 
     service = Visits::MergeService.new(visits)
     merged = service.call
@@ -226,8 +194,7 @@ class VisitsController < ApplicationController
   # Visits shown on the day: those that started on it and those still going
   # on from an earlier day, matching Timeline::DayAssembler.
   def apply_date_scope(scope)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    range = Date.parse(params[:date]).in_time_zone(tz).all_day
+    range = Date.parse(params[:date]).in_time_zone(current_user.timezone_or_utc).all_day
     scope.overlapping(range.begin, range.end)
   end
 
@@ -242,7 +209,7 @@ class VisitsController < ApplicationController
   # place / suggested_places data. Reuses Timeline::DayAssembler to keep the
   # payload shape consistent with the day-level fetch.
   def timeline_entry_for(visit)
-    Timeline::DayAssembler.new(current_user, start_at: '', end_at: '', privacy_zone_masker: current_privacy_zone_masker)
+    Timeline::DayAssembler.new(current_user, privacy_zone_masker: current_privacy_zone_masker)
                           .build_visit_entry(visit, date: viewed_date)
   end
 
@@ -251,29 +218,30 @@ class VisitsController < ApplicationController
   # "N visits confirmed." flash. `turbo_stream.update` targets the frame's
   # children — we keep the frame element (its id + Stimulus target) intact.
   def build_bulk_update_streams(status, count)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    date_str = params[:date].presence || Time.use_zone(tz) { Date.current.to_s }
-    day_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_day }
+    date_str = params[:date].presence || Time.use_zone(current_user.timezone_or_utc) { Date.current.to_s }
 
-    days = Timeline::DayAssembler.new(
+    [
+      day_frame_stream(Date.parse(date_str)),
+      stream_flash(:notice, bulk_update_success_message(status, count))
+    ]
+  end
+
+  def local_date(time)
+    time.in_time_zone(current_user.timezone_or_utc).to_date
+  end
+
+  def day_frame_stream(date)
+    day_range = Time.use_zone(current_user.timezone_or_utc) { date.in_time_zone.all_day }
+    day = Timeline::DayAssembler.new(
       current_user,
       start_at: day_range.begin.iso8601,
       end_at: day_range.end.iso8601,
       distance_unit: current_user.safe_settings.distance_unit,
       privacy_zone_masker: current_privacy_zone_masker
-    ).call
-    day = days.first
+    ).call.first
+    return turbo_stream.update('timeline-feed-frame', '') unless day
 
-    streams = []
-    streams << if day
-                 turbo_stream.update('timeline-feed-frame',
-                                     partial: 'map/timeline_feeds/day',
-                                     locals: { day: day })
-               else
-                 turbo_stream.update('timeline-feed-frame', '')
-               end
-    streams << stream_flash(:notice, bulk_update_success_message(status, count))
-    streams
+    turbo_stream.update('timeline-feed-frame', partial: 'map/timeline_feeds/day', locals: { day: day })
   end
 
   # Turbo streams emitted on a successful #update: replace the visit row
@@ -320,8 +288,7 @@ class VisitsController < ApplicationController
   end
 
   def same_day?(visits)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    visits.map { |v| Timeline::TrackDayShares.shares_between(v.started_at, v.ended_at, tz).keys }
+    visits.map { |v| Timeline::TrackDayShares.shares_between(v.started_at, v.ended_at, current_user.timezone_or_utc).keys }
           .reduce(:&).any?
   end
 
@@ -333,29 +300,10 @@ class VisitsController < ApplicationController
   end
 
   def build_merge_streams(merged)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_date = viewed_date&.to_s || Time.use_zone(tz) { merged.started_at.in_time_zone.to_date.to_s }
-    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
-
-    days = Timeline::DayAssembler.new(
-      current_user,
-      start_at: day_range.begin.iso8601,
-      end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit,
-      privacy_zone_masker: current_privacy_zone_masker
-    ).call
-    day = days.first
-
-    streams = []
-    streams << if day
-                 turbo_stream.update('timeline-feed-frame',
-                                     partial: 'map/timeline_feeds/day',
-                                     locals: { day: day })
-               else
-                 turbo_stream.update('timeline-feed-frame', '')
-               end
-    streams << stream_flash(:notice, I18n.t('controllers.visits.visits_merged'))
-    streams
+    [
+      day_frame_stream(viewed_date || local_date(merged.started_at)),
+      stream_flash(:notice, I18n.t('controllers.visits.visits_merged'))
+    ]
   end
 
   def build_destroy_streams
@@ -365,43 +313,18 @@ class VisitsController < ApplicationController
     ]
   end
 
-  def build_bulk_destroy_streams(count)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    affected_dates = Time.use_zone(tz) do
-      Array(@affected_started_at).compact.map { |t| t.in_time_zone.to_date }.uniq
-    end
-    visible_date = viewed_date || (affected_dates.first if affected_dates.length == 1)
-
-    streams = []
-    day_stream = build_day_frame_stream(visible_date, tz)
-    streams << day_stream if day_stream
-    streams << stream_flash(:notice, bulk_destroy_success_message(count))
-    streams
-  end
-
   # When all deleted visits fall on the same user-local date, we can rebuild
   # that day's frame from fresh data. For cross-day deletions (e.g. via API),
   # we leave the frame alone — the controller can't know which day the user
   # is currently viewing.
-  def build_day_frame_stream(date, time_zone)
-    return nil unless date
+  def build_bulk_destroy_streams(result)
+    affected_dates = result[:started_ats].map { |time| local_date(time) }.uniq
+    visible_date = viewed_date || (affected_dates.first if affected_dates.one?)
 
-    day_range = Time.use_zone(time_zone) { date.in_time_zone.all_day }
-    day = Timeline::DayAssembler.new(
-      current_user,
-      start_at: day_range.begin.iso8601,
-      end_at: day_range.end.iso8601,
-      distance_unit: current_user.safe_settings.distance_unit,
-      privacy_zone_masker: current_privacy_zone_masker
-    ).call.first
-
-    if day
-      turbo_stream.update('timeline-feed-frame',
-                          partial: 'map/timeline_feeds/day',
-                          locals: { day: day })
-    else
-      turbo_stream.update('timeline-feed-frame', '')
-    end
+    [
+      (day_frame_stream(visible_date) if visible_date),
+      stream_flash(:notice, bulk_destroy_success_message(result[:count]))
+    ].compact
   end
 
   def render_unprocessable(message)
@@ -411,21 +334,16 @@ class VisitsController < ApplicationController
     end
   end
 
-  def parse_time_safely(value)
-    Time.zone.parse(value.to_s)
-  rescue ArgumentError, TypeError
-    nil
-  end
-
   def too_many_visits_message
     I18n.t('controllers.visits.too_many_visits', count: MAX_BULK_VISIT_IDS)
   end
 
   def message_for_missing_visits(ids)
-    return missing_visits_message unless current_user.plan_restricted?
+    window_start = current_user.data_window_start
+    return missing_visits_message unless window_start
 
     archived_count = current_user.visits.where(id: ids)
-                                 .where('started_at < ?', current_user.data_window_start)
+                                 .where('started_at < ?', window_start)
                                  .count
     return missing_visits_message if archived_count.zero?
 
@@ -446,15 +364,5 @@ class VisitsController < ApplicationController
 
   def bulk_update_success_message(status, count)
     I18n.t("controllers.visits.bulk_updated.#{status}", count:)
-  end
-
-  def bust_timeline_month_cache
-    spans = @affected_spans || Array(@affected_started_at).compact.map { |time| [time, time] }
-    return if spans.empty?
-
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    spans.flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }.uniq.each do |month_start|
-      Rails.cache.delete(Timeline::MonthSummary.cache_key_for(current_user, month_start))
-    end
   end
 end

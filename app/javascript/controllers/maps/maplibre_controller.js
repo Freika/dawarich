@@ -1,44 +1,33 @@
 import { Controller } from "@hotwired/stimulus"
-import { formatNumber, formatTime, translate } from "i18n"
-import { deletePlace } from "maps_maplibre/components/place_actions"
-import { RangeStatistics } from "maps_maplibre/components/range_statistics"
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
-import { PlacePanelBridge } from "maps_maplibre/editing/place_panel_bridge"
-import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
-import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
-import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
-import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
-import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
-import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
-import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 import { setPrivacyZonesFingerprint } from "maps_maplibre/utils/tile_freshness"
-import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
-import { AreaSelectionManager } from "./maplibre/area_selection_manager"
-import { consumeCreatePlaceLink } from "./maplibre/create_place_link"
-import { DataLoader } from "./maplibre/data_loader"
-import { DateManager } from "./maplibre/date_manager"
-import { EventHandlers } from "./maplibre/event_handlers"
-import { FilterManager } from "./maplibre/filter_manager"
-import { LayerManager } from "./maplibre/layer_manager"
-import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
-import { MapDataManager } from "./maplibre/map_data_manager"
-import { MapInitializer } from "./maplibre/map_initializer"
-import { NotesManager } from "./maplibre/notes_manager"
-import { PlacesManager } from "./maplibre/places_manager"
+import { MapDateRange } from "./maplibre/date_range"
+import { FamilyManager } from "./maplibre/family_manager"
+import { InfoPanel } from "./maplibre/info_panel"
+import { LoadingBadge } from "./maplibre/loading_badge"
+import { buildMapFeatures, listenToDocument } from "./maplibre/map_bootstrap"
+import { MapReplayActions } from "./maplibre/map_replay"
+import {
+  initializeMap,
+  isWebGLSupported,
+  loadViewSettings,
+  showWebGLError,
+} from "./maplibre/map_startup"
 import { SettingsController } from "./maplibre/settings_manager"
-import { VisitsManager } from "./maplibre/visits_manager"
+import { TimelineMapBridge } from "./maplibre/timeline_map_bridge"
 
 /**
  * Main map controller for Maps V2
  * Coordinates between different managers and handles UI interactions
  */
-export default class extends Controller {
+export default class MapController extends Controller {
   static values = {
     apiKey: String,
     startDate: String,
@@ -66,8 +55,6 @@ export default class extends Controller {
     "visitsSearch",
     "placesFilters",
     "enableAllPlaceTagsToggle",
-    "fogRadiusValue",
-    "fogThresholdValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
     "gpsAccuracyThresholdValue",
@@ -89,8 +76,8 @@ export default class extends Controller {
     "anomaliesToggle",
     "familyToggle",
     "flightsToggle",
-    "notesToggle",
     "tracksToggle",
+    "notesToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -121,7 +108,8 @@ export default class extends Controller {
     "transportationDirtyMessage",
     // Transportation enabled modes allowlist
     "enabledModeCheckbox",
-    // Replay
+    // Replay panel. Not inherited from ReplayHost: the protected
+    // spec/regressions harnesses load this file with only a bare Controller.
     "replayPanel",
     "replayScrubber",
     "replayScrubberTrack",
@@ -133,17 +121,15 @@ export default class extends Controller {
     "replayDataIndicator",
     "replayCycleControls",
     "replayPointCounter",
-    // Timeline feed
-    "timelineFeedContainer",
-    // Replay playback
     "replayPlayButton",
     "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
     "replaySpeedLabel",
-    // Replay speed display (velocity)
     "replaySpeedDisplay",
+    // Timeline feed
+    "timelineFeedContainer",
     // WebGL error
     "webglError",
   ]
@@ -158,8 +144,8 @@ export default class extends Controller {
     this.containerTarget.classList.remove("hidden")
     this.webglErrorTarget.classList.add("hidden")
 
-    if (!this.isWebGLSupported()) {
-      this.showWebGLError()
+    if (!isWebGLSupported()) {
+      showWebGLError(this)
       return
     }
 
@@ -168,177 +154,30 @@ export default class extends Controller {
 
     // Initialize API and settings
     SettingsManager.initialize(this.apiKeyValue)
+    this.familyManager = new FamilyManager(this)
+    this.loadingBadge = new LoadingBadge(this)
+    this.infoPanel = new InfoPanel(this)
+    this.dateRange = new MapDateRange(this)
+    this.replayActions = new MapReplayActions(this)
+    this.timelineBridge = new TimelineMapBridge(this)
     this.settingsController = new SettingsController(this)
-    await this.loadViewSettings()
+    await loadViewSettings(this)
 
     // Sync toggle states with loaded settings
     this.settingsController.syncToggleStates()
     if (this.hasExplorationBoundsValue && this.hasFogToggleTarget)
       this.fogToggleTarget.checked = true
 
-    await this.initializeMap()
+    await initializeMap(this)
     // initializeMap bails without setting this.map if the controller
     // disconnected mid-init (fast Turbo nav); don't build managers on a
     // dead controller with an undefined map. It also returns without a map
     // when the browser refused a WebGL context.
     if (this._disconnected || !this.map) return
 
-    this.initializeAPI()
-
-    // Initialize managers
-    this.layerManager = new LayerManager(
-      this.map,
-      this.settings,
-      this.api,
-      this,
-    )
-    this.dataLoader = new DataLoader(this.api, this.apiKeyValue, this.settings)
-    this.eventHandlers = new EventHandlers(this.map, this)
-    this.filterManager = new FilterManager(this.dataLoader)
-    this.mapDataManager = new MapDataManager(this)
-
-    // Initialize feature managers
-    this.areaSelectionManager = new AreaSelectionManager(this)
-    this.visitsManager = new VisitsManager(this)
-    // The moveend viewport-refetch normally attaches when the user flips the
-    // Visits toggle on. When the layer starts enabled by the saved setting,
-    // attach it here so panning keeps the dots in sync with the viewport.
-    if (this.settings.visitsEnabled) {
-      this.visitsManager.attachViewportRefetch()
-    }
-    this.placesManager = new PlacesManager(this)
-    this.notesManager = new NotesManager(this)
-    this.placePanel = new PlacePanelBridge(this)
-    consumeCreatePlaceLink(this.placesManager)
-    this.layerVisibilityManager = new LayerVisibilityManager(this)
-
-    // Listen for tab changes to trigger timeline feed loading via Turbo Frame
-    this.boundHandleTabChanged = this.handleTabChanged.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "map-panel:tab-changed",
-      this.boundHandleTabChanged,
-    )
-
-    // Listen for day-expanded/collapsed events from the timeline-feed Stimulus controller
-    this.boundHandleDayExpanded = this.handleDayExpanded.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:day-expanded",
-      this.boundHandleDayExpanded,
-    )
-    this.boundHandleDayCollapsed = this.handleDayCollapsed.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:day-collapsed",
-      this.boundHandleDayCollapsed,
-    )
-
-    // Listen for entry hover/unhover events from the timeline-feed controller
-    this.boundHandleEntryHover = this.handleEntryHover.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-hover",
-      this.boundHandleEntryHover,
-    )
-    this.boundHandleEntryUnhover = this.handleEntryUnhover.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-unhover",
-      this.boundHandleEntryUnhover,
-    )
-
-    // Listen for entry click/deselect events from the timeline-feed controller
-    this.boundHandleEntryClick = this.handleEntryClick.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-click",
-      this.boundHandleEntryClick,
-    )
-    this.boundHandleEntryDeselect = this.handleEntryDeselect.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:entry-deselect",
-      this.boundHandleEntryDeselect,
-    )
-
-    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
-      SettingsManager.getSetting("tracksEnabled"),
-    )
-
-    // SPA date-range change from the Timeline calendar — refetch all enabled
-    // layers for the new start/end without tearing down the map instance.
-    this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "timeline-feed:date-navigated",
-      this.boundHandleDateNavigated,
-    )
-
-    // Initialize search manager
-    this.initializeSearch()
-
-    // Listen for visit and place creation/update events
-    this.boundHandleVisitCreated = this.visitsManager.handleVisitCreated.bind(
-      this.visitsManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "visit:created",
-      this.boundHandleVisitCreated,
-    )
-
-    this.boundHandleVisitUpdated = this.visitsManager.handleVisitUpdated.bind(
-      this.visitsManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "visit:updated",
-      this.boundHandleVisitUpdated,
-    )
-
-    this.boundHandlePlaceCreated = this.placesManager.handlePlaceCreated.bind(
-      this.placesManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "place:created",
-      this.boundHandlePlaceCreated,
-    )
-
-    this.boundHandlePlaceUpdated = this.placesManager.handlePlaceUpdated.bind(
-      this.placesManager,
-    )
-    this.cleanup.addEventListener(
-      document,
-      "place:updated",
-      this.boundHandlePlaceUpdated,
-    )
-
-    const [serverStartDate, serverEndDate] = [
-      this.startDateValue,
-      this.endDateValue,
-    ].map((value) => value.split("T")[0])
-
-    // Format initial dates
-    this.startDateValue = DateManager.formatDateForAPI(
-      new Date(this.startDateValue),
-    )
-    this.endDateValue = DateManager.formatDateForAPI(
-      new Date(this.endDateValue),
-    )
-
-    // Snapshot the load-time window so realtime filtering can tell the default
-    // "today" view (whose frozen end goes stale across local midnight) apart
-    // from an explicitly selected past range.
-    const loadEnd = parseTimestamp(this.endDateValue)
-    this.defaultDateRange = {
-      startValue: this.startDateValue,
-      endValue: this.endDateValue,
-      startDate: serverStartDate,
-      endDate: serverEndDate,
-      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
-    }
+    buildMapFeatures(this)
+    listenToDocument(this)
+    this.dateRange.snapshotInitial()
 
     if (this.settings.placesEnabled) {
       await this.placesManager.initializePlaceTagFilters({
@@ -373,10 +212,10 @@ export default class extends Controller {
   disconnect() {
     this._disconnected = true
     this.rangeStatistics?.destroy()
-    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
+    this.familyManager?.disconnect()
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
-    this.settingsController?.stopRecalculationPolling()
+    this.settingsController?.transportation.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
     this.notesManager?.destroy()
@@ -388,112 +227,6 @@ export default class extends Controller {
     this.layerManager?.clearLayerReferences()
     this.map?.remove()
     performanceMonitor.logReport()
-  }
-
-  isWebGLSupported() {
-    try {
-      const canvas = document.createElement("canvas")
-      const gl = canvas.getContext("webgl2")
-      // Hand the probe's context back at once: iOS caps live WebGL contexts,
-      // and this one would otherwise linger until GC on every day switch.
-      gl?.getExtension("WEBGL_lose_context")?.loseContext()
-      return !!gl
-    } catch {
-      return false
-    }
-  }
-
-  showWebGLError() {
-    this.containerTarget.classList.add("hidden")
-    this.webglErrorTarget.classList.remove("hidden")
-  }
-
-  /**
-   * Initialize MapLibre map
-   */
-  async loadViewSettings() {
-    await this.settingsController.loadSettings()
-    // A city card opens the map with fog on for this view only; the copy
-    // keeps the forced layer out of the stored settings.
-    this.settings = this.hasExplorationBoundsValue
-      ? { ...this.settingsController.settings, fogEnabled: true }
-      : this.settingsController.settings
-    this.settings.timezone = this.timezoneValue
-  }
-
-  async initializeMap() {
-    syncSidebarLayout(this.settingsPanelTarget, this.containerTarget, true)
-    // Reopen at the user's last viewport instead of the zoomed-out globe.
-    // When the date range has data, fitBounds overrides this; when it has
-    // none, the map stays on the last-known view rather than the world.
-    const lastView = loadLastView(this.apiKeyValue)
-
-    let map
-    try {
-      map = await MapInitializer.initialize(
-        this.containerTarget,
-        {
-          mapStyle: this.settings.mapStyle,
-          globeProjection: this.settings.globeProjection,
-          hiddenTileCategories: this.settings.hiddenTileCategories || [],
-          disabledPoiGroups: this.settings.disabledPoiGroups || [],
-          customTheme: this.settings.customTheme,
-          vectorTilesUrl: this.settings.vectorTilesUrl,
-          tilesFallback: this.settings.tilesFallback === true,
-          ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-        },
-        this.apiKeyValue,
-      )
-    } catch (error) {
-      // The isWebGLSupported() probe passes, yet the browser can still refuse
-      // the map its own context, e.g. iOS Safari past its WebGL context limit.
-      if (error?.name !== "GPUInitializationError") throw error
-      console.warn("[Maps V2] WebGL context refused:", error)
-      this.showWebGLError()
-      return
-    }
-
-    // The controller may have disconnected while the style was loading (e.g.
-    // fast Turbo navigation). Tear the map down instead of attaching a listener
-    // to an orphaned instance that disconnect() can no longer reach.
-    if (this._disconnected) {
-      map.remove()
-      return
-    }
-
-    this.map = map
-    this._persistView = () => saveView(this.map, this.apiKeyValue)
-    this.map.on("moveend", this._persistView)
-  }
-
-  /**
-   * Initialize API client
-   */
-  initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
-    const statistics = this.element.querySelector(
-      '[data-testid="map-range-statistics"]',
-    )
-    if (statistics)
-      this.rangeStatistics = new RangeStatistics(statistics, this.api)
-  }
-
-  /**
-   * Initialize location search
-   */
-  initializeSearch() {
-    if (!this.hasSearchInputTarget || !this.hasSearchResultsTarget) {
-      console.warn(
-        "[Maps V2] Search targets not found, search functionality disabled",
-      )
-      return
-    }
-
-    this.searchManager = new SearchManager(this.map, this.apiKeyValue)
-    this.searchManager.initialize(
-      this.searchInputTarget,
-      this.searchResultsTarget,
-    )
   }
 
   /**
@@ -511,189 +244,6 @@ export default class extends Controller {
         fitBounds: options.fitBounds !== false && !this.placePanel?.isOpen,
       },
     )
-  }
-
-  /**
-   * Month selector changed
-   */
-  monthChanged(event) {
-    const { startDate, endDate } = DateManager.parseMonthSelector(
-      event.target.value,
-    )
-    this.startDateValue = startDate
-    this.endDateValue = endDate
-
-    this.layerManager.getLayer("map-editor")?.close()
-    this._clearDayHighlight()
-    this.loadMapData()
-    this.refreshTimelineFeedIfActive()
-    this.debouncedLoadFamilyHistory()
-  }
-
-  /**
-   * Timeline panel requested a new day (SPA navigation — no page reload).
-   * Mirrors `monthChanged` exactly, including the date format: the Points/Tracks
-   * API expects `DateManager.formatDateForAPI`'s local `YYYY-MM-DDTHH:MM+OFFSET`
-   * shape. Using `Date#toISOString()` (UTC `Z` suffix) here was causing Tracks
-   * to come back empty because the server parsed the dates differently.
-   */
-  handleTimelineDateNavigated(event) {
-    const navigation = this.navigateTimelineDateRange(event.detail || {})
-    if (typeof event.detail?.waitUntil === "function") {
-      event.detail.waitUntil(navigation)
-    } else {
-      navigation.catch((error) => console.error(error))
-    }
-  }
-
-  async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
-    if (!startAt || !endAt) return
-
-    const toApiDate = (local) => {
-      const d = new Date(local)
-      if (Number.isNaN(d.getTime())) return null
-      return DateManager.formatDateForAPI(d)
-    }
-    const start = toApiDate(startAt)
-    const end = toApiDate(endAt)
-    if (!start || !end) return
-
-    this.startDateValue = start
-    this.endDateValue = end
-
-    this.layerManager.getLayer("map-editor")?.close()
-    this._clearDayHighlight?.()
-    await this.loadMapData({ fitBounds })
-    if (anomaliesVisible(SettingsManager.getSettings())) {
-      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-    }
-    this.refreshTimelineFeedIfActive?.()
-    this.debouncedLoadFamilyHistory?.()
-  }
-
-  /**
-   * The active window realtime points are filtered against. When the range is
-   * still the untouched load-time window that reached the present, the end is
-   * left open so live points recorded after local midnight keep showing.
-   */
-  realtimeDateRange() {
-    const startValue = this.startDateValue
-    const endValue = this.endDateValue
-    const unchanged =
-      this.defaultDateRange &&
-      startValue === this.defaultDateRange.startValue &&
-      endValue === this.defaultDateRange.endValue
-
-    return {
-      startValue,
-      endValue,
-      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
-    }
-  }
-
-  debouncedLoadFamilyHistory() {
-    if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
-    this._familyHistoryTimer = setTimeout(() => this.loadFamilyHistory(), 300)
-  }
-
-  /**
-   * Show loading progress badge
-   */
-  showProgress() {
-    this._lastSourceCount = 0
-    if (this.hasProgressBadgeTarget) {
-      this.progressBadgeTarget.classList.remove("complete", "pop")
-      this.progressBadgeTarget.classList.add("visible")
-    }
-    if (this.hasProgressBadgeTextTarget) {
-      this.progressBadgeTextTarget.textContent = translate("common.loading")
-    }
-  }
-
-  /**
-   * Hide loading progress badge with fade-out
-   */
-  hideProgress() {
-    if (!this.hasProgressBadgeTarget) return
-    const badge = this.progressBadgeTarget
-    badge.classList.remove("visible")
-  }
-
-  /**
-   * Show loading indicator (alias for showProgress)
-   */
-  showLoading() {
-    this.showProgress()
-  }
-
-  /**
-   * Hide loading indicator (alias for hideProgress)
-   */
-  hideLoading() {
-    this.hideProgress()
-  }
-
-  /**
-   * Update loading counts badge
-   */
-  updateLoadingCounts({ counts, isComplete }) {
-    this._lastLoadingCounts = counts
-    this._renderLoadingBadge(isComplete)
-  }
-
-  /**
-   * Render the loading badge text from current counts
-   * @private
-   */
-  _renderLoadingBadge(isComplete = false) {
-    if (!this.hasProgressBadgeTextTarget) return
-
-    const counts = this._lastLoadingCounts || {}
-    const parts = []
-    for (const [source, count] of Object.entries(counts)) {
-      parts.push(
-        translate(`loading_sources.${source}`, {
-          count,
-          formatted_count: formatNumber(count),
-        }),
-      )
-    }
-
-    // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled && counts.family === undefined) {
-      const familyCount = this._familyMemberCount || 0
-      parts.push(
-        translate("loading_sources.family", {
-          count: familyCount,
-          formatted_count: formatNumber(familyCount),
-        }),
-      )
-    }
-
-    // Detect when a new data source appears and trigger a pop animation
-    const sourceCount = parts.length
-    if (
-      this.hasProgressBadgeTarget &&
-      sourceCount > (this._lastSourceCount || 0)
-    ) {
-      const badge = this.progressBadgeTarget
-      badge.classList.remove("pop")
-      // Force reflow so re-adding the class restarts the animation
-      void badge.offsetWidth
-      badge.classList.add("pop")
-    }
-    this._lastSourceCount = sourceCount
-
-    this.progressBadgeTextTarget.textContent =
-      parts.length > 0 ? parts.join(" \u00B7 ") : translate("common.loading")
-
-    if (isComplete) {
-      if (this.hasProgressBadgeTarget) {
-        this.progressBadgeTarget.classList.add("complete")
-      }
-      this._lastSourceCount = 0
-      setTimeout(() => this.hideProgress(), 1200)
-    }
   }
 
   /**
@@ -736,9 +286,9 @@ export default class extends Controller {
     const { tab } = event.detail
     if (tab === "timeline-feed") {
       this.loadTimelineFeed()
-    } else if (this._highlightedDay) {
+    } else if (this.timelineBridge.highlightedDay) {
       // Leaving timeline-feed tab — restore full opacity
-      this._clearDayHighlight()
+      this.timelineBridge.clearDayHighlight()
     }
   }
 
@@ -776,1037 +326,49 @@ export default class extends Controller {
     }
   }
 
-  /**
-   * Handle day-expanded events from the timeline-feed controller.
-   * Fits the map to the day's bounding box and dims non-matching features.
-   */
-  handleDayExpanded(event) {
-    const { bounds, day } = event.detail
-    if (!this.map) return
-
-    if (bounds) {
-      const { sw_lat, sw_lng, ne_lat, ne_lng } = bounds
-      this.map.fitBounds(
-        [
-          [sw_lng, sw_lat],
-          [ne_lng, ne_lat],
-        ],
-        { padding: 60, maxZoom: 15, duration: 800 },
-      )
-    }
-
-    if (day) {
-      this._applyDayHighlight(day)
-      this._showDayVisits(day)
-      this.replayPanel?.syncToDay(day)
-      this.rangeStatistics?.load(
-        DateManager.formatDateForAPI(new Date(`${day}T00:00:00`)),
-        DateManager.formatDateForAPI(new Date(`${day}T23:59:59`)),
-      )
-    }
-  }
-
-  /**
-   * Handle day-collapsed events — restore full opacity on all layers.
-   */
-  handleDayCollapsed() {
-    this._clearDayHighlight()
-    this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
-  }
-
-  /**
-   * Dim non-matching features for the selected day.
-   * Tile-backed Tracks and Points use Unix timestamps (seconds);
-   * visits use ISO 8601 strings (lexicographically sortable).
-   * @param {string} day - Date string "YYYY-MM-DD"
-   * @private
-   */
-  _applyDayHighlight(day) {
-    if (!this.map) return
-
-    this._highlightedDay = day
-    const DIM = 0.04
-
-    // Compute day boundaries as Unix seconds
-    const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
-    const dayEnd = new Date(`${day}T23:59:59`).getTime() / 1000
-
-    // ISO boundaries for visit layers (lexicographic comparison)
-    const isoStart = `${day}T00:00:00`
-    const isoEnd = `${day}T23:59:59`
-
-    const trackExpr = timeOverlapOpacityExpr(
-      "start_timestamp",
-      "end_timestamp",
-      dayStart,
-      dayEnd,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
-
-    // Points: timestamp is Unix seconds
-    const pointExpr = timeOverlapOpacityExpr(
-      "timestamp",
-      "max_timestamp",
-      dayStart,
-      dayEnd,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
-
-    // Visits: started_at is ISO 8601 string
-    const visitExpr = this._dayRangeExpr(
-      "started_at",
-      isoStart,
-      isoEnd,
-      0.9,
-      DIM,
-    )
-    this._safeSetPaint("visits", "circle-opacity", visitExpr)
-    this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-
-    // Visit labels
-    this.layerManager.getLayer("visits")?.setLabelOpacity((f) => {
-      const startedAt = f.properties.started_at
-      return startedAt >= isoStart && startedAt < isoEnd ? 1 : DIM
-    })
-  }
-
-  /**
-   * Restore default opacity on all layers.
-   * @private
-   */
-  _clearDayHighlight() {
-    if (!this.map) return
-
-    this._highlightedDay = null
-    this._hideDayVisits()
-    this._safeSetPaint("tracks-mvt", "line-opacity", 1)
-    this._safeSetPaint("points-mvt", "circle-opacity", 1)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", 1)
-    this._safeSetPaint("visits", "circle-opacity", 0.9)
-    this._safeSetPaint("visits", "circle-stroke-opacity", 1)
-    this.layerManager.getLayer("visits")?.setLabelOpacity(null)
-  }
-
-  /**
-   * Handle entry-hover events from the timeline feed.
-   * Highlights the matching route/visit on the map by dimming everything else.
-   */
-  handleEntryHover(event) {
-    const { entryType, startedAt, endedAt, visitId } = event.detail
-    if (!this.map || !startedAt || !endedAt) return
-
-    this._entryHighlightActive = true
-
-    const DIM = 0.08
-    const startUnix = new Date(startedAt).getTime() / 1000
-    const endUnix = new Date(endedAt).getTime() / 1000
-    const trackExpr = timeOverlapOpacityExpr(
-      "start_timestamp",
-      "end_timestamp",
-      startUnix,
-      endUnix,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
-
-    // Points: timestamp is Unix seconds
-    const pointExpr = timeOverlapOpacityExpr(
-      "timestamp",
-      "max_timestamp",
-      startUnix,
-      endUnix,
-      1,
-      DIM,
-    )
-    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
-    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
-
-    // Visits:
-    //   - Visit hover  → only the hovered visit stays full opacity; others are
-    //     dimmed so the on-map dot the rail row points to is unambiguous.
-    //   - Journey hover → no visit is the focus, so all visits fade nearly out;
-    //     the eye lands on the highlighted track instead.
-    if (entryType === "visit") {
-      // Match by visit id rather than by ISO `started_at` range — the
-      // API returns timestamps with milliseconds (`...:00.000Z`) while
-      // DayAssembler renders the row attribute with second precision
-      // (`...:00Z`). Lexicographic comparison fails the equality check
-      // and dims the hovered visit along with the others.
-      const visitExpr = [
-        "case",
-        ["==", ["get", "id"], Number(visitId)],
-        1,
-        0.15,
-      ]
-      this._safeSetPaint("visits", "circle-opacity", visitExpr)
-      this._safeSetPaint("visits", "circle-stroke-opacity", visitExpr)
-      this.layerManager
-        .getLayer("visits")
-        ?.setLabelOpacity((f) =>
-          f.properties.id === Number(visitId) ? 1 : 0.15,
-        )
-    } else {
-      const VISITS_NEARLY_INVISIBLE = 0.05
-      this._safeSetPaint("visits", "circle-opacity", VISITS_NEARLY_INVISIBLE)
-      this._safeSetPaint(
-        "visits",
-        "circle-stroke-opacity",
-        VISITS_NEARLY_INVISIBLE,
-      )
-      this.layerManager
-        .getLayer("visits")
-        ?.setLabelOpacity(() => VISITS_NEARLY_INVISIBLE)
-    }
-  }
-
-  /**
-   * Handle entry-unhover events — restore to day highlight or default opacity.
-   */
-  handleEntryUnhover() {
-    if (!this.map) return
-    this._entryHighlightActive = false
-
-    this._removeHoverPopup()
-
-    // Clear track hover highlight unless a track is click-selected
-    if (this._hoverHighlightedTrack && !this._timelineSelectedTrack) {
-      const tracksLayer = this.layerManager.getLayer("tracks")
-      if (tracksLayer?.setSelectedTrack) {
-        tracksLayer.setSelectedTrack(null)
-      }
-      this._hoverHighlightedTrack = false
-    }
-
-    if (this._highlightedDay) {
-      // Restore day-level highlight
-      this._applyDayHighlight(this._highlightedDay)
-    } else {
-      this._clearDayHighlight()
-    }
-  }
-
-  /**
-   * Handle entry-click events from the timeline feed (journey card opened).
-   * Zooms to the track and applies the selection highlight.
-   */
-  async handleEntryClick(event) {
-    const { trackId, startedAt } = event.detail
-    if (!this.map) return
-
-    const selectionVersion = (this._timelineSelectionVersion || 0) + 1
-    this._timelineSelectionVersion = selectionVersion
-    let feature = this._findTrackFeature(trackId, startedAt)
-    if (!feature && trackId) {
-      try {
-        feature = await this.api.fetchTrackWithSegments(trackId, {
-          ...this.layerManager?.pointTileRange,
-        })
-      } catch (error) {
-        console.warn(`[Map] Failed to load timeline track ${trackId}:`, error)
-        return
-      }
-    }
-    if (selectionVersion !== this._timelineSelectionVersion) return
-    if (!feature) return
-
-    // Zoom to track bounding box
-    const geometry = feature.geometry
-    const coords =
-      geometry?.type === "MultiLineString"
-        ? geometry.coordinates.flat()
-        : geometry?.coordinates
-    if (coords?.length > 0) {
-      let minLng = Infinity
-      let minLat = Infinity
-      let maxLng = -Infinity
-      let maxLat = -Infinity
-      for (const [lng, lat] of coords) {
-        if (lng < minLng) minLng = lng
-        if (lat < minLat) minLat = lat
-        if (lng > maxLng) maxLng = lng
-        if (lat > maxLat) maxLat = lat
-      }
-      this.map.fitBounds(
-        [
-          [minLng, minLat],
-          [maxLng, maxLat],
-        ],
-        { padding: 60, maxZoom: 15, duration: 800 },
-      )
-    }
-
-    // Apply track selection highlight
-    const tracksLayer = this.layerManager.getLayer("tracks")
-    if (tracksLayer?.setSelectedTrack) {
-      const preserveSegments =
-        tracksLayer.segmentsActive === true &&
-        String(tracksLayer.selectedFeature?.properties?.id) === String(trackId)
-      tracksLayer.setSelectedTrack(feature, { preserveSegments })
-      this._timelineSelectedTrack = true
-      this._hoverHighlightedTrack = false
-    }
-  }
-
-  /**
-   * Handle entry-deselect events from the timeline feed (journey card closed).
-   * Clears track selection and restores day highlight if active.
-   */
-  handleEntryDeselect() {
-    if (!this.map) return
-    this._timelineSelectionVersion = (this._timelineSelectionVersion || 0) + 1
-
-    const tracksLayer = this.layerManager.getLayer("tracks")
-    if (tracksLayer?.setSelectedTrack) {
-      tracksLayer.setSelectedTrack(null)
-    }
-    this._timelineSelectedTrack = false
-    this._hoverHighlightedTrack = false
-
-    // Restore day-level highlight or default opacity
-    if (this._highlightedDay) {
-      this._applyDayHighlight(this._highlightedDay)
-    } else {
-      this._clearDayHighlight()
-    }
-  }
-
-  /**
-   * Build a MapLibre expression: full opacity if property is within [start, end], dim otherwise.
-   * @private
-   */
-  _dayRangeExpr(property, rangeStart, rangeEnd, fullOpacity, dimOpacity) {
-    return [
-      "case",
-      [
-        "all",
-        ["has", property],
-        [">=", ["get", property], rangeStart],
-        ["<=", ["get", property], rangeEnd],
-      ],
-      fullOpacity,
-      dimOpacity,
-    ]
-  }
-
-  /**
-   * Safely set a paint property on a MapLibre layer (no-op if layer doesn't exist).
-   * @private
-   */
-  _safeSetPaint(layerId, property, value) {
-    if (
-      layerId === "points-mvt" &&
-      ["circle-opacity", "circle-stroke-opacity"].includes(property)
-    ) {
-      const pointsLayer = this.layerManager?.getLayer("points-mvt")
-      if (pointsLayer?.setCircleOpacity) {
-        pointsLayer.setCircleOpacity(property, value)
-        return
-      }
-    }
-    if (this.map.getLayer(layerId)) {
-      this.map.setPaintProperty(layerId, property, value)
-    }
-  }
-
-  _safeSetLayout(layerId, property, value) {
-    if (this.map.getLayer(layerId)) {
-      this.map.setLayoutProperty(layerId, property, value)
-    }
-  }
-
-  _removeHoverPopup() {
-    if (this._hoverPopup) {
-      this._hoverPopup.remove()
-      this._hoverPopup = null
-    }
-  }
-
-  /**
-   * Show visit markers for the given day, even if the Visits layer is globally disabled.
-   * @param {string} day - Date string "YYYY-MM-DD"
-   * @private
-   */
-  async _showDayVisits(day) {
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) return
-
-    const wasHidden = !visitsLayer.visible
-
-    // Clear any hover popup from previous day
-    this._removeHoverPopup()
-
-    // Get visits for this day
-    let dayVisits = []
-    if (this.filterManager?.allVisits?.length > 0) {
-      dayVisits = this.filterManager.allVisits.filter((v) => {
-        const visitDay = v.started_at?.substring(0, 10)
-        return visitDay === day
-      })
-    } else {
-      try {
-        dayVisits = await this.api.fetchVisits({
-          start_at: `${day}T00:00:00`,
-          end_at: `${day}T23:59:59`,
-        })
-      } catch {
-        return
-      }
-    }
-
-    if (dayVisits.length === 0) return
-
-    // Store override state for restoration (only on first override)
-    if (!this._visitsOverride) {
-      this._visitsOverride = {
-        wasHidden,
-        previousData: visitsLayer.data || {
-          type: "FeatureCollection",
-          features: [],
-        },
-      }
-    }
-
-    // Update the visits source with the day's visits and show the layer
-    const geoJSON = this.dataLoader.visitsToGeoJSON(dayVisits)
-    visitsLayer.update(geoJSON)
-    visitsLayer.show()
-  }
-
-  /**
-   * Restore the visits layer to its previous state after day collapse.
-   * @private
-   */
-  _hideDayVisits() {
-    if (!this._visitsOverride) return
-
-    const visitsLayer = this.layerManager?.getLayer("visits")
-    if (!visitsLayer) {
-      this._visitsOverride = null
-      return
-    }
-
-    if (this._visitsOverride.wasHidden) {
-      visitsLayer.update(this._visitsOverride.previousData)
-      visitsLayer.hide()
-    }
-
-    this._visitsOverride = null
-  }
-
-  /**
-   * Find a track feature from the tracks source by ID or start time.
-   * @param {string} trackId - Track ID (primary match)
-   * @param {string} startedAt - ISO start time (fallback match)
-   * @returns {Object|null} GeoJSON feature or null
-   * @private
-   */
-  _findTrackFeature(trackId, startedAt) {
-    const tracksLayer = this.layerManager?.getLayer("tracks")
-    if (!tracksLayer) return null
-
-    const selected = tracksLayer.selectedFeature
-    if (
-      selected &&
-      !selected.sourceLayer &&
-      ((trackId && String(selected.properties?.id) === String(trackId)) ||
-        (startedAt && selected.properties?.start_at === startedAt))
-    ) {
-      return selected
-    }
-
-    const sourceData = tracksLayer.data
-    if (!sourceData?.features) return null
-
-    // Primary: match by track ID
-    if (trackId) {
-      const byId = sourceData.features.find(
-        (f) => String(f.properties?.id) === String(trackId),
-      )
-      if (byId) return byId
-    }
-
-    // Fallback: match by start_at time
-    if (startedAt) {
-      return (
-        sourceData.features.find((f) => f.properties?.start_at === startedAt) ||
-        null
-      )
-    }
-
-    return null
-  }
-
-  // ===== Delegated Methods to Managers =====
-
-  // Settings Controller methods
-  updateMapStyle(event) {
-    return this.settingsController.updateMapStyle(event)
-  }
-  applyMapStyle(styleName) {
-    return this.settingsController.applyMapStyle(styleName)
-  }
-  resetSettings() {
-    return this.settingsController.resetSettings()
-  }
-  toggleTileCategory(event) {
-    return this.settingsController.toggleTileCategory(event)
-  }
-  togglePoiGroup(event) {
-    return this.settingsController.togglePoiGroup(event)
-  }
-  updateDistanceUnit(event) {
-    return this.settingsController.updateDistanceUnit(event)
-  }
-  updateVectorTilesUrl(event) {
-    return this.settingsController.updateVectorTilesUrl(event)
-  }
-  updateTilesFallback(event) {
-    return this.settingsController.updateTilesFallback(event)
-  }
-  updateTrackColor(event) {
-    return this.settingsController.updateTrackColor(event)
-  }
-  toggleSpeedColoredRoutes(event) {
-    return this.settingsController.toggleSpeedColoredRoutes(event)
-  }
-  updateSpeedColorScale(event) {
-    return this.settingsController.updateSpeedColorScale(event)
-  }
-  resetLayerColors() {
-    return this.settingsController.resetLayerColors()
-  }
-  updateAdvancedSettings(event) {
-    return this.settingsController.updateAdvancedSettings(event)
-  }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
-  updateFogRadiusDisplay(event) {
-    return this.settingsController.updateFogRadiusDisplay(event)
-  }
-  updateFogThresholdDisplay(event) {
-    return this.settingsController.updateFogThresholdDisplay(event)
-  }
-  updateMinMinutesInCityDisplay(event) {
-    return this.settingsController.updateMinMinutesInCityDisplay(event)
-  }
-  reapplyAnomalyFilter() {
-    return this.settingsController.reapplyAnomalyFilter()
-  }
-  recalculateUserData() {
-    return this.settingsController.recalculateUserData()
-  }
-  toggleGlobe(event) {
-    return this.settingsController.toggleGlobe(event)
-  }
-  markTransportationSettingsDirty(event) {
-    return this.settingsController.markTransportationSettingsDirty(event)
-  }
-  applyTransportationSettings(event) {
-    return this.settingsController.applyTransportationSettings(event)
-  }
-
-  // Area Selection Manager methods
-  startSelectArea() {
-    return this.areaSelectionManager.startSelectArea()
-  }
-  cancelAreaSelection() {
-    return this.areaSelectionManager.cancelAreaSelection()
-  }
-  deleteSelectedPoints() {
-    return this.areaSelectionManager.deleteSelectedPoints()
-  }
-  deleteSelectedAnomalies() {
-    return this.areaSelectionManager.deleteSelectedAnomalies()
-  }
-
-  // Visits Manager methods
-  toggleVisits(event) {
-    return this.visitsManager.toggleVisits(event)
-  }
-  searchVisits(event) {
-    return this.visitsManager.searchVisits(event)
-  }
-  filterVisits(event) {
-    return this.visitsManager.filterVisits(event)
-  }
-  startCreateVisit() {
-    return this.visitsManager.startCreateVisit()
-  }
-
-  // Places Manager methods
-  togglePlaces(event) {
-    return this.placesManager.togglePlaces(event)
-  }
-  toggleArchivedPlaces(event) {
-    return this.placesManager.toggleArchivedPlaces(event)
-  }
-  togglePlaceBoundaries(event) {
-    return this.placesManager.togglePlaceBoundaries(event)
-  }
-  filterPlacesByTags(event) {
-    return this.placesManager.filterPlacesByTags(event)
-  }
-  toggleAllPlaceTags(event) {
-    return this.placesManager.toggleAllPlaceTags(event)
-  }
-  startCreatePlace() {
-    return this.placesManager.startCreatePlace()
-  }
-
-  startCreateNote() {
-    return this.notesManager.startCreate()
-  }
-
-  toggleNotes(event) {
-    return this.notesManager.toggle(event)
-  }
-
-  // Routes Manager methods
-  togglePoints(event) {
-    return this.layerVisibilityManager.togglePoints(event)
-  }
-
-  togglePointsEditing(event) {
-    return this.settingsController.togglePointsEditing(event)
-  }
-
-  toggleHeatmap(event) {
-    return this.layerVisibilityManager.toggleHeatmap(event)
-  }
-  toggleHexagons(event) {
-    return this.layerVisibilityManager.toggleHexagons(event)
-  }
-  updateFogMode(event) {
-    return this.settingsController.updateFogMode(event)
-  }
-
-  toggleFog(event) {
-    return this.layerVisibilityManager.toggleFog(event)
-  }
-  toggleScratch(event) {
-    return this.layerVisibilityManager.toggleScratch(event)
-  }
   async togglePhotos(event) {
     await this.layerVisibilityManager.togglePhotos(event)
     if (!this.replayPanel?.isOpen) return
     if (!event.target.checked) this._photosWasVisible = false
     this.replayPanel.refreshReplayPhotos()
   }
-  toggleTracks(event) {
-    return this.layerVisibilityManager.toggleTracks(event)
-  }
-  toggleFlights(event) {
-    return this.layerVisibilityManager.toggleFlights(event)
-  }
-  toggleAnomalies(event) {
-    return this.layerVisibilityManager.toggleAnomalies(event)
-  }
-  toggleFamily(event) {
-    return this.layerVisibilityManager.toggleFamily(event)
-  }
 
-  // Family Members methods
-  async loadFamilyMembers() {
-    try {
-      this.showProgress()
-      this.updateLoadingCounts({
-        counts: { family: 0 },
-        isComplete: false,
-      })
-
-      const response = await fetch("/api/v1/families/locations", {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKeyValue}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          Toast.info(translate("messages.family_feature_not_available"))
-          this.updateLoadingCounts({
-            counts: { family: 0 },
-            isComplete: true,
-          })
-          return
-        }
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      const locations = data.locations || []
-
-      // Update family layer with locations
-      const familyLayer = this.layerManager.getLayer("family")
-      if (familyLayer) {
-        familyLayer.loadMembers(locations)
-      }
-
-      // Update family count in badge
-      this._familyMemberCount = locations.length
-      this.updateLoadingCounts({
-        counts: { family: locations.length },
-        isComplete: true,
-      })
-
-      // Render family members list
-      this.renderFamilyMembersList(locations)
-
-      Toast.success(
-        translate("family.loaded_members", { count: locations.length }),
-      )
-
-      // Load history polylines
-      this.loadFamilyHistory()
-    } catch (error) {
-      console.error("[Maps V2] Failed to load family members:", error)
-      Toast.error(translate("messages.failed_to_load_family_members"))
-    }
-  }
-
-  async loadFamilyHistory() {
-    try {
-      const startAt = this.startDateValue
-      const endAt = this.endDateValue
-      if (!startAt || !endAt) return
-
-      const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
-      const response = await fetch(
-        `/api/v1/families/locations/history?${params}`,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKeyValue}`,
-          },
-        },
-      )
-
-      if (!response.ok) return
-
-      const data = await response.json()
-      const members = data.members || []
-
-      const familyLayer = this.layerManager.getLayer("family")
-      if (familyLayer) {
-        if (members.length > 0) {
-          // Assign colors consistent with member markers
-          for (const member of members) {
-            member.color = this.getFamilyMemberColor(member.user_id)
-          }
-          familyLayer.loadMemberHistory(members)
-        } else {
-          familyLayer.clearHistory()
-        }
-      }
-
-      // Update member info lines with sharing_since data
-      this._familyHistoryData = members
-      this.updateFamilyInfoLines(members)
-    } catch (error) {
-      console.error("[Maps V2] Failed to load family history:", error)
-    }
-  }
-
-  updateFamilyInfoLines(historyMembers) {
-    if (!this.hasFamilyMembersContainerTarget) return
-
-    for (const member of historyMembers) {
-      const infoEl = this.familyMembersContainerTarget.querySelector(
-        `[data-member-info="${member.user_id}"]`,
-      )
-      if (!infoEl || !member.sharing_since) continue
-
-      const sharingDate = new Date(member.sharing_since)
-      const daysSharing = Math.min(
-        365,
-        Math.floor(
-          (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
-        ),
-      )
-      const formattedDate = sharingDate.toLocaleDateString(
-        document.documentElement.lang || undefined,
-        {
-          month: "short",
-          day: "numeric",
-        },
-      )
-
-      infoEl.textContent = translate("family.sharing_since", {
-        date: formattedDate,
-        count: daysSharing,
-      })
-    }
-  }
-
-  renderFamilyMembersList(locations) {
-    if (!this.hasFamilyMembersContainerTarget) return
-
-    const container = this.familyMembersContainerTarget
-
-    if (locations.length === 0) {
-      container.innerHTML = `<p class="text-xs text-base-content/60">${translate("family.none_sharing")}</p>`
-      return
-    }
-
-    container.replaceChildren(
-      ...locations.map((location) => {
-        const emailInitial =
-          (location.name || location.email)?.charAt(0)?.toUpperCase() || "?"
-        const color = this.getFamilyMemberColor(location.user_id)
-        const timeZone = this.timezoneValue || "UTC"
-        const lastSeenDay = new Date(location.updated_at).toLocaleDateString(
-          document.documentElement.lang || undefined,
-          { timeZone, month: "short", day: "numeric" },
-        )
-        const lastSeen = `${lastSeenDay} ${formatTime(location.updated_at, { timeZone })}`
-
-        const row = document.createElement("div")
-        row.className =
-          "flex items-center gap-2 p-2 hover:bg-base-200 rounded-lg cursor-pointer transition-colors"
-        row.dataset.action = "click->maps--maplibre#centerOnFamilyMember"
-        row.dataset.memberId = location.user_id
-
-        const avatar = document.createElement("div")
-        Object.assign(avatar.style, {
-          backgroundColor: color,
-          color: "white",
-          borderRadius: "50%",
-          width: "24px",
-          height: "24px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "12px",
-          fontWeight: "bold",
-          flexShrink: "0",
-        })
-        avatar.textContent = emailInitial
-
-        const info = document.createElement("div")
-        info.className = "flex-1 min-w-0"
-
-        const emailDiv = document.createElement("div")
-        emailDiv.className = "text-sm font-medium truncate"
-        emailDiv.textContent =
-          location.name || location.email || translate("common.unknown")
-
-        const timeDiv = document.createElement("div")
-        timeDiv.className = "text-xs text-base-content/60"
-        timeDiv.textContent = lastSeen
-
-        const statusDiv = document.createElement("div")
-        statusDiv.className = "text-xs text-info/70"
-        statusDiv.dataset.memberInfo = location.user_id
-
-        info.append(emailDiv)
-        if (location.address) {
-          const addressDiv = document.createElement("div")
-          addressDiv.className = "text-xs text-base-content/70 truncate"
-          addressDiv.title = location.address
-          addressDiv.textContent = location.address
-          info.append(addressDiv)
-        }
-        info.append(timeDiv, statusDiv)
-        row.append(avatar, info)
-        return row
-      }),
-    )
-  }
-
-  getFamilyMemberColor(userId) {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#ec4899",
-    ]
-    // Use user ID to get consistent color
-    const hash = userId
-      .toString()
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return colors[hash % colors.length]
+  loadFamilyMembers() {
+    return this.familyManager.loadMembers()
   }
 
   centerOnFamilyMember(event) {
-    const memberId = event.currentTarget.dataset.memberId
-    if (!memberId) return
-
-    const familyLayer = this.layerManager.getLayer("family")
-    if (familyLayer) {
-      familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success(translate("messages.centered_on_family_member"))
-    }
+    return this.familyManager.centerOnMember(event)
   }
 
-  // Info Display methods
   showInfo(title, content, actions = []) {
-    if (!this.hasInfoDisplayTarget) return
-
-    // Reset the tracked entity; area clicks re-tag this after calling showInfo.
-    this._infoEntity = null
-
-    // Set title
-    this.infoTitleTarget.textContent = title
-
-    // Set content
-    this.infoContentTarget.innerHTML = content
-
-    // Set actions
-    if (actions.length > 0) {
-      this.infoActionsTarget.innerHTML = actions
-        .map((action) => {
-          if (action.type === "button") {
-            // For button actions (modals, etc.), create a button with data-action
-            // Use error styling for delete buttons
-            const buttonClass =
-              action.handler === "handleDelete"
-                ? "btn btn-sm btn-error"
-                : "btn btn-sm btn-primary"
-            return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
-          } else {
-            // For link actions, keep the original behavior
-            return `<a href="${action.url}" class="btn btn-sm btn-primary">${action.label}</a>`
-          }
-        })
-        .join("")
-    } else {
-      this.infoActionsTarget.innerHTML = ""
-    }
-
-    // Show info display
-    this.infoDisplayTarget.classList.remove("hidden")
-
-    // Switch to tools tab and open panel
-    this.switchToToolsTab()
+    return this.infoPanel.show(title, content, actions)
   }
 
   closeInfo(options = {}) {
-    if (!this.hasInfoDisplayTarget) return
-    this.infoDisplayTarget.classList.add("hidden")
-
-    if (options.clearSelection !== false && this.eventHandlers) {
-      this.eventHandlers.clearTrackSelection()
-      this.eventHandlers.clearPointSelection()
-    }
+    return this.infoPanel?.close(options)
   }
 
-  /**
-   * Handle edit action from info display
-   */
-  handleEdit(event) {
-    const button = event.currentTarget
-    const id = button.dataset.id
-    const entityType = button.dataset.entityType
-
-    switch (entityType) {
-      case "visit":
-        this.openVisitModal(id)
-        break
-      default:
-        console.warn("[Maps V2] Unknown entity type:", entityType)
-    }
-  }
-
-  /**
-   * Handle delete action from info display
-   */
-  handleDelete(event) {
-    const button = event.currentTarget
-    const id = button.dataset.id
-    const entityType = button.dataset.entityType
-
-    switch (entityType) {
-      case "point":
-        this.deletePoint(id)
-        break
-      case "place":
-        return deletePlace(this, id)
-      default:
-        console.warn("[Maps V2] Unknown entity type for delete:", entityType)
-    }
-  }
-
-  /**
-   * Open visit edit modal
-   */
+  /** Open the visit edit modal. Called by the private E2E suite. */
   async openVisitModal(visitId) {
     try {
-      // Fetch visit details
       const response = await fetch(`/api/v1/visits/${visitId}`, {
         headers: {
           Authorization: `Bearer ${this.apiKeyValue}`,
           "Content-Type": "application/json",
         },
       })
-
       if (!response.ok) {
         throw new Error(`Failed to fetch visit: ${response.status}`)
       }
 
       const visit = await response.json()
-
-      // Trigger visit edit event
-      const event = new CustomEvent("visit:edit", {
-        detail: { visit },
-        bubbles: true,
-      })
-      document.dispatchEvent(event)
+      document.dispatchEvent(
+        new CustomEvent("visit:edit", { detail: { visit }, bubbles: true }),
+      )
     } catch (_error) {
       Toast.error(translate("messages.failed_to_load_visit_details"))
     }
-  }
-
-  /** Delete a point, then invalidate the tile-backed presentation. */
-  async deletePoint(pointId) {
-    const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
-    if (!confirmed) return
-
-    try {
-      await this.api.deletePoint(pointId)
-      this.mapDataManager?.invalidatePoints()
-      this.layerManager.getLayer("map-editor")?.close()
-      this.layerManager.getLayer("points-mvt")?.refresh()
-      this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.layerManager
-        .getLayer("scratch")
-        ?.update()
-        .catch(() => {})
-      this.closeInfo()
-      Toast.success(translate("messages.point_deleted_successfully"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_delete_point"))
-    }
-  }
-
-  /** Mark an anomaly as correct, then reload anomalies, points and tracks. */
-  async markPointValid(event) {
-    try {
-      await this.api.markPointValid(event.currentTarget.dataset.id)
-      this.mapDataManager?.invalidatePoints()
-      this.layerManager.getLayer("points-mvt")?.refresh()
-      this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
-      this.closeInfo()
-      Toast.success(translate("messages.point_marked_valid"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_mark_point_valid"))
-    }
-  }
-
-  openPlace(event) {
-    this.placePanel.open(event.currentTarget.dataset.id)
   }
 
   switchToToolsTab() {
@@ -1828,112 +390,12 @@ export default class extends Controller {
     }
   }
 
-  // ===== Replay (delegates to the reusable ReplayPanel) =====
-
-  _ensureReplayPanel() {
-    if (this.replayPanel) return
-    this.replayPanel = new ReplayPanel({
-      controller: this,
-      map: this.map,
-      timezone: this.timezoneValue,
-      distanceUnit: () => this.settings?.distance_unit,
-      markerLayer: () => this.layerManager?.getLayer("replayMarker"),
-      loadPoints: async () => {
-        await this.mapDataManager.ensurePointsLoaded()
-        return this._getLoadedPoints()
-      },
-      onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
-      initialDay: () => this._highlightedDay,
-      onDaySync: (day) =>
-        document.dispatchEvent(
-          new CustomEvent("replay:day-changed", { detail: { day } }),
-        ),
-      getPhotos: () => {
-        const layer = this.layerManager?.getLayer("photos")
-        const features = layer?.visible ? layer.data?.features : null
-        return features?.length ? features.map(featureToPhoto) : []
-      },
-      onReplayPhotosActive: (active) => {
-        const layer = this.layerManager?.getLayer("photos")
-        if (!layer) return
-        if (active) {
-          this._photosWasVisible = layer.visible
-          layer.hide()
-        } else if (this._photosWasVisible) {
-          layer.show()
-        }
-      },
-    })
-  }
-
-  async toggleReplay() {
-    if (!this.hasReplayPanelTarget) return
-    this._ensureReplayPanel()
-    await this.replayPanel.toggle()
-  }
-
-  replayScrubberHover(event) {
-    this.replayPanel?.scrubberHover(event)
-  }
-
-  replayCyclePrev() {
-    this.replayPanel?.cyclePrev()
-  }
-
-  replayCycleNext() {
-    this.replayPanel?.cycleNext()
-  }
-
-  replayTogglePlayback() {
-    this.replayPanel?.togglePlayback()
-  }
-
-  replayRecenterFollow() {
-    this.replayPanel?.recenterFollow()
-  }
-
-  replaySpeedChange(event) {
-    this.replayPanel?.speedChange(event)
-  }
-
-  async replayTrack(event) {
-    if (!this.hasReplayPanelTarget) return
-    this._ensureReplayPanel()
-
-    if (this.replayPanel.isPlaying) {
-      this.replayPanel.stopPlayback()
-      return
-    }
-
-    const isVisible = !this.replayPanelTarget.classList.contains("hidden")
-    if (isVisible && this.replayPanel.manager?.hasData()) {
-      this.replayPanel.startPlayback()
-      return
-    }
-
-    const trackStart = event.currentTarget.dataset.trackStart
-    if (!trackStart) return
-    const trackDate = new Date(trackStart)
-    if (Number.isNaN(trackDate.getTime())) return
-
-    await this.replayPanel.ensureOpen()
-    if (!this.replayPanel.manager?.hasData()) return
-
-    const { manager } = this.replayPanel
-    this.replayPanel.goToDay(manager.dayKey(trackDate))
-    this.replayPanel.setMinute(manager.minuteOfDay(trackDate))
-    this.replayPanel.startPlayback()
-  }
-
   async toggleTrackPoints(event) {
     const target = event?.currentTarget
     if (!target) return
     const trackId = target.dataset.trackId
     if (!trackId) return
-    const enabled = !!target.checked
-    if (this.eventHandlers?._toggleTrackPoints) {
-      await this.eventHandlers._toggleTrackPoints(trackId, enabled)
-    }
+    await this.eventHandlers?._toggleTrackPoints(trackId, !!target.checked)
   }
 
   _getLoadedPoints() {
@@ -1944,21 +406,99 @@ export default class extends Controller {
     const pointsSource = this.map?.getSource("points-source")
     return pointsSource?.serialize?.()?.data?.features || []
   }
+}
 
-  _updateTrackReplayButton(playing) {
-    const playIcon = document.getElementById("track-replay-play-icon")
-    const pauseIcon = document.getElementById("track-replay-pause-icon")
-    const label = document.getElementById("track-replay-label")
-    if (!playIcon || !pauseIcon || !label) return
+/**
+ * Actions the views bind (and the private E2E suite calls) that only forward
+ * to the manager owning them: { "path.from.controller": [method names] }.
+ * The manager is looked up on each call, so it may be built after connect.
+ */
+const FORWARDED_ACTIONS = {
+  "settingsController.style": [
+    "updateMapStyle",
+    "toggleTileCategory",
+    "togglePoiGroup",
+    "updateVectorTilesUrl",
+    "updateTilesFallback",
+    "toggleGlobe",
+  ],
+  settingsController: [
+    "applyMapStyle",
+    "resetSettings",
+    "updateDistanceUnit",
+    "updateTrackColor",
+    "toggleSpeedColoredRoutes",
+    "updateSpeedColorScale",
+    "resetLayerColors",
+    "updateAdvancedSettings",
+    "updateGpsAccuracyThresholdDisplay",
+    "updateMinMinutesInCityDisplay",
+    "reapplyAnomalyFilter",
+    "recalculateUserData",
+    "togglePointsEditing",
+  ],
+  "settingsController.transportation": [
+    "markTransportationSettingsDirty",
+    "applyTransportationSettings",
+  ],
+  areaSelectionManager: [
+    "startSelectArea",
+    "cancelAreaSelection",
+    "deleteSelectedPoints",
+    "deleteSelectedAnomalies",
+  ],
+  visitsManager: [
+    "toggleVisits",
+    "searchVisits",
+    "filterVisits",
+    "startCreateVisit",
+  ],
+  notesManager: ["toggleNotes", "startCreateNote"],
+  placesManager: [
+    "togglePlaces",
+    "toggleArchivedPlaces",
+    "togglePlaceBoundaries",
+    "filterPlacesByTags",
+    "toggleAllPlaceTags",
+    "startCreatePlace",
+  ],
+  infoPanel: ["handleDelete", "deletePoint", "markPointValid"],
+  replayActions: [
+    "toggleReplay",
+    "replayScrubberHover",
+    "replayCyclePrev",
+    "replayCycleNext",
+    "replayTogglePlayback",
+    "replayRecenterFollow",
+    "replaySpeedChange",
+    "replayTrack",
+  ],
+  dateRange: [
+    "monthChanged",
+    "handleTimelineDateNavigated",
+    "navigateTimelineDateRange",
+    "setDateRange",
+    "realtimeDateRange",
+  ],
+  layerVisibilityManager: [
+    "togglePoints",
+    "toggleHeatmap",
+    "toggleHexagons",
+    "toggleFog",
+    "toggleScratch",
+    "toggleTracks",
+    "toggleFlights",
+    "toggleAnomalies",
+    "toggleFamily",
+  ],
+}
 
-    if (playing) {
-      playIcon.classList.add("hidden")
-      pauseIcon.classList.remove("hidden")
-      label.textContent = translate("replay.pause")
-    } else {
-      playIcon.classList.remove("hidden")
-      pauseIcon.classList.add("hidden")
-      label.textContent = translate("replay.replay")
+for (const [path, names] of Object.entries(FORWARDED_ACTIONS)) {
+  const keys = path.split(".")
+  for (const name of names) {
+    MapController.prototype[name] = function (...args) {
+      const owner = keys.reduce((object, key) => object[key], this)
+      return owner[name](...args)
     }
   }
 }

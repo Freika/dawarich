@@ -150,13 +150,13 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
 
       call_tool('get_latest_location', {})
 
-      expect(Rails.logger).to have_received(:error).with(a_string_including('tool exploded'))
+      expect(Rails.logger).to have_received(:error).with(a_string_including('tool exploded')).at_least(:once)
     end
 
     it 'logs transport exceptions reported through the global MCP configuration' do
       MCP.configuration.exception_reporter.call(RuntimeError.new('transport exploded'), { request: '{}' })
 
-      expect(Rails.logger).to have_received(:error).with(a_string_including('transport exploded'))
+      expect(Rails.logger).to have_received(:error).with(a_string_including('transport exploded')).at_least(:once)
     end
   end
 

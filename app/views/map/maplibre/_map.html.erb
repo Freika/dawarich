@@ -6,9 +6,9 @@
      data-maps--maplibre-start-date-value="<%= start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= end_at.iso8601 %>"
      data-maps--maplibre-timezone-value="<%= current_user.timezone_iana %>"
-     data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
+     data-maps--maplibre-user-plan-value="<%= current_user.entitlements.map_plan %>"
      data-maps--maplibre-gated-layers-value="<%= Users::PlanSettingsGate::GATED_MAP_LAYERS.to_json %>"
-     data-maps--maplibre-data-window-start-value="<%= current_user.entitlements.data_window_start&.iso8601 %>"
+     data-maps--maplibre-data-window-start-value="<%= current_user.data_window_start&.iso8601 %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-privacy-zones-fingerprint-value="<%= privacy_zones_fingerprint %>"
      data-maps--maplibre-exploration-messages-value="<%= { calculating: t('achievements.collections.calculating'), updating: t('achievements.collections.updating'), error: t('achievements.collections.calculation_failed') }.to_json %>"
@@ -54,6 +54,27 @@
     </button>
     <%= render 'map/maplibre/replay_panel' %>
   </div>
+
+  <%# Shown by the range statistics when the period holds no points. The whole
+      pill is the action, so it stays small without a small tap target. %>
+  <% if @latest_data_date %>
+    <%= link_to map_v2_path(date: @latest_data_date.iso8601, panel: params[:panel].presence),
+                class: 'map-empty-state hidden', data: { testid: 'map-empty-state' } do %>
+      <span><%= t('map.maplibre.index.no_data_in_period') %></span>
+      <span class="map-empty-state-action"><%= t('map.maplibre.index.jump_to_latest_data') %> · <%= human_date(@latest_data_date) %></span>
+    <% end %>
+  <% elsif @data_outside_view %>
+    <%# Data exists but the map cannot show it (outside the plan's window, or
+        inside a Privacy Zone): say the period is empty, offer nothing false. %>
+    <div class="map-empty-state hidden" role="status" data-testid="map-empty-state">
+      <span><%= t('map.maplibre.index.no_data_in_period') %></span>
+    </div>
+  <% else %>
+    <button type="button" class="map-empty-state hidden" data-testid="map-empty-state" onclick="getting_started.showModal()">
+      <span><%= t('map.maplibre.index.nothing_recorded_yet') %></span>
+      <span class="map-empty-state-action"><%= t('map.maplibre.index.get_started') %></span>
+    </button>
+  <% end %>
 
   <!-- Map-edge button cluster (top-right corner) -->
   <%= render 'map/maplibre/button_cluster', start_at: start_at, end_at: end_at %>

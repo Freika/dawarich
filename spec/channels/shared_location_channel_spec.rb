@@ -23,6 +23,53 @@ RSpec.describe SharedLocationChannel, type: :channel do
 
       expect(subscription).to be_rejected
     end
+
+    it 'keeps transmitting while the magic phrase is unchanged' do
+      share.update!(magic_phrase: 'steady-phrase')
+      stub_connection(current_user: nil, current_share: SharedLink.find(share.id))
+      callback = nil
+      allow_any_instance_of(described_class).to receive(:stream_for) do |_, _, **_options, &block|
+        callback = block
+      end
+
+      subscribe(share_id: share.id)
+      message = { 'latitude' => 1.0, 'longitude' => 2.0 }
+      callback.call(message)
+
+      expect(transmissions).to eq([message])
+    end
+
+    it 'stops transmitting once the owner regenerates the magic phrase' do
+      share.update!(magic_phrase: 'old-phrase')
+      stub_connection(current_user: nil, current_share: SharedLink.find(share.id))
+      callback = nil
+      allow_any_instance_of(described_class).to receive(:stream_for) do |_, _, **_options, &block|
+        callback = block
+      end
+
+      subscribe(share_id: share.id)
+      # The owner regenerates the phrase; the already-open connection still holds the old one.
+      SharedLink.where(id: share.id).update_all(magic_phrase: 'new-phrase')
+      callback.call('latitude' => 1.0, 'longitude' => 2.0)
+
+      expect(transmissions).to be_empty
+    end
+
+    it 'still delivers the revoke notice so the viewer can show the link ended' do
+      share.update!(magic_phrase: 'old-phrase')
+      stub_connection(current_user: nil, current_share: SharedLink.find(share.id))
+      callback = nil
+      allow_any_instance_of(described_class).to receive(:stream_for) do |_, _, **_options, &block|
+        callback = block
+      end
+
+      subscribe(share_id: share.id)
+      # regenerate_phrase changes the phrase, then broadcasts the revoke notice.
+      SharedLink.where(id: share.id).update_all(magic_phrase: 'new-phrase')
+      callback.call('revoked' => true)
+
+      expect(transmissions).to eq([{ 'revoked' => true }])
+    end
   end
 
   context 'when the connection has no authorized share' do

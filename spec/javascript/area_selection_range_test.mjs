@@ -9,7 +9,16 @@ let source = await readFile(
   ),
   "utf8",
 )
-source = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const panelSource = await readFile(
+  new URL(
+    "../../app/javascript/controllers/maps/maplibre/selected_visits_panel.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+source = `${panelSource}\n${source}`
+  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  .replace(/^export class SelectedVisitsPanel/m, "class SelectedVisitsPanel")
 const stubs = `
 const translate = (key) => key
 const Toast = { info() {}, success() {}, warning() {}, error() {} }
@@ -60,7 +69,7 @@ test("refreshing visits keeps the range the area was selected with", async () =>
     maxLat: 2,
   })
   checkbox.checked = false
-  await manager.refreshSelectedVisits()
+  await manager.visitsPanel.refreshSelectedVisits()
 
   assert.equal(visitRequests.length, 2)
   for (const params of visitRequests) {
@@ -78,7 +87,7 @@ test("refreshing visits of a dated selection keeps the map range", async () => {
     minLat: 1,
     maxLat: 2,
   })
-  await manager.refreshSelectedVisits()
+  await manager.visitsPanel.refreshSelectedVisits()
 
   assert.equal(visitRequests.length, 2)
   for (const params of visitRequests) {

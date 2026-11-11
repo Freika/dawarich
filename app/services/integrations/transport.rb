@@ -1,0 +1,188 @@
+# frozen_string_literal: true
+
+require 'net/http'
+
+module Integrations
+  # The one outbound HTTP path for user-configured integrations (Immich,
+  # Photoprism, AirTrail, TeslaMate, TREK).
+  #
+  # Every request re-validates the URL against UrlValidatable, connects to the
+  # address that was validated (so a DNS answer cannot change between the check
+  # and the connect), never follows a redirect, and always has a timeout.
+  #
+  # Any answer that is not a redirect comes back as a Response, including 4xx
+  # and 5xx; callers decide what those mean. Everything else raises Error.
+  class Transport
+    include UrlValidatable
+
+    DEFAULT_TIMEOUT = 10
+    REQUEST_CLASSES = { get: Net::HTTP::Get, post: Net::HTTP::Post, put: Net::HTTP::Put }.freeze
+
+    # Raised for a refused address and for a refused redirect.
+    class Error < StandardError
+      attr_reader :status
+
+      def initialize(message = nil, status: nil, blocked: false, unresolvable: false)
+        super(message)
+        @status = status
+        @blocked = blocked
+        @unresolvable = unresolvable
+      end
+
+      def blocked? = @blocked
+      def unresolvable? = @unresolvable
+      def certificate? = cause.is_a?(OpenSSL::SSL::SSLError)
+      def retryable? = false
+    end
+
+    # Raised when the request could not be completed: host not resolving, no
+    # connection, TLS failure, timeout. Trying again later may work.
+    class RetryableError < Error
+      def retryable? = true
+    end
+
+    # Case-insensitive view of the response headers.
+    class Headers
+      def initialize(http_response)
+        @values = http_response.to_hash.transform_values { |values| values.join(', ') }
+      end
+
+      def [](name) = @values[name.to_s.downcase]
+      def to_h = @values.dup
+    end
+
+    Response = Struct.new(:code, :body, :headers) do
+      def success? = code.between?(200, 299)
+    end
+
+    def self.request(method, url, **options)
+      new(method, url, **options).call
+    end
+
+    # One caller-supplied value as a single URL path segment: separators are
+    # escaped, and a dot segment cannot climb out of the intended path.
+    def self.path_segment(value)
+      segment = ERB::Util.url_encode(value.to_s)
+      segment.match?(/\A\.+\z/) ? segment.gsub('.', '%2E') : segment
+    end
+
+    def initialize(method, url, headers: {}, query: nil, body: nil, skip_ssl_verification: false,
+                   timeout: DEFAULT_TIMEOUT)
+      @request_class = REQUEST_CLASSES.fetch(method) { raise ArgumentError, "Unsupported HTTP method: #{method}" }
+      @url = url.to_s
+      @headers = headers
+      @query = query
+      @body = body
+      @skip_ssl_verification = ActiveModel::Type::Boolean.new.cast(skip_ssl_verification) || false
+      @timeout = timeout
+    end
+
+    def call
+      refuse_unsafe_headers
+      addresses = validated_addresses
+      uri = request_uri
+      response = connect(uri, addresses) { |http| http.request(build_request(uri)) }
+      refuse_redirect(response) if response.is_a?(Net::HTTPRedirection) && response['location'].present?
+
+      Response.new(response.code.to_i, response.body.to_s, Headers.new(response))
+    rescue OpenSSL::SSL::SSLError, SystemCallError, IOError, Timeout::Error, SocketError, Resolv::ResolvError,
+           Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Zlib::Error => e
+      raise RetryableError, e.message
+    end
+
+    private
+
+    def validated_addresses
+      resolve_integration_addresses!(@url) || raise(Error.new('Integration URL is missing', blocked: true))
+    rescue UrlValidatable::BlockedUrlError => e
+      # An unresolvable host is reported through the same error class as a
+      # blocked one; only a real range block is final.
+      raise RetryableError.new(e.message, unresolvable: true) if e.cause.is_a?(SocketError)
+
+      raise Error.new(e.message, blocked: true)
+    end
+
+    def request_uri
+      uri = URI.parse(@url)
+      extra = URI.encode_www_form(@query.compact) if @query.present?
+      uri.query = [uri.query, extra].compact_blank.join('&').presence
+      uri
+    end
+
+    # Net::HTTP raises on a line break in a header value and quotes the value,
+    # which would put a pasted API key into the error message.
+    def refuse_unsafe_headers
+      return unless @headers.values.any? { |value| value.to_s.match?(/[\r\n]/) }
+
+      raise Error, 'A request header contains a line break. Re-enter the API key or token without line breaks.'
+    end
+
+    # Opens a connection to the first validated address that accepts one, so a
+    # host with an unreachable first record (often an unrouted AAAA) still
+    # connects. Only the connect moves on to another address: once a connection
+    # exists the request stays on it. (Net::HTTP itself still repeats an
+    # idempotent request once after a timeout or reset, as it did under HTTParty.)
+    def connect(uri, addresses, &)
+      http = open_connection(uri, addresses)
+      yield http
+    ensure
+      http&.finish if http&.started?
+    end
+
+    def open_connection(uri, addresses)
+      # Behind a proxy the target is resolved by the proxy, so there is nothing to pin.
+      return connection(uri).tap(&:start) if connection(uri).proxy?
+
+      # The connect timeout is shared between the addresses, so a host with
+      # several dead records cannot multiply the wait.
+      connect_timeout = @timeout.to_f / addresses.size
+      last_error = nil
+      addresses.each do |address|
+        http = connection(uri)
+        http.ipaddr = address
+        http.open_timeout = connect_timeout
+        return http.tap(&:start)
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::EADDRNOTAVAIL,
+             Net::OpenTimeout => e
+        last_error = e
+      end
+      raise last_error
+    end
+
+    def connection(uri)
+      # Two-argument form keeps HTTP_PROXY / NO_PROXY from the environment.
+      Net::HTTP.new(uri.hostname, uri.port).tap do |http|
+        http.use_ssl = uri.scheme == 'https'
+        http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl? && @skip_ssl_verification
+        http.open_timeout = @timeout
+        http.read_timeout = @timeout
+        http.write_timeout = @timeout
+      end
+    end
+
+    def build_request(uri)
+      request = @request_class.new(uri.request_uri, @headers.compact.to_h { |name, value| [name.to_s, value.to_s] })
+      request.body = @body if @body
+      # Same precedence HTTParty had: credentials in the URL win over a
+      # caller's Authorization header (a homelab reverse proxy in front).
+      if uri.userinfo.present?
+        username, password = uri.userinfo.split(':', 2)
+        request.basic_auth(username, password.to_s)
+      end
+      request
+    end
+
+    def refuse_redirect(response)
+      target = begin
+        location = URI.parse(response['location'].to_s)
+        "#{location.scheme}://#{location.host}" if location.host
+      rescue URI::InvalidURIError
+        nil
+      end
+      hint = target ? " to #{target}" : ''
+
+      raise Error.new("The server answered with a redirect#{hint} (HTTP #{response.code}). " \
+                      'Save the final URL instead.', status: response.code.to_i)
+    end
+  end
+end

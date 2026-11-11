@@ -49,16 +49,10 @@ export class SelectionLayer extends BaseLayer {
     ]
   }
 
-  /**
-   * Get layer IDs for this layer
-   */
   getLayerIds() {
     return [`${this.id}-fill`, `${this.id}-outline`]
   }
 
-  /**
-   * Enable selection mode
-   */
   enableSelectionMode() {
     this.map.getCanvas().style.cursor = "crosshair"
 
@@ -74,9 +68,6 @@ export class SelectionLayer extends BaseLayer {
     console.log("[SelectionLayer] Selection mode enabled")
   }
 
-  /**
-   * Disable selection mode
-   */
   disableSelectionMode() {
     this.map.getCanvas().style.cursor = ""
 
@@ -179,9 +170,6 @@ export class SelectionLayer extends BaseLayer {
     }
   }
 
-  /**
-   * Clear current selection
-   */
   clearSelection() {
     this.update({
       type: "FeatureCollection",
