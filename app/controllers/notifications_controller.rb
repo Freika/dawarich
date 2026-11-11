@@ -15,10 +15,13 @@ class NotificationsController < ApplicationController
     mark_read
   end
 
-  # From the bell: mark it read and go straight to what it is about.
+  # From the bell: mark it read and go straight to what it is about. An error
+  # opens its own page instead: the message and what to do about it are there,
+  # next to a button for the destination.
   def open
     mark_read
-    redirect_to @notification.safe_action_path || notification_path(@notification)
+    destination = @notification.safe_action_path unless @notification.error?
+    redirect_to destination || notification_path(@notification)
   end
 
   def mark_as_read

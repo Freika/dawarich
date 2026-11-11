@@ -45,7 +45,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 
 ### Changed
 
-- The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. "Mark all as read" in the bell no longer takes you away from the page you are on.
+- The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. An error opens its own notification first, with the full message, what to do about it and a button to that page. "Mark all as read" in the bell no longer takes you away from the page you are on.
 - Fewer notifications. An identical error or warning is not repeated while the first one is unread. You are no longer notified about a family you just created or left, an invitation you just accepted on the family page or by signing in on the web, or a member you just removed: the page already confirms those. On Dawarich Cloud the same goes for an invitation you just sent, and failed background runs of statistics, digests and visit suggestions are no longer shown, because only the operators can act on them; self-hosted instances still show them.
 - Error notifications no longer include a stack trace. It is written to the application log instead, and reported to us on Dawarich Cloud.
 - On Dawarich Cloud, error notifications point to hi@dawarich.app instead of asking you to attach Docker container logs to a GitHub issue.

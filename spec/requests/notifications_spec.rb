@@ -118,6 +118,15 @@ RSpec.describe '/notifications', type: :request do
         expect(notification.reload).to be_read
       end
 
+      it 'opens the notification page for an error, where the message and what to do are' do
+        failed = create(:notification, user:, kind: :error, action_path: '/exports')
+
+        get open_notification_url(failed)
+
+        expect(response).to redirect_to(notification_url(failed))
+        expect(failed.reload).to be_read
+      end
+
       it 'falls back to the notification page when there is nowhere to go' do
         plain = create(:notification, user:)
 

@@ -20,7 +20,8 @@ module Notifications
       @user     = user
       @kind     = kind
       @title    = title
-      @content  = content
+      # A failure with an empty message must not make its own notification raise.
+      @content  = content.presence || title
       @operator_only = operator_only
       @action_path = action_path
     end

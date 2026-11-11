@@ -49,6 +49,12 @@ RSpec.describe Notifications::Create do
       expect(Notification.count).to eq(2)
     end
 
+    it 'uses the title as the text when the caller has none, instead of raising' do
+      2.times { described_class.new(**attributes, content: '').call }
+
+      expect(user.notifications.pluck(:content)).to eq(['Failed'])
+    end
+
     context 'with an action_path' do
       it 'stores where the notification leads' do
         described_class.new(**attributes, action_path: '/exports').call
