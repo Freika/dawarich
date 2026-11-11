@@ -54,7 +54,10 @@ function mount(rendered) {
     },
   )
   new LayerManager(map, {}, {}, {}).setupLayerEventHandlers(handlers)
-  return { calls, click: () => mapClick({ point: { x: 1, y: 1 } }) }
+  return {
+    calls,
+    click: (event = {}) => mapClick({ point: { x: 1, y: 1 }, ...event }),
+  }
 }
 
 const cleared = (calls) => calls.filter((name) => /^clear/.test(String(name)))
@@ -84,6 +87,16 @@ test("clicking a point of the open editor keeps everything", () => {
   })
 
   click()
+
+  assert.deepEqual(cleared(calls), [])
+})
+
+// The track's own click handler runs first and opens the Timeline, which
+// shifts the map; the empty-map check for the same event must not undo it.
+test("a track click keeps the selection it made in the same event", () => {
+  const { calls, click } = mount({ "tracks-mvt": [] })
+
+  click({ defaultPrevented: true })
 
   assert.deepEqual(cleared(calls), [])
 })

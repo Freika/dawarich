@@ -161,3 +161,139 @@ test("the day's bounds are sent to the map for an ordinary day switch", (t) => {
   )
   assert.deepEqual(daySelected?.detail.bounds, bounds)
 })
+
+// Opening the Timeline tab reloads its list, but Turbo marks the frame busy
+// only after the click handler returns. A track clicked then must still open
+// once the new list arrives, not in the list being replaced.
+test("a track opened while the Timeline list loads expands in the loaded list", (t) => {
+  installBrowserStubs(t)
+  const frames = []
+  const originalRaf = globalThis.requestAnimationFrame
+  globalThis.requestAnimationFrame = (callback) => frames.push(callback)
+  t.after(() => {
+    globalThis.requestAnimationFrame = originalRaf
+  })
+  const timeline = buildTimeline()
+  let busy = false
+  timeline.visitListFrameTarget.hasAttribute = (name) => name === "busy" && busy
+  const frame = { classList: { contains: (name) => name === "hidden" } }
+  const leg = { dataset: { frameId: "track-info-39" }, closest: () => null }
+  timeline.element.querySelector = (selector) =>
+    selector === '.journey-leg[data-track-id="39"]' ? leg : null
+  globalThis.document.getElementById = (id) =>
+    id === "track-info-39" ? frame : null
+  const opened = []
+  timeline.toggleTrackInfo = ({ currentTarget }) => opened.push(currentTarget)
+
+  timeline.handleOpenTrack({
+    detail: {
+      trackId: 39,
+      date: "2026-09-16",
+      startAt: "2026-09-16T07:30:00Z",
+    },
+  })
+  busy = true // Turbo starts the reload after the click handler returns
+  for (const callback of frames.splice(0)) callback()
+  assert.deepEqual(opened, [], "nothing opens in the list being replaced")
+
+  // One click can start several reloads (opening the tab, the day, the map's
+  // own refresh); a list that lands while another is still on its way is
+  // replaced, so only the last one may open the track.
+  timeline.handleVisitFrameLoad()
+  assert.deepEqual(
+    opened,
+    [],
+    "nothing opens while another reload is on its way",
+  )
+
+  busy = false
+  timeline.handleVisitFrameLoad()
+
+  assert.deepEqual(opened, [leg])
+})
+
+// The map skips its own Timeline refresh for these, so the flag is a contract.
+test("the Timeline's day navigation tells the map its list is already loading", (t) => {
+  const events = installBrowserStubs(t)
+  const timeline = buildTimeline()
+
+  timeline.navigateToDay("2026-09-17")
+
+  const navigated = events.find(
+    (e) => e.type === "timeline-feed:date-navigated",
+  )
+  assert.equal(navigated.detail.timelineLoaded, true)
+})
+
+test("the Timeline's period navigation tells the map its list is already loading", (t) => {
+  const events = installBrowserStubs(t)
+  const timeline = buildTimeline()
+  timeline.showRange = () => true
+
+  timeline.navigateToPeriod("2026-09-01T00:00:00", "2026-09-18T23:59:59")
+
+  const navigated = events.find(
+    (e) => e.type === "timeline-feed:date-navigated",
+  )
+  assert.equal(navigated.detail.timelineLoaded, true)
+})
+
+// A list load that fails never fires turbo:frame-load; the clicked track must
+// not open by surprise in whatever list loads next (a note refresh, a day).
+test("a failed Timeline list load forgets the clicked track", (t) => {
+  installBrowserStubs(t)
+  const timeline = buildTimeline()
+  let busy = true
+  timeline.visitListFrameTarget.hasAttribute = (name) => name === "busy" && busy
+  const frame = { classList: { contains: (name) => name === "hidden" } }
+  const leg = { dataset: { frameId: "track-info-39" }, closest: () => null }
+  timeline.element.querySelector = (selector) =>
+    selector === '.journey-leg[data-track-id="39"]' ? leg : null
+  globalThis.document.getElementById = (id) =>
+    id === "track-info-39" ? frame : null
+  const opened = []
+  timeline.toggleTrackInfo = ({ currentTarget }) => opened.push(currentTarget)
+  timeline.handleOpenTrack({
+    detail: {
+      trackId: 39,
+      date: "2026-09-16",
+      startAt: "2026-09-16T07:30:00Z",
+    },
+  })
+
+  timeline.handleVisitFrameFailure({ target: timeline.visitListFrameTarget })
+  busy = false
+  timeline.handleVisitFrameLoad()
+
+  assert.deepEqual(opened, [])
+})
+
+// Failures bubble up from frames inside the list (a track's info, its
+// segments); only the list's own failure means the clicked track is lost.
+test("a nested frame's failure keeps the clicked track for the list load", (t) => {
+  installBrowserStubs(t)
+  const timeline = buildTimeline()
+  let busy = true
+  timeline.visitListFrameTarget.hasAttribute = (name) => name === "busy" && busy
+  const frame = { classList: { contains: (name) => name === "hidden" } }
+  const leg = { dataset: { frameId: "track-info-39" }, closest: () => null }
+  timeline.element.querySelector = (selector) =>
+    selector === '.journey-leg[data-track-id="39"]' ? leg : null
+  globalThis.document.getElementById = (id) =>
+    id === "track-info-39" ? frame : null
+  const opened = []
+  timeline.toggleTrackInfo = ({ currentTarget }) => opened.push(currentTarget)
+  timeline.handleOpenTrack({
+    detail: {
+      trackId: 39,
+      date: "2026-09-16",
+      startAt: "2026-09-16T07:30:00Z",
+    },
+  })
+
+  timeline.handleVisitFrameFailure({ target: { id: "track-info-12" } })
+  busy = false
+  timeline.handleVisitFrameLoad()
+
+  assert.deepEqual(opened, [leg])
+})

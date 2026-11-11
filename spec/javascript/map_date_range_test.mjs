@@ -74,6 +74,29 @@ test("every date range change runs the same reload", async () => {
   assert.deepEqual(direct.calls, sideEffects(true))
 })
 
+// The Timeline already loads its own list for a day or period it navigates
+// to; refreshing it again replaces the list the user is looking at (and an
+// entry opened by a track click) with a second copy.
+test("the Timeline's own navigation reloads everything except its list", async () => {
+  globalThis.__settings = { anomalies: true }
+  const timeline = mapController()
+
+  await timeline.range.handleTimelineDateNavigated({
+    detail: {
+      startAt: "2024-07-01T00:00",
+      endAt: "2024-07-02T00:00",
+      fitBounds: false,
+      timelineLoaded: true,
+    },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+
+  assert.deepEqual(
+    timeline.calls,
+    sideEffects(false).filter((call) => call !== "feed"),
+  )
+})
+
 test("an invalid Timeline range leaves the map untouched", async () => {
   const { range, calls } = mapController()
   await range.navigateTimelineDateRange({ startAt: "nope", endAt: "x" })

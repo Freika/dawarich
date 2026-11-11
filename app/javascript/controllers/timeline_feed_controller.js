@@ -84,6 +84,12 @@ export default class TimelineFeedController extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      this.boundFrameFailure = this.handleVisitFrameFailure.bind(this)
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.addEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
 
     // Replay moved into another day of the period: when a day is selected,
@@ -165,6 +171,11 @@ export default class TimelineFeedController extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.removeEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
   }
 
@@ -197,7 +208,15 @@ export default class TimelineFeedController extends Controller {
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { date, startAt: startAtLocal, endAt: endAtLocal, fitBounds },
+        // timelineLoaded: the list for this day is already on its way, so the
+        // map must not reload it once more (see MapDateRange#setDateRange).
+        detail: {
+          date,
+          startAt: startAtLocal,
+          endAt: endAtLocal,
+          fitBounds,
+          timelineLoaded: true,
+        },
       }),
     )
   }

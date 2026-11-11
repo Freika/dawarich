@@ -282,3 +282,29 @@ test("clearing a point selection with no highlighted day restores opacity", () =
     ["points-mvt", "circle-stroke-opacity", 1],
   ])
 })
+
+test("a track click claims the map click so the empty-map handler keeps the selection", () => {
+  const handlers = new EventHandlers(
+    { getLayer: () => undefined },
+    {
+      layerManager: { getLayer: () => undefined },
+      api: { fetchTrackWithSegments: () => new Promise(() => {}) },
+    },
+  )
+  let prevented = false
+
+  handlers.handleTrackClick({
+    point: { x: 1, y: 1 },
+    preventDefault: () => {
+      prevented = true
+    },
+    features: [
+      {
+        properties: { id: 7, start_at: "2025-10-15T10:00:00Z" },
+        geometry: { type: "LineString", coordinates: [] },
+      },
+    ],
+  })
+
+  assert.equal(prevented, true)
+})
