@@ -2070,16 +2070,19 @@ fr:
       and: et
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: conteneurs Docker. Merci !
+      contact_support_html: "Si cela se reproduit, écrivez-nous à %{email}."
     index:
       notifications: Notifications
       mark_all_as_read: Marquer toutes comme lues
       delete_all: Tout supprimer
       are_you_sure_you_want_to_delete_all_notifications: Êtes-vous sûr de vouloir
         supprimer toutes les notifications ?
+      read_are_deleted: "Les notifications lues sont supprimées après %{days} jours."
     show:
       back_to_notifications: Retour aux notifications
       destroy_this_notification: Supprimer cette notification
       are_you_sure: Êtes-vous sûr ?
+      open: Ouvrir
   places:
     management:
       create: "Créer un lieu"
@@ -4674,8 +4677,7 @@ fr:
         export_name_successfully_finished: L'export "%{name}" s'est effectué avec
           succès.
         export_failed: Export échoué
-        export_name_failed_message_stacktrace_n: 'L''export "%{name}" a échoué : %{message},
-          trace d''exécution : %{backtrace}'
+        export_name_failed_message: "L'export \"%{name}\" a échoué : %{message}"
         unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
     families:
       auto_create:
@@ -4710,9 +4712,6 @@ fr:
           une famille. Chaque utilisateur ne peut créer qu'une seule famille.
         family_feature_requires_an_active_subscription: La fonctionnalité de la famille
           nécessite une souscription active
-        family_created: Famille créée
-        you_ve_successfully_created_the_family_name: Vous avez créé avec succès la
-          famille « %{name} »
         a_family_with_this_name_already_exists_for_your_account: Une famille avec
           ce nom existe déjà pour votre compte
         an_unexpected_error_occurred_while_creating_the_family_please_try: Une erreur
@@ -4748,7 +4747,6 @@ fr:
         sent_self_hosted: L'invitation de la famille a été envoyée à %{email} si SMTP
           est configuré correctement. Si vous n'utilisez pas SMTP, copiez le lien
           d'invitation depuis la page de la famille et partagez-le manuellement.
-        sent: L'invitation de la famille a été envoyée à %{email}
         failed_to_create: 'Échec de création de l''invitation : %{message}'
       memberships:
         destroy:
@@ -4764,16 +4762,11 @@ fr:
           cannot_remove_the_family_owner_the_owner_must_delete_the: Impossible de
             supprimer le propriétaire de la famille. Le propriétaire doit supprimer
             la famille ou quitter seul.
-          left_family: Famille quittée
-          you_ve_left_the_family_family_name: Vous avez quitté la famille « %{family_name} »
           family_member_left: Un membre a quitté la famille
           email_has_left_the_family_family_name: '%{email} a quitté la famille « %{family_name} »'
           removed_from_family: Retrait de la famille
           you_have_been_removed_from_the_family_family_name_by: Vous avez été retiré
             de la famille « %{family_name} » par %{email}
-          member_removed: Membre retiré
-          email_has_been_removed_from_the_family_family_name: '%{email} a été retiré
-            de la famille « %{family_name} »'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Une
             erreur inattendue est survenue lors de la suppression de l'adhésion. Veuillez
             essayer à nouveau.
@@ -4860,8 +4853,6 @@ fr:
           other: 'Votre fichier %{name} a importé 0 point. Il contient un itinéraire planifié de %{count} points, mais aucune trace enregistrée. Dawarich importe les traces enregistrées, pas les itinéraires planifiés.'
         zero_points: Votre fichier « %{name} » n'a importé aucun point. Aucun nouveau
           point de localisation n'a été trouvé dans ce fichier.
-        import_failed_self_hosted: 'L''importation « %{name} » a échoué : %{message},
-          détail de l''erreur : %{backtrace}'
         import_failed_cloud: L'importation « %{name} » a échoué. Contactez-nous à
           hi@dawarich.com.
         your_import_name_finished_and_all_points_were_saved_but: Votre import "%{name}"
@@ -4991,7 +4982,6 @@ fr:
     stats:
       calculate_month:
         stats_update_failed: L'actualisation des statistiques a échoué
-        message_stacktrace_n: "%{message}, trace d’appels : %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Activez au moins un mode de transport
@@ -5124,18 +5114,15 @@ fr:
     stats:
       calculating_job:
         stats_update_failed: Échec de la mise à jour des statistiques
-        message_stacktrace_n: "%{message}, détail de l'erreur : %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Échec du calcul du récapitulatif mensuel
-            message_stacktrace_backtrace: "%{message}, détail de l'erreur : %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: récapitulatif annuel
             period_label_calculation_failed: Échec du calcul du %{period_label}
-            message_stacktrace_backtrace: "%{message}, détail de l'erreur : %{backtrace}"
       import_data_job:
         data_import_failed: Échec de l'importation des données
         your_data_import_failed_with_error_message_please_check_the: 'L’importation
@@ -5152,7 +5139,6 @@ fr:
           one: "%{count} année"
           other: "%{count} années"
         data_recalculation_failed: Échec du recalcul des données
-        message_stacktrace_n: "%{message}, détail de l'erreur : %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Redétection des visites en cours

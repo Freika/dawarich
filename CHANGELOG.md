@@ -46,9 +46,19 @@ Fixes for issues found in a security audit. Operators should upgrade.
 ### Changed
 
 - A date range with no location data now says so on the map and offers a jump to the day of your latest data. Layer buttons explain what each layer is, with a short preview of it when you hover or focus them.
+- The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. An error opens its own notification first, with the full message, what to do about it and a button to that page. "Mark all as read" in the bell no longer takes you away from the page you are on.
+- Fewer notifications. An identical error or warning is not repeated while the first one is unread. You are no longer notified about a family you just created or left, an invitation you just accepted on the family page or by signing in on the web, or a member you just removed: the page already confirms those. On Dawarich Cloud the same goes for an invitation you just sent, and failed background runs of statistics, digests and visit suggestions are no longer shown, because only the operators can act on them; self-hosted instances still show them.
+- Error notifications no longer include a stack trace. It is written to the application log instead, and reported to us on Dawarich Cloud.
+- On Dawarich Cloud, error notifications point to hi@dawarich.app instead of asking you to attach Docker container logs to a GitHub issue.
+- Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
 
 ### Fixed
 
+- Hovering over a notification no longer marks it as read.
+- A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.
+- Opening a location request that no longer exists takes you to the family page instead of an error page.
+- A notification that arrives while a page is open is shown in your language, not in the language of the person whose action caused it.
+- Importing your account data no longer lets the import file set internal fields of a notification.
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
 - Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
 - When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)

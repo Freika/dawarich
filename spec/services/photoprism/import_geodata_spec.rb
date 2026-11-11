@@ -169,6 +169,12 @@ RSpec.describe Photoprism::ImportGeodata do
       it 'does not enqueue Import::ProcessJob' do
         expect { service }.not_to have_enqueued_job(Import::ProcessJob)
       end
+
+      it 'tells the user and leads to the import list' do
+        expect { described_class.new(user).call }.to change { user.notifications.count }.by(1)
+
+        expect(user.notifications.last.action_path).to eq('/imports')
+      end
     end
   end
 end

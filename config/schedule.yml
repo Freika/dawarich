@@ -128,6 +128,13 @@ pending_imports_cleanup:
   active_job: true
   description: "Sweep expired or old-claimed pending imports"
 
+notifications_cleanup_job:
+  cron: "0 4 * * *" # every day at 04:00 UTC
+  class: "Notifications::CleanupJob"
+  queue: low_priority
+  active_job: true
+  description: "Delete notifications that were read more than 30 days ago"
+
 trip_detecting_job:
   cron: "35 0 * * *" # every day at 00:35 UTC
   class: "Trips::BulkDetectJob"

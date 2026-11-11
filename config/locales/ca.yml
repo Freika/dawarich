@@ -1331,15 +1331,18 @@ ca:
       and: i
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: dels contenidors Docker. Gràcies!
+      contact_support_html: "Si torna a passar, escriu-nos a %{email}."
     index:
       notifications: Notificacions
       mark_all_as_read: Marca-ho tot com a llegit
       delete_all: Suprimeix-ho tot
       are_you_sure_you_want_to_delete_all_notifications: Estàs segur que vols suprimir totes les notificacions?
+      read_are_deleted: "Les notificacions llegides s'eliminen al cap de %{days} dies."
     show:
       back_to_notifications: Torna a les notificacions
       destroy_this_notification: Suprimeix aquesta notificació
       are_you_sure: "Estàs segur?"
+      open: Obre
   places:
     management:
       create: "Crear lloc"
@@ -3638,7 +3641,7 @@ ca:
         export_finished: Exportació finalitzada
         export_name_successfully_finished: "L'exportació \"%{name}\" ha finalitzat correctament."
         export_failed: Exportació fallida
-        export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
+        export_name_failed_message: "L'exportació \"%{name}\" ha fallat: %{message}"
         unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
     families:
       auto_create:
@@ -3663,8 +3666,6 @@ ca:
         you_must_leave_your_current_family_before_creating_a_new: Has d'abandonar la teva família actual abans de crear-ne una de nova
         you_have_already_created_a_family_each_user_can_only: Ja has creat una família. Cada usuari només pot crear una família
         family_feature_requires_an_active_subscription: La funció de família requereix una subscripció activa
-        family_created: Família creada
-        you_ve_successfully_created_the_family_name: "Has creat correctament la família '%{name}'"
         a_family_with_this_name_already_exists_for_your_account: Ja existeix una família amb aquest nom per al teu compte
         an_unexpected_error_occurred_while_creating_the_family_please_try: S'ha produït un error inesperat en crear la família. Torna-ho a provar
         failed_to_create_family: 'No s''ha pogut crear la família: %{message}'
@@ -3687,7 +3688,6 @@ ca:
         user_already_in_family: L'usuari ja forma part d'una família
         invitation_already_sent: Ja s'ha enviat una invitació a aquest correu electrònic
         sent_self_hosted: "S'ha enviat una invitació de família a %{email} si l'SMTP està configurat correctament. Si no fas servir SMTP, copia l'enllaç d'invitació des de la pàgina de la família i comparteix-lo manualment."
-        sent: "S'ha enviat una invitació de família a %{email}"
         failed_to_create: 'No s''ha pogut crear la invitació: %{message}'
       memberships:
         destroy:
@@ -3696,14 +3696,10 @@ ca:
           only_family_owners_can_remove_other_members: Només els propietaris de família poden eliminar altres membres.
           cannot_remove_members_from_a_different_family: No es poden eliminar membres d'una família diferent.
           cannot_remove_the_family_owner_the_owner_must_delete_the: No es pot eliminar el propietari de la família. El propietari ha de suprimir la família o abandonar-la ell mateix.
-          left_family: Família abandonada
-          you_ve_left_the_family_family_name: "Has abandonat la família \"%{family_name}\""
           family_member_left: Un membre ha abandonat la família
           email_has_left_the_family_family_name: '%{email} ha abandonat la família "%{family_name}"'
           removed_from_family: Eliminat de la família
           you_have_been_removed_from_the_family_family_name_by: "T'han eliminat de la família \"%{family_name}\" %{email}"
-          member_removed: Membre eliminat
-          email_has_been_removed_from_the_family_family_name: '%{email} s''ha eliminat de la família "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: S'ha produït un error inesperat en eliminar la pertinença. Torna-ho a provar
           failed_to_leave: 'No s''ha pogut abandonar la família: %{message}'
       update_location_sharing:
@@ -3779,7 +3775,6 @@ ca:
           one: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punt, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
           other: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punts, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
-        import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: "La teva importació \"%{name}\" ha finalitzat i tots els punts s'han desat, però el pas de %{step} ha fallat. Pot ser que faltin estadístiques, trajectes o suggeriments de visita, o que estiguin desactualitzats. Pots iniciar un recàlcul des de la Configuració."
         your_file_name_contained_raw_points_points_all_of_which: "El teu arxiu %{name} contenia %{raw_points} punts, tots els quals ja existien a la teva línia de temps amb les mateixes coordenades i marques de temps. No s'ha importat res. Si això no era el que esperaves, suprimeix els punts existents d'aquest interval de dates i torna a importar."
@@ -3856,7 +3851,6 @@ ca:
     stats:
       calculate_month:
         stats_update_failed: L'actualització de les estadístiques ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: No es pot suprimir un usuari propietari d'una família amb altres membres
@@ -3960,18 +3954,15 @@ ca:
     stats:
       calculating_job:
         stats_update_failed: L'actualització de les estadístiques ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: El càlcul del resum mensual ha fallat
-            message_stacktrace_backtrace: "%{message}, traça: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Resum de fi d'any
             period_label_calculation_failed: "El càlcul de %{period_label} ha fallat"
-            message_stacktrace_backtrace: "%{message}, traça: %{backtrace}"
       import_data_job:
         data_import_failed: La importació de dades ha fallat
         your_data_import_failed_with_error_message_please_check_the: 'La importació de les teves dades ha fallat amb l''error: %{message}. Comprova el format de l''arxiu i torna-ho a provar.'
@@ -3984,7 +3975,6 @@ ca:
           other: "%{count} anys"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: "S'han recalculat les estadístiques, els trajectes i els resums de %{year_label}."
         data_recalculation_failed: El recàlcul de dades ha fallat
-        message_stacktrace_n: "%{message}, traça: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Redetecció de visites ocupada

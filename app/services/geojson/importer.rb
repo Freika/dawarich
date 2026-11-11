@@ -96,7 +96,8 @@ class Geojson::Importer
         kind: :warning,
         title: I18n.t('services.imports.geojson_importer.points_skipped_title'),
         content: I18n.t('services.imports.geojson_importer.points_skipped',
-                        name: import.name, skipped: @skipped_timeless)
+                        name: import.name, skipped: @skipped_timeless),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end
