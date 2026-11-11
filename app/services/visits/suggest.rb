@@ -62,11 +62,14 @@ class Visits::Suggest
     return unless claim_error_window?
 
     I18n.with_locale(user.locale) do
-      user.notifications.create!(
+      # Background work the user did not start and cannot fix: operator only.
+      Notifications::Create.new(
+        user:,
         kind: :error,
         title: I18n.t('services.visits.suggest.error_suggesting_visits'),
-        content: I18n.t('services.visits.suggest.error_suggesting_visits_message', message: error.message)
-      )
+        content: I18n.t('services.visits.suggest.error_suggesting_visits_message', message: error.message),
+        operator_only: true
+      ).call
     end
   end
 

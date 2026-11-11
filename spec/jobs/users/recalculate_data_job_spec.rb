@@ -58,6 +58,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('info')
         expect(Notification.last.title).to eq('Data recalculation completed')
         expect(Notification.last.content).to include('2024')
+        expect(Notification.last.action_path).to eq('/stats')
       end
     end
 
@@ -185,6 +186,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('error')
         expect(Notification.last.title).to eq('Data recalculation failed')
         expect(Notification.last.content).to include('Test error')
+        expect(Notification.last.content).not_to match(/stacktrace|\.rb:\d+/)
       end
 
       it 're-raises the error' do

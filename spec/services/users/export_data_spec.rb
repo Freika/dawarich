@@ -70,6 +70,25 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports notifications without action_path' do
+        create(:notification, user:, title: 'Export finished', action_path: '/exports')
+        temp_dir = Rails.root.join('tmp/test_extract_notifications')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, service.export.file.download)
+
+          lines = Zip::File.open(temp_zip) { |zip| zip.read('notifications.jsonl') }.lines.map { |l| JSON.parse(l) }
+          exported = lines.find { |line| line['title'] == 'Export finished' }
+
+          expect(exported).to be_present
+          expect(exported).not_to have_key('action_path')
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+
       it 'creates JSONL files in the archive' do
         result = service.export
 
@@ -196,10 +215,19 @@ RSpec.describe Users::ExportData, type: :service do
           user: user,
           title: 'Export completed',
           content: /Your data export has been processed successfully/,
-          kind: :info
+          kind: :info,
+          action_path: '/exports'
         ).and_return(double(call: true))
 
         service.export
+      end
+
+      it 'leaves a notification that leads to the export list' do
+        allow(Notifications::Create).to receive(:new).and_call_original
+
+        service.export
+
+        expect(user.notifications.last).to have_attributes(title: 'Export completed', action_path: '/exports')
       end
 
       it 'does not expose legacy Area compatibility records in the notification' do

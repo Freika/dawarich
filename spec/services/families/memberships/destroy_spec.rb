@@ -39,12 +39,10 @@ RSpec.describe Families::Memberships::Destroy do
         ActiveSupport::Notifications.unsubscribe(subscriber)
       end
 
-      it 'sends notification to member who left' do
-        expect { service.call }.to change(Notification, :count).by(2)
+      it 'does not notify the member who left, who is already told by the page' do
+        expect { service.call }.to change(Notification, :count).by(1)
 
-        member_notification = member.notifications.last
-        expect(member_notification.title).to eq('Left Family')
-        expect(member_notification.content).to include(family.name)
+        expect(member.notifications).to be_empty
       end
 
       it 'sends notification to family owner' do
@@ -54,20 +52,41 @@ RSpec.describe Families::Memberships::Destroy do
         expect(owner_notification.title).to eq('Family Member Left')
         expect(owner_notification.content).to include(member.email)
         expect(owner_notification.content).to include(family.name)
+        expect(owner_notification.action_path).to eq('/family')
       end
 
-      it 'localizes each notification for its recipient' do
+      it 'localizes the owner notification for the owner' do
         member.update!(settings: { 'locale' => 'fr' })
         user.update!(settings: { 'locale' => 'en' })
 
         I18n.with_locale(:fr) { service.call }
 
-        expect(member.notifications.last.title).to eq('Famille quittée')
         expect(user.notifications.last.title).to eq('Family Member Left')
       end
 
       it 'returns true' do
         expect(service.call).to be true
+      end
+    end
+
+    context 'when the owner removes a member' do
+      let(:member) { create(:user) }
+      let!(:owner_membership) { create(:family_membership, user: user, family: family, role: :owner) }
+      let!(:member_membership) { create(:family_membership, user: member, family: family, role: :member) }
+      let(:service) { described_class.new(user: user, member_to_remove: member) }
+
+      it 'tells the removed member, who has no family page to open any more' do
+        expect { service.call }.to change(Notification, :count).by(1)
+
+        notification = member.notifications.last
+        expect(notification.title).to eq('Removed from Family')
+        expect(notification.action_path).to be_nil
+      end
+
+      it 'does not notify the owner, who is already told by the page' do
+        service.call
+
+        expect(user.notifications).to be_empty
       end
     end
 

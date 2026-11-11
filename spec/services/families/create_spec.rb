@@ -24,6 +24,10 @@ RSpec.describe Families::Create do
       it 'returns true on success' do
         expect(service.call).to be true
       end
+
+      it 'does not notify the creator, who is already told by the page' do
+        expect { service.call }.not_to change(Notification, :count)
+      end
     end
 
     context 'when user is already in a family' do

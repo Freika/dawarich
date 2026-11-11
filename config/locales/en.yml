@@ -1328,15 +1328,18 @@ en:
       and: and
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker containers. Thank you!
+      contact_support_html: "If this keeps happening, write to us at %{email}."
     index:
       notifications: Notifications
       mark_all_as_read: Mark all as read
       delete_all: Delete all
       are_you_sure_you_want_to_delete_all_notifications: Are you sure you want to delete all notifications?
+      read_are_deleted: "Read notifications are deleted after %{days} days."
     show:
       back_to_notifications: Back to notifications
       destroy_this_notification: Destroy this notification
       are_you_sure: Are you sure?
+      open: Open
   places:
     management:
       create: "Create place"
@@ -3624,7 +3627,7 @@ en:
         export_finished: Export finished
         export_name_successfully_finished: Export "%{name}" successfully finished.
         export_failed: Export failed
-        export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "Export \"%{name}\" failed: %{message}"
         unsupported_file_format: 'Unsupported file format: %{format}'
     families:
       auto_create:
@@ -3649,8 +3652,6 @@ en:
         you_must_leave_your_current_family_before_creating_a_new: You must leave your current family before creating a new one
         you_have_already_created_a_family_each_user_can_only: You have already created a family. Each user can only create one family
         family_feature_requires_an_active_subscription: Family feature requires an active subscription
-        family_created: Family Created
-        you_ve_successfully_created_the_family_name: You've successfully created the family '%{name}'
         a_family_with_this_name_already_exists_for_your_account: A family with this name already exists for your account
         an_unexpected_error_occurred_while_creating_the_family_please_try: An unexpected error occurred while creating the family. Please try again
         failed_to_create_family: 'Failed to create family: %{message}'
@@ -3673,7 +3674,6 @@ en:
         user_already_in_family: User is already in a family
         invitation_already_sent: Invitation already sent to this email
         sent_self_hosted: Family invitation sent to %{email} if SMTP is configured properly. If you're not using SMTP, copy the invitation link from the family page and share it manually.
-        sent: Family invitation sent to %{email}
         failed_to_create: 'Failed to create invitation: %{message}'
       memberships:
         destroy:
@@ -3682,14 +3682,10 @@ en:
           only_family_owners_can_remove_other_members: Only family owners can remove other members.
           cannot_remove_members_from_a_different_family: Cannot remove members from a different family.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Cannot remove the family owner. The owner must delete the family or leave on their own.
-          left_family: Left Family
-          you_ve_left_the_family_family_name: You've left the family "%{family_name}"
           family_member_left: Family Member Left
           email_has_left_the_family_family_name: '%{email} has left the family "%{family_name}"'
           removed_from_family: Removed from Family
           you_have_been_removed_from_the_family_family_name_by: You have been removed from the family "%{family_name}" by %{email}
-          member_removed: Member Removed
-          email_has_been_removed_from_the_family_family_name: '%{email} has been removed from the family "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: An unexpected error occurred while removing the membership. Please try again
           failed_to_leave: 'Failed to leave family: %{message}'
       respond_to_location_request:
@@ -3765,7 +3761,6 @@ en:
           one: 'Your file %{name} imported 0 points. It contains a planned route with %{count} point, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
           other: 'Your file %{name} imported 0 points. It contains a planned route with %{count} points, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
-        import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: Your import "%{name}" finished and all points were saved, but the %{step} step failed. Statistics, tracks or visit suggestions may be missing or outdated. You can trigger a recalculation from Settings.
         your_file_name_contained_raw_points_points_all_of_which: Your file %{name} contained %{raw_points} points, all of which already exist in your timeline at the same coordinates and timestamps. Nothing was imported. If this was unexpected, delete the existing points for that date range and re-import.
@@ -3842,7 +3837,6 @@ en:
     stats:
       calculate_month:
         stats_update_failed: Stats update failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: Cannot delete user who owns a family with other members
@@ -3946,18 +3940,15 @@ en:
     stats:
       calculating_job:
         stats_update_failed: Stats update failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Monthly Digest calculation failed
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Year-End Digest
             period_label_calculation_failed: "%{period_label} calculation failed"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
       import_data_job:
         data_import_failed: Data import failed
         your_data_import_failed_with_error_message_please_check_the: 'Your data import failed with error: %{message}. Please check the archive format and try again.'
@@ -3970,7 +3961,6 @@ en:
           other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
         data_recalculation_failed: Data recalculation failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Visit re-detection busy

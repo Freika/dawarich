@@ -23,24 +23,45 @@ RSpec.describe Families::AcceptInvitation do
         expect(invitation.status).to eq('accepted')
       end
 
-      it 'sends notifications to both parties' do
-        expect { service.call }.to change(Notification, :count).by(2)
-
-        user_notification = Notification.find_by(user: invitee, title: 'Welcome to Family!')
-        expect(user_notification).to be_present
+      it 'notifies the family owner, who did not see it happen' do
+        expect { service.call }.to change(Notification, :count).by(1)
 
         owner_notification = Notification.find_by(user: family.creator, title: 'New Family Member!')
         expect(owner_notification).to be_present
+        expect(owner_notification.action_path).to eq('/family')
       end
 
-      it 'localizes each notification for its recipient' do
-        invitee.update!(settings: { 'locale' => 'fr' })
-        family.creator.update!(settings: { 'locale' => 'en' })
+      it 'does not notify the invitee, who is already told by the page' do
+        service.call
+
+        expect(invitee.notifications).to be_empty
+      end
+
+      it 'localizes the owner notification for the owner' do
+        invitee.update!(settings: { 'locale' => 'en' })
+        family.creator.update!(settings: { 'locale' => 'fr' })
 
         I18n.with_locale(:en) { service.call }
 
-        expect(invitee.notifications.last.title).to eq('Bienvenue dans la famille !')
-        expect(family.creator.notifications.last.title).to eq('New Family Member!')
+        expect(family.creator.notifications.last.title).to eq('Nouveau membre de la famille !')
+      end
+
+      context 'when the caller shows no confirmation of its own' do
+        let(:service) { described_class.new(invitation: invitation, user: invitee, welcome_notification: true) }
+
+        it 'welcomes the invitee in their own language' do
+          invitee.update!(settings: { 'locale' => 'fr' })
+
+          I18n.with_locale(:en) { service.call }
+
+          welcome = invitee.notifications.last
+          expect(welcome.title).to eq('Bienvenue dans la famille !')
+          expect(welcome.action_path).to eq('/family')
+        end
+
+        it 'still notifies the owner' do
+          expect { service.call }.to change(Notification, :count).by(2)
+        end
       end
 
       it 'returns true' do

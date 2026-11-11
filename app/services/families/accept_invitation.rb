@@ -4,9 +4,13 @@ module Families
   class AcceptInvitation
     attr_reader :invitation, :user, :error_message, :error_code
 
-    def initialize(invitation:, user:)
+    # welcome_notification: for callers whose own confirmation the user never
+    # sees (API and web sign-up, sign-in from the mobile app). The others show
+    # a flash on the family page.
+    def initialize(invitation:, user:, welcome_notification: false)
       @invitation = invitation
       @user = user
+      @welcome_notification = welcome_notification
       @error_message = nil
     end
 
@@ -135,30 +139,32 @@ module Families
     end
 
     def send_notifications
-      send_user_notification
+      send_user_notification if @welcome_notification
       send_owner_notification
     end
 
     def send_user_notification
       I18n.with_locale(user.locale) do
-        Notification.create!(
+        Notifications::Create.new(
           user: user,
           kind: :info,
           title: I18n.t('services.families.accept_invitation.welcome_to_family'),
           content: I18n.t('services.families.accept_invitation.you_ve_joined_the_family_name',
-                          name: invitation.family.name)
-        )
+                          name: invitation.family.name),
+          action_path: Notifications.paths.family_path
+        ).call
       end
     end
 
     def send_owner_notification
       I18n.with_locale(invitation.family.creator.locale) do
-        Notification.create!(
+        Notifications::Create.new(
           user: invitation.family.creator,
           kind: :info,
           title: I18n.t('services.families.accept_invitation.new_family_member'),
-          content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email)
-        )
+          content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email),
+          action_path: Notifications.paths.family_path
+        ).call
       end
     rescue StandardError => e
       ExceptionReporter.call(e, "Unexpected error in Families::AcceptInvitation: #{e.message}")

@@ -94,20 +94,19 @@ module Families
       Family::Invitations::SendingJob.perform_later(invitation.id)
     end
 
+    # The page already confirms the invitation. A self-hosted inviter still
+    # gets this, because it explains what to do when no SMTP is configured.
     def send_notification
-      I18n.with_locale(invited_by.locale) do
-        content_key = if DawarichSettings.self_hosted?
-                        'services.families.invite.sent_self_hosted'
-                      else
-                        'services.families.invite.sent'
-                      end
+      return unless DawarichSettings.self_hosted?
 
-        Notification.create!(
+      I18n.with_locale(invited_by.locale) do
+        Notifications::Create.new(
           user: invited_by,
           kind: :info,
           title: I18n.t('services.families.invite.invitation_sent'),
-          content: I18n.t(content_key, email:)
-        )
+          content: I18n.t('services.families.invite.sent_self_hosted', email:),
+          action_path: Notifications.paths.family_path
+        ).call
       end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails

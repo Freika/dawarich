@@ -1378,15 +1378,18 @@ es:
       and: "y"
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: contenedores de Docker. ¡Gracias!
+      contact_support_html: "Si vuelve a ocurrir, escríbenos a %{email}."
     index:
       notifications: Notificaciones
       mark_all_as_read: Marcar todas como leídas
       delete_all: Eliminar todo
       are_you_sure_you_want_to_delete_all_notifications: "¿Estás seguro de que quieres eliminar todas las notificaciones?"
+      read_are_deleted: "Las notificaciones leídas se eliminan después de %{days} días."
     show:
       back_to_notifications: Volver a notificaciones
       destroy_this_notification: Destruir esta notificación
       are_you_sure: "¿Estás seguro?"
+      open: Abrir
   places:
     management:
       create: "Crear lugar"
@@ -3643,7 +3646,7 @@ es:
         export_finished: Exportación finalizada
         export_name_successfully_finished: La exportación "%{name}" ha finalizado con éxito.
         export_failed: No se pudo exportar
-        export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "La exportación \"%{name}\" ha fallado: %{message}"
         unsupported_file_format: 'Formato de archivo no soportado: %{format}'
     families:
       auto_create:
@@ -3668,8 +3671,6 @@ es:
         you_must_leave_your_current_family_before_creating_a_new: Debes dejar tu familia actual antes de crear una nueva.
         you_have_already_created_a_family_each_user_can_only: Ya has creado una Familia. Cada usuario solo puede crear una Familia.
         family_feature_requires_an_active_subscription: La característica de la Familia requiere una suscripción activa
-        family_created: Familia creada
-        you_ve_successfully_created_the_family_name: Has creado con éxito la familia '%{name}'
         a_family_with_this_name_already_exists_for_your_account: Ya existe una Familia con este nombre para tu cuenta.
         an_unexpected_error_occurred_while_creating_the_family_please_try: Ha ocurrido un error inesperado al crear la Familia. Por favor, vuelve a intentarlo.
         failed_to_create_family: 'Falló crear familia: %{message}'
@@ -3692,7 +3693,6 @@ es:
         user_already_in_family: El usuario ya está en una familia
         invitation_already_sent: Ya se envió invitación a este correo electrónico
         sent_self_hosted: Se envió invitación de familia a %{email} si SMTP está configurado correctamente. Si no estás usando SMTP, copia el enlace de invitación desde la página de la familia y compártelo manualmente.
-        sent: Se envió invitación de familia a %{email}
         failed_to_create: 'Falló crear invitación: %{message}'
       memberships:
         destroy:
@@ -3701,14 +3701,10 @@ es:
           only_family_owners_can_remove_other_members: Solo los dueños de la familia pueden eliminar a otros miembros.
           cannot_remove_members_from_a_different_family: No se puede eliminar a miembros de otra familia.
           cannot_remove_the_family_owner_the_owner_must_delete_the: No se puede eliminar al dueño de la familia. El dueño debe borrar la familia o dejarla por su cuenta.
-          left_family: Dejó Familia
-          you_ve_left_the_family_family_name: Has dejado la familia "%{family_name}"
           family_member_left: Miembro de la familia se fue
           email_has_left_the_family_family_name: '%{email} ha dejado la familia "%{family_name}"'
           removed_from_family: Eliminado de Familia
           you_have_been_removed_from_the_family_family_name_by: Has sido eliminado de la familia "%{family_name}" por %{email}
-          member_removed: Miembro eliminado
-          email_has_been_removed_from_the_family_family_name: '%{email} ha sido eliminado de la familia "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Ocurrió un error inesperado al eliminar la membresía. Por favor, inténtalo de nuevo
           failed_to_leave: 'Falló dejar la familia: %{message}'
       respond_to_location_request:
@@ -3789,7 +3785,6 @@ es:
           one: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} punto, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
           other: 'Tu archivo %{name} importó 0 puntos. Contiene una ruta planificada de %{count} puntos, pero ninguna ruta grabada. Dawarich importa rutas grabadas, no rutas planificadas.'
         zero_points: "Tu archivo %{name} importó 0 puntos. No se encontraron puntos de ubicación nuevos en este archivo."
-        import_failed_self_hosted: "La importación \"%{name}\" falló: %{message}, traza: %{backtrace}"
         import_failed_cloud: "La importación \"%{name}\" falló, contáctanos en hi@dawarich.com"
       source_detector:
         amazon_order: Este es un archivo de exportación de pedidos de Amazon, no contiene datos de ubicación. Dawarich importa historiales de ubicaciones de Google Takeout, OwnTracks, GPX y fuentes similares.
@@ -3861,7 +3856,6 @@ es:
     stats:
       calculate_month:
         stats_update_failed: No se pudieron actualizar las estadísticas
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Activa al menos un modo de transporte
@@ -3965,17 +3959,14 @@ es:
     stats:
       calculating_job:
         stats_update_failed: No se pudieron actualizar las estadísticas
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Cálculo del resumen mensual fallido
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             period_label_calculation_failed: "%{period_label} cálculo fallido"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
             year_end_digest: "Resumen anual"
       import_data_job:
         data_import_failed: No se pudieron importar los datos
@@ -3986,7 +3977,6 @@ es:
         data_recalculation_completed: Recálculo de datos completado
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Se han recalculado las estadísticas, los trayectos y los resúmenes de %{year_label}.
         data_recalculation_failed: El recálculo de datos ha fallado
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
         year_count:
           one: "%{count} año"
           other: "%{count} años"

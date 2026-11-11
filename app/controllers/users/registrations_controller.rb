@@ -202,9 +202,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def accept_invitation_for_user(user)
     return unless @invitation&.can_be_accepted?
 
+    # The sign-up flash set afterwards replaces the family one below, so the
+    # notification is the confirmation the new member actually sees.
     service = Families::AcceptInvitation.new(
       invitation: @invitation,
-      user: user
+      user: user,
+      welcome_notification: true
     )
 
     if service.call

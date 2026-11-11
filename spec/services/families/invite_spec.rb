@@ -29,13 +29,26 @@ RSpec.describe Families::Invite do
         expect { service.call }.to have_enqueued_job(Family::Invitations::SendingJob)
       end
 
-      it 'sends notification to inviter' do
+      it 'tells a self-hosted inviter how to share the link without SMTP' do
         expect { service.call }.to change(Notification, :count).by(1)
 
         notification = owner.notifications.last
 
-        expect(notification.user).to eq(owner)
         expect(notification.title).to eq('Invitation Sent')
+        expect(notification.content).to include('copy the invitation link')
+        expect(notification.action_path).to eq('/family')
+      end
+
+      context 'on Cloud' do
+        before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+        it 'does not notify the inviter, who is already told by the page' do
+          expect { service.call }.not_to change(Notification, :count)
+        end
+
+        it 'still creates the invitation' do
+          expect { service.call }.to change(Family::Invitation, :count).by(1)
+        end
       end
 
       it 'returns true' do

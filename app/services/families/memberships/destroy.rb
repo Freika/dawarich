@@ -116,33 +116,27 @@ module Families
         end
       end
 
+      # Only the person who did not act is notified; the one who left or
+      # removed someone is told by the page.
       def send_self_removal_notifications
-        I18n.with_locale(member_to_remove.locale) do
-          Notification.create!(
-            user: member_to_remove,
-            kind: :info,
-            title: I18n.t('services.families.memberships.destroy.left_family'),
-            content: I18n.t('services.families.memberships.destroy.you_ve_left_the_family_family_name',
-                            family_name: @family_name)
-          )
-        end
-
         return unless @family_owner&.persisted?
 
         I18n.with_locale(@family_owner.locale) do
-          Notification.create!(
+          Notifications::Create.new(
             user: @family_owner,
             kind: :info,
             title: I18n.t('services.families.memberships.destroy.family_member_left'),
             content: I18n.t('services.families.memberships.destroy.email_has_left_the_family_family_name',
-                            email: member_to_remove.email, family_name: @family_name)
-          )
+                            email: member_to_remove.email, family_name: @family_name),
+            action_path: Notifications.paths.family_path
+          ).call
         end
       end
 
+      # No action_path: the removed member has no family page any more.
       def send_member_removed_notifications
         I18n.with_locale(member_to_remove.locale) do
-          Notification.create!(
+          Notifications::Create.new(
             user: member_to_remove,
             kind: :info,
             title: I18n.t('services.families.memberships.destroy.removed_from_family'),
@@ -150,19 +144,7 @@ module Families
               'services.families.memberships.destroy.you_have_been_removed_from_the_family_family_name_by',
               family_name: @family_name, email: user.email
             )
-          )
-        end
-
-        return unless user != member_to_remove
-
-        I18n.with_locale(user.locale) do
-          Notification.create!(
-            user: user,
-            kind: :info,
-            title: I18n.t('services.families.memberships.destroy.member_removed'),
-            content: I18n.t('services.families.memberships.destroy.email_has_been_removed_from_the_family_family_name',
-                            email: member_to_remove.email, family_name: @family_name)
-          )
+          ).call
         end
       end
 
