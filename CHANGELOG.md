@@ -61,6 +61,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page.
 - Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
 - A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
+- The Docker image no longer ships npm and npx, which were only needed while the image is built. The poster renderer's dependencies were updated to patched releases.
 
 ### Fixed
 

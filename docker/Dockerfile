@@ -120,9 +120,11 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     && rm -rf ~/.npm; \
     fi
 
-# Precompile assets
+# Precompile assets. npm is build-only (the runtime calls `node` directly),
+# so it is dropped here along with its bundled dependencies.
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
-    && rm -rf node_modules tmp/cache
+    && rm -rf node_modules tmp/cache \
+       /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
