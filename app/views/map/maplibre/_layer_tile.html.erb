@@ -7,7 +7,8 @@
 <%= tag.label class: 'layer-tile',
               data: { controller: 'layer-preview',
                       action: 'mouseenter->layer-preview#show mouseleave->layer-preview#hide ' \
-                              'focusin->layer-preview#show focusout->layer-preview#hide' } do %>
+                              'focusin->layer-preview#show focusout->layer-preview#hide ' \
+                              'keydown.esc->layer-preview#hide' } do %>
   <%= tag.input type: 'checkbox',
                 class: 'layer-tile__input',
                 data: { 'maps--maplibre-target': target, action: "change->maps--maplibre##{action}", testid: testid },

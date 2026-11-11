@@ -996,15 +996,15 @@ en:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Show filtered GPS noise points
         tracks: Tracks
-        show_backend_calculated_tracks: "Your points joined into the paths you travelled."
+        show_backend_calculated_tracks: "Your points joined into the paths you traveled."
         flights: Flights
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Show AirTrail flights as arcs (hides overlapping GPS)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Your AirTrail flights as arcs. They hide the GPS points they overlap."
         heatmap: Heatmap
         show_density_heatmap: "Glows brighter where you have more points."
         hexagons: Hexagons
         show_point_density_as_hexagonal_cells: "Counts your points per hexagonal cell for a coarser overview."
         visits: Visits
-        show_detected_area_visits: "Stays Dawarich detected: times you remained in one spot."
+        show_detected_area_visits: "Visits Dawarich detected: times you stayed in one spot."
         filter_by_name: Filter by name...
         all_visits: All Visits
         confirmed_only: Confirmed Only
@@ -1024,7 +1024,7 @@ en:
         per_point: Per point
         per_hexagon: Per hexagon
         scratch_map: Visited Countries
-        show_scratched_countries: Highlight countries visited in the selected range
+        show_scratched_countries: "Countries you visited in the selected period, filled in."
         family_members: Family Members
         manage_family: "Manage family"
         show_family_member_locations: Show family member locations

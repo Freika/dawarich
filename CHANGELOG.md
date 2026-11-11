@@ -43,6 +43,10 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
 - The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
 
+### Changed
+
+- A date range with no location data now says so on the map and offers a jump to the day of your latest data. Layer buttons explain what each layer is, with a short preview of it when you hover or focus them.
+
 ### Fixed
 
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)

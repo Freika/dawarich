@@ -1004,7 +1004,7 @@ zh:
         tracks: 轨迹
         show_backend_calculated_tracks: "将您的轨迹点连接成您走过的路线。"
         flights: 航班
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: 显示 AirTrail 飞行轨迹为弧线（隐藏重叠的 GPS）
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "以弧线显示您的 AirTrail 航班，并隐藏与之重叠的 GPS 点。"
         heatmap: 热图
         show_density_heatmap: "轨迹点越多的地方越亮。"
         hexagons: 六边形
@@ -1030,7 +1030,7 @@ zh:
         per_point: 按轨迹点
         per_hexagon: 按六边形
         scratch_map: 已访问国家/地区
-        show_scratched_countries: 突出显示所选时间范围内访问过的国家/地区
+        show_scratched_countries: "所选时间段内您到访过的国家/地区，以填色显示。"
         family_members: 家庭成员
         manage_family: "管理家庭"
         show_family_member_locations: 显示家庭成员位置

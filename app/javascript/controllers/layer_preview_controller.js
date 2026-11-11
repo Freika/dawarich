@@ -36,8 +36,9 @@ export default class extends Controller {
 
   hide() {
     clearTimeout(this.timer)
-    if (this.cardTarget.matches?.(":popover-open"))
-      this.cardTarget.hidePopover()
+    // Without the Popover API the selector below would throw.
+    if (!this.cardTarget.showPopover) return
+    if (this.cardTarget.matches(":popover-open")) this.cardTarget.hidePopover()
   }
 
   disconnect() {

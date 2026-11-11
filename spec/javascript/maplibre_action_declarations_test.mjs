@@ -23,8 +23,8 @@ async function boundActionNames() {
   for (const path of await filesUnder("app/views/", ".erb")) {
     const source = await readFile(path, "utf8")
     add(source, /maps--maplibre#(\w+)/g)
-    if (path.includes("/map/maplibre/"))
-      add(source, /layer_tile',[^%]*action: '(\w+)'/g)
+    // Layer tiles name their action as a bare `action: 'toggleX'` local.
+    if (path.includes("/map/maplibre/")) add(source, /\baction: '(\w+)'/g)
     // The map renders the replay panel without its day navigation.
     if (path.endsWith("shared/_replay_panel.html.erb"))
       add(

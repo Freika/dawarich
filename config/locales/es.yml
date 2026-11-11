@@ -1048,13 +1048,13 @@ es:
         tracks: Trayectos
         show_backend_calculated_tracks: "Tus puntos unidos en los trayectos que recorriste."
         flights: Vuelos
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Muestra vuelos como arcos (oculta señales GPS superpuestas)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Tus vuelos de AirTrail como arcos. Ocultan los puntos GPS que se superponen."
         heatmap: Calor gráfico
         show_density_heatmap: "Brilla más donde tienes más puntos."
         hexagons: Hexágonos
         show_point_density_as_hexagonal_cells: "Cuenta tus puntos por celda hexagonal para una vista más general."
         visits: Visitas
-        show_detected_area_visits: "Estancias detectadas por Dawarich: momentos en que permaneciste en un mismo lugar."
+        show_detected_area_visits: "Visitas detectadas por Dawarich: momentos en que permaneciste en un mismo lugar."
         filter_by_name: Filtrar por nombre...
         all_visits: Todas las visitas
         confirmed_only: Solo confirmadas
@@ -1074,7 +1074,7 @@ es:
         per_point: Por punto
         per_hexagon: Por hexágono
         scratch_map: Países visitados
-        show_scratched_countries: Resaltar los países visitados en el intervalo seleccionado
+        show_scratched_countries: "Los países que visitaste en el periodo seleccionado, rellenados."
         family_members: Miembros de la familia
         manage_family: "Gestionar la familia"
         show_family_member_locations: Mostrar ubicaciones de miembros de la familia

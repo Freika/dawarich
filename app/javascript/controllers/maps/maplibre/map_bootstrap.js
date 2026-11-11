@@ -42,7 +42,8 @@ export function buildMapFeatures(controller) {
       statistics,
       controller.api,
       "km",
-      (data) => emptyState?.classList.toggle("hidden", data.points > 0),
+      (data) =>
+        emptyState?.classList.toggle("hidden", !data || data.points > 0),
     )
   }
 

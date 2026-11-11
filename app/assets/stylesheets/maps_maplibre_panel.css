@@ -870,6 +870,13 @@
   pointer-events: none;
 }
 
+/* Without the Popover API nothing hides the card, so it must not render. */
+@supports not selector(:popover-open) {
+  .layer-preview-card {
+    display: none;
+  }
+}
+
 .layer-preview-card img {
   display: block;
   width: 100%;

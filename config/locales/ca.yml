@@ -997,13 +997,13 @@ ca:
         tracks: Trajectes
         show_backend_calculated_tracks: "Els teus punts units en els trajectes que has recorregut."
         flights: Vols
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Mostra els vols d'AirTrail com a arcs (amaga el GPS superposat)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Els teus vols d'AirTrail com a arcs. Amaguen els punts GPS que se superposen."
         heatmap: Mapa de calor
         show_density_heatmap: "Brilla més on tens més punts."
         hexagons: Hexàgons
         show_point_density_as_hexagonal_cells: "Compta els teus punts per cel·la hexagonal per a una visió més general."
         visits: Visites
-        show_detected_area_visits: "Estades detectades per Dawarich: moments en què vas romandre en un mateix lloc."
+        show_detected_area_visits: "Visites detectades per Dawarich: moments en què vas romandre en un mateix lloc."
         filter_by_name: Filtra per nom...
         all_visits: Totes les visites
         confirmed_only: Només confirmades
@@ -1023,7 +1023,7 @@ ca:
         per_point: Per punt
         per_hexagon: Per hexàgon
         scratch_map: Països visitats
-        show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
+        show_scratched_countries: "Els països que has visitat durant el període seleccionat, acolorits."
         family_members: Membres de la família
         manage_family: "Gestiona la família"
         show_family_member_locations: Mostra les ubicacions dels membres de la família

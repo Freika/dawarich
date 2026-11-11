@@ -1048,7 +1048,7 @@ de:
         tracks: Tracks
         show_backend_calculated_tracks: "Deine Punkte, verbunden zu den Wegen, die du zurückgelegt hast."
         flights: Flüge
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Flüge von AirTrail als Bögen anzeigen (überlappende GPS-Daten verbergen)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Deine AirTrail-Flüge als Bögen. Sie verdecken die GPS-Punkte, die sie überlagern."
         heatmap: Heatmap
         show_density_heatmap: "Leuchtet heller, wo du mehr Punkte hast."
         hexagons: Hexagone
@@ -1074,7 +1074,7 @@ de:
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
         scratch_map: Besuchte Länder
-        show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
+        show_scratched_countries: "Die Länder, die du im gewählten Zeitraum besucht hast, ausgefüllt."
         family_members: Familienmitglieder
         manage_family: "Familie verwalten"
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen

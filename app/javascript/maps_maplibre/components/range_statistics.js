@@ -11,11 +11,14 @@ export class RangeStatistics {
 
   async load(start_at, end_at) {
     clearTimeout(this.refreshTimer)
+    // A refresh of the same range keeps what is shown until the new result.
+    const sameRange = this.range?.[0] === start_at && this.range?.[1] === end_at
     this.range = [start_at, end_at]
     this.abort?.abort()
     const generation = ++this.generation
     this.abort = new AbortController()
     this.data = null
+    if (!sameRange) this.onData?.(null)
     this.element.textContent = translate("common.loading")
     this.element.setAttribute("aria-busy", "true")
     try {

@@ -125,12 +125,28 @@ test("reports each result so the map can show an empty state", async () => {
     fetchRangeStatistics: async () => ({ points: 0, distance_meters: 0 }),
   }
   const statistics = new RangeStatistics(element(), api, "km", (data) =>
-    seen.push(data.points),
+    seen.push(data?.points ?? "loading"),
   )
   await statistics.load("start", "end")
   api.fetchRangeStatistics = async () => ({ points: 4, distance_meters: 10 })
   await statistics.load("start", "end")
-  assert.deepEqual(seen, [0, 4])
+  assert.deepEqual(seen, ["loading", 0, 4])
+  await statistics.load("start", "later")
+  assert.deepEqual(seen, ["loading", 0, 4, "loading", 4])
+})
+
+test("leaves the empty state cleared when a range fails to load", async () => {
+  const seen = []
+  const api = {
+    fetchRangeStatistics: async () => {
+      throw new Error("offline")
+    },
+  }
+  const statistics = new RangeStatistics(element(), api, "km", (data) =>
+    seen.push(data),
+  )
+  await statistics.load("start", "end")
+  assert.deepEqual(seen, [null])
 })
 
 test("exposes the in-flight request so other map notices can wait for it", async () => {
