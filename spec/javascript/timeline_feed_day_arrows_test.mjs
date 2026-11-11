@@ -500,6 +500,22 @@ test("two calendar days are a period", (t) => {
   assert.equal(controller.periodSpansDays(), true)
 })
 
+test("a timed period of over a day that passes midnight is a period", (t) => {
+  const { controller } = setup(t, {
+    start: "2026-11-05T10:00",
+    end: "2026-11-06T10:30",
+  })
+  assert.equal(controller.periodSpansDays(), true)
+})
+
+test("a night across midnight is still read as one day", (t) => {
+  const { controller } = setup(t, {
+    start: "2026-11-05T22:00",
+    end: "2026-11-06T06:00",
+  })
+  assert.equal(controller.periodSpansDays(), false)
+})
+
 function rowStream(target) {
   return Object.assign(
     new Event("turbo:before-stream-render", { cancelable: true }),

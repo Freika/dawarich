@@ -126,6 +126,15 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
             expect(days.last.find('details').text(:all)).to include('Home')
             expect(page).not_to have_css('[data-testid=day-prev]')
           end
+
+          it 'names the period in the date format the user chose' do
+            user.update!(settings: user.settings.merge('date_format' => 'yyyy-mm-dd'))
+
+            get map_timeline_feeds_path(period)
+
+            head = Capybara.string(response.body).find('[data-testid=timeline-range-head]')
+            expect(head).to have_text('2025-01-15 – 2025-01-16')
+          end
         end
 
         context 'when the period is longer than the timeline reads at once' do
@@ -135,19 +144,50 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           end
 
           it 'shows the latest days of the period and says so, instead of an empty timeline' do
-            # 31 days counted with both ends: this one is the first day left out.
+            # 32 days counted with both ends: this one is the first day left out.
             create(:visit, user: user, place: place, name: 'Just outside', duration: 3600,
-                           started_at: day - 31.days + 9.hours, ended_at: day - 31.days + 10.hours)
+                           started_at: day - 32.days + 9.hours, ended_at: day - 32.days + 10.hours)
             create(:visit, user: user, place: place, name: 'Just inside', duration: 3600,
-                           started_at: day - 30.days + 9.hours, ended_at: day - 30.days + 10.hours)
+                           started_at: day - 31.days + 9.hours, ended_at: day - 31.days + 10.hours)
 
             get map_timeline_feeds_path(start_at: (day - 60.days).iso8601, end_at: (day + 1.day - 1.second).iso8601)
 
             page = Capybara.string(response.body)
             expect(page.all('details.timeline-day', visible: :all).map { |d| d['data-day'] })
-              .to eq(%w[2025-01-15 2024-12-16])
-            expect(page.find('[data-testid=timeline-range-clamped]')).to have_text('31 days')
+              .to eq(%w[2025-01-15 2024-12-15])
+            expect(page.find('[data-testid=timeline-range-clamped]')).to have_text('32 days')
           end
+
+          it 'lists the longest "last month" whole: 32 days, both ends counted' do
+            create(:visit, user: user, place: place, name: 'First day', duration: 3600,
+                           started_at: day - 31.days + 9.hours, ended_at: day - 31.days + 10.hours)
+
+            # Without a zone the bounds are days of the user's own calendar.
+            get map_timeline_feeds_path(start_at: '2024-12-15T00:00:00', end_at: '2025-01-15T23:59:59')
+
+            page = Capybara.string(response.body)
+            expect(page.all('details.timeline-day', visible: :all).map { |d| d['data-day'] })
+              .to eq(%w[2025-01-15 2024-12-15])
+            expect(page).not_to have_css('[data-testid=timeline-range-clamped]')
+          end
+
+          it 'says so even when the latest days have nothing in them' do
+            get map_timeline_feeds_path(start_at: (day - 120.days).iso8601, end_at: (day - 62.days).iso8601)
+
+            page = Capybara.string(response.body)
+            expect(page).not_to have_css('details.timeline-day')
+            expect(page.find('[data-testid=timeline-range-clamped]')).to have_text('32 days')
+          end
+        end
+
+        it 'reads a timed period that passes midnight as a period, even a short one' do
+          create(:visit, user: user, place: place, name: 'Home', duration: 3600,
+                         started_at: day + 12.hours, ended_at: day + 13.hours)
+
+          get map_timeline_feeds_path(start_at: (day + 10.hours).iso8601,
+                                      end_at: (day + 1.day + 10.hours + 30.minutes).iso8601)
+
+          expect(Capybara.string(response.body)).to have_css('[data-testid=timeline-range-head]')
         end
 
         context 'when the clocks change inside the period' do

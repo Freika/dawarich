@@ -326,8 +326,10 @@ export default class extends Controller {
   periodSpansDays() {
     const start = document.querySelector('input[name="start_at"]')?.value
     const end = document.querySelector('input[name="end_at"]')?.value
-    // 25 hours: a whole day is that long when the clocks go back.
-    return new Date(end) - new Date(start) > 25 * 3600 * 1000
+    // A whole day is 25 hours long when the clocks go back, and still one
+    // day; a timed period that long has its ends on two dates.
+    const hours = (new Date(end) - new Date(start)) / 3600000
+    return hours > 25 || (hours > 24 && start.slice(0, 10) !== end.slice(0, 10))
   }
 
   // Enter in the search field looks through every note the user wrote, not

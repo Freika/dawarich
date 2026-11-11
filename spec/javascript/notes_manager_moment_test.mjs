@@ -16,7 +16,7 @@ const { NotesManager } = await import(
 )
 
 // A map with nothing under the click, showing the given period.
-function manager(t, { start, end, selectedDay }) {
+function manager(t, { start, end, selectedDay, timezone }) {
   const original = globalThis.document
   globalThis.document = { addEventListener() {}, removeEventListener() {} }
   t.after(() => {
@@ -26,31 +26,35 @@ function manager(t, { start, end, selectedDay }) {
     map: { getLayer: () => null, queryRenderedFeatures: () => [] },
     startDateValue: start,
     endDateValue: end,
+    timezoneValue: timezone,
     _highlightedDay: selectedDay,
   })
 }
 
-const localNoon = (day) => new Date(`${day}T12:00:00`).toISOString()
+const period = {
+  start: "2020-03-01T00:00:00+00:00",
+  end: "2020-03-31T23:59:59+00:00",
+}
 
-test("a note written with a past day selected belongs to that day", (t) => {
-  const notes = manager(t, {
-    start: "2020-03-01T00:00:00+00:00",
-    end: "2020-03-31T23:59:59+00:00",
-    selectedDay: "2020-03-14",
-  })
-  assert.equal(notes.momentAt({ x: 1, y: 1 }), localNoon("2020-03-14"))
+test("a note written with a past day selected is about noon of that day, on the account's clock", (t) => {
+  const notes = manager(t, { ...period, selectedDay: "2020-03-14" })
+  // No zone in the value: the server reads it in the account's time zone.
+  assert.equal(notes.momentAt({ x: 1, y: 1 }), "2020-03-14T12:00")
 })
 
 test("with today selected, or no day selected in a period, the note is about now", (t) => {
-  const today = new Date().toLocaleDateString("en-CA")
-  const period = {
-    start: "2020-03-01T00:00:00+00:00",
-    end: "2020-03-31T23:59:59+00:00",
+  // Today by the account's clock, not the browser's. These two zones are
+  // 25 hours apart, so the browser's own date matches one of them at most.
+  for (const timezone of ["Pacific/Kiritimati", "Pacific/Niue"]) {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: timezone })
+    assert.equal(
+      manager(t, { ...period, selectedDay: today, timezone }).momentAt({
+        x: 1,
+        y: 1,
+      }),
+      undefined,
+    )
   }
-  assert.equal(
-    manager(t, { ...period, selectedDay: today }).momentAt({ x: 1, y: 1 }),
-    undefined,
-  )
   assert.equal(
     manager(t, { ...period, selectedDay: null }).momentAt({ x: 1, y: 1 }),
     undefined,

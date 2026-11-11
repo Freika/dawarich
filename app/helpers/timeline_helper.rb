@@ -223,6 +223,10 @@ module TimelineHelper
     first = from.to_date
     last = to.to_date
     return l(first, format: :month_day_year) if first == last
+    # A date format the user chose has no short form to fold two dates into.
+    unless Current.date_time_preferences.date_format == 'auto'
+      return "#{l(first, format: :month_day_year)} – #{l(last, format: :month_day_year)}"
+    end
 
     same_month = first.year == last.year && first.month == last.month
     from = l(first, format: first.year == last.year ? :month_day : :month_day_year)

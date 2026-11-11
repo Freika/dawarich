@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Map notes: choose Add note in the map's Tools and click a spot to write a note about a moment there. Notes show as a map layer, in the Timeline at their time, and under today as "On this day" for the same date in earlier years. They are exempt from the Lite 12-month window, and a note inside a Privacy Zone keeps its text but not its position.
-- A Timeline period longer than a day reads like a diary: every day (up to the latest 31), newest first, with where the day went and its notes; opening a day selects it on the map and in replay. Press Enter in the Timeline search to look through all your notes. The Diary menu item opens the month of your latest note.
+- A Timeline period longer than a day reads like a diary: every day (up to the latest 32), newest first, with where the day went and its notes; opening a day selects it on the map and in replay. Press Enter in the Timeline search to look through all your notes. The Diary menu item opens the month of your latest note.
 - Replay covers a period of up to 14 days on one scale, with a tab per day and the time under the pointer; the points and distance summary opens and closes it.
 - The API's `GET /api/v1/notes` takes `start_at`, `end_at`, a bounding box and optional pagination, and `date` on a note without a trip is now your local day. The user data export and import now carry notes.
 - Timeline and track share links can show the text and time of your notes about the shared period, never their position. It is off by default.

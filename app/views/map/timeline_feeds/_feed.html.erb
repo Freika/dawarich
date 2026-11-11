@@ -35,6 +35,11 @@
       <div class="text-center text-base-content/60 py-8">
         <%= render 'shared/plan_data_window_alert', utm_content: 'timeline_feed' %>
         <p class="text-sm"><%= t('.no_visits_tracked_this_day') %></p>
+        <% if local_assigns[:clamped] %>
+          <p class="text-xs mt-1" data-testid="timeline-range-clamped">
+            <%= t('.latest_days_only', count: Timeline::DayAssembler::MAX_DAYS) %>
+          </p>
+        <% end %>
         <p class="text-xs mt-1"><%= t('.visits_are_auto_detected_daily_from_your_location_data') %></p>
       </div>
     </div>

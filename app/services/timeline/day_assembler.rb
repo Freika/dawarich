@@ -9,8 +9,9 @@ module Timeline
     # Hard cap on the requested window. The UI consumes day-by-day; ranges
     # this large would otherwise materialize thousands of LINESTRINGs in
     # memory just to compute bounds.
-    # Calendar days between the first and the last day of a period.
-    MAX_DAYS = 31
+    # Calendar days, both ends counted: what "Last month" comes to at its
+    # longest, and the API's 31-day range when it does not start at midnight.
+    MAX_DAYS = 32
 
     PHANTOM_STATIONARY_DISTANCE_M = 100
 
@@ -34,7 +35,7 @@ module Timeline
     def call
       return [] if start_at.nil? || end_at.nil?
       # Counted in days, not seconds: a month with a clock change is still a month.
-      return [] if (end_at.to_date - start_at.to_date).to_i > MAX_DAYS
+      return [] if (end_at.to_date - start_at.to_date).to_i >= MAX_DAYS
 
       visits = fetch_visits
       tracks = fetch_tracks

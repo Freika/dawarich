@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import AirDatepicker from "air-datepicker"
-import { firstDayOfWeek } from "i18n"
+import { firstDayOfWeek, formatDate, usesDatePreset } from "i18n"
 
 const pad = (number) => String(number).padStart(2, "0")
 const iso = (date) =>
@@ -95,6 +95,12 @@ export default class extends Controller {
       atNoon(String(value).slice(0, 10)),
     )
     if (Number.isNaN(from.valueOf()) || Number.isNaN(to.valueOf())) return
+    // A date format the user chose has no short form to fold two dates into.
+    if (usesDatePreset()) {
+      const days = [...new Set([formatDate(from), formatDate(to)])]
+      this.labelTarget.textContent = days.join(" – ")
+      return
+    }
     this.labelTarget.textContent = new Intl.DateTimeFormat(
       this.localeValue || undefined,
       { dateStyle: "medium" },
@@ -106,7 +112,13 @@ export default class extends Controller {
     this.picker = new AirDatepicker(this.calendarTarget, {
       inline: true,
       range: true,
-      toggleSelected: false,
+      // Asked on a click on a selected day. The library does nothing for a
+      // day that ends the period shown, so that click starts a new period
+      // here, like a click on any other day.
+      toggleSelected: ({ date }) => {
+        if (!this.pending) queueMicrotask(() => this.picked([date]))
+        return false
+      },
       locale: this.calendarLocale(),
       firstDay: firstDayOfWeek(),
       onRenderCell: ({ date, cellType }) =>

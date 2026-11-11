@@ -157,10 +157,12 @@ export class NotesManager {
 
     const selectedDay = this.controller._highlightedDay
     if (selectedDay) {
-      const today = new Date().toLocaleDateString("en-CA")
-      return selectedDay === today
-        ? undefined
-        : new Date(`${selectedDay}T12:00:00`).toISOString()
+      // The day is one of the account's calendar. So is "today", and the
+      // noon sent without a zone is read by the server on the same clock.
+      const today = new Date().toLocaleDateString("en-CA", {
+        timeZone: this.controller.timezoneValue || undefined,
+      })
+      return selectedDay === today ? undefined : `${selectedDay}T12:00`
     }
 
     const start = new Date(this.controller.startDateValue).getTime()
