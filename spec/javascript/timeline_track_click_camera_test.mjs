@@ -237,3 +237,63 @@ test("the Timeline's period navigation tells the map its list is already loading
   )
   assert.equal(navigated.detail.timelineLoaded, true)
 })
+
+// A list load that fails never fires turbo:frame-load; the clicked track must
+// not open by surprise in whatever list loads next (a note refresh, a day).
+test("a failed Timeline list load forgets the clicked track", (t) => {
+  installBrowserStubs(t)
+  const timeline = buildTimeline()
+  let busy = true
+  timeline.visitListFrameTarget.hasAttribute = (name) => name === "busy" && busy
+  const frame = { classList: { contains: (name) => name === "hidden" } }
+  const leg = { dataset: { frameId: "track-info-39" }, closest: () => null }
+  timeline.element.querySelector = (selector) =>
+    selector === '.journey-leg[data-track-id="39"]' ? leg : null
+  globalThis.document.getElementById = (id) =>
+    id === "track-info-39" ? frame : null
+  const opened = []
+  timeline.toggleTrackInfo = ({ currentTarget }) => opened.push(currentTarget)
+  timeline.handleOpenTrack({
+    detail: {
+      trackId: 39,
+      date: "2026-09-16",
+      startAt: "2026-09-16T07:30:00Z",
+    },
+  })
+
+  timeline.handleVisitFrameFailure({ target: timeline.visitListFrameTarget })
+  busy = false
+  timeline.handleVisitFrameLoad()
+
+  assert.deepEqual(opened, [])
+})
+
+// Failures bubble up from frames inside the list (a track's info, its
+// segments); only the list's own failure means the clicked track is lost.
+test("a nested frame's failure keeps the clicked track for the list load", (t) => {
+  installBrowserStubs(t)
+  const timeline = buildTimeline()
+  let busy = true
+  timeline.visitListFrameTarget.hasAttribute = (name) => name === "busy" && busy
+  const frame = { classList: { contains: (name) => name === "hidden" } }
+  const leg = { dataset: { frameId: "track-info-39" }, closest: () => null }
+  timeline.element.querySelector = (selector) =>
+    selector === '.journey-leg[data-track-id="39"]' ? leg : null
+  globalThis.document.getElementById = (id) =>
+    id === "track-info-39" ? frame : null
+  const opened = []
+  timeline.toggleTrackInfo = ({ currentTarget }) => opened.push(currentTarget)
+  timeline.handleOpenTrack({
+    detail: {
+      trackId: 39,
+      date: "2026-09-16",
+      startAt: "2026-09-16T07:30:00Z",
+    },
+  })
+
+  timeline.handleVisitFrameFailure({ target: { id: "track-info-12" } })
+  busy = false
+  timeline.handleVisitFrameLoad()
+
+  assert.deepEqual(opened, [leg])
+})

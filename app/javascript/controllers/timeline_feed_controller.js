@@ -84,6 +84,12 @@ export default class TimelineFeedController extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      this.boundFrameFailure = this.handleVisitFrameFailure.bind(this)
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.addEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
 
     // Replay moved into another day of the period: when a day is selected,
@@ -165,6 +171,11 @@ export default class TimelineFeedController extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.removeEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
   }
 

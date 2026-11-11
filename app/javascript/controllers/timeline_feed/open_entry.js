@@ -143,6 +143,16 @@ export const openEntry = {
     this.selectPendingVisit()
   },
 
+  // A list that failed to load fires no turbo:frame-load; drop the track a
+  // click asked for so it does not open by surprise in a later list.
+  handleVisitFrameFailure(event) {
+    // Failures bubble up from frames inside the list (a track's info, its
+    // segments); only the list's own failure drops the clicked track.
+    if (event?.target !== this.visitListFrameTarget) return
+    this.pendingTrackId = null
+    this.pendingTrackTime = null
+  },
+
   selectPendingVisit() {
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
