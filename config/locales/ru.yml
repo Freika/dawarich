@@ -3811,7 +3811,7 @@ ru:
         parse_error: "Ошибка разбора GPX: %{message}"
     insights:
       travel_insight_generator:
-        active_day: "%{day}s — ваш самый активный день путешествий"
+        active_day: "%{day} — ваш самый активный день путешествий"
         days:
           friday: "Пятницы"
           monday: "Понедельники"
