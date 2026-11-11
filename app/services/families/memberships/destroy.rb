@@ -14,18 +14,14 @@ module Families
       def call
         return false unless validate_can_leave
 
-        family = member_to_remove.family
+        membership = member_to_remove.family_membership
+        family = membership.family
         @family_name = family.name
         @family_owner = family.owner
 
         # Family first, then users: the lock order of every other writer to a
         # family. Without it a removal can deadlock with a concurrent accept.
-        family.with_lock do
-          remove_membership
-          send_notifications
-        end
-
-        true
+        family.with_lock { remove(membership) }
       rescue ActiveRecord::RecordInvalid => e
         handle_record_invalid_error(e)
 
@@ -99,8 +95,17 @@ module Families
         @error_message = I18n.t("services.families.memberships.destroy.#{message_key}")
       end
 
-      def remove_membership
-        member_to_remove.family_membership.destroy!
+      # A second request for the same member may have removed it while this
+      # one waited for the lock.
+      def remove(membership)
+        unless Family::Membership.exists?(membership.id)
+          refuse(removing_self? ? :not_in_family : :member_not_found, 'user_is_not_currently_in_a_family')
+          return false
+        end
+
+        membership.destroy!
+        send_notifications
+        true
       end
 
       def send_notifications

@@ -348,6 +348,7 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       patch_family(create(:user), { name: 'Nope' })
 
       expect(response).to have_http_status(:not_found)
+      expect(JSON.parse(response.body)).to include('error' => 'not_in_family', 'message' => be_present)
     end
   end
 
@@ -375,6 +376,7 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       delete_family(create(:user))
 
       expect(response).to have_http_status(:not_found)
+      expect(JSON.parse(response.body)).to include('error' => 'not_in_family', 'message' => be_present)
     end
 
     context 'with a lone owner' do

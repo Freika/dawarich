@@ -11,16 +11,7 @@ module Families
     end
 
     def call
-      return false unless validate_invitation && validate_email_match
-
-      if user.in_family?
-        @error_code = :already_in_family
-        @error_message = I18n.t(
-          'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
-        )
-
-        return false
-      end
+      return false unless validate_invitation && validate_email_match && validate_not_in_family
 
       accepted = false
       family = invitation.family
@@ -41,6 +32,10 @@ module Families
       end
 
       accepted
+    rescue ActiveRecord::RecordNotUnique
+      # Two accepts by the same user, each under another family's lock.
+      refuse_already_in_family
+      false
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       false
@@ -54,14 +49,17 @@ module Families
     def can_accept?
       return false unless validate_invitation
       return false unless validate_email_match
+      return false unless validate_not_in_family
       return false unless validate_family_plan
       return false unless validate_family_capacity
 
       true
     end
 
+    # A deleted account is hidden by User's default scope, so the owner of a
+    # family that still has invitations can be missing.
     def validate_invitation
-      return true if invitation.can_be_accepted?
+      return true if invitation.can_be_accepted? && invitation.family.creator.present?
 
       @error_code = :invitation_invalid
       @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_no_longer_valid_or_has_expired')
@@ -76,6 +74,20 @@ module Families
       @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_not_for_your_email_address')
 
       false
+    end
+
+    def validate_not_in_family
+      return true unless Family::Membership.exists?(user_id: user.id)
+
+      refuse_already_in_family
+      false
+    end
+
+    def refuse_already_in_family
+      @error_code = :already_in_family
+      @error_message = I18n.t(
+        'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
+      )
     end
 
     def validate_family_plan

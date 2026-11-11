@@ -187,6 +187,36 @@ RSpec.describe Families::Memberships::Destroy do
       expect(service.error_code).to eq(:member_not_found)
     end
 
+    context 'when the membership is gone by the time the family lock is taken' do
+      let(:stale_member) do
+        User.find(member.id).tap do |loaded|
+          loaded.family_membership
+          loaded.family
+        end
+      end
+
+      before do
+        stale_member
+        Family::Membership.where(user_id: member.id).delete_all
+      end
+
+      it 'refuses a removal with member_not_found and sends nothing' do
+        service = described_class.new(user: user, member_to_remove: stale_member)
+
+        expect(ExceptionReporter).not_to receive(:call)
+        expect { expect(service.call).to be false }.not_to change(Notification, :count)
+        expect(service.error_code).to eq(:member_not_found)
+      end
+
+      it 'refuses leaving with not_in_family and sends nothing' do
+        service = described_class.new(user: stale_member)
+
+        expect(ExceptionReporter).not_to receive(:call)
+        expect { expect(service.call).to be false }.not_to change(Notification, :count)
+        expect(service.error_code).to eq(:not_in_family)
+      end
+    end
+
     it 'is cannot_remove_owner when the target is an owner' do
       co_owner = create(:user)
       create(:family_membership, user: co_owner, family: family, role: :owner)

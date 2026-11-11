@@ -214,6 +214,33 @@ RSpec.describe Families::AcceptInvitation do
       expect(service.error_code).to eq(:already_in_family)
     end
 
+    it 'is invitation_invalid when the family owner account is gone' do
+      invitation
+      family.creator.mark_as_deleted!
+      service = described_class.new(invitation: Family::Invitation.find(invitation.id), user: invitee)
+
+      expect(ExceptionReporter).not_to receive(:call)
+      expect(service.call).to be false
+      expect(service.error_code).to eq(:invitation_invalid)
+    end
+
+    it 'is already_in_family for a user who joined a family after being loaded' do
+      stale_invitee = User.find(invitee.id).tap(&:family_membership)
+      create(:family_membership, user: invitee, family: create(:family))
+      service = described_class.new(invitation: invitation, user: stale_invitee)
+
+      expect { expect(service.call).to be false }.not_to change(Family::Membership, :count)
+      expect(service.error_code).to eq(:already_in_family)
+    end
+
+    it 'is already_in_family when another accept by the same user wins the race' do
+      allow(Family::Membership).to receive(:create!).and_raise(ActiveRecord::RecordNotUnique)
+
+      expect(ExceptionReporter).not_to receive(:call)
+      expect(service.call).to be false
+      expect(service.error_code).to eq(:already_in_family)
+    end
+
     it 'is plan_inactive when the owner no longer holds the plan' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       family.creator.update!(plan: :pro)

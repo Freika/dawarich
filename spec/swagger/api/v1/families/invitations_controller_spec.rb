@@ -46,7 +46,7 @@ RSpec.describe 'Families Invitations API', type: :request do
                   'Refusals carry `error` (a code) and `message` (English): `owner_required` (403), ' \
                   '`invalid_email`, `family_full`, `user_already_in_family`, `invitation_already_sent` (422), ' \
                   '`rate_limited` (429, on Dawarich Cloud after 10 invitations an hour); a caller in no ' \
-                  'family gets 404.'
+                  'family gets `not_in_family` (404).'
       consumes 'application/json'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'

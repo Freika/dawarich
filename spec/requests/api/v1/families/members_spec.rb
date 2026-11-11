@@ -90,6 +90,7 @@ RSpec.describe 'Api::V1::Families::Members', type: :request do
     remove(create(:user), member.id)
 
     expect(response).to have_http_status(:not_found)
+    expect(json).to include('error' => 'not_in_family', 'message' => be_present)
   end
 
   context 'when the family has lapsed' do

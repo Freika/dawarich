@@ -13,6 +13,7 @@ module Api::FamilyErrorRendering
     family_plan_required: :forbidden,
     invitation_not_found: :not_found,
     member_not_found: :not_found,
+    not_in_family: :not_found,
     rate_limited: :too_many_requests
   }.freeze
 
@@ -27,6 +28,12 @@ module Api::FamilyErrorRendering
   }.freeze
 
   private
+
+  def ensure_user_in_family!
+    return if current_api_user&.in_family?
+
+    render_family_error(:not_in_family, I18n.t('controllers.api.v1.families.locations.user_is_not_part_of_a_family'))
+  end
 
   def render_family_error(code, message = nil, status = nil)
     code = code.to_sym

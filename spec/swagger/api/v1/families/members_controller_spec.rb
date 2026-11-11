@@ -19,7 +19,7 @@ RSpec.describe 'Families Members API', type: :request do
                   'owner removes that member. Reachable while the family plan has lapsed. Refusals carry ' \
                   '`error` (a code) and `message` (English): `owner_required` (403), `member_not_found` ' \
                   '(404, also for a user of another family), `owner_cannot_leave` (422); a caller in no ' \
-                  'family gets 404.'
+                  'family gets `not_in_family` (404).'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'
       parameter name: :user_id, in: :path, type: :integer, required: true

@@ -1241,7 +1241,7 @@ paths:
         Sends the invitation email. Refusals carry `error` (a code) and `message`
         (English): `owner_required` (403), `invalid_email`, `family_full`, `user_already_in_family`,
         `invitation_already_sent` (422), `rate_limited` (429, on Dawarich Cloud after
-        10 invitations an hour); a caller in no family gets 404.'
+        10 invitations an hour); a caller in no family gets `not_in_family` (404).'
       parameters:
       - name: Authorization
         in: header
@@ -1792,7 +1792,8 @@ paths:
         another member''s id, the owner removes that member. Reachable while the family
         plan has lapsed. Refusals carry `error` (a code) and `message` (English):
         `owner_required` (403), `member_not_found` (404, also for a user of another
-        family), `owner_cannot_leave` (422); a caller in no family gets 404.'
+        family), `owner_cannot_leave` (422); a caller in no family gets `not_in_family`
+        (404).'
       parameters:
       - name: Authorization
         in: header
@@ -2040,7 +2041,7 @@ paths:
       - Families
       description: 'Renames the family. Owner only. Answers with the same body as
         GET. Refusals: `owner_required` (403), `invalid_name` (422); a caller in no
-        family gets 404.'
+        family gets `not_in_family` (404).'
       parameters:
       - name: Authorization
         in: header
@@ -2082,7 +2083,8 @@ paths:
       - Families
       description: 'Deletes the family. Owner only, and only when the owner is its
         last member. Reachable while the family plan has lapsed. Refusals: `owner_required`
-        (403), `family_has_members` (422); a caller in no family gets 404.'
+        (403), `family_has_members` (422); a caller in no family gets `not_in_family`
+        (404).'
       parameters:
       - name: Authorization
         in: header

@@ -190,7 +190,7 @@ RSpec.describe 'Families Mine API', type: :request do
     patch 'Renames the current user\'s family' do
       tags 'Families'
       description 'Renames the family. Owner only. Answers with the same body as GET. Refusals: ' \
-                  '`owner_required` (403), `invalid_name` (422); a caller in no family gets 404.'
+                  '`owner_required` (403), `invalid_name` (422); a caller in no family gets `not_in_family` (404).'
       consumes 'application/json'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'
@@ -228,7 +228,7 @@ RSpec.describe 'Families Mine API', type: :request do
       tags 'Families'
       description 'Deletes the family. Owner only, and only when the owner is its last member. ' \
                   'Reachable while the family plan has lapsed. Refusals: `owner_required` (403), ' \
-                  '`family_has_members` (422); a caller in no family gets 404.'
+                  '`family_has_members` (422); a caller in no family gets `not_in_family` (404).'
       produces 'application/json'
       parameter name: :Authorization, in: :header, type: :string, required: true, description: 'Bearer <API Key>'
 

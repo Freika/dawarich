@@ -99,6 +99,7 @@ RSpec.describe 'Api::V1::Families::Invitations', type: :request do
       invite(create(:user), { email: 'new@example.com' })
 
       expect(response).to have_http_status(:not_found)
+      expect(json).to include('error' => 'not_in_family', 'message' => be_present)
     end
 
     context 'on cloud' do
