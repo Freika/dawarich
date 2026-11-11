@@ -32,6 +32,18 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(period).to eq(%w[2025-06-01 2025-06-30])
     end
 
+    it 'takes the month of the latest note from the user time zone' do
+      user.update!(settings: user.settings.merge('timezone' => 'Asia/Tokyo'))
+      # 16:00 UTC on June 30 is already July 1 in Tokyo.
+      create(:note, user: user, body: 'Late', noted_at: Time.utc(2025, 6, 30, 16), latitude: 35.68, longitude: 139.76)
+
+      get map_v2_path(panel: 'timeline', month: 'latest')
+
+      map = Nokogiri::HTML(response.body).at_css('#maps-maplibre-container')
+      first_day = Time.zone.parse(map['data-maps--maplibre-start-date-value']).in_time_zone('Asia/Tokyo').to_date
+      expect(first_day.to_s).to eq('2025-07-01')
+    end
+
     it 'opens the month asked for, whatever day is to be selected in it' do
       get map_v2_path(panel: 'timeline', month: '2025-03', date: '2025-03-10')
 

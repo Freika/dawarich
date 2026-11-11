@@ -2019,6 +2019,9 @@ fr:
         previous_day: Jour précédent
         next_day: Prochain jour
       feed:
+        latest_days_only:
+          one: "Le dernier %{count} jour d'une période plus longue"
+          other: "Les %{count} derniers jours d'une période plus longue"
         all_days: Tous les jours
         day_count:
           one: "%{count} jour"

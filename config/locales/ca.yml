@@ -1281,6 +1281,9 @@ ca:
         previous_day: Dia anterior
         next_day: Dia següent
       feed:
+        latest_days_only:
+          one: "L'últim %{count} dia d'un període més llarg"
+          other: "Els últims %{count} dies d'un període més llarg"
         all_days: Tots els dies
         day_count:
           one: "%{count} dia"

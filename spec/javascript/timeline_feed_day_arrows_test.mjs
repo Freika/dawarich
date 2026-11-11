@@ -426,3 +426,108 @@ test("part of a day picked in the calendar keeps its exact times", (t) => {
     "2026-09-03T00:00:00",
   )
 })
+
+function dayFrameStream() {
+  return Object.assign(
+    new Event("turbo:before-stream-render", { cancelable: true }),
+    {
+      detail: {
+        newStream: {
+          getAttribute: (name) =>
+            ({ target: "timeline-feed-frame", action: "update" })[name],
+        },
+      },
+    },
+  )
+}
+
+test("a bulk action inside a period re-reads the period instead of leaving one day", (t) => {
+  const { controller } = setup(t, { start: "2026-10-14T00:00" })
+  let reloads = 0
+  controller.visitListFrameTarget.reload = () => {
+    reloads += 1
+  }
+  const refetches = []
+  document.addEventListener("visit:updated", () => refetches.push(true))
+
+  const stream = dayFrameStream()
+  document.dispatchEvent(stream)
+
+  assert.equal(stream.defaultPrevented, true)
+  assert.equal(reloads, 1)
+  assert.equal(refetches.length, 1)
+})
+
+test("a bulk action on a single day still takes the re-rendered day", (t) => {
+  const { controller } = setup(t)
+  let reloads = 0
+  controller.visitListFrameTarget.reload = () => {
+    reloads += 1
+  }
+
+  const stream = dayFrameStream()
+  document.dispatchEvent(stream)
+
+  assert.equal(stream.defaultPrevented, false)
+  assert.equal(reloads, 0)
+})
+
+test("a whole day stays a single day when the clocks go back", (t) => {
+  // October 25, 2026 is 25 hours long in zones that leave summer time that
+  // night. Run the test in one of them, wherever the suite runs.
+  const zone = process.env.TZ
+  process.env.TZ = "Europe/Berlin"
+  t.after(() => {
+    if (zone === undefined) delete process.env.TZ
+    else process.env.TZ = zone
+  })
+  assert.equal(
+    new Date("2026-10-25T23:59") - new Date("2026-10-25T00:00") > 24 * 3600000,
+    true,
+  )
+  const { controller } = setup(t, {
+    start: "2026-10-25T00:00",
+    end: "2026-10-25T23:59",
+  })
+  assert.equal(controller.periodSpansDays(), false)
+})
+
+test("two calendar days are a period", (t) => {
+  const { controller } = setup(t, {
+    start: "2026-10-25T00:00",
+    end: "2026-10-26T23:59",
+  })
+  assert.equal(controller.periodSpansDays(), true)
+})
+
+function rowStream(target) {
+  return Object.assign(
+    new Event("turbo:before-stream-render", { cancelable: true }),
+    {
+      detail: {
+        newStream: {
+          getAttribute: (name) => ({ target, action: "replace" })[name],
+        },
+      },
+    },
+  )
+}
+
+test("a visit listed on both of its days re-reads the period when its row changes", (t) => {
+  const { controller } = setup(t, { start: "2026-10-14T00:00" })
+  let reloads = 0
+  controller.visitListFrameTarget.reload = () => {
+    reloads += 1
+  }
+  document.querySelectorAll = (selector) =>
+    selector === '[id="visit_entry_7"]' ? [{}, {}] : []
+
+  const twice = rowStream("visit_entry_7")
+  document.dispatchEvent(twice)
+  const once = rowStream("visit_entry_8")
+  document.dispatchEvent(once)
+
+  assert.equal(twice.defaultPrevented, true)
+  assert.equal(once.defaultPrevented, false)
+  assert.equal(reloads, 1)
+})

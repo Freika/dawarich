@@ -1281,6 +1281,9 @@ en:
         previous_day: Previous day
         next_day: Next day
       feed:
+        latest_days_only:
+          one: "The latest %{count} day of a longer period"
+          other: "The latest %{count} days of a longer period"
         all_days: All days
         day_count:
           one: "%{count} day"

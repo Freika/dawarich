@@ -139,7 +139,8 @@ export class NotesManager {
 
   /**
    * The moment a new note describes: the time of the visit or track point
-   * under the click; otherwise the middle of a single viewed day in the past.
+   * under the click; otherwise noon of the day selected in the Timeline, or
+   * the middle of a single viewed day in the past.
    * Returns undefined to let the server use the current time.
    */
   momentAt(point) {
@@ -152,6 +153,14 @@ export class NotesManager {
       // Point tiles carry epoch seconds, visits an ISO string.
       const date = new Date(typeof value === "number" ? value * 1000 : value)
       if (!Number.isNaN(date.getTime())) return date.toISOString()
+    }
+
+    const selectedDay = this.controller._highlightedDay
+    if (selectedDay) {
+      const today = new Date().toLocaleDateString("en-CA")
+      return selectedDay === today
+        ? undefined
+        : new Date(`${selectedDay}T12:00:00`).toISOString()
     }
 
     const start = new Date(this.controller.startDateValue).getTime()

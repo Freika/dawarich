@@ -32,8 +32,11 @@ export default class extends Controller {
       // The date fields are updated by a sibling listener of this event.
       queueMicrotask(() => this.syncCalendar())
     }
+    // The path, not `contains`: a click on a day of the neighbouring month
+    // makes the calendar redraw its cells, and the clicked one is detached by
+    // the time the click reaches the document.
     this.onOutsideClick = (event) => {
-      if (!this.popoverTarget.contains(event.target)) this.close()
+      if (!event.composedPath().includes(this.popoverTarget)) this.close()
     }
     // Visits and notes change what a day looks like in the calendar.
     this.forget = () => {

@@ -108,6 +108,22 @@ export default class extends Controller {
       const dayFrameUpdated =
         action === "update" && target === "timeline-feed-frame"
 
+      // Merge and the bulk actions answer with one re-rendered day for the
+      // whole frame. Inside a period that would throw the other days away:
+      // refuse the stream and re-read the period instead (the selected day
+      // is opened again once it has loaded, see syncRange).
+      // A visit past midnight is listed on both of its days under one id,
+      // and a row stream would reach only the first copy.
+      const rowListedTwice =
+        visitRowReplaced &&
+        document.querySelectorAll(`[id="${target}"]`).length > 1
+      if ((dayFrameUpdated || rowListedTwice) && this.periodSpansDays()) {
+        event.preventDefault()
+        this.visitListFrameTarget.reload()
+        document.dispatchEvent(new CustomEvent("visit:updated"))
+        return
+      }
+
       requestAnimationFrame(() => {
         this.applyVisibility()
         if (dayFrameUpdated) this.syncRange()
@@ -310,7 +326,8 @@ export default class extends Controller {
   periodSpansDays() {
     const start = document.querySelector('input[name="start_at"]')?.value
     const end = document.querySelector('input[name="end_at"]')?.value
-    return new Date(end) - new Date(start) > 86400000
+    // 25 hours: a whole day is that long when the clocks go back.
+    return new Date(end) - new Date(start) > 25 * 3600 * 1000
   }
 
   // Enter in the search field looks through every note the user wrote, not
@@ -707,7 +724,10 @@ export default class extends Controller {
     const target = event.currentTarget
     const frameId = target.dataset.frameId
     const trackId = target.dataset.trackId
-    const frame = document.getElementById(frameId)
+    // The entry's own frame: a journey past midnight is listed on both days.
+    const frame =
+      target.closest?.(".timeline-entry")?.querySelector(`[id="${frameId}"]`) ||
+      document.getElementById(frameId)
     if (!frame) return
 
     const chevron = target.querySelector(".track-info-chevron")

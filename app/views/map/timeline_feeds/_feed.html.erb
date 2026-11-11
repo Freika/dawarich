@@ -12,6 +12,11 @@
           <% notes = days.sum { |day| Array(day[:notes]).size } %>
           <% if notes.positive? %>· <%= t('.note_count', count: notes) %><% end %>
         </div>
+        <% if local_assigns[:clamped] %>
+          <div class="timeline-range-head__meta" data-testid="timeline-range-clamped">
+            <%= t('.latest_days_only', count: Timeline::DayAssembler::MAX_DAYS) %>
+          </div>
+        <% end %>
       </div>
       <button type="button" class="btn btn-ghost btn-xs" hidden
               data-timeline-feed-target="allDaysButton"

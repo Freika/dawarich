@@ -9,7 +9,8 @@ module Timeline
     # Hard cap on the requested window. The UI consumes day-by-day; ranges
     # this large would otherwise materialize thousands of LINESTRINGs in
     # memory just to compute bounds.
-    MAX_RANGE = 31.days
+    # Calendar days between the first and the last day of a period.
+    MAX_DAYS = 31
 
     PHANTOM_STATIONARY_DISTANCE_M = 100
 
@@ -32,7 +33,8 @@ module Timeline
 
     def call
       return [] if start_at.nil? || end_at.nil?
-      return [] if (end_at - start_at) > MAX_RANGE
+      # Counted in days, not seconds: a month with a clock change is still a month.
+      return [] if (end_at.to_date - start_at.to_date).to_i > MAX_DAYS
 
       visits = fetch_visits
       tracks = fetch_tracks

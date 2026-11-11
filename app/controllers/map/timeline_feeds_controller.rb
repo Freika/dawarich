@@ -12,9 +12,15 @@ module Map
     def index
       return render_note_results if params[:q].present?
 
+      # A period longer than the assembler takes is read from its end: the
+      # feed shows the latest days and says so, instead of showing nothing.
+      limit = Timeline::DayAssembler::MAX_DAYS
+      @clamped = (parsed_end_at.to_date - parsed_start_at.to_date).to_i > limit
+      feed_start = @clamped ? (parsed_end_at - (limit - 1).days).beginning_of_day : parsed_start_at
+
       @days = Timeline::DayAssembler.new(
         current_user,
-        start_at: parsed_start_at.iso8601,
+        start_at: feed_start.iso8601,
         end_at: parsed_end_at.iso8601,
         distance_unit: current_user.safe_settings.distance_unit,
         privacy_zone_masker: current_privacy_zone_masker
@@ -25,7 +31,8 @@ module Map
       # when a day has no visits.
       @requested_date = parsed_start_at.to_date.iso8601
       # More than a day in one frame: each day collapses and one can be selected.
-      @range = parsed_end_at - parsed_start_at > 1.day
+      # A whole day is 25 hours long when the clocks go back, and still one day.
+      @range = parsed_end_at - parsed_start_at > 25.hours
       @on_this_day = on_this_day_notes
     end
 
@@ -38,7 +45,7 @@ module Map
     # grid: how much was tracked (heat 1..5), whether a note was written, and
     # whether the plan's data window hides the day.
     def calendar
-      month = params[:month].presence || Date.current.strftime('%Y-%m')
+      month = params[:month].to_s.match?(/\A\d{4}-(0[1-9]|1[0-2])\z/) ? params[:month] : Date.current.strftime('%Y-%m')
       cells = Timeline::MonthSummary.new(user: current_user, month: month).call[:weeks].flatten
       noted = note_days(cells)
 

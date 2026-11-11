@@ -1331,6 +1331,9 @@ de:
         previous_day: Vorheriger Tag
         next_day: Nächster Tag
       feed:
+        latest_days_only:
+          one: "Der letzte %{count} Tag eines längeren Zeitraums"
+          other: "Die letzten %{count} Tage eines längeren Zeitraums"
         all_days: Alle Tage
         day_count:
           one: "%{count} Tag"

@@ -1293,6 +1293,11 @@ pl:
         previous_day: Poprzedni dzień
         next_day: Następny dzień
       feed:
+        latest_days_only:
+          one: "Ostatni %{count} dzień dłuższego okresu"
+          few: "Ostatnie %{count} dni dłuższego okresu"
+          many: "Ostatnie %{count} dni dłuższego okresu"
+          other: "Ostatnie %{count} dnia dłuższego okresu"
         all_days: Wszystkie dni
         day_count:
           one: "%{count} dzień"

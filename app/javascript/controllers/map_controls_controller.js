@@ -50,6 +50,7 @@ export default class extends Controller {
     this.endTarget.value = rangeInputValue(endAt, this.timezoneValue)
 
     this.updateDayLinks(startAt, endAt)
+    this.updateShareLink()
 
     const wallClock = isWallClockValue(startAt)
     const start = new Date(
@@ -62,6 +63,19 @@ export default class extends Controller {
         timeZone: wallClock ? "UTC" : this.timezoneValue,
       })
     }
+  }
+
+  // The Share button (in the map's button cluster) offers the period on
+  // screen, not the one the page was loaded with.
+  updateShareLink() {
+    const link = globalThis.document?.querySelector?.(
+      '[data-testid="timeline-share-button"]',
+    )
+    if (!link) return
+    const url = new URL(link.href, window.location.href)
+    url.searchParams.set("start_date", this.startTarget.value.slice(0, 10))
+    url.searchParams.set("end_date", this.endTarget.value.slice(0, 10))
+    link.href = url.toString()
   }
 
   updateDayLinks(startAt, endAt) {

@@ -1296,6 +1296,9 @@ zh:
         previous_day: 前一天
         next_day: 第二天
       feed:
+        latest_days_only:
+          one: "较长时间段中最近的 %{count} 天"
+          other: "较长时间段中最近的 %{count} 天"
         all_days: 所有日期
         day_count:
           one: "%{count} 天"
