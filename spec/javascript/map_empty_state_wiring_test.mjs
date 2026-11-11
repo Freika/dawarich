@@ -27,9 +27,11 @@ const { buildMapFeatures } = await import(
   `data:text/javascript;base64,${Buffer.from(stubs + source).toString("base64")}`
 )
 
-function mapPage() {
+function mapPage({ href = null, timelineOpen = false } = {}) {
   const classes = new Set(["hidden"])
+  const listeners = {}
   const emptyState = {
+    href,
     classList: {
       toggle: (name, force) =>
         force ? classes.add(name) : classes.delete(name),
@@ -39,17 +41,25 @@ function mapPage() {
   const elements = {
     '[data-testid="map-range-statistics"]': {},
     '[data-testid="map-empty-state"]': emptyState,
+    '[data-maps--maplibre-target~="settingsPanel"].open .tab-content.active[data-tab-content="timeline-feed"]':
+      timelineOpen ? {} : null,
   }
   const controller = {
     element: { querySelector: (selector) => elements[selector] ?? null },
     settings: {},
     timelineBridge: { connect() {} },
+    cleanup: {
+      addEventListener: (target, name, handler) => {
+        if (target === emptyState) listeners[name] = handler
+      },
+    },
     hasSearchInputTarget: true,
     hasSearchResultsTarget: true,
   }
   buildMapFeatures(controller)
   const onData = controller.rangeStatistics.args[3]
-  return { onData, emptyState }
+  const click = (name = "click") => listeners[name]?.()
+  return { onData, emptyState, click }
 }
 
 test("an empty period shows the empty-state pill", () => {
@@ -66,4 +76,36 @@ test("a period with points, or one still loading, hides the pill", () => {
   onData({ points: 0 })
   onData(null)
   assert.equal(emptyState.classList.contains("hidden"), true)
+})
+
+test("the jump keeps the Timeline open when it was opened after page load", () => {
+  const { emptyState, click } = mapPage({
+    href: "http://localhost/map/v2?date=2025-10-16",
+    timelineOpen: true,
+  })
+  click()
+  assert.equal(
+    emptyState.href,
+    "http://localhost/map/v2?date=2025-10-16&panel=timeline",
+  )
+})
+
+test("the jump drops a Timeline the user has closed since page load", () => {
+  const { emptyState, click } = mapPage({
+    href: "http://localhost/map/v2?date=2025-10-16&panel=timeline",
+  })
+  click()
+  assert.equal(emptyState.href, "http://localhost/map/v2?date=2025-10-16")
+})
+
+test("a middle-click opens the jump with the current panel too", () => {
+  const { emptyState, click } = mapPage({
+    href: "http://localhost/map/v2?date=2025-10-16",
+    timelineOpen: true,
+  })
+  click("auxclick")
+  assert.equal(
+    emptyState.href,
+    "http://localhost/map/v2?date=2025-10-16&panel=timeline",
+  )
 })

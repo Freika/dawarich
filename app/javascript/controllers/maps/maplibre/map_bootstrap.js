@@ -45,6 +45,23 @@ export function buildMapFeatures(controller) {
       (data) =>
         emptyState?.classList.toggle("hidden", !data || data.points > 0),
     )
+    // The Timeline opens and closes without a reload, so the jump link takes
+    // its panel from the page as it is now, not as it was rendered.
+    if (emptyState?.href) {
+      const keepPanel = () => {
+        const url = new URL(emptyState.href)
+        const timelineOpen = controller.element.querySelector(
+          '[data-maps--maplibre-target~="settingsPanel"].open .tab-content.active[data-tab-content="timeline-feed"]',
+        )
+        if (timelineOpen) url.searchParams.set("panel", "timeline")
+        else url.searchParams.delete("panel")
+        emptyState.href = url.toString()
+      }
+      // A middle-click opens the link in a new tab without a click event.
+      for (const name of ["click", "auxclick"]) {
+        controller.cleanup.addEventListener(emptyState, name, keepPanel)
+      }
+    }
   }
 
   controller.layerManager = new LayerManager(
