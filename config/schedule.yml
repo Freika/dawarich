@@ -90,6 +90,12 @@ lite_archival_warning_job:
   queue: archival
   active_job: true
 
+account_retention_sweep_job:
+  cron: "0 4 * * *" # every day at 04:00
+  class: "Users::RetentionSweepJob"
+  queue: archival
+  active_job: true
+
 # Pipeline: archive (1st) → verify (daily) → clear (8th, 7 days after archive).
 raw_data_archive_job:
   cron: "0 3 1 * *" # 1st of month at 03:00

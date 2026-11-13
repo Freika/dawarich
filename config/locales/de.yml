@@ -2721,6 +2721,19 @@ de:
       we_received_a_request_to_delete_your_dawarich_account_this_2: Wir haben eine Anfrage erhalten, dein Dawarich-Konto zu löschen. Dies ist dein letzter Versuch, die Löschung zu stoppen. Sobald bestätigt, werden alle deine Standortverläufe, Tracks, Gebiete, Aufenthalte, Reisen und Familienmitgliedschaften dauerhaft entfernt.
       permanently_delete_my_account_2: 'Dauerhaftes Konto löschen:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: Du hast das nicht angefordert? Ignoriere diese E-Mail — der Link läuft in 1 Stunde ab und dein Konto bleibt unangetastet. Wenn du weiterhin diese E-Mails erhältst, ändere dein Passwort sofort.
+    account_deletion_warning:
+      title: "Dein Dawarich-Konto wird gelöscht"
+      greeting: "Hallo %{email},"
+      deletion_notice: "Dein Dawarich-Konto und alle zugehörigen Daten – Standortverlauf, Importe, Reisen und Orte – werden am %{date} endgültig gelöscht."
+      reason: "Dein Konto hat kein aktives Dawarich-Abo. Laut unserer Datenschutzerklärung speichern wir Daten inaktiver Konten höchstens 12 Monate."
+      keep_account: "Um dein Konto zu behalten, schließe vor dem %{date} wieder ein Abo ab:"
+      resubscribe: "Abo erneuern"
+      keep_copy: "Um eine Kopie deiner Daten zu behalten, melde dich an und exportiere sie:"
+      export: "Meine Daten exportieren"
+      nothing_to_do: "Wenn du das Konto nicht mehr brauchst, musst du nichts tun."
+      policy: "Datenschutzerklärung:"
+      questions: "Fragen? Antworte einfach auf diese E-Mail oder schreib an hi@dawarich.app."
+      signoff: "Evgenii von Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Deine Datenhistorie füllt sich auf
       hi: Hallo
@@ -3659,6 +3672,8 @@ de:
         subject: Willkommen bei Dawarich!
       explore_features:
         subject: Entdecke die Funktionen von Dawarich!
+      account_deletion_warning:
+        subject: "Dein Dawarich-Konto wird am %{date} gelöscht"
       archival_approaching:
         subject: Mit Pro bleibt dein vollständiger Verlauf erhalten
       oauth_account_link:

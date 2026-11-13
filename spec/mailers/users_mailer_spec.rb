@@ -52,6 +52,61 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
+  describe 'archival_approaching' do
+    let(:mail) { UsersMailer.with(user:).archival_approaching }
+
+    # The checkout token expires in 30 minutes; a link read days later must still work.
+    it 'links to the upgrade page without an expiring checkout token' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('/trial/upgrade?')
+      expect(body).to include('utm_campaign=archival_approaching')
+      expect(body).not_to include('token=')
+    end
+  end
+
+  describe 'account_deletion_warning' do
+    let(:mail) { UsersMailer.with(user:, deletion_on: '2027-01-01').account_deletion_warning }
+
+    before { stub_const('MANAGER_URL', 'https://manager.example') }
+
+    it 'is addressed to the user and names the deletion date in the subject' do
+      expect(mail.to).to eq([user.email])
+      expect(mail.subject).to include(I18n.l(Date.new(2027, 1, 1), format: :long))
+    end
+
+    it 'links to the exports page and to resubscription' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('/exports')
+      expect(body).to include('/trial/upgrade?')
+      expect(body).to include('utm_campaign=account_deletion_warning')
+    end
+
+    # The checkout token expires in 30 minutes; a link read days later must still work.
+    it 'puts no expiring checkout token in the resubscribe link' do
+      expect(mail.text_part.decoded).not_to include('token=')
+    end
+
+    it 'does not claim the account ever had access' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('Your account has no active Dawarich subscription.')
+      expect(body).not_to include('access has ended')
+    end
+
+    it 'links to the privacy policy' do
+      expect(mail.html_part.decoded).to include('https://dawarich.app/privacy-policy')
+    end
+
+    it 'renders in the user locale' do
+      user.update!(settings: user.settings.merge('locale' => 'de'))
+      german = UsersMailer.with(user:, deletion_on: '2027-01-01').account_deletion_warning
+
+      expect(german.subject).to include('1. Januar 2027')
+    end
+  end
+
   describe 'legacy trial lifecycle emails' do
     %i[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |action|
       it "delivers nothing for a stale #{action} job" do

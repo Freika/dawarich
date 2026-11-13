@@ -19,6 +19,9 @@ RSpec.describe 'Family entitlement revocation', type: :model do
       .tap { |user| create(:family_membership, user: user, family: family) }
   end
 
+  # Leaving records when the inherited access ended rather than clearing the
+  # date: account retention counts 12 months from that moment, and a nil date
+  # would read as "never subscribed" and count from signup instead.
   describe 'a member who leaves while the plan is still running' do
     let!(:member) { add_member }
 
@@ -32,7 +35,7 @@ RSpec.describe 'Family entitlement revocation', type: :model do
     it 'loses the mirrored subscription on leaving' do
       member.reload.family_membership.destroy!
 
-      expect(member.reload.active_until).to be_nil
+      expect(member.reload.active_until).to be_within(1.minute).of(Time.current)
       expect(member.reload).to be_inactive
       expect(member.reload).to be_lite
     end
@@ -40,7 +43,7 @@ RSpec.describe 'Family entitlement revocation', type: :model do
     it 'loses it when the owner removes them too' do
       Family::Membership.find_by(user_id: member.id).destroy!
 
-      expect(member.reload.active_until).to be_nil
+      expect(member.reload.active_until).to be_within(1.minute).of(Time.current)
     end
   end
 
@@ -59,7 +62,7 @@ RSpec.describe 'Family entitlement revocation', type: :model do
       Families::SyncMembers.new(family: family.reload).call
       Family::Membership.find_by(user_id: member.id).destroy!
 
-      expect(member.reload.active_until).to be_nil
+      expect(member.reload.active_until).to be_within(1.minute).of(Time.current)
     end
   end
 

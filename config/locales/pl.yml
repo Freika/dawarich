@@ -2760,6 +2760,19 @@ pl:
       we_received_a_request_to_delete_your_dawarich_account_this_2: Otrzymaliśmy prośbę o usunięcie Twojego konta Dawarich. To ostatnia szansa, aby zatrzymać usuwanie. Po potwierdzeniu cała historia lokalizacji, trasy, obszary, wizyty, podróże i członkostwa rodzinne zostaną trwale usunięte.
       permanently_delete_my_account_2: 'Trwale usuń moje konto:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: To nie Ty? Zignoruj tę wiadomość - link wygasa za 1 godzinę, a konto pozostanie bez zmian. Jeśli takie wiadomości przychodzą dalej, natychmiast zmień hasło.
+    account_deletion_warning:
+      title: "Twoje konto Dawarich zostanie usunięte"
+      greeting: "Cześć %{email},"
+      deletion_notice: "Twoje konto Dawarich i wszystkie jego dane — historia lokalizacji, importy, podróże i miejsca — zostaną trwale usunięte %{date}."
+      reason: "Twoje konto nie ma aktywnej subskrypcji Dawarich. Zgodnie z naszą Polityką prywatności przechowujemy dane nieaktywnych kont maksymalnie 12 miesięcy."
+      keep_account: "Aby zachować konto, odnów subskrypcję przed %{date}:"
+      resubscribe: "Odnów subskrypcję"
+      keep_copy: "Aby zachować kopię swoich danych, zaloguj się i wyeksportuj je:"
+      export: "Eksportuj moje dane"
+      nothing_to_do: "Jeśli konto nie jest Ci już potrzebne, nie musisz nic robić."
+      policy: "Polityka prywatności:"
+      questions: "Masz pytania? Odpowiedz na tego e-maila lub napisz na hi@dawarich.app."
+      signoff: "Evgenii z Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Twoja historia danych się zapełnia
       hi: Cześć
@@ -3718,6 +3731,8 @@ pl:
         subject: Witamy w Dawarich!
       explore_features:
         subject: Odkryj możliwości Dawarich!
+      account_deletion_warning:
+        subject: "Twoje konto Dawarich zostanie usunięte %{date}"
       archival_approaching:
         subject: Zachowaj pełną historię - przejdź na Pro
       oauth_account_link:

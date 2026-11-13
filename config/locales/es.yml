@@ -2721,6 +2721,19 @@ es:
       we_received_a_request_to_delete_your_dawarich_account_this_2: Se recibió una solicitud para eliminar tu cuenta de Dawarich. Esta es tu última oportunidad para detener la eliminación. Una vez confirmado, todos tus datos de ubicación, rutas, áreas, visitas, viajes y membresías familiares serán eliminados permanentemente.
       permanently_delete_my_account_2: 'Elimina mi cuenta de forma permanente:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: "¿No solicitaste esto? Ignora este correo electrónico — el enlace caducará en 1 hora y tu cuenta permanecerá intacta. Si sigues recibiendo estos correos electrónicos, cambia tu contraseña de inmediato."
+    account_deletion_warning:
+      title: "Tu cuenta de Dawarich se eliminará"
+      greeting: "Hola %{email}:"
+      deletion_notice: "Tu cuenta de Dawarich y todos sus datos —historial de ubicaciones, importaciones, viajes y lugares— se eliminarán de forma permanente el %{date}."
+      reason: "Tu cuenta no tiene ninguna suscripción activa a Dawarich. Nuestra Política de privacidad conserva los datos de las cuentas inactivas como máximo 12 meses."
+      keep_account: "Para conservar tu cuenta, vuelve a suscribirte antes del %{date}:"
+      resubscribe: "Volver a suscribirme"
+      keep_copy: "Para conservar una copia de tus datos, inicia sesión y expórtalos:"
+      export: "Exportar mis datos"
+      nothing_to_do: "Si ya no necesitas la cuenta, no tienes que hacer nada."
+      policy: "Política de privacidad:"
+      questions: "¿Preguntas? Responde a este correo o escribe a hi@dawarich.app."
+      signoff: "Evgenii de Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Tu historial de datos está llegando al límite
       hi: Hola
@@ -3604,6 +3617,8 @@ es:
         subject: "¡Te damos la bienvenida a Dawarich!"
       explore_features:
         subject: Explora las características de Dawarich!
+      account_deletion_warning:
+        subject: "Tu cuenta de Dawarich se eliminará el %{date}"
       archival_approaching:
         subject: Mantén tu historia completa — actualiza a Pro
       oauth_account_link:
