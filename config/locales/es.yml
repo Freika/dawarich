@@ -2687,7 +2687,7 @@ es:
       title: "Tu cuenta de Dawarich se eliminará"
       greeting: "Hola %{email}:"
       deletion_notice: "Tu cuenta de Dawarich y todos sus datos —historial de ubicaciones, importaciones, viajes y lugares— se eliminarán de forma permanente el %{date}."
-      reason: "Tu acceso a Dawarich ha terminado. Nuestra Política de privacidad conserva los datos de la cuenta como máximo 12 meses después de que termine el acceso."
+      reason: "Tu cuenta no tiene ninguna suscripción activa a Dawarich. Nuestra Política de privacidad conserva los datos de las cuentas inactivas como máximo 12 meses."
       keep_account: "Para conservar tu cuenta, vuelve a suscribirte antes del %{date}:"
       resubscribe: "Volver a suscribirme"
       keep_copy: "Para conservar una copia de tus datos, inicia sesión y expórtalos:"

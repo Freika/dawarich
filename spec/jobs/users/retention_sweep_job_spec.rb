@@ -158,15 +158,29 @@ RSpec.describe Users::RetentionSweepJob, type: :job do
 
     before { create(:family_membership, family:, user:, role: :owner) }
 
-    it 'keeps the owner until the members are gone' do
-      run_on(2026, 12, 2)
-
+    it 'neither warns nor deletes the owner while the members stay' do
+      expect { run_on(2026, 12, 2) }.not_to have_enqueued_job(Users::MailerSendingJob)
       expect { run_on(2027, 1, 1) }.not_to have_enqueued_job(Users::DestroyJob)
       expect(user.reload.deleted?).to be false
+    end
 
+    it 'gives the owner a full notice once the members are gone' do
+      run_on(2027, 1, 1)
       member_membership.destroy!
 
-      expect { run_on(2027, 1, 2) }.to have_enqueued_job(Users::DestroyJob).with(user.id)
+      expect { run_on(2027, 1, 2) }.to warning_for('2027-02-01')
+      expect { run_on(2027, 1, 31) }.not_to have_enqueued_job(Users::DestroyJob)
+      expect { run_on(2027, 2, 1) }.to have_enqueued_job(Users::DestroyJob).with(user.id)
+    end
+
+    it 'forgets a schedule promised before the members joined' do
+      member_membership.destroy!
+      run_on(2026, 12, 2)
+      create(:family_membership, family:, user: create(:user), role: :member)
+
+      run_on(2027, 1, 1)
+
+      expect(retention_state).to be_nil
     end
   end
 end

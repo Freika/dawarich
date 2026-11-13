@@ -2682,7 +2682,7 @@ ca:
       title: "El teu compte de Dawarich s'eliminarà"
       greeting: "Hola %{email},"
       deletion_notice: "El teu compte de Dawarich i totes les seves dades —historial d'ubicacions, importacions, viatges i llocs— s'eliminaran definitivament el %{date}."
-      reason: "El teu accés a Dawarich ha acabat. La nostra Política de privacitat conserva les dades del compte com a màxim 12 mesos després que acabi l'accés."
+      reason: "El teu compte no té cap subscripció activa a Dawarich. La nostra Política de privacitat conserva les dades dels comptes inactius com a màxim 12 mesos."
       keep_account: "Per conservar el compte, torna a subscriure't abans del %{date}:"
       resubscribe: "Torna a subscriure't"
       keep_copy: "Per conservar una còpia de les teves dades, inicia sessió i exporta-les:"

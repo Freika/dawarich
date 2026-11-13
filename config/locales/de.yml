@@ -2687,7 +2687,7 @@ de:
       title: "Dein Dawarich-Konto wird gelöscht"
       greeting: "Hallo %{email},"
       deletion_notice: "Dein Dawarich-Konto und alle zugehörigen Daten – Standortverlauf, Importe, Reisen und Orte – werden am %{date} endgültig gelöscht."
-      reason: "Dein Zugang zu Dawarich ist abgelaufen. Laut unserer Datenschutzerklärung speichern wir Kontodaten höchstens 12 Monate nach Ablauf des Zugangs."
+      reason: "Dein Konto hat kein aktives Dawarich-Abo. Laut unserer Datenschutzerklärung speichern wir Daten inaktiver Konten höchstens 12 Monate."
       keep_account: "Um dein Konto zu behalten, schließe vor dem %{date} wieder ein Abo ab:"
       resubscribe: "Abo erneuern"
       keep_copy: "Um eine Kopie deiner Daten zu behalten, melde dich an und exportiere sie:"

@@ -34,6 +34,8 @@ class Users::RetentionSweepJob < ApplicationJob
   private
 
   def sweep(user, today)
+    return skip_family_owner(user) unless user.can_delete_account?
+
     computed_on = user.computed_deletion_on
     state = retention_state(user, computed_on)
     promised_on = state['deletion_on'] && Date.iso8601(state['deletion_on'])
@@ -62,13 +64,19 @@ class Users::RetentionSweepJob < ApplicationJob
   # The UPDATE re-checks that access is still over, so a user who resubscribed
   # after this run loaded them is never deleted.
   def delete(user)
-    return :skipped_family_owner unless user.can_delete_account?
-
     marked = Users::RetentionCandidatesQuery.access_ended.where(id: user.id).update_all(deleted_at: Time.current)
     return :access_restored if marked.zero?
 
     Users::DestroyJob.set(queue: :archival).perform_later(user.id)
     :deleted
+  end
+
+  # A family owner cannot be deleted while members remain, so they get no
+  # warning for a date that would not hold. Once the members are gone, the
+  # sweep starts over with a full notice period.
+  def skip_family_owner(user)
+    User.where(id: user.id).where("users.settings ? 'retention'").update_all("settings = settings - 'retention'")
+    :skipped_family_owner
   end
 
   # An account whose access came back loses its schedule, so a later lapse

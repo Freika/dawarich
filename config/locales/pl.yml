@@ -2720,7 +2720,7 @@ pl:
       title: "Twoje konto Dawarich zostanie usunięte"
       greeting: "Cześć %{email},"
       deletion_notice: "Twoje konto Dawarich i wszystkie jego dane — historia lokalizacji, importy, podróże i miejsca — zostaną trwale usunięte %{date}."
-      reason: "Twój dostęp do Dawarich wygasł. Zgodnie z naszą Polityką prywatności przechowujemy dane konta maksymalnie 12 miesięcy po wygaśnięciu dostępu."
+      reason: "Twoje konto nie ma aktywnej subskrypcji Dawarich. Zgodnie z naszą Polityką prywatności przechowujemy dane nieaktywnych kont maksymalnie 12 miesięcy."
       keep_account: "Aby zachować konto, odnów subskrypcję przed %{date}:"
       resubscribe: "Odnów subskrypcję"
       keep_copy: "Aby zachować kopię swoich danych, zaloguj się i wyeksportuj je:"

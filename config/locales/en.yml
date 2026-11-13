@@ -2682,7 +2682,7 @@ en:
       title: "Your Dawarich account will be deleted"
       greeting: "Hi %{email},"
       deletion_notice: "Your Dawarich account and all its data — location history, imports, trips and places — will be permanently deleted on %{date}."
-      reason: "Your Dawarich access has ended. Our Privacy Policy keeps account data for up to 12 months after access ends."
+      reason: "Your account has no active Dawarich subscription. Our Privacy Policy keeps the data of inactive accounts for at most 12 months."
       keep_account: "To keep your account, resubscribe before %{date}:"
       resubscribe: "Resubscribe"
       keep_copy: "To keep a copy of your data, sign in and export it:"

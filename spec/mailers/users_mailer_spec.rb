@@ -52,6 +52,19 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
+  describe 'archival_approaching' do
+    let(:mail) { UsersMailer.with(user:).archival_approaching }
+
+    # The checkout token expires in 30 minutes; a link read days later must still work.
+    it 'links to the upgrade page without an expiring checkout token' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('/trial/upgrade?')
+      expect(body).to include('utm_campaign=archival_approaching')
+      expect(body).not_to include('token=')
+    end
+  end
+
   describe 'account_deletion_warning' do
     let(:mail) { UsersMailer.with(user:, deletion_on: '2027-01-01').account_deletion_warning }
 
@@ -66,15 +79,20 @@ RSpec.describe UsersMailer, type: :mailer do
       body = mail.text_part.decoded
 
       expect(body).to include('/exports')
-      expect(body).to include('https://manager.example/auth/dawarich?token=')
+      expect(body).to include('/trial/upgrade?')
       expect(body).to include('utm_campaign=account_deletion_warning')
     end
 
-    it 'does not claim the access ended more than 12 months ago' do
+    # The checkout token expires in 30 minutes; a link read days later must still work.
+    it 'puts no expiring checkout token in the resubscribe link' do
+      expect(mail.text_part.decoded).not_to include('token=')
+    end
+
+    it 'does not claim the account ever had access' do
       body = mail.text_part.decoded
 
-      expect(body).to include('Your Dawarich access has ended.')
-      expect(body).not_to include('more than 12 months ago')
+      expect(body).to include('Your account has no active Dawarich subscription.')
+      expect(body).not_to include('access has ended')
     end
 
     it 'links to the privacy policy' do

@@ -6,8 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Dawarich Cloud deletes an account and its data 12 months after its access ended, as the Privacy Policy states, starting on 2027-01-01. Warning emails go out 30, 7 and 1 day before, with links to export the data or resubscribe. Self-hosted instances are not affected.
+
 ### Fixed
 
+- The upgrade link in the "data history is filling up" email works for as long as the email is kept, instead of expiring 30 minutes after it was sent.
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
 - Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
 - When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
