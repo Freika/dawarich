@@ -123,41 +123,4 @@ export class VisitCard {
       </div>
     `
   }
-
-  /**
-   * Create bulk action buttons HTML
-   * @param {number} selectedCount - Number of selected visits
-   * @returns {string} HTML string
-   */
-  static createBulkActions(selectedCount) {
-    if (selectedCount < 2) return ""
-
-    return `
-      <div class="bulk-actions-panel sticky bottom-0 bg-base-100 border-t border-base-300 p-4 mt-4 space-y-2">
-        <div class="text-sm font-medium mb-3">
-          ${translate("visits.selected", { count: selectedCount })}
-        </div>
-        <div class="grid grid-cols-3 gap-2">
-          <button class="btn btn-sm btn-outline" data-bulk-merge>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            ${translate("visits.merge")}
-          </button>
-          <button class="btn btn-sm btn-primary" data-bulk-confirm>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            ${translate("common.confirm")}
-          </button>
-          <button class="btn btn-sm btn-outline btn-error" data-bulk-delete>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            ${translate("common.delete")}
-          </button>
-        </div>
-      </div>
-    `
-  }
 }

@@ -1,26 +1,6 @@
 export const DEFAULT_ROUTE_COLOR = "#FF3B30"
 export const DEFAULT_CASING_COLOR = "#000000"
 
-export const THEME_KEYS = [
-  "autumn",
-  "blueprint",
-  "contrast_zones",
-  "copper_patina",
-  "emerald",
-  "forest",
-  "gradient_roads",
-  "japanese_ink",
-  "midnight_blue",
-  "monochrome_blue",
-  "neon_cyberpunk",
-  "noir",
-  "ocean",
-  "pastel_dream",
-  "sunset",
-  "terracotta",
-  "warm_beige",
-]
-
 function parseHex(hex) {
   const match = /^#([0-9a-f]{6})$/i.exec(hex || "")
   if (!match) return null
@@ -72,7 +52,6 @@ export function resolveTheme(tokens) {
   }
 }
 
-const cache = new Map()
 const tokenCache = new Map()
 
 export async function loadThemeTokens(key) {
@@ -84,11 +63,4 @@ export async function loadThemeTokens(key) {
   const tokens = await response.json()
   tokenCache.set(key, tokens)
   return tokens
-}
-
-export async function loadTheme(key) {
-  if (cache.has(key)) return cache.get(key)
-  const resolved = resolveTheme(await loadThemeTokens(key))
-  cache.set(key, resolved)
-  return resolved
 }

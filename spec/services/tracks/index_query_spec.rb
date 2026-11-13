@@ -63,18 +63,4 @@ RSpec.describe Tracks::IndexQuery do
       end
     end
   end
-
-  describe '#pagination_headers' do
-    it 'builds the pagination header hash' do
-      paginated_relation = double('paginated', current_page: 2, total_pages: 5, total_count: 12)
-
-      headers = query.pagination_headers(paginated_relation)
-
-      expect(headers).to eq(
-        'X-Current-Page' => '2',
-        'X-Total-Pages' => '5',
-        'X-Total-Count' => '12'
-      )
-    end
-  end
 end

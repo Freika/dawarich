@@ -11,7 +11,7 @@ RSpec.describe 'Map v2 date-navigation step is exactly one day', type: :request 
 
   def nav_links_from(body)
     doc = Nokogiri::HTML(body)
-    hrefs = doc.css('a.btn').map { |a| a['href'] }.compact.select do |href|
+    hrefs = doc.css('[data-map-controls-target=dayLink]').map { |a| a['href'] }.compact.select do |href|
       href.start_with?('/map/v2?') && href.include?('start_at=') && href.include?('end_at=')
     end
     hrefs.map { |h| Rack::Utils.parse_nested_query(URI.parse(h).query) }

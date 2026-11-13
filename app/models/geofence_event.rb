@@ -15,6 +15,13 @@ class GeofenceEvent < ApplicationRecord
   WEBHOOK_HOURLY_LIMIT = 60
 
   scope :real, -> { where(synthetic: false) }
+  scope :for_place, ->(place_id) { place_id.present? ? where(place_id: place_id) : all }
+  scope :occurred_within_days, lambda { |from, to|
+    scope = all
+    scope = scope.where(occurred_at: from.beginning_of_day..) if from
+    scope = scope.where(occurred_at: ..to.end_of_day) if to
+    scope
+  }
 
   def display_place_name
     place&.name || place_name

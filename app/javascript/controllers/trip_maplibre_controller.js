@@ -1,6 +1,6 @@
-import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import { TripRoutesTileLayer } from "maps_maplibre/layers/trip_routes_tile_layer"
+import { ReplayHost } from "maps_maplibre/managers/replay_host"
 import {
   applyDayColors,
   expandAllDays,
@@ -26,7 +26,7 @@ import { toggleTripReplay } from "maps_maplibre/trip/replay"
  * Renders a MapLibre map for the trip show page with day-colored routes,
  * an accordion-based day navigator, photos overlay, and trip replay.
  */
-export default class extends Controller {
+export default class extends ReplayHost {
   static targets = [
     "map",
     "pathPending",
@@ -42,26 +42,6 @@ export default class extends Controller {
     "planToggleBtn",
     // Replay toggle button
     "replayToggleBtn",
-    // Replay panel
-    "replayPanel",
-    "replayScrubber",
-    "replayScrubberTrack",
-    "replayDensityContainer",
-    "replayDayDisplay",
-    "replayDayCount",
-    "replayTimeDisplay",
-    "replayDataIndicator",
-    "replayCycleControls",
-    "replayPointCounter",
-    "replayPrevDayButton",
-    "replayNextDayButton",
-    "replayPlayButton",
-    "replayFollowButton",
-    "replayPlayIcon",
-    "replayPauseIcon",
-    "replaySpeedSlider",
-    "replaySpeedLabel",
-    "replaySpeedDisplay",
   ]
 
   static values = {
@@ -253,37 +233,5 @@ export default class extends Controller {
 
   toggleReplay() {
     return toggleTripReplay(this)
-  }
-
-  replayScrubberHover(event) {
-    this.replayPanel?.scrubberHover(event)
-  }
-
-  replayPrevDay() {
-    this.replayPanel?.prevDay()
-  }
-
-  replayNextDay() {
-    this.replayPanel?.nextDay()
-  }
-
-  replayCyclePrev() {
-    this.replayPanel?.cyclePrev()
-  }
-
-  replayCycleNext() {
-    this.replayPanel?.cycleNext()
-  }
-
-  replayTogglePlayback() {
-    this.replayPanel?.togglePlayback()
-  }
-
-  replayRecenterFollow() {
-    this.replayPanel?.recenterFollow()
-  }
-
-  replaySpeedChange(event) {
-    this.replayPanel?.speedChange(event)
   }
 }

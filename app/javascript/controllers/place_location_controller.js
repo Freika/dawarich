@@ -35,12 +35,23 @@ export default class extends Controller {
         this.setCoordinates(this.marker.getLngLat()),
       )
     }
+    // Fields filled while the map was loading (e.g. an early geolocation answer).
+    if (
+      this.hasLatitudeTarget &&
+      this.latitudeTarget.value &&
+      this.longitudeTarget.value
+    ) {
+      this.coordinatesChanged()
+    }
   }
 
   setCoordinates({ lat, lng }) {
     this.latitudeTarget.value = lat.toFixed(6)
     this.longitudeTarget.value = lng.toFixed(6)
     this.marker.setLngLat([lng, lat])
+    for (const field of [this.latitudeTarget, this.longitudeTarget]) {
+      field.dispatchEvent(new Event("input", { bubbles: true }))
+    }
   }
 
   coordinatesChanged() {

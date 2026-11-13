@@ -16,7 +16,11 @@ module HostAddressStubs
   private
 
   def stub_address_lookups
-    @stub_address_lookups ||= allow(Addrinfo).to receive(:getaddrinfo).and_call_original
+    # Hosts this example did not stub keep the suite-wide default from
+    # spec/support/integration_host_addresses.rb rather than real DNS.
+    @stub_address_lookups ||= allow(Addrinfo).to receive(:getaddrinfo).and_wrap_original do |original, host, *rest|
+      IntegrationHostAddresses.resolve(original, host, *rest)
+    end
   end
 end
 

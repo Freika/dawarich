@@ -7,7 +7,9 @@ RSpec.describe Api::PointSerializer do
     subject(:serializer) { described_class.new(point).call }
 
     let(:point) { create(:point) }
-    let(:all_excluded) { Api::PointSerializer::EXCLUDED_ATTRIBUTES }
+    let(:all_excluded) do
+      %w[created_at updated_at visit_id import_id user_id raw_data country_id source_id lock_version]
+    end
     let(:expected_json) do
       point.attributes.except(*all_excluded).tap do |attributes|
         attributes['latitude'] = point.lat.to_s

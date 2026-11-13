@@ -54,8 +54,14 @@ class Family::LocationRequestsController < ApplicationController
 
   private
 
+  # A notification or an email can outlive the request it links to (the
+  # requester deleted their account), so a missing one is not an error page.
   def set_request
-    @request = Family::LocationRequest.where(family: current_user.family).find(params[:id])
+    @request = Family::LocationRequest.where(family: current_user.family).find_by(id: params[:id])
+    return if @request
+
+    key = 'controllers.family.location_requests.this_request_has_expired_or_already_been_responded_to'
+    redirect_to family_path, alert: I18n.t(key)
   end
 
   def authorize_target_user!

@@ -20,4 +20,6 @@
        data-shared-trip-map-show-photos-value="<%= SharedLinkContext.new(link).show_photos? %>"
        style="height: 60vh; min-height: 400px;"
        class="rounded-lg overflow-hidden bg-base-200 mb-4 ring-1 ring-base-300"></div>
+
+  <%= render 'shared/links/map_notes', link: link %>
 </section>

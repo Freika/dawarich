@@ -163,7 +163,7 @@ pl:
         current_password: Aktualne hasło
         required_to_confirm_your_changes: "(wymagane do potwierdzenia zmian)"
         import_your_data: Zaimportuj swoje dane
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Prześlij archiwum ZIP z wyeksportowanymi danymi Dawarich, aby przywrócić punkty, podróże i ustawienia. Połączenia integracji (Immich, Photoprism, AirTrail, TeslaMate) nie są przywracane; połącz je ponownie w Ustawienia → Integracje."
         select_zip_archive: Wybierz archiwum ZIP
         file_will_be_uploaded_directly_to_storage_please_be_patient: Plik zostanie przesłany bezpośrednio do magazynu. Prosimy o cierpliwość.
         cancel: Anuluj
@@ -928,6 +928,18 @@ pl:
       shared_on_dawarich: Udostępniono w Dawarich
       dawarich_logo: Logo Dawarich
   map:
+    keyboard_shortcuts:
+      title: "Skróty klawiszowe"
+      open_timeline: "Otwórz Oś czasu"
+      open_layers: "Otwórz Warstwy"
+      search_places: "Szukaj miejsc"
+      open_family: "Otwórz Rodzinę"
+      open_tools: "Otwórz Narzędzia"
+      open_settings: "Otwórz ustawienia mapy"
+      toggle_replay: "Uruchom lub zatrzymaj odtwarzanie"
+      previous_next_day: "Poprzedni lub następny dzień, gdy Oś czasu jest otwarta"
+      show_shortcuts: "Pokaż tę listę"
+      close: "Zamknij"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "Nie wiesz, gdzie Twoja aplikacja ukrywa eksport?"
       step_by_step_export_guides: "Instrukcje eksportu krok po kroku"
@@ -984,6 +996,7 @@ pl:
         settings_s: Ustawienia (S)
         links: Linki
       settings_panel:
+        data_processing_link: "Ustawienia tras, szumu GPS, miast i środków transportu są w Ustawieniach → Przetwarzanie danych"
         speed_colored_tracks: Koloruj ślady według prędkości
         edit_speed_colors: Edytuj kolory prędkości
         close_panel: Zamknij panel
@@ -992,7 +1005,7 @@ pl:
         enter_name_of_a_place: Wpisz nazwę miejsca
         search_for_a_location_to_find_places_you_visited: Wyszukaj lokalizację, aby znaleźć odwiedzone miejsca
         points: Punkty
-        show_individual_location_points: Pokaż pojedyncze punkty lokalizacji
+        show_individual_location_points: "Każda pozycja zapisana przez Twoje urządzenia, jako osobny punkt."
         edit_points: Edytuj punkty
         allow_dragging_points_to_correct_their_position: Pozwala przeciągać punkty, aby poprawić ich pozycję.
         editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów jest dostępna w planie Pro.
@@ -1004,35 +1017,35 @@ pl:
         anomalies: Anomalie
         show_filtered_gps_noise_points: Pokaż odfiltrowane zakłócenia GPS
         tracks: Odcinki
-        show_backend_calculated_tracks: Pokaż odcinki obliczone po stronie serwera
+        show_backend_calculated_tracks: "Twoje punkty połączone w przebyte odcinki."
         flights: Loty
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Pokaż loty AirTrail jako łuki (ukrywa nakładające się ślady GPS)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Twoje loty z AirTrail jako łuki. Ukrywają nakładające się punkty GPS."
         heatmap: Heatmapa
-        show_density_heatmap: Pokaż Heatmapę
+        show_density_heatmap: "Świeci jaśniej tam, gdzie masz więcej punktów."
         hexagons: Heksagony
-        show_point_density_as_hexagonal_cells: Pokaż gęstość punktów jako komórki heksagonalne
+        show_point_density_as_hexagonal_cells: "Zlicza Twoje punkty w sześciokątnych komórkach, dając ogólniejszy obraz."
         visits: Wizyty
-        show_detected_area_visits: Pokaż wykryte wizyty w obszarach
+        show_detected_area_visits: "Wizyty wykryte przez Dawarich: okresy spędzone w jednym miejscu."
         filter_by_name: Filtruj po nazwie...
         all_visits: Wszystkie wizyty
         confirmed_only: Tylko potwierdzone
         suggested_only: Tylko sugerowane
         places: Miejsca
-        show_your_saved_places: Pokaż zapisane miejsca
+        show_your_saved_places: "Zapisane przez Ciebie nazwane miejsca. Wizyty są do nich przypisywane."
         enable_all_tags: Włącz wszystkie tagi
         show_place_boundaries: Pokaż granice miejsc
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca
         photos: Zdjęcia
-        show_geotagged_photos: Pokaż zdjęcia z geotagami
+        show_geotagged_photos: "Twoje zdjęcia z geotagami, przypięte tam, gdzie zostały zrobione."
         areas: Obszary
         show_defined_areas: Pokaż zdefiniowane obszary
         fog_of_war: Nieodkryty obszar
-        show_explored_areas: Pokaż odkryte obszary
+        show_explored_areas: "Przyciemnia mapę poza odwiedzonymi obszarami."
         per_point: Na punkt
         per_hexagon: Na heksagon
         scratch_map: Odwiedzone kraje
-        show_scratched_countries: Wyróżnij kraje odwiedzone w wybranym zakresie
+        show_scratched_countries: "Kraje odwiedzone w wybranym okresie, zamalowane."
         family_members: Członkowie rodziny
         manage_family: "Zarządzaj rodziną"
         show_family_member_locations: Pokaż lokalizacje członków rodziny
@@ -1067,7 +1080,6 @@ pl:
         points_of_interest: Punkty zainteresowania
         choose_which_poi_categories_appear_on_the_map: Wybierz kategorie POI widoczne na mapie.
         distance_threshold_for_route_splitting: Próg odległości do dzielenia tras
-        min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
@@ -1098,9 +1110,6 @@ pl:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Najpierw zapisz te progi. Nowe ślady będą ich używać automatycznie; wybierz „Przelicz ślady i statystyki”, aby zastosować je do istniejącej historii.
         city_statistics: Statystyki miast
         min_minutes_in_city: Minimalny czas w mieście
-        min_5: 60 min
-        min_6: 5 min
-        min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Jak długo musisz pozostać, aby miasto zostało uwzględnione w statystykach
         min_12: 720 min
         live_mode: Tryb na żywo
@@ -1108,7 +1117,6 @@ pl:
         apply_settings: Zastosuj ustawienia
         reset_to_defaults_2: Przywróć ustawienia domyślne
         transportation_mode_detection: Wykrywanie trybu transportu
-        checking_status: Sprawdzanie statusu...
         settings_are_locked_while_recalculation_is_in_progress: Ustawienia są zablokowane podczas przeliczania.
         note: 'Uwaga:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Zmiana tych progów uruchomi ponowne przeliczenie trybów transportu dla wszystkich tras. To może chwilę potrwać, zależnie od liczby tras.
@@ -1139,7 +1147,6 @@ pl:
         sec_2: 180 sec
         min_flight_distance: Minimalny dystans lotu
         km: 100 km
-        make_changes_to_enable_the_apply_button: Wprowadź zmiany, aby aktywować przycisk Zastosuj
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Ponownie uruchamia automatyczną klasyfikację dla wszystkich tras. Segmenty poprawione ręcznie zostają zachowane. Może potrwać kilka minut.
         loading_calendar: Ładowanie kalendarza…
         less: mniej
@@ -1251,6 +1258,10 @@ pl:
       index:
         loading: Ładowanie...
         pick_a_day: Wybierz dzień
+        no_data_in_period: "Brak danych lokalizacji w tym okresie"
+        jump_to_latest_data: "Przejdź do najnowszych danych"
+        nothing_recorded_yet: "Nic jeszcze nie zostało zarejestrowane ani zaimportowane."
+        get_started: "Zacznij"
         map: Mapa
     residency:
       show:
@@ -1293,6 +1304,22 @@ pl:
         previous_day: Poprzedni dzień
         next_day: Następny dzień
       feed:
+        latest_days_only:
+          one: "Ostatni %{count} dzień dłuższego okresu"
+          few: "Ostatnie %{count} dni dłuższego okresu"
+          many: "Ostatnie %{count} dni dłuższego okresu"
+          other: "Ostatnie %{count} dnia dłuższego okresu"
+        all_days: Wszystkie dni
+        day_count:
+          one: "%{count} dzień"
+          few: "%{count} dni"
+          many: "%{count} dni"
+          other: "%{count} dnia"
+        note_count:
+          one: "%{count} notatka"
+          few: "%{count} notatki"
+          many: "%{count} notatek"
+          other: "%{count} notatki"
         no_visits_tracked_this_day: Brak zarejestrowanych wizyt tego dnia.
         visits_are_auto_detected_daily_from_your_location_data: Wizyty są automatycznie wykrywane codziennie na podstawie Twoich danych lokalizacji.
       gap_entry:
@@ -1339,15 +1366,18 @@ pl:
       and: oraz
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: kontenerów Dockera. Dziękujemy!
+      contact_support_html: "Jeśli to się powtórzy, napisz do nas na %{email}."
     index:
       notifications: Powiadomienia
       mark_all_as_read: Oznacz wszystkie jako przeczytane
       delete_all: Usuń wszystkie
       are_you_sure_you_want_to_delete_all_notifications: Na pewno chcesz usunąć wszystkie powiadomienia?
+      read_are_deleted: "Przeczytane powiadomienia są usuwane po %{days} dniach."
     show:
       back_to_notifications: Powrót do powiadomień
       destroy_this_notification: Usuń to powiadomienie
       are_you_sure: Czy na pewno chcesz kontynuować?
+      open: Otwórz
   places:
     management:
       create: "Utwórz miejsce"
@@ -1572,6 +1602,13 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
+    data_processing:
+      show:
+        title: "Przetwarzanie danych"
+        intro: "Jak Dawarich łączy Twoje punkty w trasy, które odczyty uznaje za szum GPS i jak długo trzeba przebywać w mieście, żeby się liczyło. Zmiany tutaj mogą przeliczyć dane, które już masz; kolory i warstwy mapy zostają w ustawieniach mapy."
+        existing_data: "Zastosuj do istniejących danych"
+        existing_data_hint: "Powyższe zmiany dotyczą nowych punktów. Aby objęły też historię, przelicz ją. Oba procesy działają w tle i przy dużym koncie mogą potrwać."
+        rebuilds_need_pro: "Przeliczanie wcześniejszych danych jest częścią Dawarich Pro."
     geofencing_paused_while_archived: wstrzymane, gdy miejsce jest zarchiwizowane
     trek_sources:
       select_trips:
@@ -1595,6 +1632,7 @@ pl:
       destroy:
         source_removed_trips_kept: "TREK został rozłączony. Zarządzane podróże zostały zachowane i nie będą już synchronizowane."
     navigation:
+      data_processing: "Przetwarzanie danych"
       general: Ogólne
       integrations: Integracje
       map: Mapa
@@ -1687,6 +1725,8 @@ pl:
         family_feature_hint: "Udostępnianie lokalizacji członkom rodziny. Po wyłączeniu przestajesz udostępniać swoją lokalizację i linki do podróży tylko dla rodziny; pozostajesz jej członkiem. Po ponownym włączeniu udostępnianie lokalizacji jest wyłączone."
         achievements_feature: "Osiągnięcia"
         achievements_feature_hint: "Odkryte regiony i odznaki. Po wyłączeniu postęp nie jest już obliczany, a Twoje publiczne linki do osiągnięć zostają wyłączone."
+        trip_detection_feature: "Automatycznie znajduj podróże"
+        trip_detection_feature_hint: "Znajduje podróże w Twojej historii lokalizacji i dodaje je do Twoich podróży. Po wyłączeniu wyszukiwanie zostaje zatrzymane, a już znalezione podróże pozostają. Po ponownym włączeniu wyszukiwanie rusza od razu."
     integrations:
       trek:
         title: "Integracja z TREK"
@@ -1973,6 +2013,8 @@ pl:
         no_thanks: Nie, dziękuję
         yes_notify_me: Tak, powiadamiaj mnie
       help_links:
+        documentation: "Dokumentacja"
+        keyboard_shortcuts: "Skróty klawiszowe"
         need_help_ping_us: Potrzebujesz pomocy? Napisz do nas!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -2112,6 +2154,8 @@ pl:
         shared_from_dawarich: Udostępniono z Dawarich
     map:
       date_navigation_v2:
+        note_days: "dzień z notatkami"
+        choose_period: Wybierz okres
         share: Udostępnij
         start_date_and_time: Data i godzina początkowa
         end_date_and_time: Data i godzina końcowa
@@ -3762,7 +3806,7 @@ pl:
         export_finished: Eksport zakończony
         export_name_successfully_finished: Eksport "%{name}" zakończył się pomyślnie.
         export_failed: Eksport nie powiódł się
-        export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "Eksport \"%{name}\" nie powiódł się: %{message}"
         unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
     families:
       auto_create:
@@ -3787,8 +3831,6 @@ pl:
         you_must_leave_your_current_family_before_creating_a_new: Musisz opuścić obecną rodzinę przed utworzeniem nowej
         you_have_already_created_a_family_each_user_can_only: Utworzyłeś już rodzinę. Każdy użytkownik może utworzyć tylko jedną rodzinę
         family_feature_requires_an_active_subscription: Funkcja rodziny wymaga aktywnej subskrypcji
-        family_created: Rodzina utworzona
-        you_ve_successfully_created_the_family_name: Pomyślnie utworzyłeś rodzinę '%{name}'
         a_family_with_this_name_already_exists_for_your_account: Rodzina o tej nazwie już istnieje dla Twojego konta
         an_unexpected_error_occurred_while_creating_the_family_please_try: Wystąpił nieoczekiwany błąd podczas tworzenia rodziny. Spróbuj ponownie
         failed_to_create_family: 'Nie udało się utworzyć rodziny: %{message}'
@@ -3811,7 +3853,6 @@ pl:
         user_already_in_family: Użytkownik już należy do rodziny
         invitation_already_sent: Zaproszenie zostało już wysłane na ten adres e-mail
         sent_self_hosted: Zaproszenie do rodziny wysłano do %{email}, jeśli SMTP jest poprawnie skonfigurowane. Jeśli nie używasz SMTP, skopiuj link zaproszenia ze strony rodziny i udostępnij go ręcznie.
-        sent: Zaproszenie do rodziny wysłano do %{email}
         failed_to_create: 'Nie udało się utworzyć zaproszenia: %{message}'
       memberships:
         destroy:
@@ -3820,14 +3861,10 @@ pl:
           only_family_owners_can_remove_other_members: Tylko właściciele rodziny mogą usuwać innych członków.
           cannot_remove_members_from_a_different_family: Nie można usuwać członków z innej rodziny.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Nie można usunąć właściciela rodziny. Właściciel musi usunąć rodzinę albo odejść samodzielnie.
-          left_family: Opuścili rodzinę
-          you_ve_left_the_family_family_name: Opuściłeś rodzinę "%{family_name}"
           family_member_left: Członek rodziny odszedł
           email_has_left_the_family_family_name: '%{email} opuścił rodzinę "%{family_name}"'
           removed_from_family: Usunięto z rodziny
           you_have_been_removed_from_the_family_family_name_by: Zostałeś usunięty z rodziny "%{family_name}" przez %{email}
-          member_removed: Członek usunięty
-          email_has_been_removed_from_the_family_family_name: '%{email} został usunięty z rodziny "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Wystąpił nieoczekiwany błąd podczas usuwania członkostwa. Spróbuj ponownie
           failed_to_leave: 'Nie udało się opuścić rodziny: %{message}'
       respond_to_location_request:
@@ -3909,7 +3946,6 @@ pl:
           one: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktem, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
           other: 'Twój plik %{name} zaimportował 0 punktów. Zawiera zaplanowaną trasę z %{count} punktami, ale nie zawiera zarejestrowanej trasy. Dawarich importuje zarejestrowane trasy, a nie zaplanowane.'
         zero_points: Plik %{name} zaimportował 0 punktów. Nie znaleziono w nim nowych punktów lokalizacji.
-        import_failed_self_hosted: 'Import "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" nie powiódł się, skontaktuj się z nami: hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: Import "%{name}" zakończył się i wszystkie punkty zostały zapisane, ale etap %{step} nie powiódł się. Statystyki, trasy lub sugestie wizyt mogą być niepełne albo nieaktualne. Możesz uruchomić przeliczenie w Ustawieniach.
         your_file_name_contained_raw_points_points_all_of_which: Plik %{name} zawierał %{raw_points} punktów, które już istnieją na Twojej osi czasu pod tymi samymi współrzędnymi i znacznikami czasu. Nic nie zostało zaimportowane. Jeśli to nieoczekiwane, usuń istniejące punkty dla tego zakresu dat i zaimportuj ponownie.
@@ -3986,7 +4022,6 @@ pl:
     stats:
       calculate_month:
         stats_update_failed: Aktualizacja statystyk nie powiodła się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: Nie można usunąć użytkownika, który jest właścicielem rodziny z innymi członkami
@@ -4090,18 +4125,15 @@ pl:
     stats:
       calculating_job:
         stats_update_failed: Aktualizacja statystyk nie powiodła się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Obliczanie podsumowania miesięcznego nie powiodło się
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Podsumowanie roczne
             period_label_calculation_failed: Obliczanie %{period_label} nie powiodło się
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
       import_data_job:
         data_import_failed: Import danych nie powiódł się
         your_data_import_failed_with_error_message_please_check_the: 'Import danych nie powiódł się z błędem: %{message}. Sprawdź format archiwum i spróbuj ponownie.'
@@ -4116,7 +4148,6 @@ pl:
           other: "%{count} lat"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Statystyki, trasy i podsumowania zostały przeliczone dla %{year_label}.
         data_recalculation_failed: Przeliczanie danych nie powiodło się
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Ponowne wykrywanie wizyt zajęte
@@ -4233,13 +4264,9 @@ pl:
       failed_to_load_flights: Nie udało się załadować lotów
       failed_to_load_anomalies: Nie udało się załadować anomalii
       cannot_update_recalculation_is_already_in_progress: 'Nie można zaktualizować: przeliczanie już trwa'
-      transportation_settings_saved: Ustawienia transportu zapisane
       globe_view_will_be_applied_after_page_reload: Widok globu zostanie zastosowany po odświeżeniu strony
-      settings_updated_successfully: Ustawienia zaktualizowane pomyślnie
       reloading_map_data_with_new_settings: Odświeżanie danych mapy z nowymi ustawieniami...
       api_key_not_available_please_reload_the_page: Klucz API niedostępny; odśwież stronę.
-      could_not_queue_re_evaluation_please_try_again: Nie udało się dodać ponownej oceny do kolejki. Spróbuj ponownie.
-      could_not_queue_recalculation_please_try_again: Nie udało się dodać przeliczenia do kolejki. Spróbuj ponownie.
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
       visit_creation_modal_not_available: Okno tworzenia wizyty jest niedostępne
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
@@ -5024,6 +5051,7 @@ pl:
         show_description: Opis
         show_photos: Zdjęcia
     import:
+      failed_reason_in_list: "Importu nie udało się dokończyć. Otwórz go, aby zobaczyć numer referencyjny i dalsze kroki."
       technical_details: Szczegóły techniczne
       failed: Import nie powiódł się
       format_error: Nie udało się odczytać formatu pliku. Sprawdź, czy plik jest poprawny i ma obsługiwany format.

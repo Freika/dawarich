@@ -26,11 +26,7 @@ export class PlacesManager extends PlacesTagFilters {
 
         // Show progress badge if layer has no data yet (initial load)
         if (!placesLayer.data?.features?.length) {
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { places: 0 },
-            isComplete: false,
-          })
+          this.controller.loadingBadge.start("places")
 
           await this.initializePlaceTagFilters()
 
@@ -38,10 +34,7 @@ export class PlacesManager extends PlacesTagFilters {
             placesLayer.data?.features?.filter(
               (feature) => feature.properties?.featureKind === "center",
             ).length || 0
-          this.controller.updateLoadingCounts({
-            counts: { places: loadedPlaces },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("places", loadedPlaces)
         } else {
           this.initializePlaceTagFilters()
         }
@@ -109,7 +102,7 @@ export class PlacesManager extends PlacesTagFilters {
       }
 
       if (ensureVisible) this._ensurePlacesVisible(placesLayer)
-      await this._refreshPrivacyZones()
+      await this.refreshPrivacyZones()
     } catch (error) {
       console.error("[Maps V2] Failed to update places:", error)
     }
@@ -121,7 +114,7 @@ export class PlacesManager extends PlacesTagFilters {
    * and the current position is hidden until the next live point because
    * it may now sit inside a zone.
    */
-  async _refreshPrivacyZones() {
+  async refreshPrivacyZones() {
     const { fingerprint, failed } = await this.api.fetchPrivacyZones()
     if (failed || !setPrivacyZonesFingerprint(fingerprint)) return
 

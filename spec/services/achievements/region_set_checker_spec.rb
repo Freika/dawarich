@@ -131,6 +131,7 @@ RSpec.describe Achievements::RegionSetChecker do
       expect(user.user_achievements.where(achievement_key: 'thematic_baltics_v1').count).to eq(1)
       expect(user.achievement_unlock_events.where(kind: 'set', key: 'thematic_baltics_v1').count).to eq(1)
       expect(user.notifications.where(title: 'Baltics completed!').count).to eq(1)
+      expect(user.notifications.find_by!(title: 'Baltics completed!').action_path).to eq('/achievements')
     end
 
     it 'backfills thematic awards without announcements or reveal events' do
@@ -192,6 +193,12 @@ RSpec.describe Achievements::RegionSetChecker do
       expect(user.notifications.pluck(:content)).to include('Europe Explorer: 1/50 countries visited.')
     end
 
+    it 'leads from every achievement notification to the achievements page' do
+      described_class.new(user, notify: true).call
+
+      expect(user.notifications.pluck(:action_path).uniq).to eq(['/achievements'])
+    end
+
     it 'collapses a bulk earn into one digest instead of a notification flood' do
       stub_const("#{described_class}::REGION_NOTIFY_CAP", 1)
 
@@ -200,6 +207,7 @@ RSpec.describe Achievements::RegionSetChecker do
       titles = user.notifications.pluck(:title)
       expect(titles).to include('2 new areas explored!')
       expect(titles).not_to include('Bavaria explored!')
+      expect(user.notifications.find_by!(title: '2 new areas explored!').action_path).to eq('/achievements')
     end
 
     it 'sends nothing when notifications are off' do

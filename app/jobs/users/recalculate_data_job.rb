@@ -119,7 +119,8 @@ class Users::RecalculateDataJob < ApplicationJob
         content: I18n.t(
           'jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
           year_label: year_label
-        )
+        ),
+        action_path: Notifications.paths.stats_path
       ).call
     end
   end
@@ -130,9 +131,7 @@ class Users::RecalculateDataJob < ApplicationJob
         user: user,
         kind: :error,
         title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
-        content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
-                        backtrace: error.backtrace.first(10).join("\n")),
-        deduplicate: true
+        content: error.message
       ).call
     end
   rescue ActiveRecord::RecordNotFound

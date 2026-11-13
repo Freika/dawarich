@@ -207,7 +207,15 @@ class Users::ImportData::Points
       'import_reference',
       'country_info',
       'visit_reference',
-      'country'
+      'country',
+      # Never trust archive-supplied identity/foreign keys: they are resolved from
+      # *_reference hashes below, so a raw id here would point at another tenant's
+      # rows. Mirrors the visits importer, which already strips these.
+      'id',
+      'visit_id',
+      'import_id',
+      'track_id',
+      'raw_data_archive_id'
     )
 
     ensure_lonlat_field(attributes, point_data)
@@ -339,7 +347,7 @@ class Users::ImportData::Points
   # SQL-backed exports encode these JSONB values as JSON text inside JSONL.
   # Decode before upsert_all, otherwise its serializer stores string scalars.
   def deserialize_jsonb_columns(attributes)
-    %w[geodata raw_data].each do |column|
+    %w[geodata raw_data motion_data].each do |column|
       value = attributes[column]
       attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end

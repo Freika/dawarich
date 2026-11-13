@@ -63,9 +63,8 @@ module Visits
     end
 
     def clamp_to_plan_window(timestamp)
-      return timestamp unless user.respond_to?(:plan_restricted?) && user.plan_restricted?
-
-      [timestamp, user.data_window_start.to_i].max
+      window_start = user.data_window_start
+      window_start ? [timestamp, window_start.to_i].max : timestamp
     end
 
     # Detection is stateless over raw points, so ownership by an existing

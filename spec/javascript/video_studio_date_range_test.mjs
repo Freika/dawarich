@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 const i18nSource = await readFile(
   new URL("../../app/javascript/i18n.js", import.meta.url),
@@ -19,15 +20,9 @@ const { formatDateTimeRange, selectableDateTimeRange, toLocalDateTimeInput } =
   await import(dateRangeUrl)
 globalThis.__videoStudioSelectableDateTimeRange = selectableDateTimeRange
 
-const controllerSource = (
-  await readFile(
-    new URL(
-      "../../app/javascript/controllers/video_studio_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const controllerSource = await strippedSource(
+  "controllers/video_studio_controller.js",
+)
 const controllerPrelude = `
 class Controller {}
 const selectableDateTimeRange = globalThis.__videoStudioSelectableDateTimeRange

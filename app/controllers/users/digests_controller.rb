@@ -21,7 +21,7 @@ class Users::DigestsController < ApplicationController
   def create
     year = params[:year].to_i
 
-    if valid_year?(year)
+    if Users::Digest.generatable_year?(current_user, year)
       Users::Digests::RequestYear.new(current_user, year).call
       redirect_to users_digests_path,
                   notice: I18n.t('controllers.users.digests.year_end_digest_for_year_is_being_generated_check_back',
@@ -54,11 +54,5 @@ status: :see_other
     existing_digests = current_user.digests.yearly.pluck(:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
-  end
-
-  def valid_year?(year)
-    return false if year < 1970 || year >= Time.current.year
-
-    current_user.scoped_stats.exists?(year: year)
   end
 end

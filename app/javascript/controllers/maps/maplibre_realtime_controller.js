@@ -231,20 +231,7 @@ export default class extends Controller {
 
     mapsController.layerManager?.getLayer("points-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
-    mapsController.layerManager
-      ?.getLayer("scratch")
-      ?.update()
-      .catch((error) => {
-        console.warn(
-          "[Realtime Controller] Failed to refresh visited countries:",
-          error,
-        )
-        Toast.retry(
-          translate("messages.failed_to_load_visited_countries"),
-          translate("messages.retry"),
-          () => mapsController.layerManager?.getLayer("scratch")?.update(),
-        )
-      })
+    mapsController.layerManager?.getLayer("scratch")?.retryMembership()
   }
 
   /**
@@ -320,11 +307,13 @@ export default class extends Controller {
   updateConnectionIndicator(connected) {
     if (!this.hasConnectionStatusTarget) return
     const indicator = this.connectionStatusTarget
-    indicator.textContent = translate(
+    const words = translate(
       connected ? "ux_p3.realtime.connected" : "ux_p3.realtime.disconnected",
     )
+    // The indicator is a dot: its words are a tooltip and screen-reader text.
+    indicator.title = words
+    indicator.firstElementChild.textContent = words
     indicator.dataset.state = connected ? "connected" : "disconnected"
-    indicator.classList.toggle("text-warning", !connected)
     indicator.classList.remove("hidden")
   }
 }

@@ -35,6 +35,17 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with trip detection dismissals' do
+      it 'deletes the dismissals with the user' do
+        user.trip_detection_dismissals.create!(started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        service.call
+
+        expect(User.exists?(user.id)).to be(false)
+        expect(TripDetectionDismissal.where(user_id: user.id)).to be_empty
+      end
+    end
+
     context 'with geofencing records' do
       it 'deletes events, webhooks and deliveries with the user' do
         delivery = create(:webhook_delivery, webhook: create(:webhook, user:))
@@ -354,6 +365,7 @@ RSpec.describe Users::Destroy do
         Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[US CA])
         Rails.cache.write("dawarich/user_#{user.id}_cities_visited", %w[NYC SF])
         Rails.cache.write("dawarich/user_#{user.id}_years_tracked", [2023, 2024])
+        Rails.cache.write("dawarich/user_#{user.id}_points_geocoded_stats", { geocoded: 1 })
       end
 
       it 'clears all user-specific cache keys' do
@@ -362,6 +374,7 @@ RSpec.describe Users::Destroy do
         expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_years_tracked")).to be_nil
+        expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to be_nil
       end
 
       it 'logs cache cleanup' do

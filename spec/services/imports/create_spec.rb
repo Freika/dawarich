@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Imports::Create do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:service) { described_class.new(user, import) }
 
@@ -40,6 +42,43 @@ RSpec.describe Imports::Create do
         end
       end
 
+      context 'when the file holds no points at all' do
+        let(:user) { empty_import.user }
+        let(:empty_import) { create(:import, source: 'geojson', status: 'created', name: 'empty.json') }
+
+        before do
+          empty_import.file.attach(io: StringIO.new({ type: 'FeatureCollection', features: [] }.to_json),
+                                   filename: 'empty.json', content_type: 'application/json')
+        end
+
+        it 'warns once and leads to the import list' do
+          described_class.new(user, empty_import).call
+
+          notifications = user.notifications.where(title: 'Import completed with no points')
+          expect(notifications.count).to eq(1)
+          expect(notifications.first).to have_attributes(kind: 'warning', action_path: '/imports')
+        end
+      end
+
+      context 'when every point in the file was already imported' do
+        let(:user) { import.user }
+        let(:repeat_import) { create(:import, user:, source: 'owntracks', status: 'created') }
+
+        before do
+          service.call
+          repeat_import.file.attach(io: File.open(file_path), filename: 'again.rec',
+                                    content_type: 'application/octet-stream')
+        end
+
+        it 'says so once and leads to the import list' do
+          described_class.new(user, repeat_import).call
+
+          notification = user.notifications.find_by!(title: 'Import completed with no new points')
+          expect(notification.kind).to eq('info')
+          expect(notification.action_path).to eq('/imports')
+        end
+      end
+
       context 'when post-import processing raises' do
         before do
           allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(StandardError, 'boom')
@@ -68,6 +107,12 @@ RSpec.describe Imports::Create do
           service.call
 
           expect(user.notifications.warning.where('title ILIKE ?', '%post-processing%')).to exist
+        end
+
+        it 'leads from that notification to the import list' do
+          service.call
+
+          expect(user.notifications.warning.last.action_path).to eq('/imports')
         end
 
         it 'creates a single notification when multiple steps fail' do
@@ -186,6 +231,26 @@ RSpec.describe Imports::Create do
           end
         end
 
+        it 'schedules Trip Detection for the user' do
+          clear_trip_detection_schedule(user.id)
+          freeze_time do
+            expect { service.call }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+                                                                          .at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+          end
+        end
+
+        it 'schedules one Trip Detection run for several imports in a row' do
+          clear_trip_detection_schedule(user.id)
+          second = create(:import, source: 'owntracks', name: '2024-03-copy.rec')
+          second.file.attach(io: File.open(file_path), filename: '2024-03-copy.rec',
+                             content_type: 'application/octet-stream')
+
+          expect do
+            service.call
+            described_class.new(user, second).call
+          end.to have_enqueued_job(Trips::DetectJob).with(user.id).exactly(:once)
+        end
+
         it 'schedules an achievements check from the oldest imported point' do
           clear_achievement_checks(user.id)
 
@@ -213,6 +278,12 @@ RSpec.describe Imports::Create do
 
             expect(user.notifications.last.content).to \
               include('Import &quot;2024-03.rec&quot; failed.', '/imports/')
+          end
+
+          it 'opens the import list, which survives the import being deleted' do
+            service.call
+
+            expect(user.notifications.last.action_path).to eq('/imports')
           end
 
           it 'localizes the failed notification' do

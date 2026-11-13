@@ -142,7 +142,9 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   end
 
   def notify!(user, kind:, title:, content:)
-    user.notifications.create!(kind: kind, title: title, content: content)
+    Notifications::Create.new(
+      user:, kind:, title:, content:, action_path: Notifications.paths.settings_visits_path
+    ).call
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn(
       "[Visits::FullHistoryRedetectJob notify] user_id=#{user&.id} kind=#{kind} error=#{e.message}"

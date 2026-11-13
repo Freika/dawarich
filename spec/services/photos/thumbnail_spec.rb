@@ -3,77 +3,80 @@
 require 'rails_helper'
 
 RSpec.describe Photos::Thumbnail do
-  let(:user) { create(:user) }
+  subject(:thumbnail) { described_class.new(user, source, id).call }
+
   let(:id) { 'photo123' }
 
-  describe '#call' do
-    subject { described_class.new(user, source, id).call }
+  context 'with immich source' do
+    let(:source) { 'immich' }
+    let(:user) do
+      create(:user, settings: { 'immich_url' => 'https://photos.example.com', 'immich_api_key' => 'immich_key_123' })
+    end
 
-    context 'with immich source' do
-      let(:source) { 'immich' }
-      let(:api_key) { 'immich_key_123' }
-      let(:base_url) { 'https://photos.example.com' }
-      let(:expected_url) { "#{base_url}/api/assets/#{id}/thumbnail?size=preview" }
-      let(:expected_headers) do
-        {
-          'accept' => 'application/octet-stream',
-          'X-Api-Key' => api_key
-        }
-      end
+    it 'fetches the preview with the API key' do
+      request = stub_request(:get, 'https://photos.example.com/api/assets/photo123/thumbnail?size=preview')
+                .with(headers: { 'Accept' => 'application/octet-stream', 'X-Api-Key' => 'immich_key_123' })
+                .to_return(status: 200, body: 'thumbnail_data')
 
-      before do
-        allow(user).to receive(:settings).and_return(
-          'immich_url' => base_url,
-          'immich_api_key' => api_key,
-          'immich_skip_ssl_verification' => false
-        )
-      end
+      expect(thumbnail).to be_success
+      expect(thumbnail.body).to eq('thumbnail_data')
+      expect(request).to have_been_requested
+    end
 
-      it 'fetches thumbnail with correct parameters' do
-        expect(HTTParty).to receive(:get)
-          .with(expected_url, hash_including(headers: expected_headers, verify: true))
-          .and_return('thumbnail_data')
+    it 'returns the upstream answer when the asset is not readable' do
+      stub_request(:get, 'https://photos.example.com/api/assets/photo123/thumbnail?size=preview')
+        .to_return(status: 403, body: '{}')
 
-        expect(subject).to eq('thumbnail_data')
+      expect(thumbnail).not_to be_success
+      expect(thumbnail.code).to eq(403)
+    end
+
+    context 'with an id that tries to leave the asset path' do
+      let(:id) { '../admin' }
+
+      it 'escapes it' do
+        request = stub_request(:get, 'https://photos.example.com/api/assets/..%2Fadmin/thumbnail?size=preview')
+                  .to_return(status: 404)
+
+        thumbnail
+
+        expect(request).to have_been_requested
       end
     end
 
-    context 'with photoprism source' do
-      let(:source) { 'photoprism' }
-      let(:base_url) { 'https://photoprism.example.com' }
-      let(:preview_token) { 'preview_token_123' }
-      let(:expected_url) { "#{base_url}/api/v1/t/#{id}/#{preview_token}/tile_500" }
-      let(:expected_headers) do
-        {
-          'accept' => 'application/octet-stream'
-        }
-      end
+    it 'gives up on a server that does not answer' do
+      stub_request(:get, 'https://photos.example.com/api/assets/photo123/thumbnail?size=preview').to_timeout
 
-      before do
-        allow(user).to receive(:settings).and_return(
-          'photoprism_url' => base_url,
-          'photoprism_skip_ssl_verification' => false
-        )
-        allow(Rails.cache).to receive(:read)
-          .with("#{Photoprism::CachePreviewToken::TOKEN_CACHE_KEY}_#{user.id}")
-          .and_return(preview_token)
-      end
+      expect { thumbnail }.to raise_error(Integrations::Transport::RetryableError)
+    end
+  end
 
-      it 'fetches thumbnail with correct parameters' do
-        expect(HTTParty).to receive(:get)
-          .with(expected_url, hash_including(headers: expected_headers, verify: true))
-          .and_return('thumbnail_data')
+  context 'with photoprism source' do
+    let(:source) { 'photoprism' }
+    let(:user) { create(:user, settings: { 'photoprism_url' => 'https://photoprism.example.com' }) }
 
-        expect(subject).to eq('thumbnail_data')
-      end
+    before do
+      allow(Rails.cache).to receive(:read).and_call_original
+      allow(Rails.cache).to receive(:read)
+        .with("#{Photoprism::CachePreviewToken::TOKEN_CACHE_KEY}_#{user.id}").and_return('preview_token_123')
     end
 
-    context 'with unsupported source' do
-      let(:source) { 'unsupported' }
+    it 'fetches the tile with the cached preview token and no API key' do
+      request = stub_request(:get, 'https://photoprism.example.com/api/v1/t/photo123/preview_token_123/tile_500')
+                .with { |req| req.headers.keys.none? { |name| name.casecmp?('x-api-key') } }
+                .to_return(status: 200, body: 'thumbnail_data')
 
-      it 'raises an error' do
-        expect { subject }.to raise_error(ArgumentError, 'Unsupported source: unsupported')
-      end
+      expect(thumbnail.body).to eq('thumbnail_data')
+      expect(request).to have_been_requested
+    end
+  end
+
+  context 'with unsupported source' do
+    let(:source) { 'unsupported' }
+    let(:user) { create(:user) }
+
+    it 'raises an error' do
+      expect { thumbnail }.to raise_error(ArgumentError, 'Unsupported source: unsupported')
     end
   end
 end

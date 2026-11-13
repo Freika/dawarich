@@ -6,7 +6,7 @@ class StatsQuery
   end
 
   def points_stats
-    cached_stats = Rails.cache.fetch("dawarich/user_#{user.id}_points_geocoded_stats", expires_in: 1.day) do
+    cached_stats = Rails.cache.fetch(Cache::UserKeys.points_geocoded_stats(user.id), expires_in: 1.day) do
       cached_points_geocoded_stats
     end
 

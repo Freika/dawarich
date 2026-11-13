@@ -8,6 +8,12 @@ export default class extends Controller {
     "choiceScreen",
     "importScreen",
     "trackScreen",
+    "homeScreen",
+    "homeMap",
+    "homeLatitude",
+    "homeLongitude",
+    "homeSubmit",
+    "homeDeniedHint",
     "demoButton",
   ]
   static values = {
@@ -19,6 +25,7 @@ export default class extends Controller {
     demoDataUrl: String,
     demoDescription: String,
     hasDemoData: Boolean,
+    hasHome: Boolean,
     userId: Number,
   }
 
@@ -92,6 +99,63 @@ export default class extends Controller {
 
   showChoice() {
     this.switchScreen("choiceScreen")
+  }
+
+  finish() {
+    if (!this.hasHomeValue && this.hasHomeScreenTarget) {
+      this.showHome()
+    } else {
+      this.dismiss()
+    }
+  }
+
+  showHome() {
+    this.switchScreen("homeScreen")
+    // Attached only now, so the modal (rendered on every page) starts no map until this step is shown.
+    this.homeMapTarget.dataset.controller ||= "place-location"
+  }
+
+  locateHome() {
+    if (!navigator.geolocation) {
+      this.toggleHomeDeniedHint(true)
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (!this.hasHomeLatitudeTarget) return
+        this.toggleHomeDeniedHint(false)
+        this.homeLatitudeTarget.value = coords.latitude.toFixed(6)
+        this.homeLongitudeTarget.value = coords.longitude.toFixed(6)
+        for (const field of [
+          this.homeLatitudeTarget,
+          this.homeLongitudeTarget,
+        ]) {
+          field.dispatchEvent(new Event("change", { bubbles: true }))
+        }
+      },
+      () => this.toggleHomeDeniedHint(true),
+      { timeout: 10000 },
+    )
+  }
+
+  toggleHomeDeniedHint(visible) {
+    if (!this.hasHomeDeniedHintTarget) return
+    this.homeDeniedHintTarget.classList.toggle("hidden", !visible)
+  }
+
+  homeLocationChanged() {
+    const fields = [this.homeLatitudeTarget, this.homeLongitudeTarget]
+    this.homeSubmitTarget.disabled = !fields.every(
+      (field) => field.value !== "" && field.checkValidity(),
+    )
+  }
+
+  homeSaved(event) {
+    if (!event.detail.success) return
+    this.hasHomeValue = true
+    // A reopened dialog (navbar "Getting started") must not offer the filled form again.
+    this.showChoice()
+    this.dismiss()
   }
 
   loadDemoData() {
@@ -180,7 +244,12 @@ export default class extends Controller {
   }
 
   switchScreen(targetName) {
-    const screens = ["choiceScreen", "importScreen", "trackScreen"]
+    const screens = [
+      "choiceScreen",
+      "importScreen",
+      "trackScreen",
+      "homeScreen",
+    ]
     for (const screen of screens) {
       if (
         this[`has${screen.charAt(0).toUpperCase() + screen.slice(1)}Target`]

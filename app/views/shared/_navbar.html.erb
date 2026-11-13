@@ -35,6 +35,7 @@
             <ul class="p-2 bg-base-100">
               <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
               <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+              <li><%= link_to t('.notes'), map_v2_path(panel: 'timeline', month: 'latest') %></li>
               <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
               <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
               <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
@@ -100,6 +101,7 @@
           <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
             <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
             <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+              <li><%= link_to t('.notes'), map_v2_path(panel: 'timeline', month: 'latest') %></li>
             <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
             <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
             <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
@@ -190,11 +192,21 @@
                 <%= icon 'bell' %>
                 <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
               </summary>
-              <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
-                <li><%= link_to t('.see_all'), notifications_path %></li>
-                <% @unread_notifications&.first(10)&.each do |notification| %>
-                  <%= render 'notifications/navbar_item', notification: notification %>
-                <% end %>
+              <%# Anchored to the bell's right edge: 20rem to the right of it would leave the viewport. %>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50] w-80 max-w-[90vw] left-auto right-0">
+                <li class="flex flex-row flex-wrap justify-between gap-x-2">
+                  <%= link_to t('.see_all'), notifications_path %>
+                  <%= link_to t('notifications.index.mark_all_as_read'), mark_notifications_as_read_path(inline: true), data: { turbo_method: :post } %>
+                </li>
+                <li class="p-0">
+                  <%# Live notifications are prepended to this list, so it holds nothing else.
+                      Opening one marks it read, so its links must not be prefetched on hover. %>
+                  <ul class="m-0 p-0 before:hidden" id="notifications-list" data-turbo-prefetch="false">
+                    <% @unread_notifications&.first(10)&.each do |notification| %>
+                      <%= render 'notifications/navbar_item', notification: notification %>
+                    <% end %>
+                  </ul>
+                </li>
               </ul>
             </details>
           </li>

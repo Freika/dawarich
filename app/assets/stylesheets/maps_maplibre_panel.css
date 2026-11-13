@@ -32,7 +32,7 @@
     html[aria-busy="true"] #maps-maplibre-container,
     #maps-maplibre-container:not([data-sidebar-layout-ready])
   )
-  > :is(.maps-maplibre-container, .map-button-cluster, .replay-panel) {
+  > :is(.maps-maplibre-container, .map-button-cluster) {
   transition: none;
 }
 
@@ -345,60 +345,6 @@
   }
 }
 
-/* ===== Timeline tab expanded panel ===== */
-/* When the Timeline tab is active, the panel widens so the unified
-   calendar + visit list can breathe. Matching `.panel-timeline-expanded`
-   on the map container keeps the map offset so nothing is obscured. */
-
-.map-control-panel.timeline-expanded {
-  width: 720px;
-  left: -720px;
-}
-
-.map-control-panel.timeline-expanded.open {
-  left: 0;
-}
-
-.maps-maplibre-container.panel-timeline-expanded {
-  margin-left: 720px;
-  width: calc(100% - 720px) !important;
-}
-
-@media (max-width: 1280px) {
-  .map-control-panel.timeline-expanded {
-    width: 620px;
-    left: -620px;
-  }
-  .maps-maplibre-container.panel-timeline-expanded {
-    margin-left: 620px;
-    width: calc(100% - 620px) !important;
-  }
-}
-
-@media (max-width: 1024px) {
-  .map-control-panel.timeline-expanded {
-    width: 520px;
-    left: -520px;
-  }
-  .maps-maplibre-container.panel-timeline-expanded {
-    margin-left: 520px;
-    width: calc(100% - 520px) !important;
-  }
-}
-
-@media (max-width: 768px) {
-  .map-control-panel.timeline-expanded {
-    width: 95%;
-    left: -95%;
-    max-width: 620px;
-  }
-  /* On mobile, overlay the map instead of shrinking it. */
-  .maps-maplibre-container.panel-timeline-expanded {
-    margin-left: 0;
-    width: calc(100% - var(--map-panel-offset, 0px)) !important;
-  }
-}
-
 /* Respect user motion preferences — cap panel/map transitions. */
 @media (prefers-reduced-motion: reduce) {
   .map-control-panel,
@@ -446,25 +392,15 @@
   left: 492px;
 }
 
-.maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
-  left: 732px;
-}
-
 @media (max-width: 1280px) {
   .maps-maplibre-container.panel-open ~ .map-button-cluster {
     left: 432px;
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
-    left: 632px;
   }
 }
 
 @media (max-width: 1024px) {
   .maps-maplibre-container.panel-open ~ .map-button-cluster {
     left: 392px;
-  }
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-button-cluster {
-    left: 532px;
   }
 }
 
@@ -514,6 +450,37 @@
 
 .map-button-cluster__btn--muted {
   opacity: 0.6;
+}
+
+/* Live updates: a dot at the foot of the cluster. */
+.map-button-cluster__live {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0;
+  cursor: help;
+}
+
+.map-button-cluster__live.hidden {
+  display: none;
+}
+
+.map-button-cluster__live::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: oklch(var(--su));
+}
+
+.map-button-cluster__live[data-state="disconnected"]::before {
+  background: oklch(var(--wa));
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-button-cluster__live[data-state="disconnected"]::before {
+    animation: none;
+  }
 }
 
 .map-button-cluster__btn--muted:hover {
@@ -850,6 +817,50 @@
 
 .layer-tile:hover {
   background-color: color-mix(in oklab, oklch(var(--bc)) 4%, oklch(var(--b1)));
+}
+
+/* Preview card for a layer tile: a popover, so it floats over the map
+   instead of being clipped by the scrolling panel. */
+.layer-preview-card {
+  position: fixed;
+  inset: auto;
+  width: min(23rem, calc(100vw - 16px));
+  margin: 0;
+  padding: 0 0 12px;
+  overflow: hidden;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 12px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  text-align: left;
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.25);
+  pointer-events: none;
+}
+
+/* Without the Popover API nothing hides the card, so it must not render. */
+@supports not selector(:popover-open) {
+  .layer-preview-card {
+    display: none;
+  }
+}
+
+.layer-preview-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 368 / 200;
+  background: oklch(var(--b2));
+}
+
+.layer-preview-card__title {
+  padding: 10px 14px 0;
+  font-weight: 600;
+}
+
+.layer-preview-card__text {
+  padding: 2px 14px 0;
+  color: oklch(var(--bc) / 0.7);
+  font-size: 13px;
 }
 
 .layer-tile__input {

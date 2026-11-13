@@ -71,9 +71,22 @@ export default class extends Controller {
       ) {
         return
       }
+      // "?" needs Shift on most layouts, so it is checked before the guard
+      // below that leaves every modified key to the browser.
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const shortcuts = document.getElementById("keyboard-shortcuts")
+        if (shortcuts && !shortcuts.open) {
+          e.preventDefault()
+          shortcuts.showModal()
+        }
+        return
+      }
       // Don't hijack modified combos — Cmd+Shift+C (DevTools picker),
       // Ctrl+L (address bar), etc. must stay with the browser.
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      // "/" needs Shift on German, French and Spanish layouts, so it is let
+      // through like "?".
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.shiftKey && e.key !== "/") return
 
       const keyToTab = {
         t: "timeline-feed",
@@ -275,16 +288,6 @@ export default class extends Controller {
       btn.classList.toggle("map-button-cluster__btn--active", isActive)
       btn.setAttribute("aria-expanded", String(isActive))
     }
-  }
-
-  /**
-   * Switch to a different tab
-   */
-  switchTab(event) {
-    const button = event.currentTarget
-    const tabName = button.dataset.tab
-
-    this.activateTab(tabName)
   }
 
   /**

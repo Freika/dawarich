@@ -1,16 +1,12 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 async function loadModule(path) {
-  const source = (
-    await readFile(
-      new URL(`../../app/javascript/${path}`, import.meta.url),
-      "utf8",
-    )
-  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const source = await strippedSource(path)
   const stubs = `
     class Controller {}
+class ReplayHost extends Controller {}
     const translate = (key) => key
     const Toast = { error() {}, success() {}, info() {} }
     const pointMatchesActiveDateRange = () => true
@@ -22,6 +18,9 @@ async function loadModule(path) {
 
 const { MapDataManager } = await loadModule(
   "controllers/maps/maplibre/map_data_manager.js",
+)
+const { InfoPanel } = await loadModule(
+  "controllers/maps/maplibre/info_panel.js",
 )
 const { default: MapsController } = await loadModule(
   "controllers/maps/maplibre_controller.js",
@@ -44,12 +43,18 @@ function mapController(fetchPointsData) {
   Object.assign(controller, {
     dataLoader: { fetchPointsData },
     layerManager: { getLayer: () => null },
-    showProgress() {},
-    hideProgress() {},
-    updateLoadingCounts() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     closeInfo() {},
   })
   controller.mapDataManager = new MapDataManager(controller)
+  controller.infoPanel = new InfoPanel(controller)
   return controller
 }
 
@@ -165,7 +170,7 @@ test("an invalidated failed points request clears its loading indicator", async 
         rejectLoad = reject
       }),
   )
-  maps.hideProgress = () => {
+  maps.loadingBadge.hide = () => {
     hidden += 1
   }
   const loading = maps.mapDataManager.ensurePointsLoaded()
@@ -304,4 +309,39 @@ test("hard mutations reject stale fallback snapshots without a retry limit", asy
   await loading
   realtime.disconnect()
   assert.equal(manager.lastLoadedData.points[0].longitude, 3)
+})
+
+const { ScratchLayer } = await import("maps_maplibre/layers/scratch_layer")
+
+function failingScratch(errors) {
+  return new ScratchLayer(
+    { getLayer: () => false },
+    {
+      historyScope: () => ({ startAt: "2024-06-01", endAt: "2024-06-30" }),
+      apiClient: {
+        fetchVisitedCountries: async () => {
+          throw new Error("offline")
+        },
+      },
+      onMembershipError: (error) => errors.push(error.message),
+    },
+  )
+}
+
+test("a failed scratch refresh after a point edit reaches the layer's error handler", async () => {
+  const errors = []
+  const scratch = failingScratch(errors)
+  const maps = mapController(async () => result())
+  maps.api = { deletePoint: async () => {} }
+  maps.layerManager = {
+    getLayer: (id) => (id === "scratch" ? scratch : null),
+  }
+  const realtime = new RealtimeController()
+  Object.defineProperty(realtime, "mapsV2Controller", { value: maps })
+
+  await maps.deletePoint(7)
+  realtime.refreshLiveLayers()
+  await new Promise(setImmediate)
+
+  assert.deepEqual(errors, ["offline", "offline"])
 })

@@ -1,25 +1,27 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
+const read = (path) =>
+  readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
+const body = await strippedSource("controllers/maps/maplibre/layer_manager.js")
+// Stub every name the manager and its mixins import, except the inlined mixins.
 const importedNames = []
-const body = source.replace(
-  /^import\s+([\s\S]*?)\s+from\s+"[^"]+"\n/gm,
-  (_statement, clause) => {
+for (const path of [
+  "controllers/maps/maplibre/layer_manager.js",
+  "controllers/maps/maplibre/layer_events.js",
+]) {
+  for (const [, clause] of (await read(path)).matchAll(
+    /^import\s+([\s\S]*?)\s+from\s+"[^"]+"\n/gm,
+  )) {
     for (const part of (clause.match(/\{([\s\S]*)\}/)?.[1] ?? "").split(",")) {
       const name = part.trim()
-      if (name) importedNames.push(name)
+      if (name && name !== "layerEvents" && !importedNames.includes(name))
+        importedNames.push(name)
     }
-    return ""
-  },
-)
+  }
+}
 const stubs = importedNames
   .map((name) =>
     name === "shouldShowPointPopup"
@@ -52,7 +54,10 @@ function mount(rendered) {
     },
   )
   new LayerManager(map, {}, {}, {}).setupLayerEventHandlers(handlers)
-  return { calls, click: () => mapClick({ point: { x: 1, y: 1 } }) }
+  return {
+    calls,
+    click: (event = {}) => mapClick({ point: { x: 1, y: 1 }, ...event }),
+  }
 }
 
 const cleared = (calls) => calls.filter((name) => /^clear/.test(String(name)))
@@ -82,6 +87,16 @@ test("clicking a point of the open editor keeps everything", () => {
   })
 
   click()
+
+  assert.deepEqual(cleared(calls), [])
+})
+
+// The track's own click handler runs first and opens the Timeline, which
+// shifts the map; the empty-map check for the same event must not undo it.
+test("a track click keeps the selection it made in the same event", () => {
+  const { calls, click } = mount({ "tracks-mvt": [] })
+
+  click({ defaultPrevented: true })
 
   assert.deepEqual(cleared(calls), [])
 })

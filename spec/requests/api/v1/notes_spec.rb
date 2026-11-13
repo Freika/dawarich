@@ -47,6 +47,59 @@ RSpec.describe '/api/v1/notes', type: :request do
       get api_v1_notes_url
       expect(response).to have_http_status(:unauthorized)
     end
+
+    context 'with map read params' do
+      let!(:note) do
+        create(:note, user: user, body: 'Berlin', noted_at: Time.utc(2025, 5, 3, 12),
+                      latitude: 52.52, longitude: 13.40)
+      end
+      let!(:lisbon) do
+        create(:note, user: user, body: 'Lisbon', noted_at: Time.utc(2025, 6, 10, 12),
+                      latitude: 38.72, longitude: -9.14)
+      end
+
+      def bodies(params)
+        get api_v1_notes_url, headers: headers, params: params
+        JSON.parse(response.body).pluck('body')
+      end
+
+      it 'filters by the moment the note describes' do
+        expect(bodies(start_at: '2025-05-01T00:00:00Z', end_at: '2025-05-31T23:59:59Z')).to eq(['Berlin'])
+      end
+
+      it 'filters by bounding box' do
+        expect(bodies(min_lon: -10, min_lat: 38, max_lon: -9, max_lat: 39)).to eq(['Lisbon'])
+      end
+
+      it 'ignores an incomplete bounding box' do
+        expect(bodies(min_lon: -10, min_lat: 38)).to contain_exactly('Berlin', 'Lisbon')
+      end
+
+      it 'paginates when a page is requested' do
+        expect(bodies(page: 2, per_page: 1)).to eq(['Berlin'])
+        expect(response.headers['X-Current-Page']).to eq('2')
+        expect(response.headers['X-Total-Pages']).to eq('2')
+      end
+    end
+
+    it 'reports the day of a map note in the user timezone' do
+      user.update!(settings: user.settings.merge('timezone' => 'Asia/Tokyo'))
+      note.update!(noted_at: Time.utc(2025, 5, 3, 16, 30), latitude: 35.68, longitude: 139.76)
+
+      get api_v1_notes_url, headers: headers
+
+      expect(JSON.parse(response.body).first['date']).to eq('2025-05-04')
+    end
+
+    it 'returns notes older than the Lite data window' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      note.update!(noted_at: 3.years.ago)
+
+      get api_v1_notes_url, headers: headers
+
+      expect(JSON.parse(response.body).pluck('id')).to eq([note.id])
+    end
   end
 
   describe 'GET /show' do

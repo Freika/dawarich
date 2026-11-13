@@ -72,7 +72,7 @@ module GeofenceEvents
     end
 
     def fan_out(event)
-      return if event.webhook_skip_reason || !@user.entitlements.pro_api?
+      return if event.webhook_skip_reason || !@user.full_access?
 
       @user.webhooks.where(active: true).find_each do |webhook|
         next unless webhook.subscribed_to?(place: @place, event_type: @event_type)

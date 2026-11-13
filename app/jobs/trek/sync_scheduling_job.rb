@@ -5,11 +5,8 @@ module Trek
     queue_as :imports
 
     def perform
-      TripSource.active.where(provider: 'trek').find_each do |source|
-        next unless source.sync_allowed?
-
-        Trek::SyncJob.perform_later(source.id)
-      end
+      sources = TripSource.active.where(provider: 'trek').find_each.select(&:sync_allowed?)
+      ActiveJob.perform_all_later(sources.map { |source| Trek::SyncJob.new(source.id) })
     end
   end
 end

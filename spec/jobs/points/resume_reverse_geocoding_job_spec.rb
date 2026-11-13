@@ -127,9 +127,8 @@ RSpec.describe Points::ResumeReverseGeocodingJob, type: :job do
       let(:answered) { double(city: 'Berlin', country: 'Germany', data: { 'properties' => {} }, cache_hit: false) }
 
       before do
-        stub_const('Geocoding::Cooldown::BASE_DURATION', 1.second)
         Geocoding::Cooldown.start(config)
-        Kernel.sleep(1.1)
+        expire_geocoding_cooldown
       end
 
       it 'queues the backlog anyway when the probe ends on cached answers' do
@@ -383,9 +382,8 @@ RSpec.describe Points::ResumeReverseGeocodingJob, type: :job do
       end
 
       it 'drops a run the provider has not answered for the whole expiry' do
-        stub_const('Points::ResumeReverseGeocodingJob::FORCED_RUN_TTL', 1.second)
         skip_forced_lookup(first_point)
-        Kernel.sleep(1.1)
+        expire_forced_runs
         Geocoding::Cooldown.reset!
 
         described_class.perform_now

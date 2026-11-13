@@ -1,0 +1,59 @@
+fr:
+  notes:
+    flash:
+      saved: Note enregistrée
+      deleted: Note supprimée
+      pick_a_point_on_the_map: Choisissez un point sur la carte pour cette note
+    form:
+      note: Note
+      what_happened_here: Que s'est-il passé ici ?
+      when: Quand
+      delete: Supprimer
+      delete_this_note: Supprimer cette note ?
+      cancel: Annuler
+      save: Enregistrer
+    index:
+      notes: Journal
+      search: Rechercher
+      search_placeholder: Rechercher dans vos notes
+      from: Du
+      to: Au
+      clear: Effacer
+      nothing_found: Aucune note ne correspond à cette recherche
+      no_notes_yet: Pas encore de notes
+      no_notes_yet_hint: Ouvrez la carte, choisissez Ajouter une note dans Outils et cliquez sur l'endroit dont vous voulez vous souvenir.
+      open_the_map: Ouvrir la carte
+    note:
+      trip: 'Voyage : %{name}'
+      open_this_day_on_the_map: Ouvrir ce jour sur la carte
+  map:
+    maplibre:
+      note_modal:
+        map_note: Note sur la carte
+      settings_panel:
+        notes: Notes
+        show_your_map_notes: Affiche les notes que vous avez écrites sur la carte
+        add_note: Ajouter une note
+    timeline_feeds:
+      note_entry:
+        edit: Modifier
+      on_this_day:
+        on_this_day: Ce jour-là
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Cliquez sur la carte pour placer une note. Échap pour annuler.
+      failed_to_load_notes: Impossible de charger les notes
+  shared:
+    navbar:
+      notes: Journal
+    links:
+      map_notes:
+        notes: Notes
+  shared_links:
+    map_notes_toggle:
+      label: Afficher mes notes de carte
+      hint: Affiche le texte et l'heure des notes sur cette période, pas l'endroit où elles ont été écrites. Les notes que vous écrirez plus tard sur cette période apparaîtront aussi.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Notes de carte

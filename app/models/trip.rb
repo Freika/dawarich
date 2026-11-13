@@ -5,6 +5,7 @@ class Trip < ApplicationRecord
   include Calculateable
   include DistanceConvertible
   include Notable
+  include TripDetectionOrigin
 
   RECALCULATE_COOLDOWN = 60.seconds
   # A stamped point reads its device from point_sources exclusively; the

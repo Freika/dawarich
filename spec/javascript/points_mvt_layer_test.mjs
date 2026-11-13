@@ -1,58 +1,8 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
-
-const baseLayerSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/base_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const heatmapSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/heatmap_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const mvtSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/layers/points_mvt_layer.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const markerThemeSource = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/marker_theme.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-
-const freshness = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-const stripImports = (source) =>
-  source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [
-  baseLayerSource,
-  heatmapSource,
-  markerThemeSource,
-  freshness,
-  mvtSource,
-]
-  .map(stripImports)
-  .join("\n")
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
-const { heatmapPaint, PointsMvtLayer, withTileVersion } = await import(
-  moduleUrl
-)
+import { heatmapPaint } from "maps_maplibre/layers/heatmap_layer"
+import { PointsMvtLayer } from "maps_maplibre/layers/points_mvt_layer"
+import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
 // Minimal fake MapLibre map: records addLayer calls, tracks style layer order.
 function fakeMap(initialLayers = []) {
@@ -169,26 +119,6 @@ test("low-zoom aggregates are flight-masked only when their full time span overl
   assert.equal(evaluate(filter, { timestamp: 80, max_timestamp: 180 }), true)
 })
 
-test("fog keep-alive restores the active day opacity after Points are toggled", () => {
-  const paint = []
-  const layer = new PointsMvtLayer({
-    getLayer: () => true,
-    setLayoutProperty() {},
-    setPaintProperty: (_id, property, value) => paint.push({ property, value }),
-  })
-  layer.setSourceKeepAlive(true)
-  const dayExpression = ["case", true, 1, 0.04]
-  layer.setCircleOpacity("circle-opacity", dayExpression)
-  layer.setVisibility(false)
-  layer.setCircleOpacity("circle-opacity", ["case", false, 1, 0.04])
-  assert.equal(paint.at(-1).value, 0)
-  layer.setVisibility(true)
-  assert.deepEqual(
-    paint.findLast(({ property }) => property === "circle-opacity").value,
-    ["case", false, 1, 0.04],
-  )
-})
-
 test("tile URLs carry no raw api key under any input combination", () => {
   const cases = [
     {},
@@ -265,19 +195,19 @@ test("circle stroke follows the basemap marker theme", () => {
   assert.equal(stroke("dark"), "#ffffff")
 })
 
-test("anyVisible reports heatmap-only, circles-only and fully hidden states", () => {
-  const layer = new PointsMvtLayer(fakeMap(), {})
+test("flight windows set before the layer exists apply when it is added", () => {
+  const map = fakeMap()
+  const filters = {}
+  map.setFilter = (id, filter) => {
+    filters[id] = filter
+  }
+  const layer = new PointsMvtLayer(map, {})
+  layer.setFlightWindows([[100, 200]])
 
-  layer.visible = false
-  layer.heatmapVisible = false
-  assert.equal(layer.anyVisible, false)
+  layer.add({})
 
-  layer.heatmapVisible = true
-  assert.equal(layer.anyVisible, true)
-
-  layer.visible = true
-  layer.heatmapVisible = false
-  assert.equal(layer.anyVisible, true)
+  assert.ok(filters[layer.id])
+  assert.ok(filters[PointsMvtLayer.HEATMAP_LAYER_ID])
 })
 
 test("update() to a new range re-adds sub-layers at their original z-position", () => {

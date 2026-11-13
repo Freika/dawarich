@@ -18,6 +18,34 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
     context 'when signed in' do
       before { sign_in user }
 
+      describe 'on this day' do
+        # The user's time zone is UTC; the dates below are days of that calendar.
+        let(:today) { Time.now.utc.beginning_of_day }
+
+        before do
+          create(:note, user: user, body: 'One year back', noted_at: today - 1.year + 10.hours,
+                        latitude: 52.5, longitude: 13.4)
+          create(:note, user: user, body: 'Yesterday last year', noted_at: today - 1.year - 2.hours,
+                        latitude: 52.5, longitude: 13.4)
+          create(:note, user: user, body: 'Written today', noted_at: today + 1.hour, latitude: 52.5, longitude: 13.4)
+        end
+
+        it 'lists notes from the same date in earlier years when today is open' do
+          get map_timeline_feeds_path(start_at: today.iso8601, end_at: (today + 1.day - 1.second).iso8601)
+
+          block = Capybara.string(response.body).find('[data-testid=on-this-day]')
+          expect(block).to have_text('One year back')
+          expect(block).not_to have_text('Yesterday last year')
+          expect(block).not_to have_text('Written today')
+        end
+
+        it 'is absent on any other day' do
+          get map_timeline_feeds_path(start_at: (today - 1.day).iso8601, end_at: (today - 1.second).iso8601)
+
+          expect(response.body).not_to include('on-this-day')
+        end
+      end
+
       it 'returns http success with empty data' do
         get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
 
@@ -68,6 +96,165 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           # (app/views/map/maplibre/_settings_panel.html.erb). The feed partial renders
           # action attributes that target it.
           expect(response.body).to include('click->timeline-feed#')
+        end
+
+        context 'when the period covers several days' do
+          let(:period) { { start_at: day.iso8601, end_at: (day + 2.days - 1.second).iso8601 } }
+
+          before do
+            create(:visit, user: user, place: place, name: 'Home', duration: 3600,
+                           started_at: day + 1.day + 9.hours, ended_at: day + 1.day + 10.hours)
+            create(:note, user: user, body: 'Rain all morning', noted_at: day + 11.hours,
+                          latitude: 52.5, longitude: 13.4)
+          end
+
+          it 'reads like a diary: newest day first, each closed under its date with its notes in sight' do
+            get map_timeline_feeds_path(period)
+
+            page = Capybara.string(response.body)
+            head = page.find('[data-testid=timeline-range-head]')
+            expect(head).to have_text('January 15 – 16, 2025')
+              .and have_text('2 days').and have_text('2 visits').and have_text('1 note')
+            expect(head['data-range-start']).to eq('2025-01-15')
+
+            days = page.all('[data-testid=timeline-diary-day]')
+            expect(days.map { |d| d.find('details.timeline-day:not([open])')['data-day'] })
+              .to eq(%w[2025-01-16 2025-01-15])
+            expect(days.last.find('summary')).to have_text('15').and have_text('Wednesday')
+            expect(days.last.find('.timeline-diary-notes')).to have_text('Rain all morning')
+            # The day's own timeline is there too, folded.
+            expect(days.last.find('details').text(:all)).to include('Home')
+            expect(page).not_to have_css('[data-testid=day-prev]')
+          end
+
+          it 'names the period in the date format the user chose' do
+            user.update!(settings: user.settings.merge('date_format' => 'yyyy-mm-dd'))
+
+            get map_timeline_feeds_path(period)
+
+            head = Capybara.string(response.body).find('[data-testid=timeline-range-head]')
+            expect(head).to have_text('2025-01-15 – 2025-01-16')
+          end
+        end
+
+        context 'when the period is longer than the timeline reads at once' do
+          before do
+            create(:visit, user: user, place: place, name: 'Long ago', duration: 3600,
+                           started_at: day - 60.days + 9.hours, ended_at: day - 60.days + 10.hours)
+          end
+
+          it 'shows the latest days of the period and says so, instead of an empty timeline' do
+            # 32 days counted with both ends: this one is the first day left out.
+            create(:visit, user: user, place: place, name: 'Just outside', duration: 3600,
+                           started_at: day - 32.days + 9.hours, ended_at: day - 32.days + 10.hours)
+            create(:visit, user: user, place: place, name: 'Just inside', duration: 3600,
+                           started_at: day - 31.days + 9.hours, ended_at: day - 31.days + 10.hours)
+
+            get map_timeline_feeds_path(start_at: (day - 60.days).iso8601, end_at: (day + 1.day - 1.second).iso8601)
+
+            page = Capybara.string(response.body)
+            expect(page.all('details.timeline-day', visible: :all).map { |d| d['data-day'] })
+              .to eq(%w[2025-01-15 2024-12-15])
+            expect(page.find('[data-testid=timeline-range-clamped]')).to have_text('32 days')
+          end
+
+          it 'lists the longest "last month" whole: 32 days, both ends counted' do
+            create(:visit, user: user, place: place, name: 'First day', duration: 3600,
+                           started_at: day - 31.days + 9.hours, ended_at: day - 31.days + 10.hours)
+
+            # Without a zone the bounds are days of the user's own calendar.
+            get map_timeline_feeds_path(start_at: '2024-12-15T00:00:00', end_at: '2025-01-15T23:59:59')
+
+            page = Capybara.string(response.body)
+            expect(page.all('details.timeline-day', visible: :all).map { |d| d['data-day'] })
+              .to eq(%w[2025-01-15 2024-12-15])
+            expect(page).not_to have_css('[data-testid=timeline-range-clamped]')
+          end
+
+          it 'says so even when the latest days have nothing in them' do
+            get map_timeline_feeds_path(start_at: (day - 120.days).iso8601, end_at: (day - 62.days).iso8601)
+
+            page = Capybara.string(response.body)
+            expect(page).not_to have_css('details.timeline-day')
+            expect(page.find('[data-testid=timeline-range-clamped]')).to have_text('32 days')
+          end
+        end
+
+        it 'reads a timed period that passes midnight as a period, even a short one' do
+          create(:visit, user: user, place: place, name: 'Home', duration: 3600,
+                         started_at: day + 12.hours, ended_at: day + 13.hours)
+
+          get map_timeline_feeds_path(start_at: (day + 10.hours).iso8601,
+                                      end_at: (day + 1.day + 10.hours + 30.minutes).iso8601)
+
+          expect(Capybara.string(response.body)).to have_css('[data-testid=timeline-range-head]')
+        end
+
+        context 'when the clocks change inside the period' do
+          before { user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin')) }
+
+          it 'reads a whole month with a 25-hour day in it' do
+            create(:visit, user: user, place: place, name: 'Home', duration: 3600,
+                           started_at: Time.utc(2025, 10, 15, 9), ended_at: Time.utc(2025, 10, 15, 10))
+
+            get map_timeline_feeds_path(start_at: '2025-10-01T00:00:00', end_at: '2025-10-31T23:59:59')
+
+            page = Capybara.string(response.body)
+            expect(page.all('details.timeline-day', visible: :all).map { |d| d['data-day'] }).to eq(['2025-10-15'])
+            expect(page).not_to have_css('[data-testid=timeline-range-clamped]')
+          end
+
+          it 'keeps the 25-hour day itself a single day, with its day navigator' do
+            get map_timeline_feeds_path(start_at: '2025-10-26T00:00:00', end_at: '2025-10-26T23:59:59')
+
+            page = Capybara.string(response.body)
+            expect(page).to have_css('[data-testid=day-prev]')
+            expect(page).not_to have_css('details.timeline-day, [data-testid=timeline-range-head]')
+          end
+        end
+
+        describe 'searching the notes' do
+          before do
+            create(:note, user: user, body: 'Rain all morning', noted_at: day + 11.hours,
+                          latitude: 52.5, longitude: 13.4)
+            create(:note, user: user, body: 'Rain again, 100% wet', noted_at: day + 1.year + 12.hours,
+                          latitude: 52.5, longitude: 13.4)
+            create(:note, body: 'Rain on someone else', latitude: 1, longitude: 2)
+          end
+
+          def found(query)
+            get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601, q: query)
+            Capybara.string(response.body).all('[data-testid=timeline-note-results] a')
+          end
+
+          it 'looks through every note of the user, whatever the period, newest first' do
+            results = found('RAIN')
+
+            expect(results.map(&:text)).to match([a_string_including('Rain again'), a_string_including('Rain all')])
+            expect(results.first['href'])
+              .to eq(map_v2_path(panel: 'timeline', month: '2026-01', date: '2026-01-15'))
+          end
+
+          it 'treats LIKE wildcards as plain characters' do
+            expect(found('100%').map(&:text)).to match([a_string_including('Rain again')])
+            expect(found('_')).to be_empty
+          end
+
+          it 'finds notes older than the Lite data window' do
+            allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+            user.update!(plan: :lite)
+            user.notes.find_by(body: 'Rain all morning').update!(noted_at: 3.years.ago)
+
+            expect(found('all morning').size).to eq(1)
+          end
+        end
+
+        it 'keeps a single day open, with its day navigator' do
+          get map_timeline_feeds_path(start_at: day.iso8601, end_at: (day + 1.day).iso8601)
+
+          page = Capybara.string(response.body)
+          expect(page).to have_css('div.timeline-day [data-testid=day-prev]')
+          expect(page).not_to have_css('details.timeline-day, [data-testid=timeline-range-head]')
         end
 
         it 'includes turbo-frame for track info' do
@@ -165,33 +352,30 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
     context 'when signed in' do
       before { sign_in user }
 
-      it 'returns 200 with the calendar turbo-frame' do
+      def days
+        JSON.parse(response.body).fetch('days')
+      end
+
+      it 'describes every day of the month grid for the period picker' do
+        create(:visit, user: user, started_at: Time.utc(2026, 4, 22, 9), ended_at: Time.utc(2026, 4, 22, 12),
+                       duration: 180)
+        create(:note, user: user, body: 'Written', noted_at: Time.utc(2026, 4, 10, 12), latitude: 52.5, longitude: 13.4)
+
+        get calendar_map_timeline_feeds_path(month: '2026-04')
+
+        expect(response).to have_http_status(:success)
+        expect(days.size).to eq(42)
+        expect(days['2026-04-22']).to include('heat' => a_value >= 1, 'noted' => false, 'disabled' => false)
+        expect(days['2026-04-10']).to include('heat' => 0, 'noted' => true)
+      end
+
+      it 'defaults to the current month, also for a month it cannot read' do
         get calendar_map_timeline_feeds_path
+        expect(days.keys).to include(Date.current.iso8601)
 
+        get calendar_map_timeline_feeds_path(month: '2026-13')
         expect(response).to have_http_status(:success)
-        expect(response.body).to include('turbo-frame id="timeline-calendar-frame"')
-      end
-
-      it 'renders the requested month and includes calendar day cells' do
-        get calendar_map_timeline_feeds_path(month: '2026-04')
-
-        expect(response).to have_http_status(:success)
-        expect(response.body).to include('data-day="2026-04-22"')
-        expect(response.body).to include('data-testid="calendar-day"')
-        expect(response.body).to include('data-action="click->timeline-feed#selectDay"')
-      end
-
-      it 'applies heat-N class to each cell' do
-        get calendar_map_timeline_feeds_path(month: '2026-04')
-
-        expect(response.body).to match(/class="[^"]*heat-0[^"]*"/)
-      end
-
-      it 'includes previous/next month navigation' do
-        get calendar_map_timeline_feeds_path(month: '2026-04')
-
-        expect(response.body).to include('month=2026-03')
-        expect(response.body).to include('month=2026-05')
+        expect(days.keys).to include(Date.current.iso8601)
       end
     end
   end
@@ -234,6 +418,14 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
         get track_info_map_timeline_feed_path(track)
 
         expect(response).to have_http_status(:not_found)
+      end
+
+      it 'renders a slot for the selected point of this track' do
+        track = create(:track, user: user)
+
+        get track_info_map_timeline_feed_path(track)
+
+        expect(response.body).to include(%(id="track-point-info-container-#{track.id}"))
       end
 
       it 'renders a Share button targeting the share-link-modal frame' do

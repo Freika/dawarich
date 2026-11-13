@@ -59,6 +59,7 @@ RSpec.describe Webhooks::DeliverJob do
 
     expect { deliver }.to change { user.notifications.count }.by(1)
     expect(webhook.reload).to have_attributes(active: false, consecutive_failures: 5)
+    expect(user.notifications.last.action_path).to eq('/settings/geofencing')
   end
 
   it 'connects to the address it validated' do

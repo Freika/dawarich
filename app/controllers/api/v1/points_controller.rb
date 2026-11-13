@@ -169,16 +169,12 @@ class Api::V1::PointsController < ApiController
   end
 
   def reapply_anomaly_filter
-    pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
-    if Rails.cache.read(pending_key)
+    unless Points::QueueAnomalyReevaluation.new(current_api_user).call
       return render(
         json: { error: I18n.t('controllers.api.v1.points.anomaly_re_evaluation_already_in_progress') },
         status: :conflict
       )
     end
-
-    Rails.cache.write(pending_key, true, expires_in: 30.minutes)
-    Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
 
     render json: {
       message: I18n.t('controllers.api.v1.points.re_evaluation_queued_existing_anomaly_flags_will_be_cleared_and')

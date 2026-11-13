@@ -3,147 +3,90 @@
 require 'rails_helper'
 
 RSpec.describe Photoprism::ConnectionTester do
-  subject(:service) { described_class.new(url, api_key) }
+  subject(:result) { described_class.new(url, api_key).call }
 
   let(:url) { 'https://photoprism.example.com' }
   let(:api_key) { 'test_api_key_123' }
+  let(:photos_url) { "#{url}/api/v1/photos" }
 
-  describe '#call' do
-    context 'with missing URL' do
-      let(:url) { nil }
+  def stub_photos(status: 200, body: '[]')
+    stub_request(:get, photos_url).with(query: { count: '1', public: 'true' })
+                                  .to_return(status:, body:, headers: { 'Content-Type' => 'application/json' })
+  end
 
-      it 'returns error for missing URL' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism URL is missing')
+  describe 'missing fields' do
+    [nil, ''].each do |blank|
+      it "reports a missing URL for #{blank.inspect}" do
+        expect(described_class.new(blank, api_key).call)
+          .to include(success: false, reason: 'missing_fields', error: 'Photoprism URL is missing')
+      end
+
+      it "reports a missing API key for #{blank.inspect}" do
+        expect(described_class.new(url, blank).call)
+          .to include(success: false, reason: 'missing_fields', error: 'Photoprism API key is missing')
       end
     end
+  end
 
-    context 'with blank URL' do
-      let(:url) { '' }
+  it 'verifies the connection with a one-photo request carrying the bearer token' do
+    request = stub_photos.with(headers: { 'Authorization' => "Bearer #{api_key}", 'Accept' => 'application/json' })
 
-      it 'returns error for blank URL' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism URL is missing')
-      end
+    expect(result).to eq(success: true, message: 'Photoprism connection verified')
+    expect(request).to have_been_requested
+  end
+
+  it 'reports rejected credentials' do
+    stub_photos(status: 401)
+
+    expect(result).to include(success: false, reason: 'credentials', error: 'Photoprism connection failed: 401')
+  end
+
+  it 'reports another failing status as a settings problem' do
+    stub_photos(status: 500)
+
+    expect(result).to include(success: false, reason: 'check_settings', error: 'Photoprism connection failed: 500')
+  end
+
+  it 'reports a timeout as unreachable' do
+    stub_request(:get, photos_url).with(query: hash_including({})).to_timeout
+
+    expect(result).to include(success: false, reason: 'unreachable')
+    expect(result[:error]).to start_with('Photoprism connection failed: ')
+  end
+
+  it 'reports a certificate failure as such' do
+    stub_request(:get, photos_url).with(query: hash_including({}))
+                                  .to_raise(OpenSSL::SSL::SSLError.new('certificate verify failed'))
+
+    expect(result).to include(success: false, reason: 'certificate')
+  end
+
+  it 'does not follow a redirect' do
+    stub_request(:get, photos_url).with(query: hash_including({}))
+                                  .to_return(status: 302, headers: { 'Location' => 'https://other.example.com/' })
+    followed = stub_request(:any, 'https://other.example.com/')
+
+    expect(result).to include(success: false, reason: 'unreachable')
+    expect(followed).not_to have_been_requested
+  end
+
+  it 'refuses a URL that resolves to a blocked address without sending a request' do
+    stub_host_addresses('photoprism.example.com', '169.254.169.254')
+    request = stub_photos
+
+    expect(result).to include(success: false, reason: 'unreachable')
+    expect(request).not_to have_been_requested
+  end
+
+  it 'keeps verification on for a legacy "0" skip flag' do
+    stub_photos
+    captured = nil
+    allow(Net::HTTP).to receive(:new).and_wrap_original do |original, *args|
+      original.call(*args).tap { |http| captured = http }
     end
 
-    context 'with missing API key' do
-      let(:api_key) { nil }
+    described_class.new(url, api_key, skip_ssl_verification: '0').call
 
-      it 'returns error for missing API key' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism API key is missing')
-      end
-    end
-
-    context 'with blank API key' do
-      let(:api_key) { '' }
-
-      it 'returns error for blank API key' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism API key is missing')
-      end
-    end
-
-    context 'with successful connection' do
-      let(:response) do
-        instance_double(HTTParty::Response, success?: true, code: 200)
-      end
-
-      before do
-        allow(HTTParty).to receive(:get).and_return(response)
-      end
-
-      it 'returns success' do
-        result = service.call
-        expect(result[:success]).to be true
-        expect(result[:message]).to eq('Photoprism connection verified')
-      end
-
-      it 'makes GET request with correct parameters' do
-        expect(HTTParty).to receive(:get).with(
-          "#{url}/api/v1/photos",
-          hash_including(
-            headers: { 'Authorization' => "Bearer #{api_key}", 'accept' => 'application/json',
-'Content-Type' => 'application/json' },
-            query: { count: 1, public: true },
-            timeout: 10
-          )
-        )
-        service.call
-      end
-    end
-
-    context 'when connection fails with 401' do
-      let(:response) do
-        instance_double(HTTParty::Response, success?: false, code: 401)
-      end
-
-      before do
-        allow(HTTParty).to receive(:get).and_return(response)
-      end
-
-      it 'returns error with status code' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism connection failed: 401')
-      end
-    end
-
-    context 'when connection fails with 500' do
-      let(:response) do
-        instance_double(HTTParty::Response, success?: false, code: 500)
-      end
-
-      before do
-        allow(HTTParty).to receive(:get).and_return(response)
-      end
-
-      it 'returns error with status code' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to eq('Photoprism connection failed: 500')
-      end
-    end
-
-    context 'when network timeout occurs' do
-      before do
-        allow(HTTParty).to receive(:get).and_raise(Net::OpenTimeout)
-      end
-
-      it 'returns timeout error' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to match(/Photoprism connection failed: /)
-      end
-    end
-
-    context 'when read timeout occurs' do
-      before do
-        allow(HTTParty).to receive(:get).and_raise(Net::ReadTimeout)
-      end
-
-      it 'returns timeout error' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to match(/Photoprism connection failed: /)
-      end
-    end
-
-    context 'when HTTParty error occurs' do
-      before do
-        allow(HTTParty).to receive(:get).and_raise(HTTParty::Error.new('Connection refused'))
-      end
-
-      it 'returns connection error' do
-        result = service.call
-        expect(result[:success]).to be false
-        expect(result[:error]).to match(/Photoprism connection failed: /)
-      end
-    end
+    expect(captured.verify_mode).not_to eq(OpenSSL::SSL::VERIFY_NONE)
   end
 end

@@ -79,7 +79,8 @@ class Users::ImportData::Places
       return existing_place
     end
 
-    place_attributes = place_data.except('created_at', 'updated_at', 'latitude', 'longitude', 'user', 'user_id')
+    place_attributes = place_data.except('created_at', 'updated_at', 'latitude', 'longitude', 'user', 'user_id',
+                                         'import_id')
     place_attributes['lonlat'] = "POINT(#{longitude} #{latitude})"
     place_attributes['latitude'] = latitude
     place_attributes['longitude'] = longitude

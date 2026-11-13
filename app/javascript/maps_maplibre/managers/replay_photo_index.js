@@ -27,10 +27,6 @@ export class ReplayPhotoIndex {
     return this.dayPhotos(dayKey).filter((photo) => photo.tsMs <= playheadMs)
   }
 
-  idsToReveal(dayKey, playheadMs) {
-    return this.revealedPhotos(dayKey, playheadMs).map((photo) => photo.id)
-  }
-
   hasPhotos() {
     return Object.keys(this.photosByDay).length > 0
   }

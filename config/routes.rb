@@ -73,6 +73,10 @@ Rails.application.routes.draw do
     end
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
+    resource :data_processing, only: %i[show update], controller: 'data_processing' do
+      post :recalculate
+      post :reapply_anomaly_filter
+    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
@@ -158,10 +162,13 @@ Rails.application.routes.draw do
       post :bulk_merge
       get 'nearby'
     end
+    resources :homes, controller: 'places/homes', only: %i[create update destroy]
   end
+  resources :homes, only: :create
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]
+  resources :notes, only: %i[index new create edit update destroy]
   resources :trips do
     member do
       post :recalculate
@@ -225,7 +232,9 @@ Rails.application.routes.draw do
       get :address
     end
   end
-  resources :notifications, only: %i[index show destroy]
+  resources :notifications, only: %i[index show destroy] do
+    get :open, on: :member
+  end
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
   post 'notifications/destroy_all', to: 'notifications#destroy_all', as: :delete_all_notifications
   resources :stats, only: :index do
@@ -295,6 +304,7 @@ Rails.application.routes.draw do
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions',
+    passwords: 'users/passwords',
     omniauth_callbacks: 'users/omniauth_callbacks'
   }
 

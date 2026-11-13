@@ -8,7 +8,7 @@
         <%= render 'shared_links/expires_field', f: f, share: @share, exact: true %>
         <%= render 'shared_links/live_freshness_field', share: @share if @share.live? %>
         <% shared_link_sections(@share).each do |key, enabled| %>
-          <% next if key == 'show_photos' && @share.timeline_import_scoped? %>
+          <% next if key.in?(%w[show_photos show_map_notes]) && @share.timeline_import_scoped? %>
           <label class="label cursor-pointer gap-3">
             <span><%= t("ux_p2.sharing.sections.#{key}") %></span>
             <%= hidden_field_tag "shared_link[settings][#{key}]", '0' %>

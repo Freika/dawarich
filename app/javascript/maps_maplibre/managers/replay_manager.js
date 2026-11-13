@@ -1,4 +1,5 @@
 import { formatDate, formatTime, translate } from "i18n"
+import { dayNavigation } from "./replay_manager/day_navigation"
 
 /**
  * ReplayManager - Core business logic for replay feature
@@ -128,35 +129,6 @@ export class ReplayManager {
   }
 
   /**
-   * Get array of minute ranges that have data
-   * Each range is { start: number, end: number }
-   * Used for rendering data density on scrubber
-   * @returns {Array} Array of {start, end} objects
-   */
-  getDataRanges() {
-    if (this.minutesWithData.size === 0) return []
-
-    const sortedMinutes = Array.from(this.minutesWithData).sort((a, b) => a - b)
-    const ranges = []
-    let rangeStart = sortedMinutes[0]
-    let rangeEnd = sortedMinutes[0]
-
-    for (let i = 1; i < sortedMinutes.length; i++) {
-      const minute = sortedMinutes[i]
-      // If gap is more than 5 minutes, start a new range
-      if (minute - rangeEnd > 5) {
-        ranges.push({ start: rangeStart, end: rangeEnd })
-        rangeStart = minute
-      }
-      rangeEnd = minute
-    }
-    // Push the last range
-    ranges.push({ start: rangeStart, end: rangeEnd })
-
-    return ranges
-  }
-
-  /**
    * Get data density for scrubber visualization (0-1 values per segment)
    * @param {number} segments - Number of segments to divide the day into
    * @returns {Array} Array of density values (0-1)
@@ -178,6 +150,36 @@ export class ReplayManager {
   }
 
   /**
+   * Density for a scrubber that spans every available day, one block of
+   * segments per day. Counts minutes with data, like getDataDensity.
+   * @param {number} segmentsPerDay
+   * @returns {Array} Density values (0-1), days in order
+   */
+  getRangeDensity(segmentsPerDay) {
+    const minutesPerSegment = 1440 / segmentsPerDay
+    const density = new Array(this.availableDays.length * segmentsPerDay).fill(
+      0,
+    )
+
+    this.availableDays.forEach((day, dayIndex) => {
+      const minutes = new Set(
+        this.pointsByDay[day].map((point) =>
+          this.minuteOfDay(this._parseTimestamp(this._getTimestamp(point))),
+        ),
+      )
+      for (const minute of minutes) {
+        if (minute === null) continue
+        density[
+          dayIndex * segmentsPerDay + Math.floor(minute / minutesPerSegment)
+        ]++
+      }
+    })
+
+    const maxDensity = Math.max(...density, 1)
+    return density.map((d) => d / maxDensity)
+  }
+
+  /**
    * Check if a minute has data
    * @param {number} minute - Minute of day (0-1439)
    * @returns {boolean}
@@ -193,6 +195,13 @@ export class ReplayManager {
   getCurrentDay() {
     if (this.availableDays.length === 0) return null
     return this.availableDays[this.currentDayIndex] || null
+  }
+
+  /** Points on the current day. Called by the private E2E suite. */
+  getCurrentDayPointCount() {
+    const day = this.getCurrentDay()
+    if (!day) return 0
+    return this.pointsByDay[day]?.length || 0
   }
 
   /**
@@ -271,103 +280,6 @@ export class ReplayManager {
   }
 
   /**
-   * Pin a point (lock selection)
-   * @param {Object} point - Point to pin
-   */
-  pinPoint(point) {
-    this.pinnedPoint = point
-    this.onStateChange({ type: "pin", point })
-  }
-
-  /**
-   * Unpin current point
-   */
-  unpinPoint() {
-    this.pinnedPoint = null
-    this.cycleIndex = 0
-    this.onStateChange({ type: "unpin" })
-  }
-
-  /**
-   * Check if a point is currently pinned
-   * @returns {boolean}
-   */
-  isPinned() {
-    return this.pinnedPoint !== null
-  }
-
-  /**
-   * Navigate to previous day
-   * @returns {boolean} Whether navigation was successful
-   */
-  prevDay() {
-    if (this.currentDayIndex > 0) {
-      this.currentDayIndex--
-      this.buildMinuteIndex()
-      this.cycleIndex = 0
-      this.pinnedPoint = null
-      return true
-    }
-    return false
-  }
-
-  /**
-   * Navigate to next day
-   * @returns {boolean} Whether navigation was successful
-   */
-  nextDay() {
-    if (this.currentDayIndex < this.availableDays.length - 1) {
-      this.currentDayIndex++
-      this.buildMinuteIndex()
-      this.cycleIndex = 0
-      this.pinnedPoint = null
-      return true
-    }
-    return false
-  }
-
-  /**
-   * Check if previous day navigation is available
-   * @returns {boolean}
-   */
-  canGoPrev() {
-    return this.currentDayIndex > 0
-  }
-
-  /**
-   * Check if next day navigation is available
-   * @returns {boolean}
-   */
-  canGoNext() {
-    return this.currentDayIndex < this.availableDays.length - 1
-  }
-
-  /**
-   * Navigate to a specific day by key
-   * @param {string} dayKey - Day key like '2025-01-15'
-   * @returns {boolean} Whether navigation was successful
-   */
-  goToDay(dayKey) {
-    const index = this.availableDays.indexOf(dayKey)
-    if (index === -1 || index === this.currentDayIndex) return false
-
-    this.currentDayIndex = index
-    this.buildMinuteIndex()
-    this.cycleIndex = 0
-    this.pinnedPoint = null
-    return true
-  }
-
-  /**
-   * Get points for a specific day
-   * @param {string} dayKey - Day key like '2025-01-15'
-   * @returns {Array} Points for that day, or empty array
-   */
-  getPointsForDay(dayKey) {
-    return this.pointsByDay[dayKey] || []
-  }
-
-  /**
    * Get timestamp from point (handles different point formats)
    * @param {Object} point - Point object
    * @returns {number|string|null}
@@ -438,16 +350,6 @@ export class ReplayManager {
   }
 
   /**
-   * Get total points on current day
-   * @returns {number}
-   */
-  getCurrentDayPointCount() {
-    const day = this.getCurrentDay()
-    if (!day) return 0
-    return this.pointsByDay[day]?.length || 0
-  }
-
-  /**
    * Format minute of day to time string
    * @param {number} minute - Minute of day (0-1439)
    * @returns {string} Time string like '08:30'
@@ -459,106 +361,6 @@ export class ReplayManager {
         timeZone: "UTC",
       },
     )
-  }
-
-  /**
-   * Find transportation mode emoji for a point by matching its timestamp to track time ranges
-   * @param {Object} point - Point object with timestamp
-   * @param {Object} tracksGeoJSON - GeoJSON FeatureCollection of tracks
-   * @returns {string|null} Emoji for transportation mode, or null if not found
-   */
-  static findTransportationEmoji(point, tracksGeoJSON) {
-    if (!tracksGeoJSON?.features?.length) return null
-
-    const timestamp = ReplayManager._getTimestampStatic(point)
-    if (!timestamp) return null
-
-    const pointTime = ReplayManager._parseTimestampStatic(timestamp)
-    if (!pointTime) return null
-
-    // Convert pointTime to seconds for segment matching
-    const pointTimeSec = Math.floor(pointTime / 1000)
-
-    for (const track of tracksGeoJSON.features) {
-      const startAt = track.properties?.start_at
-      const endAt = track.properties?.end_at
-
-      if (startAt && endAt) {
-        const trackStart = new Date(startAt).getTime()
-        const trackEnd = new Date(endAt).getTime()
-
-        if (pointTime >= trackStart && pointTime <= trackEnd) {
-          // Try per-segment matching first (mode_timeline has start_time/end_time in unix seconds)
-          const modeTimeline = track.properties?.mode_timeline
-          if (modeTimeline?.length) {
-            for (const seg of modeTimeline) {
-              if (
-                pointTimeSec >= seg.start_time &&
-                pointTimeSec <= seg.end_time
-              ) {
-                return seg.emoji || null
-              }
-            }
-
-            // Nearest-segment fallback: find last segment whose start_time <= pointTime
-            let nearest = null
-            for (const seg of modeTimeline) {
-              if (seg.start_time <= pointTimeSec) {
-                nearest = seg
-              }
-            }
-            if (nearest?.emoji) return nearest.emoji
-          }
-
-          // Fall back to track-level dominant mode
-          return track.properties.dominant_mode_emoji || null
-        }
-      }
-    }
-    return null
-  }
-
-  /**
-   * Static version of _getTimestamp for use in static methods
-   * @private
-   */
-  static _getTimestampStatic(point) {
-    // Handle GeoJSON feature format
-    if (point.properties?.timestamp) {
-      return point.properties.timestamp
-    }
-    // Handle raw point format
-    if (point.timestamp) {
-      return point.timestamp
-    }
-    return null
-  }
-
-  /**
-   * Static version of _parseTimestamp for use in static methods
-   * Returns timestamp as milliseconds
-   * @private
-   */
-  static _parseTimestampStatic(timestamp) {
-    if (!timestamp) return null
-
-    // Handle ISO 8601 string
-    if (typeof timestamp === "string") {
-      const date = new Date(timestamp)
-      return Number.isNaN(date.getTime()) ? null : date.getTime()
-    }
-
-    // Handle Unix timestamp
-    if (typeof timestamp === "number") {
-      // Unix timestamp in seconds (< year 2286 in seconds)
-      if (timestamp < 10000000000) {
-        return timestamp * 1000
-      }
-      // Unix timestamp in milliseconds
-      return timestamp
-    }
-
-    return null
   }
 
   // Private helpers
@@ -683,3 +485,5 @@ export class ReplayManager {
     }
   }
 }
+
+Object.assign(ReplayManager.prototype, dayNavigation)

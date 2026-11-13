@@ -150,13 +150,13 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
 
       call_tool('get_latest_location', {})
 
-      expect(Rails.logger).to have_received(:error).with(a_string_including('tool exploded'))
+      expect(Rails.logger).to have_received(:error).with(a_string_including('tool exploded')).at_least(:once)
     end
 
     it 'logs transport exceptions reported through the global MCP configuration' do
       MCP.configuration.exception_reporter.call(RuntimeError.new('transport exploded'), { request: '{}' })
 
-      expect(Rails.logger).to have_received(:error).with(a_string_including('transport exploded'))
+      expect(Rails.logger).to have_received(:error).with(a_string_including('transport exploded')).at_least(:once)
     end
   end
 
@@ -219,6 +219,20 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       entry = result.dig('result', 'structuredContent', 'days', 0, 'entries', 0)
       expect(entry).to include('type' => 'visit', 'name' => 'Home', 'duration_minutes' => 120.0)
       expect(entry).not_to include('editable_name', 'place_id', 'suggested_places')
+    end
+
+    it 'carries the map notes and the facts line of the day' do
+      create(:note, user: user, body: 'Rain started here', noted_at: day + 11.hours, latitude: 52.5, longitude: 13.4)
+
+      result = timeline
+      first_day = result.dig('result', 'structuredContent', 'days', 0)
+
+      expect(result.dig('result', 'isError')).to be(false)
+      expect(first_day['notes']).to contain_exactly(
+        include('body' => 'Rain started here', 'latitude' => 52.5, 'longitude' => 13.4)
+      )
+      expect(first_day['notes'].first.keys).not_to include('note_id')
+      expect(first_day.dig('summary', 'facts')).to eq('Home')
     end
 
     it 'names the time zone of the place' do

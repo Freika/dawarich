@@ -47,9 +47,6 @@ export class SelectedPointsLayer extends BaseLayer {
     ]
   }
 
-  /**
-   * Get layer IDs for this layer
-   */
   getLayerIds() {
     return [`${this.id}-highlight`, this.id]
   }
@@ -73,9 +70,6 @@ export class SelectedPointsLayer extends BaseLayer {
     )
   }
 
-  /**
-   * Get IDs of selected points
-   */
   getSelectedPointIds() {
     return this.pointIds
   }
