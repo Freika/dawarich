@@ -2678,6 +2678,19 @@ en:
       we_received_a_request_to_delete_your_dawarich_account_this_2: We received a request to delete your Dawarich account. This is your last chance to stop the deletion. Once confirmed, all your location history, tracks, areas, visits, trips, and family memberships will be permanently removed.
       permanently_delete_my_account_2: 'Permanently delete my account:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: Didn't request this? Ignore this email — the link expires in 1 hour and your account remains untouched. If you keep getting these emails, change your password immediately.
+    account_deletion_warning:
+      title: "Your Dawarich account will be deleted"
+      greeting: "Hi %{email},"
+      deletion_notice: "Your Dawarich account and all its data — location history, imports, trips and places — will be permanently deleted on %{date}."
+      reason: "Your Dawarich access has ended. Our Privacy Policy keeps account data for up to 12 months after access ends."
+      keep_account: "To keep your account, resubscribe before %{date}:"
+      resubscribe: "Resubscribe"
+      keep_copy: "To keep a copy of your data, sign in and export it:"
+      export: "Export my data"
+      nothing_to_do: "If you no longer need the account, you don't have to do anything."
+      policy: "Privacy Policy:"
+      questions: "Questions? Reply to this email or write to hi@dawarich.app."
+      signoff: "Evgenii from Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Your data history is filling up
       hi: Hi
@@ -3547,6 +3560,8 @@ en:
         subject: Welcome to Dawarich!
       explore_features:
         subject: Explore Dawarich features!
+      account_deletion_warning:
+        subject: "Your Dawarich account will be deleted on %{date}"
       archival_approaching:
         subject: Keep your full history — upgrade to Pro
       oauth_account_link:

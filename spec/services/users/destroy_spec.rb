@@ -55,6 +55,19 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'when points span several deletion batches' do
+      before do
+        stub_const('Users::Destroy::POINT_BATCH_SIZE', 2)
+        create_list(:point, 5, user:)
+      end
+
+      it 'deletes every point' do
+        service.call
+
+        expect(Point.where(user_id: user.id)).to be_empty
+      end
+    end
+
     context 'with associated records without foreign key constraints' do
       let!(:points) { create_list(:point, 5, user:) }
       let!(:import) { create(:import, user:) }
@@ -447,6 +460,14 @@ RSpec.describe Users::Destroy do
           # Family and memberships should still exist
           expect(Family.where(id: family.id).count).to eq(1)
           expect(Family::Membership.where(family_id: family.id).count).to eq(2)
+        end
+
+        it 'keeps every point when deletion is aborted' do
+          create_list(:point, 3, user:)
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(Point.where(user_id: user.id).count).to eq(3)
         end
 
         it 'keeps archive files when deletion is aborted' do

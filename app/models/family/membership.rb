@@ -64,6 +64,6 @@ class Family::Membership < ApplicationRecord
     return if owner?
     return unless user.sub_source_none?
 
-    user.update!(plan: :lite, status: :inactive, active_until: nil)
+    user.update!(plan: :lite, status: :inactive, active_until: Time.current)
   end
 end

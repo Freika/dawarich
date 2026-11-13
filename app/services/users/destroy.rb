@@ -22,19 +22,15 @@ class Users::Destroy
         'Points::RawDataArchive' => user.raw_data_archives.pluck(:id)
       }
 
+      # Checked before any points go: batches run outside the transaction,
+      # so a blocked owner would otherwise lose every point and keep the account.
+      ensure_not_blocking_family_owner!
+      delete_points_in_batches
+
       ActiveRecord::Base.transaction do
-        # Validate inside transaction to prevent TOCTOU race
-        # (a member could join/leave between check and delete if outside)
-        created_family = Family.find_by(creator_id: user_id)
-        if created_family
-          member_count = Family::Membership.where(family_id: created_family.id).count
-          if member_count > 1
-            error_message = I18n.t('services.users.destroy.cannot_delete_user_who_owns_a_family_with_other_members')
-            Rails.logger.warn "#{error_message}: user_id=#{user_id}"
-            user.errors.add(:base, error_message)
-            raise ActiveRecord::RecordInvalid, user
-          end
-        end
+        # Re-check inside the transaction to prevent a TOCTOU race
+        # (a member could join between the first check and the delete).
+        created_family = ensure_not_blocking_family_owner!
 
         # Delete associated records first (dependent: :destroy associations)
         # IMPORTANT: Order matters due to foreign key constraints!
@@ -115,6 +111,30 @@ class Users::Destroy
   end
 
   private
+
+  # Large accounts hold millions of points; one DELETE for all of them would
+  # be a long transaction and a WAL spike that stalls the replica.
+  POINT_BATCH_SIZE = 10_000
+
+  def ensure_not_blocking_family_owner!
+    created_family = Family.find_by(creator_id: user.id)
+    return created_family unless created_family
+    return created_family if Family::Membership.where(family_id: created_family.id).count <= 1
+
+    error_message = I18n.t('services.users.destroy.cannot_delete_user_who_owns_a_family_with_other_members')
+    Rails.logger.warn "#{error_message}: user_id=#{user.id}"
+    user.errors.add(:base, error_message)
+    raise ActiveRecord::RecordInvalid, user
+  end
+
+  def delete_points_in_batches
+    loop do
+      ids = Point.where(user_id: user.id).limit(POINT_BATCH_SIZE).pluck(:id)
+      break if ids.empty?
+
+      Point.where(id: ids).delete_all
+    end
+  end
 
   CANCELLABLE_JOB_CLASSES = %w[
     Users::MailerSendingJob

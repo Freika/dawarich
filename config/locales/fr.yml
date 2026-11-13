@@ -3587,6 +3587,19 @@ fr:
         cela ? Ignorez ce message — le lien expire dans 1 heure et votre compte reste
         inchangé. Si vous continuez à recevoir ces emails, changez immédiatement votre
         mot de passe.
+    account_deletion_warning:
+      title: "Votre compte Dawarich va être supprimé"
+      greeting: "Bonjour %{email},"
+      deletion_notice: "Votre compte Dawarich et toutes ses données — historique de localisation, imports, voyages et lieux — seront définitivement supprimés le %{date}."
+      reason: "Votre accès à Dawarich a pris fin. Notre politique de confidentialité conserve les données du compte au maximum 12 mois après la fin de l'accès."
+      keep_account: "Pour conserver votre compte, réabonnez-vous avant le %{date} :"
+      resubscribe: "Me réabonner"
+      keep_copy: "Pour garder une copie de vos données, connectez-vous et exportez-les :"
+      export: "Exporter mes données"
+      nothing_to_do: "Si vous n'avez plus besoin de ce compte, vous n'avez rien à faire."
+      policy: "Politique de confidentialité :"
+      questions: "Des questions ? Répondez à cet e-mail ou écrivez à hi@dawarich.app."
+      signoff: "Evgenii de Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Votre historique de localisation approche de sa limite
       hi: Bonjour
@@ -4582,6 +4595,8 @@ fr:
         subject: Bienvenue sur Dawarich !
       explore_features:
         subject: Découvrez les fonctionnalités de Dawarich !
+      account_deletion_warning:
+        subject: "Votre compte Dawarich sera supprimé le %{date}"
       archival_approaching:
         subject: Conservez toute votre histoire — passez à Pro
       oauth_account_link:

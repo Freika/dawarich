@@ -2678,6 +2678,19 @@ ca:
       we_received_a_request_to_delete_your_dawarich_account_this_2: Hem rebut una sol·licitud per suprimir el teu compte de Dawarich. Aquesta és la teva última oportunitat per aturar la supressió. Un cop confirmat, tot el teu historial d'ubicacions, trajectes, àrees, visites, viatges i pertinences a famílies s'eliminaran permanentment.
       permanently_delete_my_account_2: 'Suprimeix el meu compte permanentment:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: No ho has sol·licitat tu? Ignora aquest correu electrònic — l'enllaç caduca d'aquí a 1 hora i el teu compte es manté intacte. Si continues rebent aquests correus, canvia la teva contrasenya immediatament.
+    account_deletion_warning:
+      title: "El teu compte de Dawarich s'eliminarà"
+      greeting: "Hola %{email},"
+      deletion_notice: "El teu compte de Dawarich i totes les seves dades —historial d'ubicacions, importacions, viatges i llocs— s'eliminaran definitivament el %{date}."
+      reason: "El teu accés a Dawarich ha acabat. La nostra Política de privacitat conserva les dades del compte com a màxim 12 mesos després que acabi l'accés."
+      keep_account: "Per conservar el compte, torna a subscriure't abans del %{date}:"
+      resubscribe: "Torna a subscriure't"
+      keep_copy: "Per conservar una còpia de les teves dades, inicia sessió i exporta-les:"
+      export: "Exporta les meves dades"
+      nothing_to_do: "Si ja no necessites el compte, no cal que facis res."
+      policy: "Política de privacitat:"
+      questions: "Tens preguntes? Respon a aquest correu o escriu a hi@dawarich.app."
+      signoff: "Evgenii de Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: El teu historial de dades s'està omplint
       hi: Hola
@@ -3559,6 +3572,8 @@ ca:
         subject: Benvingut/da a Dawarich!
       explore_features:
         subject: Descobreix les funcions de Dawarich!
+      account_deletion_warning:
+        subject: "El teu compte de Dawarich s'eliminarà el %{date}"
       archival_approaching:
         subject: Conserva tot el teu historial — millora a Pro
       oauth_account_link:

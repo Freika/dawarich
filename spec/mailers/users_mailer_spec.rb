@@ -52,6 +52,43 @@ RSpec.describe UsersMailer, type: :mailer do
     end
   end
 
+  describe 'account_deletion_warning' do
+    let(:mail) { UsersMailer.with(user:, deletion_on: '2027-01-01').account_deletion_warning }
+
+    before { stub_const('MANAGER_URL', 'https://manager.example') }
+
+    it 'is addressed to the user and names the deletion date in the subject' do
+      expect(mail.to).to eq([user.email])
+      expect(mail.subject).to include(I18n.l(Date.new(2027, 1, 1), format: :long))
+    end
+
+    it 'links to the exports page and to resubscription' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('/exports')
+      expect(body).to include('https://manager.example/auth/dawarich?token=')
+      expect(body).to include('utm_campaign=account_deletion_warning')
+    end
+
+    it 'does not claim the access ended more than 12 months ago' do
+      body = mail.text_part.decoded
+
+      expect(body).to include('Your Dawarich access has ended.')
+      expect(body).not_to include('more than 12 months ago')
+    end
+
+    it 'links to the privacy policy' do
+      expect(mail.html_part.decoded).to include('https://dawarich.app/privacy-policy')
+    end
+
+    it 'renders in the user locale' do
+      user.update!(settings: user.settings.merge('locale' => 'de'))
+      german = UsersMailer.with(user:, deletion_on: '2027-01-01').account_deletion_warning
+
+      expect(german.subject).to include('1. Januar 2027')
+    end
+  end
+
   describe 'legacy trial lifecycle emails' do
     %i[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |action|
       it "delivers nothing for a stale #{action} job" do
