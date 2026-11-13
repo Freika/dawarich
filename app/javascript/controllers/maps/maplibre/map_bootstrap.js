@@ -12,6 +12,7 @@ import { FilterManager } from "./filter_manager"
 import { LayerManager } from "./layer_manager"
 import { LayerVisibilityManager } from "./layer_visibility_manager"
 import { MapDataManager } from "./map_data_manager"
+import { NotesManager } from "./notes_manager"
 import { PlacesManager } from "./places_manager"
 import { VisitsManager } from "./visits_manager"
 
@@ -33,7 +34,35 @@ export function buildMapFeatures(controller) {
     '[data-testid="map-range-statistics"]',
   )
   if (statistics) {
-    controller.rangeStatistics = new RangeStatistics(statistics, controller.api)
+    // An empty period gets a persistent explanation with a way out, not a
+    // toast that disappears while the user is still looking at a blank map.
+    const emptyState = controller.element.querySelector(
+      '[data-testid="map-empty-state"]',
+    )
+    controller.rangeStatistics = new RangeStatistics(
+      statistics,
+      controller.api,
+      "km",
+      (data) =>
+        emptyState?.classList.toggle("hidden", !data || data.points > 0),
+    )
+    // The Timeline opens and closes without a reload, so the jump link takes
+    // its panel from the page as it is now, not as it was rendered.
+    if (emptyState?.href) {
+      const keepPanel = () => {
+        const url = new URL(emptyState.href)
+        const timelineOpen = controller.element.querySelector(
+          '[data-maps--maplibre-target~="settingsPanel"].open .tab-content.active[data-tab-content="timeline-feed"]',
+        )
+        if (timelineOpen) url.searchParams.set("panel", "timeline")
+        else url.searchParams.delete("panel")
+        emptyState.href = url.toString()
+      }
+      // A middle-click opens the link in a new tab without a click event.
+      for (const name of ["click", "auxclick"]) {
+        controller.cleanup.addEventListener(emptyState, name, keepPanel)
+      }
+    }
   }
 
   controller.layerManager = new LayerManager(
@@ -60,6 +89,7 @@ export function buildMapFeatures(controller) {
     controller.visitsManager.attachViewportRefetch()
   }
   controller.placesManager = new PlacesManager(controller)
+  controller.notesManager = new NotesManager(controller)
   controller.placePanel = new PlacePanelBridge(controller)
   consumeCreatePlaceLink(controller.placesManager)
   controller.layerVisibilityManager = new LayerVisibilityManager(controller)

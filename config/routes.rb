@@ -73,6 +73,10 @@ Rails.application.routes.draw do
     end
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
+    resource :data_processing, only: %i[show update], controller: 'data_processing' do
+      post :recalculate
+      post :reapply_anomaly_filter
+    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
@@ -164,6 +168,7 @@ Rails.application.routes.draw do
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]
+  resources :notes, only: %i[index new create edit update destroy]
   resources :trips do
     member do
       post :recalculate

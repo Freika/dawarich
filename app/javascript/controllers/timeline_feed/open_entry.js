@@ -35,12 +35,28 @@ export const openEntry = {
     // entry is already rendered — expand it immediately. Otherwise navigate
     // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
+    if (date && this.selectInRange(date, { keepCamera: true })) {
+      this._expandPendingTrackSoon()
+      return
+    }
+
     this.keepCameraOnDate = date || this.selectedDate
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date, { fitBounds: false })
     } else {
-      this._tryExpandPendingTrack()
+      this._expandPendingTrackSoon()
     }
+  },
+
+  // The click that opens the Timeline tab also starts reloading its list, and
+  // Turbo marks the frame busy only after this handler returns. One frame
+  // later the reload is visible, so the track waits for the new list instead
+  // of opening in the one being replaced.
+  _expandPendingTrackSoon() {
+    const expand = () => this._tryExpandPendingTrack()
+    if (typeof requestAnimationFrame === "function")
+      requestAnimationFrame(expand)
+    else expand()
   },
 
   // ---------- URL hydration ----------
@@ -65,6 +81,10 @@ export const openEntry = {
     // (arriving via the top date-range form / Search / Last 7 days) so the
     // panel lands on the most recent day of the range instead of going blank —
     // keeping the range and the panel in sync (C1).
+    // A period of several days opens as a whole; a `date=` beside it picks
+    // the day to select once the period has rendered (see applyUrlDay).
+    if (this.showRange()) return
+
     const date = params.get("date") || this.renderedDay()
     if (date) {
       const isoDate =
@@ -89,7 +109,14 @@ export const openEntry = {
 
     // Extract the day's bounds from the rendered DOM and re-dispatch
     // day-selected with bounds so the map can fit to the visits.
-    const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
+    this.syncRange()
+
+    // A period has no single day to fit the map to.
+    const dayEl = this.visitListFrameTarget.querySelector(
+      ".timeline-range-head",
+    )
+      ? null
+      : this.visitListFrameTarget.querySelector(".timeline-day")
     const keepCamera =
       this.pendingTrackId ||
       this.pendingTrackTime ||
@@ -113,6 +140,20 @@ export const openEntry = {
       this._tryExpandPendingTrack()
     }
 
+    this.selectPendingVisit()
+  },
+
+  // A list that failed to load fires no turbo:frame-load; drop the track a
+  // click asked for so it does not open by surprise in a later list.
+  handleVisitFrameFailure(event) {
+    // Failures bubble up from frames inside the list (a track's info, its
+    // segments); only the list's own failure drops the clicked track.
+    if (event?.target !== this.visitListFrameTarget) return
+    this.pendingTrackId = null
+    this.pendingTrackTime = null
+  },
+
+  selectPendingVisit() {
     if (!this.pendingVisitId) return
     const row = this.element.querySelector(
       `[data-visit-id="${this.pendingVisitId}"]`,
@@ -129,6 +170,10 @@ export const openEntry = {
   // collapses via `toggleTrackInfo`, but programmatic expansion only opens
   // a closed entry, never collapses an open one.
   _tryExpandPendingTrack() {
+    // A reload is still on its way and will replace this list; keep the track
+    // pending until the last one lands (Turbo clears busy before it renders).
+    if (this.visitListFrameTarget?.hasAttribute?.("busy")) return
+
     let toggle = null
 
     if (this.pendingTrackId) {

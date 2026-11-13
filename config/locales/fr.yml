@@ -1586,6 +1586,18 @@ fr:
       shared_on_dawarich: Partagé sur Dawarich
       dawarich_logo: Logo Dawarich
   map:
+    keyboard_shortcuts:
+      title: "Raccourcis clavier"
+      open_timeline: "Ouvrir la Chronologie"
+      open_layers: "Ouvrir les Couches"
+      search_places: "Rechercher des lieux"
+      open_family: "Ouvrir Famille"
+      open_tools: "Ouvrir les Outils"
+      open_settings: "Ouvrir les paramètres de la carte"
+      toggle_replay: "Lancer ou arrêter la relecture"
+      previous_next_day: "Jour précédent ou suivant, quand la Chronologie est ouverte"
+      show_shortcuts: "Afficher cette liste"
+      close: "Fermer"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "Vous ne savez pas où trouver l'export dans votre application ?"
       step_by_step_export_guides: "Guides d'export pas à pas"
@@ -1655,6 +1667,7 @@ fr:
         settings_s: Paramètres (S)
         links: Liens
       settings_panel:
+        data_processing_link: "Les paramètres des trajets, du bruit GPS, des villes et des modes de transport sont dans Paramètres → Traitement des données"
         speed_colored_tracks: Colorer les traces selon la vitesse
         edit_speed_colors: Modifier les couleurs de vitesse
         close_panel: Fermer le panneau
@@ -1664,7 +1677,7 @@ fr:
         search_for_a_location_to_find_places_you_visited: Rechercher une localisation
           pour trouver les endroits visités
         points: Points
-        show_individual_location_points: Afficher les points individuels de localisation
+        show_individual_location_points: "Chaque position enregistrée par vos appareils, un point pour chacune."
         edit_points: Éditer les points
         allow_dragging_points_to_correct_their_position: Autoriser la traînée des
           points pour corriger leur position.
@@ -1678,36 +1691,35 @@ fr:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Afficher les points bruit GPS filtrés
         tracks: Trajets
-        show_backend_calculated_tracks: Afficher les trajets calculés par Dawarich
+        show_backend_calculated_tracks: "Vos points reliés pour former les trajets que vous avez parcourus."
         flights: Vols
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Afficher les vols AirTrail
-          sous forme d'arc (masque les points GPS superposés)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Vos vols AirTrail sous forme d'arcs. Ils masquent les points GPS qu'ils recouvrent."
         heatmap: Carte de chaleur
-        show_density_heatmap: Afficher la carte de chaleur de densité
+        show_density_heatmap: "Plus lumineux là où vous avez plus de points."
         hexagons: Hexagones
-        show_point_density_as_hexagonal_cells: Afficher la densité des points en hexagones
+        show_point_density_as_hexagonal_cells: "Compte vos points par cellule hexagonale pour une vue plus générale."
         visits: Visites
-        show_detected_area_visits: Afficher les visites détectées dans une zone
+        show_detected_area_visits: "Visites détectées par Dawarich : les moments où vous êtes resté au même endroit."
         filter_by_name: Filtrer par nom...
         all_visits: Toutes les Visites
         confirmed_only: Seulement confirmé
         suggested_only: Seulement suggéré
         places: Endroits
-        show_your_saved_places: Afficher vos endroits sauvegardés
+        show_your_saved_places: "Lieux nommés que vous avez enregistrés. Les visites y sont rattachées."
         enable_all_tags: Activer toutes les étiquettes
         show_place_boundaries: Afficher les limites des lieux
         untagged: "\U0001F3F7️ Sans étiquette"
         click_tags_to_filter_places: Cliquez sur les étiquettes pour filtrer les endroits
         photos: Photos
-        show_geotagged_photos: Afficher les photos géotagées
+        show_geotagged_photos: "Vos photos géolocalisées, placées là où elles ont été prises."
         areas: Zones
         show_defined_areas: Afficher les zones définies
         fog_of_war: Brouillard de guerre
-        show_explored_areas: Afficher les zones explorées
+        show_explored_areas: "Assombrit la carte, sauf là où vous êtes déjà allé."
         per_point: Par point
         per_hexagon: Par hexagone
         scratch_map: Pays visités
-        show_scratched_countries: Mettre en évidence les pays visités dans la période sélectionnée
+        show_scratched_countries: "Les pays que vous avez visités pendant la période sélectionnée, colorés."
         family_members: Membres de la famille
         manage_family: "Gérer la famille"
         show_family_member_locations: Afficher les emplacements des membres de la
@@ -1757,7 +1769,6 @@ fr:
           POI qui apparaissent sur la carte.
         distance_threshold_for_route_splitting: Seuil de distance pour la division
           des itinéraires
-        min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
@@ -1797,9 +1808,6 @@ fr:
           à l’historique existant.
         city_statistics: Statistiques de ville
         min_minutes_in_city: Durée minimale dans une ville
-        min_5: 60 min
-        min_6: 5min
-        min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: Combien de temps vous devez rester
           dans une ville pour qu'elle soit comptée dans les statistiques
         min_12: 720min
@@ -1808,7 +1816,6 @@ fr:
         apply_settings: Appliquer les paramètres
         reset_to_defaults_2: Rétablir les valeurs par défaut
         transportation_mode_detection: Détection du mode de transport
-        checking_status: Statut en cours de vérification...
         settings_are_locked_while_recalculation_is_in_progress: Les paramètres sont
           verrouillés pendant le recalcul.
         note: 'Note :'
@@ -1845,8 +1852,6 @@ fr:
         sec_2: 180 s
         min_flight_distance: Distance minimale de vol
         km: 100 km
-        make_changes_to_enable_the_apply_button: Modifiez les paramètres pour activer
-          le bouton Appliquer
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Relance
           la classification automatique de tous vos trajets. Les segments corrigés
           manuellement sont conservés. Cette opération peut prendre quelques minutes.
@@ -1977,6 +1982,10 @@ fr:
       index:
         loading: Chargement...
         pick_a_day: Choisissez une journée
+        no_data_in_period: "Aucune donnée de localisation sur cette période"
+        jump_to_latest_data: "Aller à vos données les plus récentes"
+        nothing_recorded_yet: "Rien n'a encore été enregistré ni importé."
+        get_started: "Commencer"
         map: Carte
     residency:
       show:
@@ -2018,6 +2027,16 @@ fr:
         previous_day: Jour précédent
         next_day: Prochain jour
       feed:
+        latest_days_only:
+          one: "Le dernier %{count} jour d'une période plus longue"
+          other: "Les %{count} derniers jours d'une période plus longue"
+        all_days: Tous les jours
+        day_count:
+          one: "%{count} jour"
+          other: "%{count} jours"
+        note_count:
+          one: "%{count} note"
+          other: "%{count} notes"
         no_visits_tracked_this_day: Aucune visite enregistrée ce jour-là.
         visits_are_auto_detected_daily_from_your_location_data: Les visites sont détectées
           automatiquement chaque jour à partir de vos données de localisation.
@@ -2267,6 +2286,13 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
+    data_processing:
+      show:
+        title: "Traitement des données"
+        intro: "Comment Dawarich transforme vos points en trajets, quelles mesures il considère comme du bruit GPS et combien de temps un séjour doit durer pour compter dans une ville. Ces réglages peuvent recalculer des données existantes ; les couleurs et couches de la carte restent dans les paramètres de la carte."
+        existing_data: "Appliquer aux données existantes"
+        existing_data_hint: "Les changements ci-dessus s'appliquent aux nouveaux points. Pour les appliquer à votre historique, recalculez-le. Les deux tournent en arrière-plan et peuvent prendre du temps sur un grand compte."
+        rebuilds_need_pro: "Le recalcul des données passées fait partie de Dawarich Pro."
     geofencing_paused_while_archived: en pause tant que le lieu est archivé
     trek_sources:
       select_trips:
@@ -2290,6 +2316,7 @@ fr:
       destroy:
         source_removed_trips_kept: "TREK a été déconnecté. Vos voyages gérés ont été conservés et ne seront plus synchronisés."
     navigation:
+      data_processing: "Traitement des données"
       general: Général
       integrations: Intégrations
       map: Carte
@@ -2765,6 +2792,8 @@ fr:
         no_thanks: Non merci
         yes_notify_me: Oui, m'en informer
       help_links:
+        documentation: "Documentation"
+        keyboard_shortcuts: "Raccourcis clavier"
         need_help_ping_us: Besoin d'aide ? Contactez-nous !
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -2919,6 +2948,8 @@ fr:
         shared_from_dawarich: Partagé depuis Dawarich
     map:
       date_navigation_v2:
+        note_days: "jour avec notes"
+        choose_period: Choisir la période
         share: Partager
         start_date_and_time: Date et heure de début
         end_date_and_time: Date et heure de fin
@@ -5265,18 +5296,12 @@ fr:
       failed_to_load_anomalies: Échec du chargement des anomalies
       cannot_update_recalculation_is_already_in_progress: 'Impossible de mettre à
         jour : le recalcul est déjà en cours'
-      transportation_settings_saved: Paramètres de transport sauvegardés
       globe_view_will_be_applied_after_page_reload: La vue globe sera appliquée après
         le rechargement de la page
-      settings_updated_successfully: Mise à jour des paramètres effectuée avec succès
       reloading_map_data_with_new_settings: Rechargement des données de carte avec
         les nouveaux paramètres...
       api_key_not_available_please_reload_the_page: Clé API non disponible ; veuillez
         recharger la page.
-      could_not_queue_re_evaluation_please_try_again: Impossible d'ajouter la réévaluation
-        dans la file d'attente. Veuillez réessayer.
-      could_not_queue_recalculation_please_try_again: Impossible d'ajouter le recalcul
-        dans la file d'attente. Veuillez réessayer.
       click_on_the_map_to_place_a_visit_esc_to: Cliquez sur la carte pour placer une
         visite (Esc pour annuler)
       visit_creation_modal_not_available: Fenêtre de création de visite non disponible
@@ -5987,6 +6012,7 @@ fr:
       pm: PM
   ux_p2:
     import:
+      failed_reason_in_list: "L'import n'a pas pu se terminer. Ouvrez-le pour voir la référence et la marche à suivre."
       format_error: Le format du fichier n’a pas pu être lu. Vérifiez le fichier et les formats acceptés.
       failed_reason: L’importation n’a pas pu aboutir. Vous pouvez envoyer le fichier à nouveau.
       open: Ouvrir l’importation et les options de récupération

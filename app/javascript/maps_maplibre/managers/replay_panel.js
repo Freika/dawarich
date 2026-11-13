@@ -3,6 +3,11 @@ import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { displays } from "./replay_panel/displays"
 import { photos } from "./replay_panel/photos"
 import { playback } from "./replay_panel/playback"
+import { range } from "./replay_panel/range"
+
+// ponytail: past this many days one day is too narrow to hit on a shared
+// scrubber, so it goes back to one day at a time. Zoomable scale if needed.
+const MAX_RANGE_DAYS = 14
 
 export class ReplayPanel {
   constructor(opts) {
@@ -17,6 +22,7 @@ export class ReplayPanel {
     this._highlightPoint = opts.highlightPoint || null
     this._clearHighlight = opts.clearHighlight || null
     this.onDaySync = opts.onDaySync || null
+    this._initialDay = opts.initialDay || null
     this.onPlayStateChange = opts.onPlayStateChange || null
     this._getPhotos = opts.getPhotos || null
     this._distanceUnit = opts.distanceUnit || (() => "km")
@@ -48,6 +54,30 @@ export class ReplayPanel {
     return this._markerLayerOpt || this._ownMarkerLayer || null
   }
 
+  // The days one scrubber spans, or null when it shows a single day. Opt-in:
+  // the host renders a `replayDaySegments` target to label the days.
+  get rangeDays() {
+    const days = this.replayManager?.availableDays || []
+    return this.c.hasReplayDaySegmentsTarget &&
+      days.length > 1 &&
+      days.length <= MAX_RANGE_DAYS
+      ? days
+      : null
+  }
+
+  // Scrubber value of the current day's midnight.
+  get scrubberOffset() {
+    return this.rangeDays ? this.replayManager.currentDayIndex * 1440 : 0
+  }
+
+  get scrubberMinute() {
+    return parseInt(this.c.replayScrubberTarget.value, 10) % 1440
+  }
+
+  setScrubber(minute) {
+    this.c.replayScrubberTarget.value = this.scrubberOffset + minute
+  }
+
   async toggle() {
     if (!this.c.hasReplayPanelTarget) return
 
@@ -73,6 +103,8 @@ export class ReplayPanel {
     this.replayManager = new ReplayManager({ timezone: this.timezone })
     this.replayManager.setPoints(points)
     if (!this.replayManager.hasData()) return
+    // Open on the day the host already has selected, if any.
+    this.replayManager.goToDay(this._initialDay?.())
 
     if (!this._markerLayerOpt && !this._ownMarkerLayer) {
       this._ownMarkerLayer = new ReplayMarkerLayer(this.map)
@@ -81,6 +113,8 @@ export class ReplayPanel {
 
     this.bindFollowInterrupt()
     this.setupReplayPhotos()
+    this.setupRange()
+    this.bindScrubberTip()
     this.updateDayDisplay()
     this.updateDayCount()
     this.updateDayButtons()
@@ -112,22 +146,38 @@ export class ReplayPanel {
 
     const firstMinute = this.replayManager.findNearestMinuteWithPoints(0)
     if (firstMinute !== null) {
-      this.c.replayScrubberTarget.value = firstMinute
+      this.setScrubber(firstMinute)
       this.handleMinuteChange(firstMinute)
     } else {
-      this.c.replayScrubberTarget.value = 720
+      this.setScrubber(720)
       this.updateTimeDisplay(720, true)
     }
   }
 
   setMinute(minute) {
-    if (this.c.hasReplayScrubberTarget)
-      this.c.replayScrubberTarget.value = minute
+    if (this.c.hasReplayScrubberTarget) this.setScrubber(minute)
     this.handleMinuteChange(minute)
   }
 
   scrubberHover(event) {
-    this.handleMinuteChange(parseInt(event.target.value, 10))
+    const pointed = this._pointerValue
+    if (pointed !== null && pointed !== undefined) event.target.value = pointed
+    const value = parseInt(event.target.value, 10)
+
+    const days = this.rangeDays
+    if (days && this.replayManager.goToDay(days[Math.floor(value / 1440)])) {
+      this.resetReplayPhotos()
+      this.updateDayDisplay()
+      this.updateDayCount()
+      this.updateDayButtons()
+      this.renderDensity()
+      if (this.replayActive) {
+        this.replayPoints = this.replayManager.getPointsForDay(
+          this.replayManager.getCurrentDay(),
+        )
+      }
+    }
+    this.handleMinuteChange(value % 1440)
   }
 
   handleMinuteChange(minute) {
@@ -245,14 +295,14 @@ export class ReplayPanel {
 
   cyclePrev() {
     if (!this.replayManager || !this.c.hasReplayScrubberTarget) return
-    const minute = parseInt(this.c.replayScrubberTarget.value, 10)
+    const minute = this.scrubberMinute
     this.replayManager.cyclePrev()
     this.afterCycle(minute)
   }
 
   cycleNext() {
     if (!this.replayManager || !this.c.hasReplayScrubberTarget) return
-    const minute = parseInt(this.c.replayScrubberTarget.value, 10)
+    const minute = this.scrubberMinute
     this.replayManager.cycleNext(minute)
     this.afterCycle(minute)
   }
@@ -420,6 +470,10 @@ export class ReplayPanel {
   }
 
   setButtonActive(active) {
+    this.c.replayPanelTarget
+      .closest(".replay-dock")
+      ?.querySelector(".map-range-statistics")
+      ?.setAttribute("aria-expanded", String(active))
     if (!this.c.hasReplayToggleBtnTarget) return
     const button = this.c.replayToggleBtnTarget
     if (active) {
@@ -432,4 +486,4 @@ export class ReplayPanel {
   }
 }
 
-Object.assign(ReplayPanel.prototype, playback, displays, photos)
+Object.assign(ReplayPanel.prototype, playback, displays, photos, range)

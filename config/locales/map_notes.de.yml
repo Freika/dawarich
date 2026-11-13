@@ -1,0 +1,59 @@
+de:
+  notes:
+    flash:
+      saved: Notiz gespeichert
+      deleted: Notiz gelöscht
+      pick_a_point_on_the_map: Wähle einen Punkt auf der Karte für diese Notiz
+    form:
+      note: Notiz
+      what_happened_here: Was ist hier passiert?
+      when: Wann
+      delete: Löschen
+      delete_this_note: Diese Notiz löschen?
+      cancel: Abbrechen
+      save: Speichern
+    index:
+      notes: Tagebuch
+      search: Suchen
+      search_placeholder: Notizen durchsuchen
+      from: Von
+      to: Bis
+      clear: Zurücksetzen
+      nothing_found: Keine Notizen passen zu dieser Suche
+      no_notes_yet: Noch keine Notizen
+      no_notes_yet_hint: Öffne die Karte, wähle unter Werkzeuge „Notiz hinzufügen“ und klicke auf den Ort, den du festhalten möchtest.
+      open_the_map: Karte öffnen
+    note:
+      trip: 'Reise: %{name}'
+      open_this_day_on_the_map: Diesen Tag auf der Karte öffnen
+  map:
+    maplibre:
+      note_modal:
+        map_note: Kartennotiz
+      settings_panel:
+        notes: Notizen
+        show_your_map_notes: Zeigt die Notizen, die du auf der Karte geschrieben hast
+        add_note: Notiz hinzufügen
+    timeline_feeds:
+      note_entry:
+        edit: Bearbeiten
+      on_this_day:
+        on_this_day: An diesem Tag
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Klicke auf die Karte, um eine Notiz zu setzen. Esc zum Abbrechen.
+      failed_to_load_notes: Notizen konnten nicht geladen werden
+  shared:
+    navbar:
+      notes: Tagebuch
+    links:
+      map_notes:
+        notes: Notizen
+  shared_links:
+    map_notes_toggle:
+      label: Meine Kartennotizen zeigen
+      hint: Zeigt Text und Zeit der Notizen zu diesem Zeitraum, nicht den Ort, an dem sie geschrieben wurden. Notizen, die du später zu diesem Zeitraum schreibst, erscheinen ebenfalls.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Kartennotizen

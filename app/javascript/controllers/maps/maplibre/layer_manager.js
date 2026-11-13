@@ -110,6 +110,20 @@ export class LayerManager {
     }
   }
 
+  // An empty period already explains itself on the map; the toast is for
+  // points that have no tracks yet.
+  async announceEmptyTracks() {
+    const statistics = this.controller?.rangeStatistics
+    // A newer range load replaces `pending`; wait for the latest one.
+    let pending
+    while (statistics && pending !== statistics.pending) {
+      pending = statistics.pending
+      await pending?.catch(() => {})
+    }
+    if (statistics?.data?.points === 0) return
+    Toast.info(translate("messages.tracks_pending"))
+  }
+
   /**
    * Clear all layer references (for style changes)
    */
@@ -328,7 +342,7 @@ export class LayerManager {
               this.layers.mapEditorLayer?.reapplyTileFilters()
             },
           ),
-        onEmptyTracks: () => Toast.info(translate("messages.tracks_pending")),
+        onEmptyTracks: () => this.announceEmptyTracks(),
         ...this.pointTileRange,
       })
       this.layers.tracksMvtLayer.add(this.pointTileRange)

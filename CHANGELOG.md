@@ -42,18 +42,31 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
 - Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
 - The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
+- Map notes: choose Add note in the map's Tools and click a spot to write a note about a moment there. Notes show as a map layer, in the Timeline at their time, and under today as "On this day" for the same date in earlier years. They are exempt from the Lite 12-month window, and a note inside a Privacy Zone keeps its text but not its position.
+- A Timeline period longer than a day reads like a diary: every day (up to the latest 32), newest first, with where the day went and its notes; opening a day selects it on the map and in replay. Press Enter in the Timeline search to look through all your notes. The Diary menu item opens the month of your latest note.
+- Replay covers a period of up to 14 days on one scale, with a tab per day and the time under the pointer; the points and distance summary opens and closes it.
+- The API's `GET /api/v1/notes` takes `start_at`, `end_at`, a bounding box and optional pagination, and `date` on a note without a trip is now your local day. The user data export and import now carry notes.
+- Timeline and track share links can show the text and time of your notes about the shared period, never their position. It is off by default.
 - The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour from the apps and 10 an hour from the website.
 
 ### Changed
 
+- A date range with no location data now says so on the map and offers a jump to the day of your latest data. Layer buttons explain what each layer is, with a short preview of it when you hover or focus them.
 - The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. An error opens its own notification first, with the full message, what to do about it and a button to that page. "Mark all as read" in the bell no longer takes you away from the page you are on.
 - Fewer notifications. An identical error or warning is not repeated while the first one is unread. You are no longer notified about a family you just created or left, an invitation you just accepted on the family page or by signing in on the web, or a member you just removed: the page already confirms those. On Dawarich Cloud the same goes for an invitation you just sent, and failed background runs of statistics, digests and visit suggestions are no longer shown, because only the operators can act on them; self-hosted instances still show them.
 - Error notifications no longer include a stack trace. It is written to the application log instead, and reported to us on Dawarich Cloud.
 - On Dawarich Cloud, error notifications point to hi@dawarich.app instead of asking you to attach Docker container logs to a GitHub issue.
 - Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
+- The date bar above the map is replaced by a period button on the map: the first click in its calendar sets the start, the second the end, and exact times sit under the calendar. Share moved into the map's button column, and the Timeline panel is narrower.
+- The Notes page is replaced by the Diary in the Timeline, and `/notes` redirects there. Trip day notes are listed only on their trips.
+- Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page.
+- Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
+- A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
+- The Docker image no longer ships npm and npx, which were only needed while the image is built. The poster renderer's dependencies were updated to patched releases.
 
 ### Fixed
 
+- Clicking a track on the map keeps it selected and its Timeline entry open; moving off it also clears the highlighted segment row.
 - On Dawarich Cloud, an invitation into the last free seat of a family can now be accepted; before, it was refused as if the family were full.
 - Hovering over a notification no longer marks it as read.
 - A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.

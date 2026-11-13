@@ -55,9 +55,6 @@ export default class MapController extends Controller {
     "visitsSearch",
     "placesFilters",
     "enableAllPlaceTagsToggle",
-    "minMinutesInCityValue",
-    "gpsFilteringToggle",
-    "gpsAccuracyThresholdValue",
     // Search
     "searchInput",
     "searchResults",
@@ -77,6 +74,7 @@ export default class MapController extends Controller {
     "familyToggle",
     "flightsToggle",
     "tracksToggle",
+    "notesToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -97,22 +95,13 @@ export default class MapController extends Controller {
     "infoTitle",
     "infoContent",
     "infoActions",
-    // Transportation mode detection
-    "transportationCollapseToggle",
-    // Transportation recalculation status
-    "transportationRecalculationAlert",
-    "transportationLockedMessage",
-    // Transportation apply button
-    "transportationApplyButton",
-    "transportationDirtyMessage",
-    // Transportation enabled modes allowlist
-    "enabledModeCheckbox",
     // Replay panel. Not inherited from ReplayHost: the protected
     // spec/regressions harnesses load this file with only a bare Controller.
     "replayPanel",
     "replayScrubber",
     "replayScrubberTrack",
     "replayDensityContainer",
+    "replayDaySegments",
     "replayDayDisplay",
     "replayDayCount",
     "replayTimeDisplay",
@@ -213,9 +202,9 @@ export default class MapController extends Controller {
     this.familyManager?.disconnect()
     this.placePanel?.destroy()
     this.replayPanel?.destroy()
-    this.settingsController?.transportation.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.notesManager?.destroy()
     this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
@@ -232,6 +221,7 @@ export default class MapController extends Controller {
   async loadMapData(options = {}) {
     this.rangeStatistics?.setUnit(this.settings?.distance_unit || "km")
     this.rangeStatistics?.load(this.startDateValue, this.endDateValue)
+    this.notesManager?.reload()
     return this.mapDataManager.loadMapData(
       this.startDateValue,
       this.endDateValue,
@@ -426,16 +416,7 @@ const FORWARDED_ACTIONS = {
     "toggleSpeedColoredRoutes",
     "updateSpeedColorScale",
     "resetLayerColors",
-    "updateAdvancedSettings",
-    "updateGpsAccuracyThresholdDisplay",
-    "updateMinMinutesInCityDisplay",
-    "reapplyAnomalyFilter",
-    "recalculateUserData",
     "togglePointsEditing",
-  ],
-  "settingsController.transportation": [
-    "markTransportationSettingsDirty",
-    "applyTransportationSettings",
   ],
   areaSelectionManager: [
     "startSelectArea",
@@ -449,6 +430,7 @@ const FORWARDED_ACTIONS = {
     "filterVisits",
     "startCreateVisit",
   ],
+  notesManager: ["toggleNotes", "startCreateNote"],
   placesManager: [
     "togglePlaces",
     "toggleArchivedPlaces",

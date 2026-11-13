@@ -46,6 +46,7 @@ class Users::ImportData
       imports_created: 0,
       exports_created: 0,
       trips_created: 0,
+      notes_created: 0,
       stats_created: 0,
       digests_created: 0,
       notifications_created: 0,

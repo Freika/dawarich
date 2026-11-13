@@ -113,6 +113,25 @@ RSpec.describe 'Privacy zone masking on map read endpoints', type: :request do
     end
   end
 
+  describe 'notes' do
+    before do
+      create(:note, user: user, body: 'At home', latitude: zone_lat, longitude: zone_lon)
+      create(:note, user: user, body: 'Out', latitude: 52.600, longitude: 13.700)
+      create(:note, user: user, body: 'No location')
+    end
+
+    it 'drops in-zone notes only with the flag and keeps notes without a location' do
+      get '/api/v1/notes', params: masked, headers: headers
+      masked_bodies = json.pluck('body')
+
+      get '/api/v1/notes', headers: headers
+      plain_bodies = json.pluck('body')
+
+      expect(masked_bodies).to contain_exactly('Out', 'No location')
+      expect(plain_bodies).to contain_exactly('At home', 'Out', 'No location')
+    end
+  end
+
   describe 'visits' do
     let!(:place_visit) do
       create(:visit, user: user, place: zone_place, area: nil, started_at: 2.hours.ago, ended_at: 1.hour.ago)

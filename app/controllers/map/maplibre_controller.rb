@@ -14,6 +14,8 @@ module Map
       @end_at = parsed_end_at
       @import_id = import_record&.id
       @current_position = current_position
+      @latest_data_date = latest_data_date
+      @data_outside_view = @latest_data_date.nil? && current_user.points.exists?
       @exploration_bounds = exploration_bounds
       @exploration_snapshot_id = exploration_snapshot_id if @exploration_bounds
 
@@ -50,8 +52,30 @@ module Map
       [[west, south], [east, north]]
     end
 
+    def latest_points
+      current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc)
+    end
+
+    def latest_point
+      return @latest_point if defined?(@latest_point)
+
+      @latest_point = latest_points.first
+    end
+
+    # The day the empty-period state offers to jump to, in the same zone
+    # `?date=` is read in. It is the latest day the map can actually show:
+    # a day spent inside a Privacy Zone would open as another empty period.
+    def latest_data_date
+      masker = current_privacy_zone_masker
+      point = masker.any? ? masker.mask_points(latest_points).first : latest_point
+      return unless point
+
+      zone = current_user.safe_settings.timezone.presence || 'UTC'
+      Time.zone.at(point.timestamp).in_time_zone(zone).to_date
+    end
+
     def current_position
-      point = current_user.scoped_points.without_raw_data.complete.not_anomaly.order(timestamp: :desc).first
+      point = latest_point
       return if point.nil? || current_privacy_zone_masker.in_zone?(point.lon, point.lat)
 
       { longitude: point.lon, latitude: point.lat, timestamp: point.timestamp }
@@ -59,6 +83,7 @@ module Map
 
     def start_at
       return safe_timestamp(params[:start_at]) if params[:start_at].present?
+      return diary_month.begin.to_i if diary_month
       return date_param_range.begin.to_i if date_param_range
       return import_window_start if import_window_start
 
@@ -67,6 +92,7 @@ module Map
 
     def end_at
       return safe_timestamp(params[:end_at]) if params[:end_at].present?
+      return diary_month.end.to_i if diary_month
       return date_param_range.end.to_i if date_param_range
       return import_window_end if import_window_end
 
@@ -88,6 +114,23 @@ module Map
           Time.use_zone(tz) do
             date = params[:date] == 'today' ? Date.current : safe_parse_date(params[:date])
             date&.all_day
+          end
+        end
+    end
+
+    # `?month=2026-11` opens that month, `?month=latest` the month of the
+    # latest note (the Diary menu item). A `date=` beside it only picks the
+    # day to select inside the month.
+    def diary_month
+      return @diary_month if defined?(@diary_month)
+
+      @diary_month =
+        if params[:month].present? && params[:start_at].blank?
+          tz = current_user.safe_settings.timezone.presence || 'UTC'
+          Time.use_zone(tz) do
+            day = safe_parse_date("#{params[:month]}-01") if params[:month].match?(/\A\d{4}-\d{2}\z/)
+            day ||= current_user.notes.standalone.maximum(:noted_at)&.in_time_zone&.to_date
+            (day || Date.current).in_time_zone.all_month
           end
         end
     end

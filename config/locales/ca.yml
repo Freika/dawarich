@@ -921,6 +921,18 @@ ca:
       shared_on_dawarich: Compartit a Dawarich
       dawarich_logo: Logotip de Dawarich
   map:
+    keyboard_shortcuts:
+      title: "Dreceres de teclat"
+      open_timeline: "Obre la Línia de temps"
+      open_layers: "Obre les Capes"
+      search_places: "Cerca llocs"
+      open_family: "Obre Família"
+      open_tools: "Obre les Eines"
+      open_settings: "Obre la configuració del mapa"
+      toggle_replay: "Inicia o atura la reproducció"
+      previous_next_day: "Dia anterior o següent, amb la Línia de temps oberta"
+      show_shortcuts: "Mostra aquesta llista"
+      close: "Tanca"
     onboarding_modal:
       not_sure_where_your_app_keeps_its_export: "No saps on guarda la teva app l'exportació?"
       step_by_step_export_guides: "Guies d'exportació pas a pas"
@@ -977,6 +989,7 @@ ca:
         settings_s: Configuració (S)
         links: Enllaços
       settings_panel:
+        data_processing_link: "La configuració de trajectes, soroll GPS, ciutats i modes de transport és a Configuració → Processament de dades"
         speed_colored_tracks: Acoloreix els trajectes segons la velocitat
         edit_speed_colors: Edita els colors de velocitat
         close_panel: Tanca el panell
@@ -985,7 +998,7 @@ ca:
         enter_name_of_a_place: Introdueix el nom d'un lloc
         search_for_a_location_to_find_places_you_visited: Cerca una ubicació per trobar llocs que has visitat
         points: Punts
-        show_individual_location_points: Mostra els punts d'ubicació individuals
+        show_individual_location_points: "Cada posició que han enregistrat els teus dispositius, un punt per cadascuna."
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
         editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
@@ -996,35 +1009,35 @@ ca:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Mostra els punts de soroll GPS filtrats
         tracks: Trajectes
-        show_backend_calculated_tracks: Mostra els trajectes calculats pel servidor
+        show_backend_calculated_tracks: "Els teus punts units en els trajectes que has recorregut."
         flights: Vols
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Mostra els vols d'AirTrail com a arcs (amaga el GPS superposat)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Els teus vols d'AirTrail com a arcs. Amaguen els punts GPS que se superposen."
         heatmap: Mapa de calor
-        show_density_heatmap: Mostra el mapa de calor de densitat
+        show_density_heatmap: "Brilla més on tens més punts."
         hexagons: Hexàgons
-        show_point_density_as_hexagonal_cells: Mostra la densitat de punts com a cel·les hexagonals
+        show_point_density_as_hexagonal_cells: "Compta els teus punts per cel·la hexagonal per a una visió més general."
         visits: Visites
-        show_detected_area_visits: Mostra les visites a àrees detectades
+        show_detected_area_visits: "Visites detectades per Dawarich: moments en què vas romandre en un mateix lloc."
         filter_by_name: Filtra per nom...
         all_visits: Totes les visites
         confirmed_only: Només confirmades
         suggested_only: Només suggerides
         places: Llocs
-        show_your_saved_places: Mostra els teus llocs desats
+        show_your_saved_places: "Llocs amb nom que has desat. Les visites s'hi associen."
         enable_all_tags: Activa totes les etiquetes
         show_place_boundaries: Mostra els límits dels llocs
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
         photos: Fotos
-        show_geotagged_photos: Mostra les fotos geolocalitzades
+        show_geotagged_photos: "Les teves fotos geolocalitzades, situades on es van fer."
         areas: Àrees
         show_defined_areas: Mostra les àrees definides
         fog_of_war: Boira de guerra
-        show_explored_areas: Mostra les àrees explorades
+        show_explored_areas: "Enfosqueix el mapa excepte on ja has estat."
         per_point: Per punt
         per_hexagon: Per hexàgon
         scratch_map: Països visitats
-        show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
+        show_scratched_countries: "Els països que has visitat durant el període seleccionat, acolorits."
         family_members: Membres de la família
         manage_family: "Gestiona la família"
         show_family_member_locations: Mostra les ubicacions dels membres de la família
@@ -1057,7 +1070,6 @@ ca:
         points_of_interest: Punts d'interès
         choose_which_poi_categories_appear_on_the_map: Tria quines categories de punts d'interès apareixen al mapa.
         distance_threshold_for_route_splitting: Llindar de distància per dividir rutes
-        min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
@@ -1088,9 +1100,6 @@ ca:
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Desa primer aquests llindars. Els trajectes nous els faran servir automàticament; selecciona «Recalcula trajectes i estadístiques» per aplicar-los a l'historial existent.
         city_statistics: Estadístiques de ciutat
         min_minutes_in_city: Minuts mínims a la ciutat
-        min_5: 60 min
-        min_6: 5 min
-        min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Quant de temps has de romandre perquè una ciutat compti a les estadístiques
         min_12: 720 min
         live_mode: Mode en directe
@@ -1098,7 +1107,6 @@ ca:
         apply_settings: Aplica la configuració
         reset_to_defaults_2: Restableix als valors per defecte
         transportation_mode_detection: Detecció de mitjà de transport
-        checking_status: Comprovant l'estat...
         settings_are_locked_while_recalculation_is_in_progress: La configuració està bloquejada mentre el recàlcul està en curs.
         note: 'Nota:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Canviar aquests llindars activarà un recàlcul dels mitjans de transport de tots els teus trajectes. Això pot trigar una mica en funció de quants trajectes tinguis.
@@ -1129,7 +1137,6 @@ ca:
         sec_2: 180 seg
         min_flight_distance: Distància mínima de vol
         km: 100 km
-        make_changes_to_enable_the_apply_button: Fes canvis per activar el botó Aplica
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Torna a executar la classificació automàtica en tots els teus trajectes. Els segments corregits manualment es conserven. Pot trigar diversos minuts.
         loading_calendar: Carregant el calendari…
         less: menys
@@ -1244,6 +1251,10 @@ ca:
       index:
         loading: Carregant...
         pick_a_day: Tria un dia
+        no_data_in_period: "No hi ha dades d'ubicació en aquest període"
+        jump_to_latest_data: "Ves a les teves dades més recents"
+        nothing_recorded_yet: "Encara no s'ha enregistrat ni importat res."
+        get_started: "Comença"
         map: Mapa
     residency:
       show:
@@ -1282,6 +1293,16 @@ ca:
         previous_day: Dia anterior
         next_day: Dia següent
       feed:
+        latest_days_only:
+          one: "L'últim %{count} dia d'un període més llarg"
+          other: "Els últims %{count} dies d'un període més llarg"
+        all_days: Tots els dies
+        day_count:
+          one: "%{count} dia"
+          other: "%{count} dies"
+        note_count:
+          one: "%{count} nota"
+          other: "%{count} notes"
         no_visits_tracked_this_day: No hi ha visites registrades aquest dia.
         visits_are_auto_detected_daily_from_your_location_data: Les visites es detecten automàticament cada dia a partir de les teves dades d'ubicació.
       gap_entry:
@@ -1562,6 +1583,13 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    data_processing:
+      show:
+        title: "Processament de dades"
+        intro: "Com Dawarich converteix els teus punts en trajectes, quines lectures tracta com a soroll GPS i quant ha de durar una estada per comptar en una ciutat. Els canvis aquí poden recalcular dades que ja tens; els colors i les capes del mapa es mantenen a la configuració del mapa."
+        existing_data: "Aplica a les dades que ja tens"
+        existing_data_hint: "Els canvis de dalt s'apliquen als punts nous. Per aplicar-los al teu historial, recalcula'l. Tots dos s'executen en segon pla i poden trigar en un compte gran."
+        rebuilds_need_pro: "Recalcular les dades anteriors forma part de Dawarich Pro."
     geofencing_paused_while_archived: en pausa mentre estigui arxivat
     trek_sources:
       select_trips:
@@ -1585,6 +1613,7 @@ ca:
       destroy:
         source_removed_trips_kept: "TREK s'ha desconnectat. Els teus viatges gestionats s'han conservat i ja no es sincronitzaran."
     navigation:
+      data_processing: "Processament de dades"
       general: General
       integrations: Integracions
       map: Mapa
@@ -1965,6 +1994,8 @@ ca:
         no_thanks: No, gràcies
         yes_notify_me: Sí, avisa'm
       help_links:
+        documentation: "Documentació"
+        keyboard_shortcuts: "Dreceres de teclat"
         need_help_ping_us: Necessites ajuda? Contacta'ns!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -2102,6 +2133,8 @@ ca:
         shared_from_dawarich: Compartit des de Dawarich
     map:
       date_navigation_v2:
+        note_days: "dia amb notes"
+        choose_period: Tria el període
         share: Comparteix
         start_date_and_time: Data i hora d'inici
         end_date_and_time: Data i hora de finalització
@@ -4066,13 +4099,9 @@ ca:
       failed_to_load_flights: No s'han pogut carregar els vols
       failed_to_load_anomalies: No s'han pogut carregar les anomalies
       cannot_update_recalculation_is_already_in_progress: 'No es pot actualitzar: ja hi ha un recàlcul en curs'
-      transportation_settings_saved: Configuració de transport desada
       globe_view_will_be_applied_after_page_reload: La vista de globus s'aplicarà després de recarregar la pàgina
-      settings_updated_successfully: Configuració actualitzada correctament
       reloading_map_data_with_new_settings: Tornant a carregar les dades del mapa amb la nova configuració...
       api_key_not_available_please_reload_the_page: Clau API no disponible; torna a carregar la pàgina.
-      could_not_queue_re_evaluation_please_try_again: No s'ha pogut posar la reavaluació a la cua. Torna-ho a provar.
-      could_not_queue_recalculation_please_try_again: No s'ha pogut posar el recàlcul a la cua. Torna-ho a provar.
       click_on_the_map_to_place_a_visit_esc_to: Fes clic al mapa per col·locar una visita (Esc per cancel·lar)
       visit_creation_modal_not_available: Diàleg de creació de visites no disponible
       visit_creation_controller_not_available: Controlador de creació de visites no disponible
@@ -4806,6 +4835,7 @@ ca:
         show_description: Descripció
         show_photos: Fotos
     import:
+      failed_reason_in_list: "La importació no s'ha pogut completar. Obre-la per veure la referència i què fer a continuació."
       technical_details: Detalls tècnics
       failed: La importació ha fallat
       format_error: No s'ha pogut llegir el format del fitxer. Comprova que el fitxer és vàlid i que fa servir un format compatible.

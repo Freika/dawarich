@@ -22,6 +22,7 @@ export const LAYER_NAME_MAP = {
   Places: "placesEnabled",
   "Place boundaries": "placeBoundariesEnabled",
   Anomalies: "anomaliesEnabled",
+  Notes: "notesEnabled",
 }
 
 const BOOLEAN_SETTINGS = [

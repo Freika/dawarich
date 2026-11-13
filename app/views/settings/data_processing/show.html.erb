@@ -1,0 +1,163 @@
+<% content_for :title, t('.title') %>
+<% panel = 'map.maplibre.settings_panel' %>
+<% safe = current_user.safe_settings %>
+
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t('.title') %>
+  <%= render 'settings/navigation' %>
+
+  <p class="text-sm opacity-80 mb-6 max-w-3xl"><%= t('.intro') %></p>
+
+  <%= form_with url: settings_data_processing_path, method: :patch, local: true, class: 'space-y-6 mb-6' do %>
+    <%= fields_for :settings do |sf| %>
+      <section class="card bg-base-200">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-lg"><%= icon 'route', class: 'h-5 w-5 opacity-70' %> <%= t("#{panel}.track_generation") %></h2>
+
+          <div class="form-control max-w-md">
+            <%= sf.label :meters_between_routes, t("#{panel}.track_split_distance"), class: 'label label-text font-medium' %>
+            <div class="flex items-center gap-2">
+              <%= sf.number_field :meters_between_routes, value: safe.meters_between_routes, min: 1, step: 1, required: true, class: 'input input-bordered w-32' %>
+              <span class="text-base-content/60"><%= t("#{panel}.track_split_distance_unit") %></span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1"><%= t("#{panel}.track_split_distance_hint") %></p>
+          </div>
+
+          <div class="form-control max-w-md">
+            <%= sf.label :minutes_between_routes, t("#{panel}.track_split_time"), class: 'label label-text font-medium' %>
+            <div class="flex items-center gap-2">
+              <%= sf.number_field :minutes_between_routes, value: safe.minutes_between_routes, min: 1, max: 1440, step: 1, required: true, class: 'input input-bordered w-32' %>
+              <span class="text-base-content/60"><%= t("#{panel}.track_split_time_unit") %></span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1"><%= t("#{panel}.track_split_time_hint") %></p>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <%= sf.check_box :split_tracks_at_midnight, { checked: safe.split_tracks_at_midnight?, class: 'toggle toggle-primary' }, '1', '0' %>
+              <span class="label-text font-medium"><%= t("#{panel}.split_tracks_at_midnight") %></span>
+            </label>
+            <p class="text-xs text-base-content/60"><%= t("#{panel}.split_tracks_at_midnight_hint") %></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-200">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-lg"><%= icon 'satellite', class: 'h-5 w-5 opacity-70' %> <%= t("#{panel}.gps_noise_filtering") %></h2>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <%= sf.check_box :gps_filtering_enabled, { checked: safe.gps_filtering_enabled?, class: 'toggle toggle-primary' }, '1', '0' %>
+              <span class="label-text font-medium"><%= t("#{panel}.gps_noise_filtering") %></span>
+            </label>
+            <p class="text-xs text-base-content/60"><%= t("#{panel}.hide_readings_that_cannot_be_a_real_position_impossible_jumps") %></p>
+          </div>
+
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <%= sf.check_box :gps_accuracy_filter_enabled, { checked: safe.gps_accuracy_filter_enabled?, class: 'toggle toggle-primary' }, '1', '0' %>
+              <span class="label-text font-medium"><%= t("#{panel}.hide_inaccurate_points") %></span>
+            </label>
+            <p class="text-xs text-base-content/60"><%= t("#{panel}.hide_inaccurate_points_hint") %></p>
+          </div>
+
+          <div class="form-control max-w-md">
+            <%= sf.label :gps_accuracy_threshold, t("#{panel}.accuracy_threshold"), class: 'label label-text font-medium' %>
+            <div class="flex items-center gap-2">
+              <%= sf.number_field :gps_accuracy_threshold, value: safe.gps_accuracy_threshold,
+                                  min: Users::SafeSettings::GPS_ACCURACY_THRESHOLD_MIN,
+                                  max: Users::SafeSettings::GPS_ACCURACY_THRESHOLD_MAX, step: 1, required: true, class: 'input input-bordered w-32' %>
+              <span class="text-base-content/60">m</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-200">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-lg"><%= icon 'chart-column', class: 'h-5 w-5 opacity-70' %> <%= t("#{panel}.city_statistics") %></h2>
+
+          <div class="form-control max-w-md">
+            <%= sf.label :min_minutes_spent_in_city, t("#{panel}.min_minutes_in_city"), class: 'label label-text font-medium' %>
+            <div class="flex items-center gap-2">
+              <%= sf.number_field :min_minutes_spent_in_city, value: safe.min_minutes_spent_in_city, min: 1, step: 1, required: true, class: 'input input-bordered w-32' %>
+              <span class="text-base-content/60"><%= t("#{panel}.track_split_time_unit") %></span>
+            </div>
+            <p class="text-xs text-base-content/60 mt-1"><%= t("#{panel}.how_long_you_must_stay_for_a_city_to_count") %></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card bg-base-200">
+        <div class="card-body space-y-4">
+          <h2 class="card-title text-lg"><%= icon 'car', class: 'h-5 w-5 opacity-70' %> <%= t("#{panel}.transportation_mode_detection") %></h2>
+
+          <% if @reclassifying %>
+            <p role="status" class="text-sm text-info bg-info/10 rounded p-2"><%= t("#{panel}.settings_are_locked_while_recalculation_is_in_progress") %></p>
+          <% end %>
+          <p class="text-xs text-warning bg-warning/10 rounded p-2">
+            <strong><%= t("#{panel}.note") %></strong> <%= t("#{panel}.changing_these_thresholds_will_trigger_a_recalculation_of_transportation") %>
+          </p>
+
+          <%# Disabled while re-classifying: a disabled fieldset is not submitted,
+              so the rest of the form still saves. %>
+          <fieldset class="form-control" data-testid="enabled-modes-fieldset" <%= 'disabled' if @reclassifying %>>
+            <legend class="font-medium mb-1 text-sm"><%= t("#{panel}.detected_modes") %></legend>
+            <p class="text-xs text-base-content/60 mb-2"><%= t("#{panel}.disabled_modes_won_t_be_detected_existing_tracks_aren_t") %></p>
+            <%= hidden_field_tag 'settings[enabled_transportation_modes][]', '', id: nil %>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1">
+              <% Track::TRANSPORTATION_MODES.keys.map(&:to_s).each do |mode| %>
+                <label class="cursor-pointer label justify-start gap-2 py-0.5">
+                  <%= check_box_tag 'settings[enabled_transportation_modes][]', mode,
+                                    safe.enabled_transportation_modes.include?(mode),
+                                    id: "enabled-mode-#{mode}", class: 'checkbox checkbox-sm',
+                                    data: { testid: "enabled-mode-#{mode}" } %>
+                  <span class="text-sm"><%= mode_emoji(mode) %> <%= t("transportation_modes.#{mode}") %></span>
+                </label>
+              <% end %>
+            </div>
+          </fieldset>
+        </div>
+      </section>
+    <% end %>
+
+    <button type="submit" class="btn btn-primary"><%= icon 'save' %> <%= t("#{panel}.apply_settings") %></button>
+  <% end %>
+
+  <% rebuilds_allowed = current_user.full_access? %>
+  <section class="card bg-base-200 mb-6">
+    <div class="card-body space-y-4">
+      <h2 class="card-title text-lg"><%= icon 'refresh-ccw', class: 'h-5 w-5 opacity-70' %> <%= t('.existing_data') %></h2>
+      <p class="text-sm opacity-80"><%= t('.existing_data_hint') %></p>
+
+      <div class="flex flex-col gap-1">
+        <%= button_to t("#{panel}.recalculate_tracks_stats"), recalculate_settings_data_processing_path,
+                      disabled: !rebuilds_allowed, class: 'btn btn-outline btn-sm w-fit',
+                      form: { data: { turbo_confirm: t('javascript.settings.confirm_recalculate_user_data') } },
+                      aria: { describedby: ('rebuilds-need-pro' unless rebuilds_allowed) },
+                      data: { testid: 'recalculate-button' } %>
+        <p class="text-xs text-base-content/60"><%= t("#{panel}.rebuild_tracks_stats_and_digests_from_your_current_points_without") %></p>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <%= button_to t("#{panel}.re_evaluate_past_data"), reapply_anomaly_filter_settings_data_processing_path,
+                      disabled: !rebuilds_allowed, class: 'btn btn-outline btn-sm w-fit',
+                      form: { data: { turbo_confirm: t('javascript.settings.confirm_reapply_anomaly_filter') } },
+                      aria: { describedby: ('rebuilds-need-pro' unless rebuilds_allowed) },
+                      data: { testid: 'reapply-anomaly-filter-button' } %>
+        <p class="text-xs text-base-content/60"><%= t("#{panel}.clears_existing_anomaly_flags_and_re_runs_the_filter_on") %></p>
+      </div>
+      <% unless rebuilds_allowed %>
+        <p id="rebuilds-need-pro" class="text-sm text-warning"><%= t('.rebuilds_need_pro') %></p>
+      <% end %>
+
+      <div class="flex flex-col gap-1">
+        <%= button_to t("#{panel}.re_classify_my_history"), tracks_recalculation_path,
+                      method: :post, disabled: @reclassifying, class: 'btn btn-outline btn-sm w-fit',
+                      form: { data: { turbo_frame: '_top' } }, data: { testid: 'reclassify-history-button' } %>
+        <p class="text-xs text-base-content/60"><%= t("#{panel}.re_runs_auto_classification_across_all_your_tracks_manually_corrected") %></p>
+      </div>
+    </div>
+  </section>
+</div>

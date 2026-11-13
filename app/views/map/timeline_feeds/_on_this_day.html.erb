@@ -1,0 +1,16 @@
+<%# locals: (notes:) %>
+<%# Notes written about this same date in earlier years. Shown under today only. %>
+<section class="on-this-day" data-testid="on-this-day" aria-labelledby="on-this-day-title">
+  <h3 class="on-this-day__title" id="on-this-day-title"><%= t('.on_this_day') %></h3>
+  <ul class="on-this-day__list">
+    <% notes.each do |note| %>
+      <li>
+        <%= link_to map_v2_path(panel: 'timeline', date: note.date), class: 'on-this-day__note',
+                                                                    data: { turbo_frame: '_top' } do %>
+          <span class="on-this-day__year"><%= note.date.year %></span>
+          <span class="on-this-day__body"><%= note.body %></span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+</section>

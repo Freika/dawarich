@@ -55,7 +55,7 @@ export const playback = {
     this.userPanned = false
     this.setFollowActive(true)
 
-    const currentMinute = parseInt(this.c.replayScrubberTarget.value, 10)
+    const currentMinute = this.scrubberMinute
     for (let i = 0; i < dayPoints.length; i++) {
       const pointTime = this.parseTimestamp(
         this.replayManager.getTimestamp(dayPoints[i]),
@@ -215,7 +215,7 @@ export const playback = {
       if (pointTime) {
         const date = new Date(pointTime)
         const minute = this.replayManager.minuteOfDay(date)
-        this.c.replayScrubberTarget.value = minute
+        this.setScrubber(minute)
         this.updateTimeDisplay(minute, false)
       }
 
