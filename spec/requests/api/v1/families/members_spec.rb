@@ -93,6 +93,15 @@ RSpec.describe 'Api::V1::Families::Members', type: :request do
     expect(json).to include('error' => 'not_in_family', 'message' => be_present)
   end
 
+  it 'still lets the owner remove a member with the family toggle off' do
+    owner.update!(settings: owner.settings.merge('family_enabled' => false))
+
+    remove(owner, member.id)
+
+    expect(response).to have_http_status(:no_content)
+    expect(member.reload.family).to be_nil
+  end
+
   context 'when the family has lapsed' do
     before { lapse_family }
 

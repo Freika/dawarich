@@ -330,6 +330,18 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       expect(family.reload.name).not_to eq('Hijack')
     end
 
+    it 'returns family_plan_required for a lapsed cloud owner' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :family, active_until: 1.day.ago)
+      family.update!(access_until: nil)
+
+      patch_family(user, { name: 'Renamed' })
+
+      expect(response).to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)['error']).to eq('family_plan_required')
+      expect(family.reload.name).not_to eq('Renamed')
+    end
+
     it 'returns invalid_name for a blank name' do
       patch_family(user, { name: '  ' })
 
@@ -383,6 +395,15 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       before { member_membership.destroy! }
 
       it 'deletes the family and returns 204' do
+        delete_family(user)
+
+        expect(response).to have_http_status(:no_content)
+        expect(Family.exists?(family.id)).to be false
+      end
+
+      it 'deletes the family for an owner with the family toggle off' do
+        user.update!(settings: user.settings.merge('family_enabled' => false))
+
         delete_family(user)
 
         expect(response).to have_http_status(:no_content)

@@ -299,6 +299,25 @@ RSpec.describe 'Api::V1::Families::Invitations', type: :request do
       expect(invitation.reload).to be_accepted
     end
 
+    it 'refuses a second accept without adding a second membership' do
+      accept(invitee, { token: invitation.token })
+      expect(response).to have_http_status(:ok)
+
+      expect { accept(invitee, { token: invitation.token }) }.not_to change(Family::Membership, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json['error']).to eq('invitation_invalid')
+    end
+
+    it 'joins a family that already has five members on self-hosted' do
+      3.times { create(:family_membership, family: family) }
+
+      accept(invitee, { token: invitation.token })
+
+      expect(response).to have_http_status(:ok)
+      expect(family.members.count).to eq(6)
+    end
+
     it 'returns email_mismatch for a caller with another email' do
       accept(create(:user), { token: invitation.token })
 
