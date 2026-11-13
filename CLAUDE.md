@@ -242,7 +242,6 @@ See `.env.template` for available configuration options including:
 ## Deployment
 
 ### Docker
-- Production: `docker/docker-compose.production.yml`
 - Development: `docker/docker-compose.yml`
 - Multi-stage Docker builds supported
 
