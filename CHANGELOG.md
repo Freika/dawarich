@@ -50,6 +50,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Raw data archival no longer clears points whose archive file has gone missing, and account exports now include raw data that was already archived and cleared from the database.
 - A failed import shows its error on the import page again on self-hosted instances, and a Year-End Digest whose generation was interrupted can be requested again after six hours.
 
+## [Unreleased]
+
+### Added
+
+- Self-hosted instances with OIDC can send signed-out visitors straight to the identity provider by setting `OIDC_AUTO_LOGIN=true`. Signing out, a failed or abandoned provider login, and family invitation links land on the regular sign-in page instead; `/users/sign_in?auto_login=false` reaches it at any time.
+
+
 ## [1.21.0] - 2026-11-03, Berlin
 
 ### ⚠️ Upgrade notes

@@ -113,6 +113,14 @@ class ApplicationController < ActionController::Base
     user_not_authorized
   end
 
+  # With OIDC auto-login the default target (root) would hand a user who just
+  # signed out straight back to the identity provider.
+  def after_sign_out_path_for(resource_or_scope)
+    return new_user_session_path(auto_login: false) if DawarichSettings.oidc_auto_login_enabled?
+
+    super
+  end
+
   def after_sign_in_path_for(resource)
     invitation_path = pending_invitation_path_for(resource)
     return invitation_path if invitation_path
