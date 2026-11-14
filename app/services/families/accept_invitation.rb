@@ -2,7 +2,7 @@
 
 module Families
   class AcceptInvitation
-    attr_reader :invitation, :user, :error_message
+    attr_reader :invitation, :user, :error_message, :error_code
 
     # welcome_notification: for callers whose own confirmation the user never
     # sees (API and web sign-up, sign-in from the mobile app). The others show
@@ -15,15 +15,7 @@ module Families
     end
 
     def call
-      return false unless validate_invitation && validate_email_match
-
-      if user.in_family?
-        @error_message = I18n.t(
-          'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
-        )
-
-        return false
-      end
+      return false unless validate_invitation && validate_email_match && validate_not_in_family
 
       accepted = false
       family = invitation.family
@@ -44,6 +36,10 @@ module Families
       end
 
       accepted
+    rescue ActiveRecord::RecordNotUnique
+      # Two accepts by the same user, each under another family's lock.
+      refuse_already_in_family
+      false
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       false
@@ -57,15 +53,19 @@ module Families
     def can_accept?
       return false unless validate_invitation
       return false unless validate_email_match
+      return false unless validate_not_in_family
       return false unless validate_family_plan
       return false unless validate_family_capacity
 
       true
     end
 
+    # A deleted account is hidden by User's default scope, so the owner of a
+    # family that still has invitations can be missing.
     def validate_invitation
-      return true if invitation.can_be_accepted?
+      return true if invitation.can_be_accepted? && invitation.family.creator.present?
 
+      @error_code = :invitation_invalid
       @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_no_longer_valid_or_has_expired')
 
       false
@@ -74,14 +74,30 @@ module Families
     def validate_email_match
       return true if invitation.email == user.email
 
+      @error_code = :email_mismatch
       @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_not_for_your_email_address')
 
       false
     end
 
+    def validate_not_in_family
+      return true unless Family::Membership.exists?(user_id: user.id)
+
+      refuse_already_in_family
+      false
+    end
+
+    def refuse_already_in_family
+      @error_code = :already_in_family
+      @error_message = I18n.t(
+        'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
+      )
+    end
+
     def validate_family_plan
       return true if family_plan_live?
 
+      @error_code = :plan_inactive
       @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
 
       false
@@ -91,9 +107,12 @@ module Families
       invitation.family.access_live?
     end
 
+    # The invitation being accepted already holds its seat, so only members count.
     def validate_family_capacity
-      return true unless invitation.family.full?
+      return true if DawarichSettings.self_hosted?
+      return true if invitation.family.members.count < Family::MAX_MEMBERS
 
+      @error_code = :family_full
       @error_message = I18n.t(
         'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'
       )
@@ -152,6 +171,7 @@ module Families
     end
 
     def handle_record_invalid_error(error)
+      @error_code = :unexpected_error
       @error_message =
         if error.record&.errors&.any?
           error.record.errors.full_messages.first
@@ -161,6 +181,7 @@ module Families
     end
 
     def handle_generic_error(error)
+      @error_code = :unexpected_error
       ExceptionReporter.call(error, "Unexpected error in Families::AcceptInvitation: #{error.message}")
 
       @error_message = I18n.t(

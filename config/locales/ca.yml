@@ -441,6 +441,7 @@ ca:
         create_account_join_family: "Crea el compte i uneix-te a la família →"
         already_have_an_account: Ja tens un compte?
         sign_in_to_accept_invitation: Inicia sessió per acceptar la invitació
+        open_in_the_dawarich_app: "Obre a l’app de Dawarich"
         not_interested_you_can_simply_close_this_page: No t'interessa? Simplement pots tancar aquesta pàgina.
       index:
         invited: Convidat
@@ -3329,6 +3330,7 @@ ca:
         this_invitation_is_no_longer_valid: Aquesta invitació ja no és vàlida.
         invitation_sent_successfully: Invitació enviada correctament!
         invitation_cancelled: Invitació cancel·lada
+        too_many_invitations: "Massa invitacions, torna-ho a provar més tard."
         failed_to_cancel_invitation_please_try_again: No s'ha pogut cancel·lar la invitació. Torna-ho a provar
         an_unexpected_error_occurred_while_cancelling_the_invitation: S'ha produït un error inesperat en cancel·lar la invitació
         you_are_not_in_a_family: No formes part de cap família

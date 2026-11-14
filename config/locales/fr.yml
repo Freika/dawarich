@@ -965,6 +965,7 @@ fr:
         create_account_join_family: Créer un compte et rejoindre la famille →
         already_have_an_account: Vous avez déjà un compte ?
         sign_in_to_accept_invitation: Se connecter pour accepter l'invitation
+        open_in_the_dawarich_app: "Ouvrir dans l’app Dawarich"
         not_interested_you_can_simply_close_this_page: Pas intéressé ? Vous pouvez
           simplement fermer cette page
       index:
@@ -4264,6 +4265,7 @@ fr:
         this_invitation_is_no_longer_valid: Cette invitation n'est plus valide
         invitation_sent_successfully: Invitation envoyée avec succès !
         invitation_cancelled: Invitation annulée
+        too_many_invitations: "Trop d’invitations, réessayez plus tard."
         failed_to_cancel_invitation_please_try_again: Échec d'annulation de l'invitation.
           Veuillez réessayer
         an_unexpected_error_occurred_while_cancelling_the_invitation: Une erreur inattendue

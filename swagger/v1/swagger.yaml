@@ -1232,6 +1232,234 @@ paths:
           description: digest not found
         '401':
           description: unauthorized
+  "/api/v1/families/invitations":
+    post:
+      summary: Invites someone to the current user's family by email
+      tags:
+      - Families
+      description: 'Owner only; the caller must be entitled to the family feature.
+        Sends the invitation email. Refusals carry `error` (a code) and `message`
+        (English): `owner_required` (403), `invalid_email`, `family_full`, `user_already_in_family`,
+        `invitation_already_sent` (422), `rate_limited` (429, on Dawarich Cloud after
+        10 invitations an hour); a caller in no family gets `not_in_family` (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      expires_at:
+                        type: string
+                        format: date-time
+                      url:
+                        type: string
+                        description: Public invitation page, built from the request
+                          host
+                    required:
+                    - id
+                    - email
+                    - created_at
+                    - expires_at
+                    - url
+                required:
+                - invitation
+        '422':
+          description: invitation refused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+              - email
+  "/api/v1/families/invitations/{id}":
+    delete:
+      summary: Revokes a pending invitation
+      tags:
+      - Families
+      description: 'Owner only. Reachable while the family plan has lapsed. Refusals:
+        `owner_required` (403), `invitation_not_found` (404, also for another family''s
+        invitation).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: invitation revoked
+        '404':
+          description: invitation not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+  "/api/v1/families/invitations/preview":
+    post:
+      summary: Describes an invitation to the person holding its token
+      tags:
+      - Families
+      description: 'The token travels in the body. Open to callers in no family and
+        in `pending_payment`. Refusals: `feature_disabled` (403), `invitation_not_found`
+        (404), `invitation_invalid` (422, expired or no longer pending).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invitation preview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    type: object
+                    properties:
+                      family_name:
+                        type: string
+                      invited_by_email:
+                        type: string
+                      email:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+                      plan_active:
+                        type: boolean
+                      email_matches:
+                        type: boolean
+                    required:
+                    - family_name
+                    - invited_by_email
+                    - email
+                    - expires_at
+                    - plan_active
+                    - email_matches
+                required:
+                - invitation
+        '404':
+          description: unknown token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+              - token
+  "/api/v1/families/invitations/accept":
+    post:
+      summary: Accepts an invitation and joins its family
+      tags:
+      - Families
+      description: 'The token travels in the body. Answers with the same body as GET
+        /api/v1/families/mine. Open to callers in `pending_payment`, who become active
+        on joining a Cloud family. Refusals: `feature_disabled`, `email_mismatch`
+        (403), `invitation_not_found` (404), `invitation_invalid`, `already_in_family`,
+        `plan_inactive`, `family_full` (422).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: joined the family
+        '403':
+          description: invitation is for another email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+              - token
   "/api/v1/families/location_requests":
     post:
       summary: Creates a location sharing request for a family member
@@ -1555,6 +1783,60 @@ paths:
                     description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
+  "/api/v1/families/members/{user_id}":
+    delete:
+      summary: Leaves the family, or removes a member from it
+      tags:
+      - Families
+      description: 'With the caller''s own id, the caller leaves the family. With
+        another member''s id, the owner removes that member. Reachable while the family
+        plan has lapsed. Refusals carry `error` (a code) and `message` (English):
+        `owner_required` (403), `member_not_found` (404, also for a user of another
+        family), `owner_cannot_leave` (422); a caller in no family gets `not_in_family`
+        (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: member left or was removed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+        '422':
+          description: the owner cannot leave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/mine":
     get:
       summary: Retrieves the current user's family overview
@@ -1564,8 +1846,10 @@ paths:
         user''s sharing settings, and active location requests. Requires family membership.
         A member whose entitlement has lapsed still gets 200, with `lapsed: true`
         and a reduced payload carrying only the family name and the user''s role —
-        `members` and `location_requests` are omitted. A user who is neither entitled
-        nor in a family gets 403.'
+        `members` and `location_requests` are omitted; a lapsed owner also gets the
+        other members (`user_id`, `email`, `email_initial`, `owner`) and `invitations`,
+        so they can still dissolve the family. `invitations` is sent to the owner
+        only. A user who is neither entitled nor in a family gets 403.'
       parameters:
       - name: Authorization
         in: header
@@ -1614,6 +1898,10 @@ paths:
                           history_window:
                             type: string
                             nullable: true
+                      inherits_plan:
+                        type: boolean
+                        description: 'Cloud only: the plan comes from the family,
+                          so leaving downgrades the account'
                   members:
                     type: array
                     items:
@@ -1666,10 +1954,161 @@ paths:
                               type: integer
                             created_at:
                               type: string
+                  seats:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        nullable: true
+                        description: null on self-hosted
+                      members:
+                        type: integer
+                      pending:
+                        type: integer
+                  can_invite:
+                    type: boolean
+                    description: The caller is the owner and a seat is free
+                  invitations:
+                    type: array
+                    description: Pending invitations; present for the owner only (also
+                      while lapsed)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        email:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                        url:
+                          type: string
         '404':
           description: user not in a family
         '403':
           description: user is neither entitled nor in a family
+    post:
+      summary: Creates a family with the current user as owner
+      tags:
+      - Families
+      description: 'Creates a family. The caller must be entitled to the family feature
+        and in no family. Answers with the same body as GET. Refusals carry `error`
+        (a code) and `message` (English): `feature_disabled` and `family_plan_required`
+        (403, the latter with `upgrade_url`), `already_in_family`, `family_already_created`,
+        `invalid_name` (422).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: family created
+        '422':
+          description: invalid name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    patch:
+      summary: Renames the current user's family
+      tags:
+      - Families
+      description: 'Renames the family. Owner only. Answers with the same body as
+        GET. Refusals: `owner_required` (403), `invalid_name` (422); a caller in no
+        family gets `not_in_family` (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family renamed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    delete:
+      summary: Deletes the current user's family
+      tags:
+      - Families
+      description: 'Deletes the family. Owner only, and only when the owner is its
+        last member. Reachable while the family plan has lapsed. Refusals: `owner_required`
+        (403), `family_has_members` (422); a caller in no family gets `not_in_family`
+        (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '204':
+          description: family deleted
+        '422':
+          description: other members are still in the family
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/sharing":
     patch:
       summary: Updates the current user's family location sharing
@@ -6507,6 +6946,9 @@ paths:
                     properties:
                       family:
                         type: boolean
+                      family_management:
+                        type: boolean
+                        description: The server offers the family management endpoints
                       reverse_geocoding:
                         type: boolean
         '401':

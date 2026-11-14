@@ -155,4 +155,57 @@ RSpec.describe Families::Invite do
       expect(service.errors[:email]).to include('is invalid')
     end
   end
+
+  describe '#error_code' do
+    it 'is nil after a successful call' do
+      service.call
+      expect(service.error_code).to be_nil
+    end
+
+    it 'is invalid_email for a malformed email' do
+      service = described_class.new(family: family, email: 'invalid-email', invited_by: owner)
+      service.call
+      expect(service.error_code).to eq(:invalid_email)
+    end
+
+    it 'is owner_required when a member invites' do
+      member = create(:user)
+      create(:family_membership, user: member, family: family, role: :member)
+      service = described_class.new(family: family, email: email, invited_by: member)
+      service.call
+      expect(service.error_code).to eq(:owner_required)
+    end
+
+    it 'is family_full when every cloud seat is taken' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      create_list(:family_membership, Family::MAX_MEMBERS - 1, family: family, role: :member)
+      service.call
+      expect(service.error_code).to eq(:family_full)
+    end
+
+    it 'is user_already_in_family for an email that belongs to a family member' do
+      create(:family_membership, user: create(:user, email: email), family: create(:family))
+      service.call
+      expect(service.error_code).to eq(:user_already_in_family)
+    end
+
+    it 'is invitation_already_sent for a pending duplicate' do
+      create(:family_invitation, family: family, email: email, invited_by: owner)
+      service.call
+      expect(service.error_code).to eq(:invitation_already_sent)
+    end
+
+    [
+      ActiveRecord::RecordInvalid.new,
+      Net::SMTPFatalError.new('smtp'),
+      StandardError.new('boom')
+    ].each do |error|
+      it "is unexpected_error when #{error.class} is raised" do
+        allow(Family::Invitation).to receive(:create!).and_raise(error)
+        allow(ExceptionReporter).to receive(:call)
+        expect(service.call).to be false
+        expect(service.error_code).to eq(:unexpected_error)
+      end
+    end
+  end
 end

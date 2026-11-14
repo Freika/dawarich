@@ -48,6 +48,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - The API's `GET /api/v1/notes` takes `start_at`, `end_at`, a bounding box and optional pagination, and `date` on a note without a trip is now your local day. The user data export and import now carry notes.
 - Timeline and track share links can show the text and time of your notes about the shared period, never their position. It is off by default.
 - Dawarich Cloud deletes an account and its data 12 months after its access ended, as the Privacy Policy states, starting on 2027-01-01. Warning emails go out 30, 7 and 1 day before, with links to export the data or resubscribe. Self-hosted instances are not affected.
+- The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour from the apps and 10 an hour from the website.
 
 ### Changed
 
@@ -67,6 +68,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 ### Fixed
 
 - Clicking a track on the map keeps it selected and its Timeline entry open; moving off it also clears the highlighted segment row.
+- On Dawarich Cloud, an invitation into the last free seat of a family can now be accepted; before, it was refused as if the family were full.
 - Hovering over a notification no longer marks it as read.
 - A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.
 - Opening a location request that no longer exists takes you to the family page instead of an error page.

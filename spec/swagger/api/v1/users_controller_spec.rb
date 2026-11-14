@@ -55,6 +55,10 @@ describe 'Users API', type: :request do
                    type: :object,
                    properties: {
                      family: { type: :boolean },
+                     family_management: {
+                       type: :boolean,
+                       description: 'The server offers the family management endpoints'
+                     },
                      reverse_geocoding: { type: :boolean }
                    }
                  }

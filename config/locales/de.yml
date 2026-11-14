@@ -491,6 +491,7 @@ de:
         create_account_join_family: Konto erstellen & Familie beitreten →
         already_have_an_account: Bereits ein Konto?
         sign_in_to_accept_invitation: Anmelden, um Einladung anzunehmen
+        open_in_the_dawarich_app: "In der Dawarich-App öffnen"
         not_interested_you_can_simply_close_this_page: Nicht interessiert? Du kannst diese Seite einfach schließen.
       index:
         invited: Eingeladen
@@ -3395,6 +3396,7 @@ de:
         this_invitation_is_no_longer_valid: Diese Einladung ist nicht mehr gültig.
         invitation_sent_successfully: Einladung erfolgreich gesendet!
         invitation_cancelled: Einladung abgebrochen
+        too_many_invitations: "Zu viele Einladungen, versuche es später erneut."
         failed_to_cancel_invitation_please_try_again: Einladung konnte nicht abgebrochen werden. Versuche es erneut
         an_unexpected_error_occurred_while_cancelling_the_invitation: Unerwartter Fehler beim Abbrechen der Einladung
         you_are_not_in_a_family: Du bist nicht in einer Familie

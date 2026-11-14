@@ -21,6 +21,24 @@ RSpec.describe Families::Memberships::Destroy do
         expect(member.reload.family_membership).to be_nil
       end
 
+      # Every other writer to a family (invite, accept, revoke, delete) locks
+      # the family row first; without it a removal can deadlock with an accept.
+      it 'takes the family lock before removing the membership' do
+        queries = []
+        subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+          queries << payload[:sql]
+        end
+
+        service.call
+
+        lock_at = queries.index { |sql| sql.match?(/FROM "families".*FOR UPDATE/m) }
+        delete_at = queries.index { |sql| sql.match?(/DELETE FROM "family_memberships"/) }
+        expect(lock_at).not_to be_nil
+        expect(lock_at).to be < delete_at
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+
       it 'does not notify the member who left, who is already told by the page' do
         expect { service.call }.to change(Notification, :count).by(1)
 
@@ -143,6 +161,96 @@ RSpec.describe Families::Memberships::Destroy do
 
       it 'does not create any notifications' do
         expect { service.call }.not_to change(Notification, :count)
+      end
+    end
+  end
+
+  describe '#error_code' do
+    let(:member) { create(:user) }
+
+    before do
+      create(:family_membership, user: user, family: family, role: :owner)
+      create(:family_membership, user: member, family: family, role: :member)
+    end
+
+    it 'is nil after a successful call' do
+      service = described_class.new(user: member)
+      service.call
+      expect(service.error_code).to be_nil
+    end
+
+    it 'is not_in_family for a user without a family' do
+      service = described_class.new(user: create(:user))
+      service.call
+      expect(service.error_code).to eq(:not_in_family)
+    end
+
+    it 'is owner_cannot_leave when the owner leaves' do
+      service.call
+      expect(service.error_code).to eq(:owner_cannot_leave)
+    end
+
+    it 'is owner_required when a member removes someone else' do
+      other = create(:user)
+      create(:family_membership, user: other, family: family, role: :member)
+      service = described_class.new(user: member, member_to_remove: other)
+      service.call
+      expect(service.error_code).to eq(:owner_required)
+    end
+
+    it 'is member_not_found for a member of another family' do
+      outsider = create(:user)
+      create(:family_membership, user: outsider, family: create(:family), role: :member)
+      service = described_class.new(user: user, member_to_remove: outsider)
+      service.call
+      expect(service.error_code).to eq(:member_not_found)
+    end
+
+    context 'when the membership is gone by the time the family lock is taken' do
+      let(:stale_member) do
+        User.find(member.id).tap do |loaded|
+          loaded.family_membership
+          loaded.family
+        end
+      end
+
+      before do
+        stale_member
+        Family::Membership.where(user_id: member.id).delete_all
+      end
+
+      it 'refuses a removal with member_not_found and sends nothing' do
+        service = described_class.new(user: user, member_to_remove: stale_member)
+
+        expect(ExceptionReporter).not_to receive(:call)
+        expect { expect(service.call).to be false }.not_to change(Notification, :count)
+        expect(service.error_code).to eq(:member_not_found)
+      end
+
+      it 'refuses leaving with not_in_family and sends nothing' do
+        service = described_class.new(user: stale_member)
+
+        expect(ExceptionReporter).not_to receive(:call)
+        expect { expect(service.call).to be false }.not_to change(Notification, :count)
+        expect(service.error_code).to eq(:not_in_family)
+      end
+    end
+
+    it 'is cannot_remove_owner when the target is an owner' do
+      co_owner = create(:user)
+      create(:family_membership, user: co_owner, family: family, role: :owner)
+      service = described_class.new(user: user, member_to_remove: co_owner)
+      service.call
+      expect(service.error_code).to eq(:cannot_remove_owner)
+    end
+
+    [ActiveRecord::RecordInvalid.new, StandardError.new('boom')].each do |error|
+      it "is unexpected_error when #{error.class} is raised" do
+        allow_any_instance_of(Family::Membership).to receive(:destroy!).and_raise(error)
+        allow(ExceptionReporter).to receive(:call)
+        service = described_class.new(user: member)
+        expect(service.call).to be false
+        expect(service.error_code).to eq(:unexpected_error)
       end
     end
   end

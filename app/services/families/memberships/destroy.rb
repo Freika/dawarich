@@ -3,7 +3,7 @@
 module Families
   module Memberships
     class Destroy
-      attr_reader :user, :member_to_remove, :error_message
+      attr_reader :user, :member_to_remove, :error_message, :error_code
 
       def initialize(user:, member_to_remove: nil)
         @user = user
@@ -14,15 +14,14 @@ module Families
       def call
         return false unless validate_can_leave
 
-        @family_name = member_to_remove.family.name
-        @family_owner = member_to_remove.family.owner
+        membership = member_to_remove.family_membership
+        family = membership.family
+        @family_name = family.name
+        @family_owner = family.owner
 
-        ActiveRecord::Base.transaction do
-          remove_membership
-          send_notifications
-        end
-
-        true
+        # Family first, then users: the lock order of every other writer to a
+        # family. Without it a removal can deadlock with a concurrent accept.
+        family.with_lock { remove(membership) }
       rescue ActiveRecord::RecordInvalid => e
         handle_record_invalid_error(e)
 
@@ -45,7 +44,7 @@ module Families
       def validate_in_family
         return true if member_to_remove.in_family?
 
-        @error_message = I18n.t('services.families.memberships.destroy.user_is_not_currently_in_a_family')
+        refuse(:not_in_family, 'user_is_not_currently_in_a_family')
         false
       end
 
@@ -66,37 +65,47 @@ module Families
       def validate_owner_can_leave
         return true unless member_to_remove.family_owner?
 
-        @error_message = I18n.t(
-          'services.families.memberships.destroy.family_owners_cannot_remove_their_own_membership_to_leave_the'
-        )
+        refuse(:owner_cannot_leave, 'family_owners_cannot_remove_their_own_membership_to_leave_the')
         false
       end
 
       def validate_remover_is_owner
         return true if user.family_owner?
 
-        @error_message = I18n.t('services.families.memberships.destroy.only_family_owners_can_remove_other_members')
+        refuse(:owner_required, 'only_family_owners_can_remove_other_members')
         false
       end
 
       def validate_same_family
         return true if user.family == member_to_remove.family
 
-        @error_message = I18n.t('services.families.memberships.destroy.cannot_remove_members_from_a_different_family')
+        refuse(:member_not_found, 'cannot_remove_members_from_a_different_family')
         false
       end
 
       def validate_not_removing_owner
         return true unless member_to_remove.family_owner?
 
-        @error_message = I18n.t(
-          'services.families.memberships.destroy.cannot_remove_the_family_owner_the_owner_must_delete_the'
-        )
+        refuse(:cannot_remove_owner, 'cannot_remove_the_family_owner_the_owner_must_delete_the')
         false
       end
 
-      def remove_membership
-        member_to_remove.family_membership.destroy!
+      def refuse(code, message_key)
+        @error_code = code
+        @error_message = I18n.t("services.families.memberships.destroy.#{message_key}")
+      end
+
+      # A second request for the same member may have removed it while this
+      # one waited for the lock.
+      def remove(membership)
+        unless Family::Membership.exists?(membership.id)
+          refuse(removing_self? ? :not_in_family : :member_not_found, 'user_is_not_currently_in_a_family')
+          return false
+        end
+
+        membership.destroy!
+        send_notifications
+        true
       end
 
       def send_notifications
@@ -140,6 +149,7 @@ module Families
       end
 
       def handle_record_invalid_error(error)
+        @error_code = :unexpected_error
         @error_message =
           if error.record&.errors&.any?
             error.record.errors.full_messages.first
@@ -149,6 +159,7 @@ module Families
       end
 
       def handle_generic_error(error)
+        @error_code = :unexpected_error
         ExceptionReporter.call(error, "Unexpected error in Families::Memberships::Destroy: #{error.message}")
         @error_message = I18n.t(
           'services.families.memberships.destroy.an_unexpected_error_occurred_while_removing_the_membership_please_try'

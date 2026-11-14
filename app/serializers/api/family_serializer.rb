@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class Api::FamilySerializer
-  def initialize(user)
+  def initialize(user, base_url:)
     @user = user
+    @base_url = base_url
   end
 
   def call
@@ -17,13 +18,15 @@ class Api::FamilySerializer
           incoming_request(request)
         end,
         outgoing: user.sent_location_requests.active.map { |request| outgoing_request(request) }
-      }
-    }
+      },
+      seats: seats_payload,
+      can_invite: user.family_owner? && family.can_add_members?
+    }.merge(owner_payload)
   end
 
   private
 
-  attr_reader :user
+  attr_reader :user, :base_url
 
   def family
     user.family
@@ -41,8 +44,30 @@ class Api::FamilySerializer
         share_history: user.family_share_history?,
         history_window: user.family_history_window,
         history_before_sharing: user.family_history_before_sharing?
-      }
+      },
+      inherits_plan: inherits_plan?
     }
+  end
+
+  # The condition under which Family::Membership#revoke_inherited_subscription
+  # downgrades the account when its holder leaves.
+  def inherits_plan?
+    !DawarichSettings.self_hosted? && !user.family_owner? && user.sub_source_none?
+  end
+
+  def seats_payload
+    {
+      limit: DawarichSettings.self_hosted? ? nil : Family::MAX_MEMBERS,
+      members: family.member_count,
+      pending: family.pending_invitations_count
+    }
+  end
+
+  # Invitation links let anyone holding them join, so only the owner gets them.
+  def owner_payload
+    return {} unless user.family_owner?
+
+    { invitations: Api::FamilyInvitationSerializer.pending_for(family, base_url:) }
   end
 
   def members_payload

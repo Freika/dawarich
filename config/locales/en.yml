@@ -441,6 +441,7 @@ en:
         create_account_join_family: Create Account & Join Family →
         already_have_an_account: Already have an account?
         sign_in_to_accept_invitation: Sign in to accept invitation
+        open_in_the_dawarich_app: "Open in the Dawarich app"
         not_interested_you_can_simply_close_this_page: Not interested? You can simply close this page.
       index:
         invited: Invited
@@ -3317,6 +3318,7 @@ en:
         this_invitation_is_no_longer_valid: This invitation is no longer valid.
         invitation_sent_successfully: Invitation sent successfully!
         invitation_cancelled: Invitation cancelled
+        too_many_invitations: "Too many invitations, try again later."
         failed_to_cancel_invitation_please_try_again: Failed to cancel invitation. Please try again
         an_unexpected_error_occurred_while_cancelling_the_invitation: An unexpected error occurred while cancelling the invitation
         you_are_not_in_a_family: You are not in a family
