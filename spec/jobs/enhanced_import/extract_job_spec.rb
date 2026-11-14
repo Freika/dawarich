@@ -22,11 +22,28 @@ RSpec.describe EnhancedImport::ExtractJob do
 
     it 'marks the import as failed and re-raises when the translator blows up' do
       allow_any_instance_of(EnhancedImport::Translator).to receive(:translate).and_raise('boom')
+      allow(ExceptionReporter).to receive(:call)
 
       expect { described_class.new.perform(import.id) }.to raise_error(/boom/)
 
       expect(import.reload.additional_data_extraction_status).to eq('failed')
       expect(import.extraction_error_message).to eq('boom')
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(RuntimeError))
+    end
+
+    it 'marks malformed JSON as failed without reporting or retrying' do
+      import.file.attach(
+        io: StringIO.new('{"semanticSegments": ['),
+        filename: 'Timeline.json',
+        content_type: 'application/json'
+      )
+      allow(ExceptionReporter).to receive(:call)
+
+      expect { described_class.new.perform(import.id) }.not_to raise_error
+
+      expect(import.reload.additional_data_extraction_status).to eq('failed')
+      expect(import.extraction_error_message).to match(/parse|terminated|closed|format/i)
+      expect(ExceptionReporter).not_to have_received(:call)
     end
 
     it 'retries transient deadlocks without failing the import or reporting the first attempt' do
