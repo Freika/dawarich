@@ -195,8 +195,11 @@ RSpec.describe Trips::Detection::Reconciler do
     end
 
     it 'replaces an untouched trip inside the window whose period moved, as for Pro' do
-      moved = create(:trip, user:, origin: :detected, started_at: 2.months.ago - 3.days, ended_at: 2.months.ago)
-      period = Trips::Detection::Candidates::Candidate.new(2.months.ago - 3.days, 2.months.ago + 1.day)
+      # One whole-second anchor: Linux clocks carry nanoseconds, the database
+      # keeps microseconds, and the stored end must equal the candidate's.
+      ended = 2.months.ago.change(usec: 0)
+      moved = create(:trip, user:, origin: :detected, started_at: ended - 3.days, ended_at: ended)
+      period = Trips::Detection::Candidates::Candidate.new(ended - 3.days, ended + 1.day)
 
       expect(described_class.new(user, [period]).call).to be_empty
       expect(Trip.exists?(moved.id)).to be(false)

@@ -151,6 +151,13 @@ globalThis.document ??= {
   removeEventListener: () => {},
   dispatchEvent: () => {},
 }
+// Node 18, which CI runs, has no global CustomEvent.
+globalThis.CustomEvent ??= class {
+  constructor(type, init = {}) {
+    this.type = type
+    this.detail = init.detail
+  }
+}
 
 test("clearing a point-only selection restores its editor and leaves info open", () => {
   const cleared = []
