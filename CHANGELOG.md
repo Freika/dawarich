@@ -6,8 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- API clients can create, rename and delete families, invite and remove members, accept invitations and leave a family on both self-hosted and Cloud instances. Cloud limits and owner permissions follow the existing website; cleanup stays available after a plan lapses. See `docs/api/family-management.md` for the API contract.
+
 ### Fixed
 
+- Accepting a Cloud family's fifth reserved place no longer counts that invitation twice and rejects the new member.
 - One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
 - Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
 - When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
