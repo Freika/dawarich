@@ -138,6 +138,23 @@ RSpec.describe 'Settings: Data processing', type: :request do
       expect(user.reload.settings).to eq('timezone' => 'Europe/Berlin', 'visit_radius_meters' => 75)
     end
 
+    it 'keeps a setting another process wrote while the page was saving' do
+      allow(Users::SettingsUpdater).to receive(:new).and_wrap_original do |original, *args|
+        updater = original.call(*args)
+        allow(updater).to receive(:call).and_wrap_original do |call|
+          call.call.tap do
+            User.where(id: user.id)
+                .update_all(['settings = settings || ?::jsonb', { 'written_elsewhere' => 1 }.to_json])
+          end
+        end
+        updater
+      end
+
+      patch settings_data_processing_path, params: { settings: { visit_radius_meters: 75 } }
+
+      expect(user.reload.settings).to include('written_elsewhere' => 1, 'visit_radius_meters' => 75)
+    end
+
     it 'is no longer a tab of its own' do
       get settings_general_index_path
 

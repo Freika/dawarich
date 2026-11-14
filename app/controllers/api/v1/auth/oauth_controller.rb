@@ -18,6 +18,8 @@ class Api::V1::Auth::OauthController < Api::V1::Auth::BaseController
       email_verified: [true, 'true'].include?(claims[:email_verified])
     ).call
 
+    return render_otp_challenge(user) if otp_capable_client? && otp_challenge_required?(user)
+
     render_auth_success(user, status: created ? :created : :ok)
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     render json: { error: 'email_not_verified', message: unverified_email_message }, status: :forbidden
@@ -42,6 +44,13 @@ class Api::V1::Auth::OauthController < Api::V1::Auth::BaseController
   end
 
   private
+
+  # Released app versions cannot enter a code after a provider sign-in, so only
+  # a client that announces it can is asked for one. Older clients keep signing
+  # in without the code until this check is removed.
+  def otp_capable_client?
+    request.headers['X-Dawarich-Client-Capabilities'].to_s.split(',').map(&:strip).include?('otp_challenge')
+  end
 
   def unverified_email_message
     oauth_message("#{self.class::LOCALE_SCOPE}_has_not_verified_this_email_sign_in_with_password")

@@ -34,7 +34,7 @@ class Settings::DataProcessingController < ApplicationController
     visit_settings = settings.extract!(*VISIT_KEYS)
     result = Users::SettingsUpdater.new(current_user, settings).call
     if result.success?
-      current_user.update!(settings: current_user.settings.merge(visit_settings)) if visit_settings.any?
+      merge_visit_settings(visit_settings) if visit_settings.any?
       back_with(notice: t('controllers.settings.general.settings_updated'))
     else
       back_with(alert: result.error || t('controllers.api.v1.settings.something_went_wrong'))
@@ -69,6 +69,13 @@ class Settings::DataProcessingController < ApplicationController
   end
 
   private
+
+  # Merged in the database, so a key another process writes meanwhile (trip
+  # detection records long absences there) is not overwritten.
+  def merge_visit_settings(visit_settings)
+    User.where(id: current_user.id)
+        .update_all(["settings = COALESCE(settings, '{}'::jsonb) || ?::jsonb", visit_settings.to_json])
+  end
 
   def back_with(flash_message)
     redirect_to settings_data_processing_path, flash_message

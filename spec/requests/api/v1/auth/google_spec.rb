@@ -191,4 +191,45 @@ RSpec.describe 'POST /api/v1/auth/google', type: :request do
       expect(user.active_until).to be > 900.years.from_now
     end
   end
+
+  context 'returning Google user with 2FA' do
+    let!(:existing) do
+      create(:user, email: 'google@example.com', provider: 'google_oauth2', uid: 'google-uid-123',
+                    otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+    end
+    let(:otp_capable) { { 'X-Dawarich-Client-Capabilities' => 'otp_challenge' } }
+
+    before do
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+      allow(verifier_double).to receive(:call).and_return(sub: 'google-uid-123', email: 'google@example.com')
+    end
+
+    it 'asks a client that can enter a code for one instead of handing out the api_key' do
+      post '/api/v1/auth/google', params: { id_token: 'fake_token' }, headers: otp_capable
+
+      expect(response).to have_http_status(:accepted)
+      body = JSON.parse(response.body)
+      expect(body).to include('two_factor_required' => true, 'ttl' => 300, 'challenge_token' => be_present)
+      expect(body).not_to have_key('api_key')
+    end
+
+    it 'signs in a client that sent the challenge token and code' do
+      post '/api/v1/auth/google', params: { id_token: 'fake_token' }, headers: otp_capable
+      token = JSON.parse(response.body)['challenge_token']
+
+      post '/api/v1/auth/otp_challenge',
+           params: { challenge_token: token, otp_code: existing.current_otp }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['api_key']).to eq(existing.api_key)
+    end
+
+    # Released app versions cannot enter a code here; they keep signing in until they can.
+    it 'still signs in an older client that does not announce the capability' do
+      post '/api/v1/auth/google', params: { id_token: 'fake_token' }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['api_key']).to eq(existing.api_key)
+    end
+  end
 end

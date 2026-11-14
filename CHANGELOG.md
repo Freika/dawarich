@@ -11,12 +11,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
 - The Docker image no longer contains `curl`, `git` or `npm`. A healthcheck or script of your own that calls `curl` inside the container fails after the upgrade: use `wget -qO -`, as the bundled compose files do.
 - `GET /api/v1/settings` no longer returns integration API keys, and restoring an account archive no longer restores integration connections. Details are under Security below. Account archives exported before this version still contain those keys and the TeslaMate password: delete old archives you no longer need, and change the keys if an archive was ever shared.
+- A Place you tagged "home" becomes your Home during the upgrade, so Dawarich starts finding trips around it after the first nightly run and notifies you about them. To keep that from happening, turn off "Find trips automatically" in Settings → General → Features before or right after upgrading.
 
 ### Security
 
 Fixes for issues found in a security audit. Operators should upgrade.
 
-- Signing in with Google, GitHub or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- Signing in on the web with Google, GitHub, Apple or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- `POST /api/v1/auth/google` and `POST /api/v1/auth/apple` can now ask for the 2FA code too: a client that sends `X-Dawarich-Client-Capabilities: otp_challenge` gets the same `202` with a challenge token as `POST /api/v1/auth/login`. Clients that don't send it sign in as before, so current app versions keep working.
 - Replacing a 2FA setup that is already on now requires the current password.
 - Failed logins through the API now count toward account lockout, the same as on the web.
 - Opening a sign-up link with an import ticket while signed in no longer adds that import to your account.
@@ -35,7 +37,7 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
 - API rate limits now also count an `api_key` sent in a JSON body.
 - ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
-- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above 64 MB and JSON/TCX above 512 MB by default. An admin can change both limits in Settings → Instance → Imports. A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above 64 MB (also the KML inside a KMZ, measured unpacked) and JSON/TCX above 512 MB by default. An admin can change both limits in Settings → Instance → Imports. A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
 
 ### Added
 

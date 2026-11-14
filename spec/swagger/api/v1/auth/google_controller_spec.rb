@@ -17,9 +17,14 @@ describe 'Auth Google API', type: :request do
     post 'Sign in with Google' do
       tags 'Auth'
       description 'Exchanges a Google `id_token` for a Dawarich API key. Creates a new account on first use ' \
-                  '(returns 201) or returns the existing account (returns 200).'
+                  '(returns 201) or returns the existing account (returns 200). A client that sends ' \
+                  '`X-Dawarich-Client-Capabilities: otp_challenge` gets a `202` with a challenge token for an ' \
+                  'account with 2FA, as from `POST /api/v1/auth/login`; it then calls ' \
+                  '`POST /api/v1/auth/otp_challenge`.'
       consumes 'application/json'
       produces 'application/json'
+      parameter name: 'X-Dawarich-Client-Capabilities', in: :header, type: :string, required: false,
+                description: 'Comma-separated client capabilities; `otp_challenge` asks for the 2FA challenge'
       parameter name: :payload, in: :body, schema: {
         type: :object,
         properties: {

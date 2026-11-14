@@ -18,15 +18,7 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
 
     return render_auth_error(I18n.t('controllers.api.v1.auth.sessions.invalid_credentials')) unless authenticated
 
-    if DawarichSettings.two_factor_available? && user.otp_required_for_login?
-      challenge_token = Auth::IssueOtpChallengeToken.new(user).call
-      render json: {
-        two_factor_required: true,
-        challenge_token: challenge_token,
-        ttl: Auth::IssueOtpChallengeToken::TTL.to_i
-      }, status: :accepted
-      return
-    end
+    return render_otp_challenge(user) if otp_challenge_required?(user)
 
     render_auth_success(user)
   end

@@ -64,4 +64,19 @@ RSpec.describe 'Whole-file import parsing is size-bounded', type: :model do
     expect { Kml::Importer.new(import, import.user_id, path).call }
       .to raise_error(Imports::FileTooLarge, /Settings → Instance → Imports/)
   end
+
+  it 'refuses a small KMZ whose KML inflates past the KML limit' do
+    InstanceSettings::Resolver.set(:kml_max_file_size_mb, 1)
+    path = Rails.root.join('tmp', "small-#{SecureRandom.hex(4)}.kmz").to_s
+    Zip::File.open(path, create: true) do |zip|
+      zip.get_output_stream('doc.kml') { |kml| kml.write("<kml>#{' ' * 2.megabytes}</kml>") }
+    end
+    expect(File.size(path)).to be < 1.megabyte
+    import = create(:import, name: 'small.kmz', source: 'kml')
+
+    expect { Kml::Importer.new(import, import.user_id, path).call }
+      .to raise_error(Imports::FileTooLarge, /Settings → Instance → Imports/)
+  ensure
+    FileUtils.rm_f(path) if path
+  end
 end

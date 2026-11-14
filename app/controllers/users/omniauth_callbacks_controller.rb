@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  include OtpChallengeStaging
   include PendingImportClaimable
 
   def github
@@ -62,7 +63,7 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
       # A 2FA-enabled account must still clear the second factor on OAuth sign-in,
       # mirroring Users::SessionsController#check_otp_required on the password path.
-      return stage_otp_challenge(@user) if DawarichSettings.two_factor_available? && @user.otp_required_for_login?
+      return stage_otp_challenge(@user) if otp_challenge_required?(@user)
 
       flash[:notice] = I18n.t 'devise.omniauth_callbacks.success', kind: provider
       sign_in_and_redirect @user, event: :authentication
@@ -98,12 +99,9 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     OIDC_AUTO_REGISTER
   end
 
-  # Stage the OTP challenge instead of completing the sign-in, reusing the same
-  # session handshake that Users::OtpChallengeController consumes.
+  # Devise renders outside the app's locale switch; stage the challenge inside it.
   def stage_otp_challenge(user)
-    session[:otp_user_id] = user.id
-    session[:otp_challenge_at] = Time.current.to_i
     self.resource = user
-    switch_locale { render 'devise/sessions/otp_challenge', status: :unprocessable_entity }
+    switch_locale { super }
   end
 end

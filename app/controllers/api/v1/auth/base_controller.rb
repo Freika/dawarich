@@ -15,6 +15,19 @@ class Api::V1::Auth::BaseController < ApiController
 
   private
 
+  def otp_challenge_required?(user)
+    DawarichSettings.two_factor_available? && user.otp_required_for_login?
+  end
+
+  # No api_key yet: the client exchanges the token and a code at POST /api/v1/auth/otp_challenge.
+  def render_otp_challenge(user)
+    render json: {
+      two_factor_required: true,
+      challenge_token: Auth::IssueOtpChallengeToken.new(user).call,
+      ttl: Auth::IssueOtpChallengeToken::TTL.to_i
+    }, status: :accepted
+  end
+
   def render_auth_success(user, status: :ok)
     render json: {
       user_id: user.id,

@@ -126,13 +126,17 @@ class Kml::Importer
 
   # Bound the inner .kml inflate so a KMZ (which can skip the dispatcher's
   # zip-magic check and reach this path) cannot expand unbounded into memory.
+  # The KML limit applies to the inflated KML, not to the small archive.
   def read_capped(entry)
     max = ENV.fetch('ZIP_MAX_EXTRACTED_SIZE', 2.gigabytes).to_i
+    kml_max = InstanceSettings::Resolver.value(:kml_max_file_size_mb).megabytes
     buffer = +''
     entry.get_input_stream do |stream|
       while (chunk = stream.read(8192))
         buffer << chunk
         raise "KMZ inner entry too large (max #{max} bytes)" if buffer.bytesize > max
+
+        enforce_kml_parse_limit!(buffer.bytesize) if buffer.bytesize > kml_max
       end
     end
     buffer
