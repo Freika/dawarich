@@ -2747,6 +2747,19 @@ zh:
         帐户的请求。这是您停止删除的最后机会。确认后，您的所有位置历史记录、轨迹、区域、到访记录、行程和家庭关系都将被永久删除。
       permanently_delete_my_account_2: 永久删除我的帐户：
       didn_t_request_this_ignore_this_email_the_link_expires_2: 未请求此操作？请忽略此邮件 — 链接将在 1 小时后过期，您的帐户不会受到任何影响。如果您不断收到此类邮件，请立即更改密码。
+    account_deletion_warning:
+      title: "您的 Dawarich 账户将被删除"
+      greeting: "%{email}，您好："
+      deletion_notice: "您的 Dawarich 账户及其所有数据（位置历史、导入、行程和地点）将于 %{date} 被永久删除。"
+      reason: "您的账户没有有效的 Dawarich 订阅。根据我们的隐私政策，非活跃账户的数据最多保留 12 个月。"
+      keep_account: "如需保留账户，请在 %{date} 之前重新订阅："
+      resubscribe: "重新订阅"
+      keep_copy: "如需保留数据副本，请登录并导出："
+      export: "导出我的数据"
+      nothing_to_do: "如果您不再需要该账户，无需任何操作。"
+      policy: "隐私政策："
+      questions: "有问题？直接回复此邮件或写信至 hi@dawarich.app。"
+      signoff: "来自 Dawarich 的 Evgenii"
     archival_approaching:
       your_data_history_is_filling_up: 您的数据历史记录即将存满
       hi: 您好
@@ -3651,6 +3664,8 @@ zh:
         subject: 欢迎来到 Dawarich！
       explore_features:
         subject: 探索 Dawarich 功能！
+      account_deletion_warning:
+        subject: "您的 Dawarich 账户将于 %{date} 被删除"
       archival_approaching:
         subject: 保留您的完整历史记录 — 升级到 Pro
       oauth_account_link:
