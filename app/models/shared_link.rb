@@ -2,11 +2,16 @@
 
 class SharedLink < ApplicationRecord
   RESOURCE_TYPES_REQUIRING_ID = %w[trip track].freeze
+  LIVE_FRESHNESS_KEY = 'live_freshness_seconds'
+  DEFAULT_LIVE_FRESHNESS = 15.minutes.to_i
+  LIVE_FRESHNESS_WINDOWS = [DEFAULT_LIVE_FRESHNESS, 1.hour.to_i, 6.hours.to_i, 24.hours.to_i].freeze
 
   belongs_to :user
 
   enum :resource_type, { trip: 0, track: 1, timeline: 2, live: 3 }
 
+  SETTING_KEYS = %i[show_photos show_stats show_route show_countries show_description show_days show_day_notes
+                    show_map_notes].freeze
   DEFAULT_SETTINGS = {
     trip: {
       'show_photos' => false, 'show_stats' => false
@@ -18,12 +23,20 @@ class SharedLink < ApplicationRecord
       'show_photos' => false
     }.freeze,
     live: {
-      'show_photos' => false, 'show_route' => false
+      'show_photos' => false, 'show_route' => false, LIVE_FRESHNESS_KEY => DEFAULT_LIVE_FRESHNESS
     }.freeze
   }.freeze
 
   def self.default_settings_for(resource_type)
     DEFAULT_SETTINGS.fetch(resource_type.to_sym).dup
+  end
+
+  # Form values arrive as strings. One that is not a number is kept as sent so
+  # validation rejects it instead of it silently becoming the default.
+  def self.live_freshness_setting(value)
+    return {} if value.nil?
+
+    { LIVE_FRESHNESS_KEY => Integer(value, exception: false) || value }
   end
 
   validates :name, presence: true, length: { maximum: 255 }
@@ -33,6 +46,10 @@ class SharedLink < ApplicationRecord
   validate :timeline_dates_present_and_ordered
   validate :expires_at_in_future
   validate :valid_family_audience, if: -> { new_record? || will_save_change_to_settings? }
+  validate :allowed_live_freshness, if: -> { live? && (new_record? || will_save_change_to_settings?) }
+
+  after_save -> { Trip.mark_touched_by_user(resource_id) },
+             if: -> { trip? && (saved_change_to_resource_id? || saved_change_to_resource_type?) }
 
   scope :active, lambda {
     where(revoked_at: nil)
@@ -63,6 +80,10 @@ class SharedLink < ApplicationRecord
     family.family_memberships.exists?(user_id: viewer.id)
   end
 
+  def live_freshness_seconds
+    allowed_live_freshness_window || DEFAULT_LIVE_FRESHNESS
+  end
+
   def resource
     case resource_type.to_sym
     when :trip     then user.trips.find_by(id: resource_id)
@@ -82,6 +103,32 @@ class SharedLink < ApplicationRecord
 
   # Value stored in the visitor's unlock cookie. Derived from the current
   # phrase so regenerating it invalidates everyone's prior unlock.
+  def unlock_cookie_name
+    "shared_link_#{id}"
+  end
+
+  def revoke!
+    update!(revoked_at: Time.current)
+    broadcast_live_share_ended
+  end
+
+  def broadcast_live_share_ended
+    SharedLocationChannel.broadcast_to(self, { revoked: true }) if resource_type == 'live'
+  end
+
+  # First and last instant of the shared timeline in the owner's zone, or nil
+  # when the settings hold no usable dates.
+  def timeline_window
+    zone = Time.find_zone(user.timezone_iana) || Time.find_zone('UTC')
+    first_day = zone.parse(settings['start_date'].to_s)
+    last_day = zone.parse(settings['end_date'].to_s)
+    return if first_day.nil? || last_day.nil?
+
+    [first_day.beginning_of_day, last_day.end_of_day]
+  rescue ArgumentError, TypeError
+    nil
+  end
+
   def unlock_token
     return if magic_phrase.blank?
 
@@ -114,6 +161,16 @@ class SharedLink < ApplicationRecord
     return if trip? && user&.family&.access_live? && user.family.id.to_s == settings['family_id'].to_s
 
     errors.add(:base, I18n.t('shared_links.family.unavailable'))
+  end
+
+  def allowed_live_freshness
+    return if !settings.key?(LIVE_FRESHNESS_KEY) || allowed_live_freshness_window
+
+    errors.add(:settings, I18n.t('models.shared_link.live_freshness_not_allowed'))
+  end
+
+  def allowed_live_freshness_window
+    LIVE_FRESHNESS_WINDOWS.find { |window| window.to_s == settings[LIVE_FRESHNESS_KEY].to_s }
   end
 
   def resource_id_matches_type

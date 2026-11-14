@@ -9,7 +9,7 @@ module Achievements
 
     def call
       CollectionState.with_advisory_lock("achievement-collections-#{@user.id}", timeout_seconds: 0) do
-        @state = CollectionState.create_or_find_by!(user_id: @user.id)
+        @state = CollectionState.for_user!(@user.id)
         Selection.where(user: @user).includes(:place).order(:id).each { |selection| resolve_timezone(selection) }
         @selection_signature = selection_signature
         if @user.achievement_city_selections.exists?
@@ -176,14 +176,16 @@ city_selection_id: nil)
           ::Notifications::Create.new(user: @user, kind: :info,
                                       title: I18n.t('achievements.notifications.digest_title',
                                                     count: @fresh_cards.size),
-                                      content: I18n.t('achievements.collections.notification_content')).call
+                                      content: I18n.t('achievements.collections.notification_content'),
+                                      action_path: ::Notifications.paths.achievements_path).call
           return
         end
         @fresh_cards.each do |card|
           ::Notifications::Create.new(user: @user, kind: :info,
                                       title: I18n.t('achievements.collections.notification_title',
                                                     name: CollectiblePresenter.new(card).name),
-                                      content: I18n.t('achievements.collections.notification_content')).call
+                                      content: I18n.t('achievements.collections.notification_content'),
+                                      action_path: ::Notifications.paths.achievements_path).call
         end
       end
     end

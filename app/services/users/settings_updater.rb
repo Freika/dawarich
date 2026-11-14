@@ -6,7 +6,11 @@ module Users
   # allowlist changes (the former threshold settings are gone — the detection
   # pipeline tunes itself).
   class SettingsUpdater
+    include UrlValidatable
+
     Result = Struct.new(:success?, :error, :recalculation_triggered?, keyword_init: true)
+
+    INTEGRATION_URL_KEYS = %w[immich_url photoprism_url airtrail_url teslamate_url].freeze
 
     MODES_KEY = 'enabled_transportation_modes'
     CITY_THRESHOLD_KEY = 'min_minutes_spent_in_city'
@@ -31,6 +35,10 @@ module Users
       return locked_result if recalculation_in_progress?
       return invalid_allowlist_result if invalid_allowlist?
 
+      blocked = blocked_integration_url_result
+      return blocked if blocked
+
+      @settings_params = IntegrationSettingKeys.guard_url_changes(@settings_params, @user.settings)
       apply_settings
       return failure_result unless @user.save
 
@@ -65,6 +73,26 @@ module Users
         error: I18n.t('services.users.settings_updater.enable_at_least_one_transportation_mode'),
         recalculation_triggered?: false
       )
+    end
+
+    # Apply the same SSRF blocklist the web Settings::Update enforces, so the API
+    # writer cannot store an internal/loopback integration URL.
+    def blocked_integration_url_result
+      INTEGRATION_URL_KEYS.each do |key|
+        raw = @settings_params[key] || @settings_params[key.to_sym]
+        next if raw.blank?
+
+        begin
+          validate_integration_url!(raw)
+        rescue UrlValidatable::BlockedUrlError => e
+          return Result.new(
+            success?: false,
+            error: I18n.t('services.settings.update.not_allowed', setting: key.humanize, message: e.message),
+            recalculation_triggered?: false
+          )
+        end
+      end
+      nil
     end
 
     def apply_settings

@@ -49,6 +49,13 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  def self.unique_name(original_name)
+    return original_name unless exists?(name: original_name)
+
+    extension = File.extname(original_name)
+    "#{File.basename(original_name, extension)}_#{Time.current.strftime('%Y%m%d_%H%M%S')}#{extension}"
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -61,12 +68,8 @@ class Import < ApplicationRecord
     Users::ImportDataJob.perform_later(id)
   end
 
-  def reverse_geocoded_points_count
-    points.reverse_geocoded.count
-  end
-
   def years_and_months_tracked
-    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
+    quoted_tz = ActiveRecord::Base.connection.quote(user.timezone_iana)
     points
       .select(Arel.sql(
                 "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
@@ -116,8 +119,13 @@ class Import < ApplicationRecord
   end
 
   def failure_summary
-    key = error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
-    I18n.t("ux_p2.import.#{key}")
+    I18n.t("ux_p2.import.#{failure_key}")
+  end
+
+  # The list has no reference beside it, so a generic failure points to the
+  # import page instead; a format error reads the same everywhere.
+  def failure_summary_in_list
+    I18n.t("ux_p2.import.#{failure_key == 'failed_reason' ? 'failed_reason_in_list' : failure_key}")
   end
 
   def extraction_error_message
@@ -143,10 +151,6 @@ class Import < ApplicationRecord
     false
   end
 
-  def trust_source_for_extraction?
-    additional_data_extraction.dig('options', 'trust_source') != false
-  end
-
   # Two rapid submissions both pass the extraction policy before either
   # writes; the compare-and-swap lets exactly one of them move the status
   # to pending and enqueue the job.
@@ -159,6 +163,10 @@ class Import < ApplicationRecord
   end
 
   private
+
+  def failure_key
+    error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current

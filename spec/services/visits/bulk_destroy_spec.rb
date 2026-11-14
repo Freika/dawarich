@@ -33,6 +33,15 @@ RSpec.describe Visits::BulkDestroy do
           .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id)
       end
 
+      it 'clears the cached calendar for the month the visits were in' do
+        cache_key = Timeline::MonthSummary.cache_key_for(user, visit1.started_at)
+        Rails.cache.write(cache_key, { some: 'data' })
+
+        service.call
+
+        expect(Rails.cache.read(cache_key)).to be_nil
+      end
+
       it 'leaves other users\' visits untouched' do
         service.call
 

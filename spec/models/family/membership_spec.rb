@@ -87,7 +87,8 @@ RSpec.describe Family::Membership, type: :model do
 
       membership.destroy!
 
-      expect(member.reload).to have_attributes(plan: 'lite', status: 'inactive', active_until: nil)
+      expect(member.reload).to have_attributes(plan: 'lite', status: 'inactive')
+      expect(member.active_until).to be_within(1.minute).of(Time.current)
     end
 
     it 'keeps the paid period of a member whose own subscription has lapsed pending renewal' do

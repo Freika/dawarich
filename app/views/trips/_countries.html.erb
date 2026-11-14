@@ -4,15 +4,15 @@
     <%= t('.middot').html_safe %>
     <%= trip_duration(trip) %>
     <%= t('.middot').html_safe %>
-    <% if trip.visited_countries.any? %>
-      <%= t('.country_count', count: trip.visited_countries.count) %>
+    <% if trip.canonical_visited_countries.any? %>
+      <%= t('.country_count', count: trip.canonical_visited_countries.count) %>
     <% else %>
       <span class="text-base-content/40"><%= t('.mdash').html_safe %></span>
     <% end %>
   </p>
-  <% if trip.visited_countries.any? %>
+  <% if trip.canonical_visited_countries.any? %>
     <div class="flex flex-wrap items-center gap-1.5 mt-2">
-      <% trip.visited_countries.sort.each do |country| %>
+      <% trip.canonical_visited_countries.sort.each do |country| %>
         <%= country_flag(country) %>
       <% end %>
     </div>

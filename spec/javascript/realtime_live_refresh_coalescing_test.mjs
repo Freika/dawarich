@@ -49,7 +49,7 @@ function buildController() {
     "points-mvt": { refresh: () => calls.pointsRefresh++ },
     "map-editor": { reapplyTileFilters: () => calls.filters++ },
     scratch: {
-      update: () => {
+      retryMembership: () => {
         calls.scratchUpdate++
         return Promise.resolve()
       },

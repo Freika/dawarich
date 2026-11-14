@@ -24,6 +24,10 @@ RSpec.describe Families::Create do
       it 'returns true on success' do
         expect(service.call).to be true
       end
+
+      it 'does not notify the creator, who is already told by the page' do
+        expect { service.call }.not_to change(Notification, :count)
+      end
     end
 
     context 'when user is already in a family' do
@@ -93,6 +97,57 @@ RSpec.describe Families::Create do
 
       it 'creates a family' do
         expect { service.call }.to change(Family, :count).by(1)
+      end
+    end
+  end
+
+  describe '#error_code' do
+    it 'is nil after a successful call' do
+      service.call
+      expect(service.error_code).to be_nil
+    end
+
+    it 'is invalid_name for a blank name' do
+      service = described_class.new(user: user, name: '  ')
+      service.call
+      expect(service.error_code).to eq(:invalid_name)
+    end
+
+    it 'is invalid_name for a name over 50 characters' do
+      service = described_class.new(user: user, name: 'a' * 51)
+      service.call
+      expect(service.error_code).to eq(:invalid_name)
+    end
+
+    it 'is already_in_family for a member of a family' do
+      create(:family_membership, user: user)
+      service.call
+      expect(service.error_code).to eq(:already_in_family)
+    end
+
+    it 'is family_already_created for a user who created a family before' do
+      create(:family, creator: user)
+      service.call
+      expect(service.error_code).to eq(:family_already_created)
+    end
+
+    it 'is family_plan_required on cloud without the family plan' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :pro)
+      service.call
+      expect(service.error_code).to eq(:family_plan_required)
+    end
+
+    [
+      ActiveRecord::RecordInvalid.new,
+      ActiveRecord::RecordNotUnique.new('duplicate'),
+      StandardError.new('boom')
+    ].each do |error|
+      it "is unexpected_error when #{error.class} is raised" do
+        allow(Family).to receive(:create!).and_raise(error)
+        allow(ExceptionReporter).to receive(:call)
+        expect(service.call).to be false
+        expect(service.error_code).to eq(:unexpected_error)
       end
     end
   end

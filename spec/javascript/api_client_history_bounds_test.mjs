@@ -1,18 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-let source = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/services/api_client.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-source = source.replace(/^import .*\n/gm, "")
-const { ApiClient } = await import(
-  `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
-)
+import { ApiClient } from "maps_maplibre/services/api_client"
 
 test("history bounds request opts into robust bounds without affecting fog", async () => {
   const requests = []

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Points::VectorTileQuery
-  class InvalidTileCoordinatesError < StandardError; end
+  include TileCoordinates
 
   Result = Struct.new(:tile, :feature_count, :limit, keyword_init: true) do
     def truncated?
@@ -28,9 +28,6 @@ class Points::VectorTileQuery
   # scopes keep the geography index.
   FENCE_MAX_ROWS = 50_000
   LAYER_NAME = 'points'
-  # Points are not merged at this zoom: zooming cannot separate points that
-  # share a location, so each must stay selectable on its own (#3846).
-  MAX_ZOOM = 22
   TILE_PIXELS = 512
   WEB_MERCATOR_WORLD = 40_075_016.685578488
   # Heat reflects time spent, not recording frequency; cap gaps between recordings.
@@ -252,6 +249,8 @@ class Points::VectorTileQuery
   end
 
   def snap_expression
+    # Points are not merged at this zoom: zooming cannot separate points that
+    # share a location, so each must stay selectable on its own (#3846).
     return 'id' if z == MAX_ZOOM
 
     "ST_SnapToGrid(geom_3857, #{cell_size})"
@@ -301,21 +300,5 @@ class Points::VectorTileQuery
                       'VectorTileQuery Timeout')
       yield conn
     end
-  end
-
-  def parse_integer(value)
-    return value if value.is_a?(Integer)
-
-    Integer(value, 10)
-  rescue ArgumentError, TypeError
-    raise InvalidTileCoordinatesError
-  end
-
-  def validate_tile_coordinates!
-    raise InvalidTileCoordinatesError if z.negative? || z > MAX_ZOOM
-
-    max_index = (1 << z) - 1
-    raise InvalidTileCoordinatesError if x.negative? || y.negative?
-    raise InvalidTileCoordinatesError if x > max_index || y > max_index
   end
 end

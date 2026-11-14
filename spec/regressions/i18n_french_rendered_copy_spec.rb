@@ -357,10 +357,10 @@ RSpec.describe 'Rendered French copy' do
     warning = document.at_css('.alert-warning')
 
     expect(warning.text.squish).to eq(
-      'Toute personne disposant du lien pourra voir votre emplacement actuel en temps réel ' \
+      'Toute personne disposant du lien pourra voir votre dernier emplacement connu ' \
       "jusqu'à l'expiration ou la révocation du lien."
     )
-    expect(warning.at_css('strong').text).to eq('emplacement actuel en temps réel')
+    expect(warning.at_css('strong').text).to eq('dernier emplacement connu')
   end
 
   it 'uses list semantics only once in the archival upgrade email' do

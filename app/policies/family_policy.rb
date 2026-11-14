@@ -7,9 +7,8 @@ class FamilyPolicy < ApplicationPolicy
 
   def create?
     return false if user.in_family?
-    return true if DawarichSettings.self_hosted?
 
-    user.family?
+    user.entitlements.can_create_family?
   end
 
   def update?

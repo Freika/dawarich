@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 
 const read = (path) =>
   readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
@@ -11,11 +12,6 @@ const cleanup = await read("maps_maplibre/utils/cleanup_helper.js")
 const { TimelineSegmentHover, segmentCoordinates } = await import(
   url(
     `${cleanup}\n${strip(await read("maps_maplibre/managers/timeline_segment_hover.js"))}`,
-  )
-)
-const { TracksLayer } = await import(
-  url(
-    `${await read("maps_maplibre/layers/base_layer.js")}\n${(await read("maps_maplibre/utils/flight_arcs.js")).replace(/^export /gm, "")}\n${strip(await read("maps_maplibre/layers/tracks_layer.js"))}`,
   )
 )
 globalThis.requestAnimationFrame = () => 1

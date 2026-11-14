@@ -1,0 +1,59 @@
+ca:
+  notes:
+    flash:
+      saved: Nota desada
+      deleted: Nota suprimida
+      pick_a_point_on_the_map: Tria un punt al mapa per a aquesta nota
+    form:
+      note: Nota
+      what_happened_here: Què va passar aquí?
+      when: Quan
+      delete: Suprimeix
+      delete_this_note: Vols suprimir aquesta nota?
+      cancel: Cancel·la
+      save: Desa
+    index:
+      notes: Diari
+      search: Cerca
+      search_placeholder: Cerca a les teves notes
+      from: Des de
+      to: Fins a
+      clear: Neteja
+      nothing_found: Cap nota coincideix amb aquesta cerca
+      no_notes_yet: Encara no hi ha notes
+      no_notes_yet_hint: Obre el mapa, tria Afegeix una nota a Eines i fes clic al lloc que vols recordar.
+      open_the_map: Obre el mapa
+    note:
+      trip: 'Viatge: %{name}'
+      open_this_day_on_the_map: Obre aquest dia al mapa
+  map:
+    maplibre:
+      note_modal:
+        map_note: Nota al mapa
+      settings_panel:
+        notes: Notes
+        show_your_map_notes: Mostra les notes que has escrit al mapa
+        add_note: Afegeix una nota
+    timeline_feeds:
+      note_entry:
+        edit: Edita
+      on_this_day:
+        on_this_day: Tal dia com avui
+  javascript:
+    messages:
+      click_on_the_map_to_place_a_note_esc_to: Fes clic al mapa per col·locar una nota. Esc per cancel·lar.
+      failed_to_load_notes: No s'han pogut carregar les notes
+  shared:
+    navbar:
+      notes: Diari
+    links:
+      map_notes:
+        notes: Notes
+  shared_links:
+    map_notes_toggle:
+      label: Mostra les meves notes del mapa
+      hint: Mostra el text i l'hora de les notes sobre aquest període, no el lloc on es van escriure. Les notes que escriguis més tard sobre aquest període també hi apareixeran.
+  ux_p2:
+    sharing:
+      sections:
+        show_map_notes: Notes del mapa

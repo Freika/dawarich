@@ -2,7 +2,19 @@
 
 # The rate limiter keeps its slot bookkeeping in process memory for the life of
 # the process, so a spec that configures a rate would otherwise leave the next
-# spec's first lookup waiting on a real sleep.
+# spec's first lookup waiting on a real sleep. A cooldown lives in Redis and
+# would outlive the spec that hit an over-limit refusal the same way.
 RSpec.configure do |config|
-  config.before { Geocoding::RateLimiter.reset! }
+  config.before do
+    Geocoding::RateLimiter.reset!
+    Geocoding::Cooldown.reset!
+    Sidekiq.redis do |redis|
+      redis.call('DEL',
+                 Points::ResumeReverseGeocodingJob::CLAIM_KEY,
+                 Points::ResumeReverseGeocodingJob::FORCED_RUNS_KEY,
+                 # Leaked between examples before: a stale first-skip time made a
+                 # later example's forced-run walk enqueue a different set.
+                 Points::ResumeReverseGeocodingJob::FORCED_RUN_STARTS_KEY)
+    end
+  end
 end

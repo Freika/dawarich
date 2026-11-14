@@ -4,6 +4,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### ⚠️ Upgrade notes
+
+- A new production install no longer creates its first account with the published default password. Set `INITIAL_ADMIN_PASSWORD` (and, if you like, `INITIAL_ADMIN_EMAIL`) before the first start; otherwise Dawarich generates a password and writes it to the log once. Existing installs are not affected.
+- Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
+- `GET /api/v1/settings` no longer returns integration API keys, and restoring an account archive no longer restores integration connections. Details are under Security below. Account archives exported before this version still contain those keys and the TeslaMate password: delete old archives you no longer need, and change the keys if an archive was ever shared.
+
+### Security
+
+Fixes for issues found in a security audit. Operators should upgrade.
+
+- Signing in with Google, GitHub or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- Replacing a 2FA setup that is already on now requires the current password.
+- Failed logins through the API now count toward account lockout, the same as on the web.
+- Opening a sign-up link with an import ticket while signed in no longer adds that import to your account.
+- Importing an account archive now ignores record IDs inside the archive, so a crafted archive cannot point its points at someone else's imports, visits or tracks. Account exports no longer include details of an import or visit that belongs to another user.
+- Account archives are now parsed as plain JSON, so a crafted line can no longer create Ruby objects during import.
+- Family location sharing now hides points inside each member's Privacy Zones, both for the latest location and for history.
+- Removing a family member, or regenerating a live-share link's phrase, now stops delivering locations to an already-open connection immediately, instead of only blocking new ones.
+- The Immich photo-matching panel now escapes photo filenames, closing a cross-site scripting hole a malicious or compromised Immich server could trigger through a crafted filename.
+- Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
+- Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
+- A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
+- TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
+- **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead, and integration URLs are returned without any `user:password@` part, here and in `GET /api/v1/users/me`. Saving the keys through `PATCH /api/v1/settings` works as before, with one change: a request that changes an integration URL without sending its key forgets the stored key, so a key cannot be redirected to another server.
+- Account archives no longer contain integration credentials (Immich, Photoprism and AirTrail API keys, the TeslaMate password and token, and any `user:password@` part of an integration URL). Restoring an archive no longer changes the account's integration connections at all, so an archive cannot point a stored key at another server. After moving to a new instance, reconnect integrations in Settings → Integrations.
+- Restoring an account archive no longer writes the imported settings to the log.
+- `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
+- API rate limits now also count an `api_key` sent in a JSON body.
+- ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above `KML_MAX_PARSE_BYTES` (64 MiB by default) and JSON/TCX above `IMPORT_MAX_PARSE_BYTES` (512 MiB by default). A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
+
+### Added
+
+- Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" on a Place's page. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
+- Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
+- The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
+- Map notes: choose Add note in the map's Tools and click a spot to write a note about a moment there. Notes show as a map layer, in the Timeline at their time, and under today as "On this day" for the same date in earlier years. They are exempt from the Lite 12-month window, and a note inside a Privacy Zone keeps its text but not its position.
+- A Timeline period longer than a day reads like a diary: every day (up to the latest 32), newest first, with where the day went and its notes; opening a day selects it on the map and in replay. Press Enter in the Timeline search to look through all your notes. The Diary menu item opens the month of your latest note.
+- Replay covers a period of up to 14 days on one scale, with a tab per day and the time under the pointer; the points and distance summary opens and closes it.
+- The API's `GET /api/v1/notes` takes `start_at`, `end_at`, a bounding box and optional pagination, and `date` on a note without a trip is now your local day. The user data export and import now carry notes.
+- Timeline and track share links can show the text and time of your notes about the shared period, never their position. It is off by default.
+- Dawarich Cloud deletes an account and its data 12 months after its access ended, as the Privacy Policy states, starting on 2027-01-01. Warning emails go out 30, 7 and 1 day before, with links to export the data or resubscribe. Self-hosted instances are not affected.
+- The mobile apps can now create and manage a family: rename and delete it, invite people by email, see and revoke pending invitations, accept an invitation, leave, and remove a member. The invitation page has an "Open in the Dawarich app" link, and on Dawarich Cloud a family owner can send up to 10 invitations an hour from the apps and 10 an hour from the website.
+
+### Changed
+
+- A date range with no location data now says so on the map and offers a jump to the day of your latest data. Layer buttons explain what each layer is, with a short preview of it when you hover or focus them.
+- The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. An error opens its own notification first, with the full message, what to do about it and a button to that page. "Mark all as read" in the bell no longer takes you away from the page you are on.
+- Fewer notifications. An identical error or warning is not repeated while the first one is unread. You are no longer notified about a family you just created or left, an invitation you just accepted on the family page or by signing in on the web, or a member you just removed: the page already confirms those. On Dawarich Cloud the same goes for an invitation you just sent, and failed background runs of statistics, digests and visit suggestions are no longer shown, because only the operators can act on them; self-hosted instances still show them.
+- Error notifications no longer include a stack trace. It is written to the application log instead, and reported to us on Dawarich Cloud.
+- On Dawarich Cloud, error notifications point to hi@dawarich.app instead of asking you to attach Docker container logs to a GitHub issue.
+- Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
+- The date bar above the map is replaced by a period button on the map: the first click in its calendar sets the start, the second the end, and exact times sit under the calendar. Share moved into the map's button column, and the Timeline panel is narrower.
+- The Notes page is replaced by the Diary in the Timeline, and `/notes` redirects there. Trip day notes are listed only on their trips.
+- Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page.
+- Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
+- A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
+- The Docker image no longer ships npm and npx, which were only needed while the image is built. The poster renderer's dependencies were updated to patched releases.
+
+### Fixed
+
+- Clicking a track on the map keeps it selected and its Timeline entry open; moving off it also clears the highlighted segment row.
+- On Dawarich Cloud, an invitation into the last free seat of a family can now be accepted; before, it was refused as if the family were full.
+- Hovering over a notification no longer marks it as read.
+- A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.
+- Opening a location request that no longer exists takes you to the family page instead of an error page.
+- A notification that arrives while a page is open is shown in your language, not in the language of the person whose action caused it.
+- Importing your account data no longer lets the import file set internal fields of a notification.
+- The upgrade link in the "data history is filling up" email works for as long as the email is kept, instead of expiring 30 minutes after it was sent.
+- One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
+- Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
+- When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
+- Replay playback follows the timezone from Settings instead of the browser's. Thanks @joshuanianji! (#3811)
+- Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
+- Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
+- Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
+- Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
+
 ## [1.22.0] - 2026-11-07, Berlin
 
 ### ⚠️ Upgrade notes

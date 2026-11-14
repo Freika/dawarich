@@ -56,7 +56,7 @@ RSpec.describe 'Visit actions taken on a later day of an overnight visit', type:
       .to eq(%w[confirmed confirmed suggested])
   end
 
-  it 'refreshes the calendar of the viewed month after deleting a visit that began the month before' do
+  it 'clears the cached viewed month after deleting a visit that began the month before' do
     month_crossing = create(:visit, user: user, place: place, name: 'Synthetic month end', status: :suggested,
                                     started_at: Time.utc(2026, 9, 30, 22, 0), ended_at: Time.utc(2026, 10, 1, 7, 0),
                                     duration: 540)
@@ -64,8 +64,7 @@ RSpec.describe 'Visit actions taken on a later day of an overnight visit', type:
 
     delete visit_url(month_crossing), params: { date: '2026-10-01' }, as: :turbo_stream
 
-    calendar = Nokogiri::HTML(response.body).at_css('turbo-stream[target="timeline-calendar-frame"]').to_html
-    expect(calendar).to include('month=2026-11')
+    expect(Timeline::MonthSummary.new(user: user, month: '2026-10').call[:days]['2026-10-01']).to be_nil
   end
 
   it 'clears the cached next month after a bulk delete of a visit that crosses into it' do

@@ -62,7 +62,7 @@ class DemoData::Destroyer
   end
 
   def user_timezone
-    @user.safe_settings.timezone.presence || 'UTC'
+    @user.timezone_or_utc
   end
 
   def cleanup_orphan_demo_tags
@@ -76,6 +76,7 @@ class DemoData::Destroyer
   def cleanup_orphan_demo_places
     Place.demo.where(user_id: @user.id).find_each do |place|
       next if Visit.where(place_id: place.id, demo: false).exists?
+      next if Home.exists?(place_id: place.id)
 
       place.destroy
     end

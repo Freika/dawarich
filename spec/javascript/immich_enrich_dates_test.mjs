@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 globalThis.CustomEvent ??= class CustomEvent extends Event {
   constructor(type, options = {}) {
@@ -10,14 +10,9 @@ globalThis.CustomEvent ??= class CustomEvent extends Event {
 }
 
 async function loadImmichEnrichController() {
-  const source = await readFile(
-    new URL(
-      "../../app/javascript/controllers/maps/immich_enrich_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
+  const withoutImports = await strippedSource(
+    "controllers/maps/immich_enrich_controller.js",
   )
-  const withoutImports = source.replace(/^import .*\n/gm, "")
   const dependencies = `
     class Controller {}
     const formatDateTime = (value) => value
@@ -83,7 +78,10 @@ function mapShowing(start, end) {
   return {
     startDateValue: start,
     endDateValue: end,
-    loadMapData() {},
+    setDateRange(startAt, endAt) {
+      this.startDateValue = startAt
+      this.endDateValue = endAt
+    },
   }
 }
 
@@ -184,6 +182,7 @@ test("after a scan the panel follows the map again", async () => {
   panel.startDateTarget.value = "2026-01-05"
   await panel.scan()
   console.error = consoleError
+  assert.equal(map.startDateValue, "2026-01-05T00:00")
   map.startDateValue = "2026-03-01T00:00:00+00:00"
   map.endDateValue = "2026-03-31T23:59:00+00:00"
   panel.toggle()

@@ -37,8 +37,13 @@ module ShareLinks
         name:          create_params[:name].presence || I18n.t('controllers.share_links.lives.default_name'),
         magic_phrase:  create_params[:magic_phrase].presence,
         expires_at:    expiry_from(create_params[:expires_at]),
-        settings:      SharedLink.default_settings_for(:live).merge(extracted_settings)
+        settings:      SharedLink.default_settings_for(:live).merge(extracted_settings).merge(live_freshness_setting)
       }
+    end
+
+    def live_freshness_setting
+      key = SharedLink::LIVE_FRESHNESS_KEY
+      SharedLink.live_freshness_setting(params.fetch(:shared_link, {}).permit(settings: [key]).dig(:settings, key))
     end
 
     def create_params

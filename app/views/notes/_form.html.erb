@@ -1,0 +1,41 @@
+<%# locals: (note:) %>
+<%= turbo_frame_tag 'map-note-form' do %>
+  <%= form_with model: note, class: 'space-y-4 min-w-0', data: { testid: 'map-note-form' } do |form| %>
+    <% if note.errors.any? %>
+      <div class="alert alert-error text-sm [overflow-wrap:anywhere]" role="alert">
+        <%= note.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+
+    <% unless note.persisted? %>
+      <%= form.hidden_field :latitude %>
+      <%= form.hidden_field :longitude %>
+    <% end %>
+
+    <div class="form-control min-w-0">
+      <%= form.label :body, t('.note'), class: 'label label-text font-semibold' %>
+      <%= form.text_area :body, rows: 5, required: true, maxlength: Note::MAX_BODY_LENGTH, autofocus: true,
+                                placeholder: t('.what_happened_here'),
+                                class: 'textarea textarea-bordered w-full min-w-0 [overflow-wrap:anywhere]',
+                                data: { testid: 'map-note-body' } %>
+    </div>
+
+    <div class="form-control min-w-0">
+      <%= form.label :noted_at, t('.when'), class: 'label label-text font-semibold' %>
+      <%= form.datetime_local_field :noted_at, required: true, max: '9999-12-31T23:59',
+                                               value: note.noted_at&.in_time_zone&.strftime('%Y-%m-%dT%H:%M'),
+                                               class: 'input input-bordered w-full min-w-0',
+                                               data: { testid: 'map-note-time' } %>
+    </div>
+
+    <div class="modal-action flex-wrap gap-2">
+      <% if note.persisted? %>
+        <%= link_to t('.delete'), note_path(note),
+                    class: 'btn btn-ghost text-error mr-auto',
+                    data: { turbo_method: :delete, turbo_confirm: t('.delete_this_note'), testid: 'map-note-delete' } %>
+      <% end %>
+      <button type="button" class="btn btn-ghost" data-action="map-note#close"><%= t('.cancel') %></button>
+      <%= form.submit t('.save'), class: 'btn btn-primary', data: { testid: 'map-note-save' } %>
+    </div>
+  <% end %>
+<% end %>

@@ -21,7 +21,7 @@ class ImportPolicy < ApplicationPolicy
   end
 
   def create?
-    user.present? && user.active_until&.future?
+    user.present? && user.in_good_standing?
   end
 
   # Users can only edit their own imports

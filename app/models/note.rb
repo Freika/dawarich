@@ -22,11 +22,28 @@ class Note < ApplicationRecord
   validate :date_within_attachable_range
   validate :attachable_belongs_to_user
 
+  after_save -> { Trip.mark_touched_by_user(attachable_id) }, if: :attached_to_trip_now?
+
   scope :standalone, -> { where(attachable_id: nil) }
   scope :attached, -> { where.not(attachable_id: nil) }
   scope :for_trip_day, ->(trip, date) { where(attachable: trip).where('CAST(noted_at AS date) = ?', date) }
   scope :for_date, ->(date) { where('CAST(noted_at AS date) = ?', date) }
   scope :in_date_range, ->(start_at, end_at) { where(noted_at: start_at..end_at) }
+  scope :within_bounds, lambda { |min_lon, min_lat, max_lon, max_lat|
+    where('notes.lonlat && ST_MakeEnvelope(?, ?, ?, ?, 4326)::geography',
+          min_lon.to_f, min_lat.to_f, max_lon.to_f, max_lat.to_f)
+  }
+  # ponytail: substring match with a sequential scan over one user's notes and
+  # no stemming. Move to a tsvector column with a GIN index when a user has
+  # enough notes for this to be slow, or asks for word-form matching.
+  scope :matching, ->(query) { where('notes.body ILIKE ?', "%#{sanitize_sql_like(query.to_s)}%") }
+  # Notes about the same month and day as `date`, in earlier years, by the
+  # calendar of `timezone`.
+  scope :on_this_day_before, lambda { |date, timezone|
+    local = "(notes.noted_at AT TIME ZONE 'UTC' AT TIME ZONE #{connection.quote(timezone)})"
+    where("EXTRACT(MONTH FROM #{local}) = ? AND EXTRACT(DAY FROM #{local}) = ? AND EXTRACT(YEAR FROM #{local}) < ?",
+          date.month, date.day, date.year)
+  }
   scope :ordered, -> { order(noted_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
 
@@ -39,8 +56,12 @@ class Note < ApplicationRecord
     source_digest.present? && source_digest == self.class.body_digest(body)
   end
 
+  # An attached note is pinned to a calendar day of its attachable and stored at
+  # noon UTC. A map note describes a moment, so its day is the user's local day.
   def date
-    noted_at&.utc&.to_date
+    return noted_at&.utc&.to_date if attachable_id.present? || user.nil?
+
+    noted_at&.in_time_zone(user.safe_settings.timezone)&.to_date
   end
 
   def date=(val)
@@ -49,12 +70,13 @@ class Note < ApplicationRecord
     self.noted_at = val.to_date.to_datetime.noon
   end
 
+  # Before the first validation a new note only holds the coordinates it was given.
   def latitude
-    lonlat&.y
+    lonlat&.y || @latitude
   end
 
   def longitude
-    lonlat&.x
+    lonlat&.x || @longitude
   end
 
   def latitude=(val)
@@ -66,6 +88,10 @@ class Note < ApplicationRecord
   end
 
   private
+
+  def attached_to_trip_now?
+    attachable_type == 'Trip' && (saved_change_to_attachable_id? || saved_change_to_attachable_type?)
+  end
 
   def build_lonlat_from_coords
     self.lonlat = "POINT(#{@longitude} #{@latitude})"

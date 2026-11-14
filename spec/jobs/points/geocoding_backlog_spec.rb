@@ -62,4 +62,48 @@ RSpec.describe 'Reverse geocoding backlog' do
 
     expect { Points::NightlyReverseGeocodingJob.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
   end
+
+  context 'when the provider starts refusing lookups partway through' do
+    include ActiveJob::TestHelper
+
+    let(:lookups) { [] }
+
+    before do
+      create_list(:point, 9, user: user, reverse_geocoded_at: nil)
+      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+
+      allow(Geocoder).to receive(:search) do |query|
+        lookups << query
+        raise Geocoder::OverQueryLimitError if lookups.size > 3
+
+        [double(city: 'Berlin', country: 'Germany', data: { 'properties' => {} })]
+      end
+    end
+
+    def run_nightly_backlog
+      Points::NightlyReverseGeocodingJob.perform_now
+      perform_enqueued_jobs(only: ReverseGeocodingJob)
+    end
+
+    it 'sends one refused lookup instead of one for every point left' do
+      run_nightly_backlog
+
+      expect(lookups.size).to eq(4)
+      expect(Point.not_reverse_geocoded.count).to eq(7)
+    end
+
+    it 'picks the rest up once the provider answers again' do
+      run_nightly_backlog
+      allow(Geocoder).to receive(:search).and_return(
+        [double(city: 'Berlin', country: 'Germany', data: { 'properties' => {} })]
+      )
+      Geocoding::Cooldown.reset!
+
+      Points::ResumeReverseGeocodingJob.perform_now
+      perform_enqueued_jobs(only: ReverseGeocodingJob)
+
+      expect(Point.not_reverse_geocoded.count).to eq(0)
+    end
+  end
 end

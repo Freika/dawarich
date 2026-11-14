@@ -81,7 +81,8 @@ class Photoprism::ImportGeodata
         kind: :info,
         title: I18n.t('services.photoprism.import_geodata.import_was_not_created'),
         content: I18n.t('services.photoprism.import_geodata.import_with_the_same_name_import_name_already_exists_if',
-                        import_name: import_name)
+                        import_name: import_name),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end

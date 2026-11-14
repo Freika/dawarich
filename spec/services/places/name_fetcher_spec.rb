@@ -241,6 +241,44 @@ RSpec.describe Places::NameFetcher do
       end
     end
 
+    context 'when an earlier over-limit refusal is still cooling down' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+      end
+
+      it 'keeps the place as it is without asking the provider or reporting the skip' do
+        expect(service.call).to be_nil
+
+        expect(Geocoder).not_to have_received(:search)
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(place.reload.name).to eq(Place::DEFAULT_NAME)
+      end
+
+      it 'asks for the name again when the cooldown ends' do
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob)
+          .with(place.id)
+          .at(a_value_within(5.seconds).of(Geocoding::Cooldown::BASE_DURATION.from_now))
+      end
+
+      it 'keeps a single retry per place however often the name is asked for' do
+        expect { 3.times { described_class.new(place).call } }
+          .to have_enqueued_job(Places::NameFetchingJob).with(place.id).once
+      end
+    end
+
+    context 'when the provider refuses the lookup as over its limit' do
+      before do
+        allow(ExceptionReporter).to receive(:call)
+        allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      end
+
+      it 'asks for the name again when the cooldown ends and still reports the refusal' do
+        expect { service.call }.to have_enqueued_job(Places::NameFetchingJob).with(place.id)
+        expect(ExceptionReporter).to have_received(:call)
+      end
+    end
+
     context 'when geocoding returns no results' do
       before do
         allow(Geocoder).to receive(:search).and_return([])

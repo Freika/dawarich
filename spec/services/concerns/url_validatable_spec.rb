@@ -12,6 +12,24 @@ RSpec.describe UrlValidatable do
 
   subject(:validator) { test_class.new }
 
+  describe '#resolve_integration_addresses!' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    it 'returns every validated address in resolver order' do
+      stub_host_addresses('dual.test', '2001:db8::1', '198.51.100.7')
+
+      expect(validator.send(:resolve_integration_addresses!, 'http://dual.test'))
+        .to eq(['2001:db8::1', '198.51.100.7'])
+    end
+
+    it 'refuses the host when any of its addresses is blocked' do
+      stub_host_addresses('mixed.test', '198.51.100.7', '169.254.169.254')
+
+      expect { validator.send(:resolve_integration_addresses!, 'http://mixed.test') }
+        .to raise_error(UrlValidatable::BlockedUrlError)
+    end
+  end
+
   describe '#validate_integration_url!' do
     # Both deployment topologies share the basic well-formedness checks
     # (scheme, host, blank-skip, DNS) and the always-blocked tier

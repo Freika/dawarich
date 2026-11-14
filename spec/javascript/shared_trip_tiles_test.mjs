@@ -15,6 +15,7 @@ globalThis.__sharedEnv = env
 const { default: SharedTripController } = await import(
   moduleUrl(`
     class Controller {}
+class ReplayHost extends Controller {}
     const env = globalThis.__sharedEnv
     const getMapStyle = async () => ({})
     const maplibregl = {
