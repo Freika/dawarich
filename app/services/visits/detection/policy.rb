@@ -12,8 +12,9 @@ module Visits
       SWEEP_GAP_S = 60 * 60
       # Longest same-place silence still bridged into one continuous stay.
       BRIDGE_CAP_S = 7 * 24 * 60 * 60
-      # How far back/forward a stay boundary may snap to an adjacent moving
-      # segment's edge (GPS cold start on arrival, warm-up on departure).
+      # How far a stay boundary may snap to an adjacent or overlapping moving
+      # segment's edge (GPS cold start on arrival, warm-up on departure), in
+      # either direction: extending over silence or trimming off movement.
       SNAP_MAX_S = 15 * 60
       # Radius for matching a stay to existing places during attribution.
       ATTRIBUTION_RADIUS_M = 50

@@ -58,15 +58,23 @@ module Visits
         snap_end(fragment, moving)
       end
 
-      # Arrival edge: movement that ended inside the fragment trims its start
-      # forward; movement that ended shortly before the first fix extends the
-      # start back over the cold-start silence.
+      # Arrival edge: movement that ended shortly after the first fix trims
+      # the start forward; movement that ended shortly before the first fix
+      # extends the start back over the cold-start silence. Both moves are
+      # bounded by snap_max_s. A longer overlap is not GPS settling but a
+      # disagreement between the segment and the stay's own co-located fixes;
+      # the fixes win and the boundary stays where it is. That can leave up to
+      # half of a fragment overlapping a moving segment (a larger share is
+      # vetoed). A refused trim also blocks the extend, which would otherwise
+      # jump back over the refused segment onto the one before it.
       def snap_start(fragment, moving)
         trim = moving.select do |s|
-          s.start_ts < fragment[:start_ts] && s.end_ts > fragment[:start_ts] && s.end_ts < fragment[:end_ts]
-        end
-                     .map(&:end_ts).max
+          straddles?(s, fragment[:start_ts]) && s.end_ts < fragment[:end_ts] &&
+            (s.end_ts - fragment[:start_ts]) <= policy.snap_max_s
+        end.map(&:end_ts).max
         fragment[:start_ts] = trim if trim
+
+        return if moving.any? { |s| straddles?(s, fragment[:start_ts]) }
 
         extend_to = moving.select do |s|
           s.end_ts <= fragment[:start_ts] && (fragment[:start_ts] - s.end_ts) <= policy.snap_max_s
@@ -77,15 +85,23 @@ module Visits
       # Departure edge, symmetric to snap_start.
       def snap_end(fragment, moving)
         trim = moving.select do |s|
-          s.start_ts > fragment[:start_ts] && s.start_ts < fragment[:end_ts] && s.end_ts > fragment[:end_ts]
-        end
-                     .map(&:start_ts).min
+          s.start_ts > fragment[:start_ts] && straddles?(s, fragment[:end_ts]) &&
+            (fragment[:end_ts] - s.start_ts) <= policy.snap_max_s
+        end.map(&:start_ts).min
         fragment[:end_ts] = trim if trim
+
+        return if moving.any? { |s| straddles?(s, fragment[:end_ts]) }
 
         extend_to = moving.select do |s|
           s.start_ts >= fragment[:end_ts] && (s.start_ts - fragment[:end_ts]) <= policy.snap_max_s
         end.map(&:start_ts).min
         fragment[:end_ts] = extend_to if extend_to && extend_to > fragment[:end_ts]
+      end
+
+      # The segment runs across `instant`: it started before it and ends after it. The trim and the
+      # guard that blocks the extend after a refused trim must use this same test.
+      def straddles?(segment, instant)
+        segment.start_ts < instant && segment.end_ts > instant
       end
 
       def overlap_s(fragment, segment)
