@@ -4882,7 +4882,7 @@ es:
       sort_recent_visit: Visita más reciente
       sort_newest: Creados recientemente
       no_matches: No hay lugares que coincidan. Prueba otra búsqueda o añade un lugar.
-      pick_coordinates: Haz clic en el mapa o introduce coordenadas para elegir este lugar. Puedes arrastrar el marcador para ajustarlo.
+      pick_coordinates: "Haz clic en el mapa para elegir este lugar. Puedes arrastrar el marcador para ajustarlo."
       latitude: Latitud
       longitude: Longitud
       name: Nombre

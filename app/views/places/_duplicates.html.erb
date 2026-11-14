@@ -7,9 +7,10 @@
   <p class="mb-4"><%= t('places.management.duplicates_description') %></p>
   <%= link_to t('places.index.all_places'), places_path, class: 'btn btn-sm h-auto py-2 mb-4' %>
   <% if clusters.empty? %><p class="p-6 bg-base-200 rounded-box"><%= t('places.management.no_duplicates') %></p><% end %>
+  <div class="grid gap-4 lg:grid-cols-2 items-start">
   <% clusters.each_with_index do |cluster, index| %>
     <% form_id = "duplicate_merge_#{index}" %>
-    <section class="mb-4 rounded-box bg-base-200 p-4 min-w-0" data-testid="duplicate-cluster" data-controller="duplicate-group">
+    <section class="rounded-box bg-base-200 p-4 min-w-0" data-testid="duplicate-cluster" data-controller="duplicate-group">
       <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
         <h2 class="text-lg font-medium tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
         <p class="text-xs text-base-content/60"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
@@ -20,7 +21,7 @@
            data-place-duplicates-map-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
            data-place-duplicates-map-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"></div>
 
-      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div class="grid gap-2 sm:grid-cols-2">
         <% cluster.places.each_with_index do |place, place_index| %>
           <div class="group flex flex-col gap-2 rounded-lg border border-base-content/10 bg-base-100 p-3 min-w-0 transition data-[keep]:border-primary data-[keep]:ring-1 data-[keep]:ring-primary data-[skipped]:opacity-50"
                data-duplicate-card data-place-id="<%= place.id %>">
@@ -57,4 +58,5 @@
       <% end %>
     </section>
   <% end %>
+  </div>
 </div>

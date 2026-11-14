@@ -5041,7 +5041,7 @@ pl:
       sort_recent_visit: Ostatnia wizyta
       sort_newest: Ostatnio utworzone
       no_matches: Brak pasujących miejsc. Spróbuj innego wyszukiwania lub dodaj miejsce.
-      pick_coordinates: Kliknij mapę lub wpisz współrzędne, aby wybrać to miejsce. Znacznik możesz przeciągnąć, aby je poprawić.
+      pick_coordinates: "Kliknij mapę, aby wybrać to miejsce. Znacznik możesz przeciągnąć, aby je poprawić."
       latitude: Szerokość geograficzna
       longitude: Długość geograficzna
       name: Nazwa

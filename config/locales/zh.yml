@@ -4997,7 +4997,7 @@ zh:
       sort_recent_visit: 最近访问
       sort_newest: 最近创建
       no_matches: 没有匹配的地点。请尝试其他搜索或添加地点。
-      pick_coordinates: 点击地图或输入坐标来选择此地点。你可以拖动标记进行调整。
+      pick_coordinates: "点击地图来选择此地点。你可以拖动标记进行调整。"
       latitude: 纬度
       longitude: 经度
       name: 名称

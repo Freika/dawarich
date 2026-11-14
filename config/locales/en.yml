@@ -4869,7 +4869,7 @@ en:
       sort_recent_visit: Most recent visit
       sort_newest: Recently created
       no_matches: No matching places. Try another search or add a place.
-      pick_coordinates: Click the map or enter coordinates to choose this place. You can drag the marker to adjust it.
+      pick_coordinates: "Click the map to choose this place. You can drag the marker to adjust it."
       latitude: Latitude
       longitude: Longitude
       name: Name

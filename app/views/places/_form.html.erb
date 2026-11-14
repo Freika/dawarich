@@ -13,17 +13,22 @@
     <p class="text-sm text-base-content/70 mb-4"><%= t('ux_p2.places.pick_coordinates') %></p>
     <%= form_with model: @place, url: (@place.persisted? ? place_path(@place, place_list_params) : places_path(place_list_params)), data: { turbo: false }, class: 'space-y-4' do |f| %>
       <% if @place.errors.any? %><p role="alert" class="alert alert-error"><%= @place.errors.full_messages.join(', ') %></p><% end %>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label class="form-control"><span><%= t('ux_p2.places.latitude') %></span><%= f.number_field :latitude, value: (@place.errors.any? ? @place.latitude : (@place.lat if @place.lonlat)), step: :any, min: -90, max: 90, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'latitude', action: 'change->place-location#coordinatesChanged' } %></label>
-        <label class="form-control"><span><%= t('ux_p2.places.longitude') %></span><%= f.number_field :longitude, value: (@place.errors.any? ? @place.longitude : (@place.lon if @place.lonlat)), step: :any, min: -180, max: 180, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'longitude', action: 'change->place-location#coordinatesChanged' } %></label>
-      </div>
+      <%# The spot is picked on the map; the fields only carry it. %>
+      <% lat = @place.errors.any? ? @place.latitude : (@place.lat if @place.lonlat) %>
+      <% lon = @place.errors.any? ? @place.longitude : (@place.lon if @place.lonlat) %>
+      <%= f.hidden_field :latitude, value: lat, data: { place_location_target: 'latitude' } %>
+      <%= f.hidden_field :longitude, value: lon, data: { place_location_target: 'longitude' } %>
+      <p class="flex items-center gap-1.5 text-sm tabular-nums">
+        <%= icon 'map-pin', class: 'w-4 h-4 shrink-0 opacity-70' %>
+        <span data-place-location-target="coordinates" data-testid="place-coordinates"><%= lat.present? && lon.present? ? "#{lat.to_f.round(5)}, #{lon.to_f.round(5)}" : '—' %></span>
+      </p>
       <label class="form-control"><span><%= t('ux_p2.places.name') %></span><%= f.text_field :name, required: true, class: 'input input-bordered w-full' %></label>
       <label class="form-control"><span><%= t('ux_p2.places.radius') %></span><%= f.number_field :visit_radius, min: 1, max: Place::MAX_VISIT_RADIUS, required: true, class: 'input input-bordered w-full' %></label>
       <label class="form-control"><span><%= t('ux_p2.places.note') %></span><%= f.text_area :note, class: 'textarea textarea-bordered w-full' %></label>
       <fieldset><legend class="font-medium mb-2"><%= t('ux_p2.places.tag') %></legend>
         <%= hidden_field_tag 'place[tag_ids][]', '' %>
         <% current_user.tags.order(:name).each do |tag| %>
-          <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[tag_ids][]', tag.id, @place.tags.include?(tag), class: 'checkbox checkbox-sm' %><%= tag.name %></label>
+          <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[tag_ids][]', tag.id, @place.tags.include?(tag), class: 'checkbox checkbox-sm' %><%= tag.icon %> <%= tag.name %></label>
         <% end %>
       </fieldset>
       <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_params), class: 'btn btn-ghost' %></div>

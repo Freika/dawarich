@@ -4836,7 +4836,7 @@ ca:
       sort_recent_visit: Visita més recent
       sort_newest: Creats recentment
       no_matches: No hi ha cap lloc coincident. Prova una altra cerca o afegeix un lloc.
-      pick_coordinates: Fes clic al mapa o introdueix coordenades per triar aquest lloc. Pots arrossegar el marcador per ajustar-lo.
+      pick_coordinates: "Fes clic al mapa per triar aquest lloc. Pots arrossegar el marcador per ajustar-lo."
       latitude: Latitud
       longitude: Longitud
       name: Nom

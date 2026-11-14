@@ -49,9 +49,7 @@ export default class extends Controller {
     this.latitudeTarget.value = lat.toFixed(6)
     this.longitudeTarget.value = lng.toFixed(6)
     this.marker.setLngLat([lng, lat])
-    if (this.hasCoordinatesTarget) {
-      this.coordinatesTarget.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
-    }
+    this.showCoordinates(lat, lng)
     for (const field of [this.latitudeTarget, this.longitudeTarget]) {
       field.dispatchEvent(new Event("input", { bubbles: true }))
     }
@@ -69,7 +67,13 @@ export default class extends Controller {
     )
       return
     this.marker.setLngLat([lng, lat])
+    this.showCoordinates(lat, lng)
     this.map.easeTo({ center: [lng, lat], zoom: 14 })
+  }
+
+  showCoordinates(lat, lng) {
+    if (!this.hasCoordinatesTarget) return
+    this.coordinatesTarget.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
   }
 
   disconnect() {

@@ -4938,7 +4938,7 @@ de:
       sort_recent_visit: Letzter Besuch
       sort_newest: Zuletzt erstellt
       no_matches: Keine passenden Orte. Versuche eine andere Suche oder füge einen Ort hinzu.
-      pick_coordinates: Klicke auf die Karte oder gib Koordinaten ein, um den Ort festzulegen. Du kannst die Markierung verschieben, um ihn anzupassen.
+      pick_coordinates: "Klicke auf die Karte, um den Ort festzulegen. Du kannst die Markierung verschieben, um ihn anzupassen."
       latitude: Breitengrad
       longitude: Längengrad
       name: Name

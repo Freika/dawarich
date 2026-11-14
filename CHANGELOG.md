@@ -63,11 +63,11 @@ Fixes for issues found in a security audit. Operators should upgrade.
 - Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
 - A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
 - The new import page has a drop zone for files and, beside it, where to get each kind of data with links to the export guides.
-- Place pages, and the forms to add or edit a Place, show the map on the left and the details on the right, like a trip. A Place shows its tags, note and collection first; its name, tags and note are edited under "Edit details", on the page and in the map's panel.
+- Place pages, and the forms to add or edit a Place or a trip, show the map on the left and the details on the right, like a trip's page. A Place's spot is picked on the map and shown as coordinates; its tags show their icons. A Place shows its tags, note and collection first; its name, tags and note are edited under "Edit details", on the page and in the map's panel.
 - Possible duplicates shows each group as a card with a small map of the places' visit circles. Pick the place to keep on its card; untick a place to leave it out of the merge.
 - The Timeline keeps the date, the day's visits and where the day went at the top while you scroll, with buttons beside the date to select visits or write a note. Today's "On this day" notes sit in that header, two at a time.
 - The globe view turns on and off without reloading the map. Map attribution starts folded on every map, and the family map now shows it. Maps show a spinner until they have loaded.
-- Map messages appear quietly at the bottom of the screen in the colours of your theme, and loading family members no longer shows one.
+- Map messages appear quietly at the top of the map, under the loading badge, in the colours of your theme; loading family members no longer shows one. The note that a period has no location data sits above the period totals.
 - The Docker image is built in two stages: compilers, `-dev` headers, git, curl and npm stay in the build stage and are not in the image you run. The poster renderer's dependencies were updated to patched releases. Thanks @Holzhaus! (#3993)
 
 ### Fixed

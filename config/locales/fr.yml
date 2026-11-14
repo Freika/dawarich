@@ -6073,7 +6073,7 @@ fr:
       sort_recent_visit: Visite la plus récente
       sort_newest: Créés récemment
       no_matches: Aucun lieu correspondant. Essayez une autre recherche ou ajoutez un lieu.
-      pick_coordinates: Cliquez sur la carte ou saisissez des coordonnées pour choisir ce lieu. Vous pouvez faire glisser le marqueur pour l’ajuster.
+      pick_coordinates: "Cliquez sur la carte pour choisir ce lieu. Vous pouvez faire glisser le marqueur pour l’ajuster."
       latitude: Latitude
       longitude: Longitude
       name: Nom

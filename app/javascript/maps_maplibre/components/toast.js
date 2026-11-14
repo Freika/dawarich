@@ -1,19 +1,28 @@
 /**
  * Toast notification system
- * Quiet notes at the bottom centre of the screen, above the map's stats bar.
- * The surface follows the theme; only a small dot carries the type's colour.
+ * Quiet notes at the bottom centre of the screen. On the map they sit at the
+ * top, under the loading badge, centred on the part of the map in view. The
+ * surface follows the theme; only a small dot carries the type's colour.
  */
 export class Toast {
   static container = null
 
   static init() {
-    if (Toast.container) return
+    const dock = document.querySelector(".map-toast-stack")
+    const host = dock || document.body
+    // Turbo replaces the page, so a container from an earlier page is gone.
+    if (Toast.container?.isConnected && Toast.container.parentElement === host)
+      return
 
+    Toast.container?.remove()
     Toast.container = document.createElement("div")
-    Toast.container.className = "toast-container"
+    Toast.container.className = dock
+      ? "toast-container toast-container--docked"
+      : "toast-container"
     Toast.container.setAttribute("role", "status")
     Toast.container.setAttribute("aria-live", "polite")
-    document.body.appendChild(Toast.container)
+    if (dock) dock.prepend(Toast.container)
+    else document.body.appendChild(Toast.container)
 
     Toast.addStyles()
   }
@@ -42,6 +51,26 @@ export class Toast {
         width: max-content;
         max-width: calc(100vw - 32px);
         pointer-events: none;
+      }
+
+      .toast-container--docked {
+        position: static;
+        transform: none;
+        width: auto;
+        max-width: 100%;
+      }
+
+      @keyframes toast-in-top {
+        from { transform: translateY(-8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+
+      .toast-container--docked > .toast {
+        animation-name: toast-in-top;
+      }
+
+      .toast-container--docked > .toast.removing {
+        transform: translateY(-8px);
       }
 
       .toast-container > .toast {
