@@ -23,7 +23,8 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
        /usr/lib/*/libXext.so.6* /out/; \
     else mkdir /out; fi
 
-FROM ruby:4.0.9-slim
+# Shared by the build and runtime stages so both agree on paths and settings.
+FROM ruby:4.0.9-slim AS base
 
 ARG RAILS_ENV=production
 
@@ -32,58 +33,32 @@ ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 
+WORKDIR $APP_PATH
+
+# ---------------------------------------------------------------------------
+# build: compilers, -dev headers, npm and git live here and never reach the
+# final image. Produces the installed gems and the precompiled assets.
+# ---------------------------------------------------------------------------
+FROM base AS build
+
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    curl \
-    wget \
     build-essential \
     git \
-    postgresql-client \
     libpq-dev \
     libxml2-dev \
     libxslt-dev \
     libyaml-dev \
     zlib1g-dev \
     libgeos-dev libgeos++-dev \
-    tzdata \
-    less \
-    libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
-    librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
-    gosu \
-    procps \
-    && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
-
-# Headless GL stack for the in-container poster renderer (maplibre-native):
-# software rendering via Mesa + a virtual X display. No browser involved.
-RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    libegl1 libgles2 libgbm1 libglx0 libopengl0 libx11-6 xvfb xauth \
-    && (apt-get install -y --no-install-recommends mesa-libgallium 2>/dev/null || true) \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=mbgl_libs /out /opt/mbgl-libs
-
-# Preload jemalloc from this architecture's multiarch lib dir
-# (x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf).
-RUN echo "/usr/lib/$(gcc -dumpmachine)/libjemalloc.so.2" > /etc/ld.so.preload
-
-# Return freed pages to the OS quickly instead of holding them in the
-# allocator, and cap arena count — keeps idle RSS low on small hosts.
-ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
-
-# Enable YJIT
-ENV RUBY_YJIT_ENABLE=1
-
-WORKDIR $APP_PATH
 
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
@@ -135,17 +110,67 @@ RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
 # tmpfs-mounted /tmp cannot make the sync silently skip.
 RUN cp -r public $APP_PATH/public_dist
 
-# Copy entrypoint scripts and grant execution permissions
-COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
+# ---------------------------------------------------------------------------
+# runtime: only what is needed to run Rails, Sidekiq and the poster renderer.
+# No compilers, git, curl, npm or -dev packages.
+# ---------------------------------------------------------------------------
+FROM base AS runtime
 
-COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
-RUN chmod +x /usr/local/bin/web-entrypoint.sh
+# wget is kept for the compose healthcheck; psql/createdb for the entrypoints;
+# gosu for the PUID/PGID privilege drop; procps for `pgrep -f sidekiq`, the
+# usual healthcheck of a separate Sidekiq container.
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
+    procps \
+    postgresql-client \
+    libpq5 \
+    libxml2 \
+    libxslt1.1 \
+    libyaml-0-2 \
+    libgeos-c1t64 \
+    libcurl4t64 \
+    tzdata \
+    libjemalloc2 \
+    ca-certificates \
+    librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
+    gosu \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
-RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+# Node runs the poster renderer; npm is only needed at build time.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 
-COPY ./docker/cloud-entrypoint.sh /usr/local/bin/cloud-entrypoint.sh
-RUN chmod +x /usr/local/bin/cloud-entrypoint.sh
+# Headless GL stack for the in-container poster renderer (maplibre-native):
+# software rendering via Mesa + a virtual X display. No browser involved.
+RUN apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    libegl1 libgles2 libgbm1 libglx0 libopengl0 libx11-6 xvfb xauth \
+    && (apt-get install -y --no-install-recommends mesa-libgallium 2>/dev/null || true) \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=mbgl_libs /out /opt/mbgl-libs
+
+# Preload jemalloc from this architecture's multiarch lib dir
+# (x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf).
+RUN ls /usr/lib/*/libjemalloc.so.2 > /etc/ld.so.preload
+
+# Return freed pages to the OS quickly instead of holding them in the
+# allocator, and cap arena count — keeps idle RSS low on small hosts.
+ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
+
+# Enable YJIT
+ENV RUBY_YJIT_ENABLE=1
+
+# Application, installed gems (vendor/bundle) and precompiled assets
+COPY --from=build $APP_PATH $APP_PATH
+# The base image points BUNDLE_APP_CONFIG at /usr/local/bundle, so the
+# `bundle config --local` settings (path, without) live here, not in .bundle/.
+COPY --from=build /usr/local/bundle/config /usr/local/bundle/config
+
+# Entrypoint scripts
+COPY --chmod=755 ./docker/entrypoint-env-guard.sh ./docker/web-entrypoint.sh \
+    ./docker/sidekiq-entrypoint.sh ./docker/cloud-entrypoint.sh /usr/local/bin/
 
 EXPOSE $RAILS_PORT
 
