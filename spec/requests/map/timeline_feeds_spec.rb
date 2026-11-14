@@ -39,6 +39,14 @@ RSpec.describe 'Map::TimelineFeeds', type: :request do
           expect(block).not_to have_text('Written today')
         end
 
+        it 'shows the notes in the day header without unfolding anything' do
+          get map_timeline_feeds_path(start_at: today.iso8601, end_at: (today + 1.day - 1.second).iso8601)
+
+          header = Capybara.string(response.body).find('.timeline-day-header')
+          expect(header).to have_css('[data-testid=on-this-day] .on-this-day__note', text: 'One year back')
+          expect(header).not_to have_css('[data-testid=on-this-day] details')
+        end
+
         it 'is absent on any other day' do
           get map_timeline_feeds_path(start_at: (today - 1.day).iso8601, end_at: (today - 1.second).iso8601)
 

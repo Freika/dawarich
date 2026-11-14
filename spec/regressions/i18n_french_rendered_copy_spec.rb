@@ -310,9 +310,11 @@ RSpec.describe 'Rendered French copy' do
   it 'clearly explains full-history visit replacement before confirmation' do
     I18n.with_locale(:fr) do
       explanation = I18n.t(
-        'settings.visits.redetect_panel.replaces_all_suggested_visits_across_your_entire_history_with_fresh'
+        'settings.data_processing.visit_redetection.replaces_all_suggested_visits_across_your_entire_history_with_fresh'
       )
-      lite_limit = I18n.t('settings.visits.redetect_panel.on_the_lite_plan_re_detection_covers_your_visible_12')
+      lite_limit = I18n.t(
+        'settings.data_processing.visit_redetection.on_the_lite_plan_re_detection_covers_your_visible_12'
+      )
 
       expect(explanation).to include("d'une nouvelle détection", 'petits comptes', 'historiques')
       expect(explanation).not_to match(/détections fraîches|comptes petits|histoires/)

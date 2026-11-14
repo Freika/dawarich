@@ -38,6 +38,8 @@ pl:
           locationiq: "Usługa hostowana. Wymaga klucza API."
         points:
           title: "Punkty"
+        imports:
+          title: "Importy"
         fields:
           photon_api_host: "Host"
           photon_api_key: "Klucz API"
@@ -55,6 +57,10 @@ pl:
           photon_api_language_hint: "Dwuliterowy kod języka dla nazw miejsc albo default dla nazw w języku lokalnym. Twój indeks Photon musi zawierać ten język. Zmiana dotyczy tylko nowych zapytań, a to samo miasto może wtedy pojawić się w statystykach dwa razy."
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
           store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
+          import_max_file_size_mb: "Największy plik wczytywany w całości (MB)"
+          kml_max_file_size_mb: "Największy plik KML (MB)"
+          import_max_file_size_mb_hint: "Pliki JSON, GeoJSON, TCX i podobne są wczytywane do pamięci w całości i zajmują w niej około trzy razy więcej niż ich rozmiar. Zwiększ tę wartość tylko wtedy, gdy proces importu ma dość pamięci. Domyślnie: 512."
+          kml_max_file_size_mb_hint: "Plik KML podczas wczytywania zajmuje znacznie więcej pamięci, niż wynosi jego rozmiar. Domyślnie: 64."
       update:
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
@@ -591,7 +597,11 @@ pl:
       remove_extracted_data: Usuń wyodrębnione dane
       remove_the_visits_places_and_tracks_this_extraction_created_your: Usunąć wizyty, miejsca i trasy utworzone przez to wyodrębnianie? Zaimportowane punkty GPS zostaną zachowane.
     form:
-      supported_import_formats: Obsługiwane formaty importu
+      drop_files_here: "Upuść pliki tutaj lub kliknij, aby wybrać"
+      each_file_becomes_its_own_import: "Każdy plik staje się osobnym importem. Format jest wykrywany automatycznie."
+      where_do_i_get_my_data: "Skąd wziąć moje dane?"
+      how_to_export: "Jak wyeksportować"
+      all_supported_formats: "Wszystkie obsługiwane formaty"
       google_maps: 'Google Maps:'
       records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
       google_photos: 'Google Photos:'
@@ -618,7 +628,6 @@ pl:
       swarm_checkins_json: 'Eksport danych (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archiwa zawierające dowolny z powyższych formatów (.zip)
-      file_format_is_automatically_detected_during_upload: Format pliku jest automatycznie wykrywany podczas przesyłania.
       for_files_larger_than_200mb_consider_compressing_them_into_a: W przypadku plików większych niż 200 MB warto spakować je do archiwum ZIP przed wysłaniem. To znacząco skraca czas przesyłania i zmniejsza ryzyko przekroczenia czasu oczekiwania.
       trial_limitations_max_5_imports_10mb_per_file: 'Ograniczenia okresu próbnego: maks. 5 importów, 10 MB na plik.'
       current_imports: 'Aktualna liczba importów:'
@@ -674,6 +683,26 @@ pl:
       back_to_imports: Powrót do importów
       import: Import
   insights:
+    time_shares:
+      title: "Na co poszedł twój czas"
+      days_title: "Na co poszły dni"
+      hours_title: "Na co poszły godziny"
+      modes_title: "Jak się przemieszczałeś"
+      home: "Dom"
+      out: "Poza domem"
+      trip: "W podróży"
+      untracked: "Bez danych o lokalizacji"
+      places: "Inne miejsca"
+      moving: "W ruchu"
+      no_data: "Brak danych"
+      by_time: "według czasu"
+      note: "Dni i godziny pochodzą z twoich wizyt, tras, podróży i miejsc, w których mieszkałeś."
+      other: "Inne"
+      day_count:
+        one: "%{count} dzień"
+        few: "%{count} dni"
+        many: "%{count} dni"
+        other: "%{count} dnia"
     activity_breakdown:
       activity_breakdown: Podział aktywności
       no_activity_data_available_for_this_period: Brak danych o aktywności dla tego okresu
@@ -1157,7 +1186,6 @@ pl:
         suggested: Sugerowane
         search_visits_places: Szukaj wizyt, miejsc…
         tags: Tagi
-        pick_a_day_in_the_calendar_to_see_visits: Wybierz dzień w kalendarzu, aby zobaczyć wizyty.
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
         select_data_on_map: Wybierz dane na mapie
@@ -1399,6 +1427,7 @@ pl:
       add_tag: "Dodaj tag"
       remove_tag: "Usuń tag"
       survivor: "Zachowaj to miejsce"
+      include_in_merge: "Scal z zachowanym miejscem"
       merge: "Scal miejsca"
       delete: "Usuń miejsca"
       select_all: "Wybierz wszystkie miejsca na tej stronie"
@@ -1429,6 +1458,7 @@ pl:
       total_hours: łączna liczba godzin
       avg_dwell: średni czas pobytu
       no_tags: Brak tagów
+      edit_details: "Edytuj szczegóły"
       recent_visits: Ostatnie wizyty
       rarr: "→"
       'on': dnia
@@ -1610,6 +1640,32 @@ pl:
         existing_data: "Zastosuj do istniejących danych"
         existing_data_hint: "Powyższe zmiany dotyczą nowych punktów. Aby objęły też historię, przelicz ją. Oba procesy działają w tle i przy dużym koncie mogą potrwać."
         rebuilds_need_pro: "Przeliczanie wcześniejszych danych jest częścią Dawarich Pro."
+        rebuild_what: "Co przeliczyć"
+        rebuild_all: "Wszystko"
+        rebuild_tracks: "Tylko trasy"
+        rebuild_stats: "Tylko statystyki i podsumowania"
+        rebuild_year: "Rok"
+        all_years: "Wszystkie lata"
+        find_trips: "Znajdź podróże w mojej historii"
+        find_trips_hint: "Przeszukuje całą historię w poszukiwaniu podróży z noclegiem poza domem. Działa też co noc i po każdym imporcie."
+        find_trips_off: "Najpierw włącz „Automatycznie znajduj podróże” w zakładce Ogólne."
+        these_settings_control_how_the_app_groups_your_gps_points: Te ustawienia kontrolują, jak aplikacja grupuje punkty GPS w wizyty w miejscach.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Pobyt w tym promieniu kończy też trasę (co najmniej 100 m). Domyślnie 100.
+        lower_more_visits_suggested_including_brief_stops_default_3: Niżej = więcej sugerowanych wizyt, także krótkie postoje. Domyślnie 3.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Pomiń postoje krótsze niż ten próg. Zwiększ, by ignorować krótkie zatrzymania; zmniejsz, by wykrywać krótkie postoje. Domyślnie 5. Taki postój kończy też trasę, jeśli trwa co najmniej 5 minut."
+        visit_detection: Wykrywanie wizyt
+        visit_radius_meters: Promień wizyty (metry)
+        minimum_points_to_count_as_a_visit: Minimalna liczba punktów, aby uznać wizytę
+        minimum_visit_duration_minutes: Minimalny czas wizyty (minuty)
+      detect_trips:
+        trip_detection_queued: "Rozpoczęto wyszukiwanie podróży. Nowe podróże pojawią się na stronie Podróże w ciągu kilku minut."
+        trip_detection_is_off: "Wyszukiwanie podróży jest wyłączone. Włącz je w Ustawienia → Ogólne."
+      visit_redetection:
+        re_run_detection_on_full_history: Uruchom ponownie wykrywanie dla całej historii
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Zastępuje wszystkie sugerowane wizyty w całej historii nowymi wykryciami według ustawień powyżej. Potwierdzone wizyty i nazwane miejsca pozostają bez zmian. Małe konta zwykle kończą w kilka minut; wieloletnie historie mogą zająć 30-60 minut i tymczasowo zwiększyć obciążenie serwera.
+        on_the_lite_plan_re_detection_covers_your_visible_12: W planie Lite ponowne wykrywanie obejmuje tylko widoczne 12 miesięcy.
+        available_again_at: Dostępne ponownie o
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Zastąpić wszystkie sugerowane wizyty w całej historii? Potwierdzone wizyty pozostaną. Kontynuować?
     geofencing_paused_while_archived: wstrzymane, gdy miejsce jest zarchiwizowane
     trek_sources:
       select_trips:
@@ -1637,7 +1693,6 @@ pl:
       general: Ogólne
       integrations: Integracje
       map: Mapa
-      visits: Wizyty
       two_factor_authentication: Uwierzytelnianie dwuskładnikowe
       users: Użytkownicy
       instance: "Instancja"
@@ -1914,30 +1969,12 @@ pl:
         send_password_reset_email: Wyślij e-mail resetowania hasła
         edit_user: Edytuj użytkownika
         user_email: 'Użytkownik: %{email}'
-    visits:
-      redetect_panel:
-        re_run_detection_on_full_history: Uruchom ponownie wykrywanie dla całej historii
-        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Zastępuje wszystkie sugerowane wizyty w całej historii nowymi wykryciami według ustawień powyżej. Potwierdzone wizyty i nazwane miejsca pozostają bez zmian. Małe konta zwykle kończą w kilka minut; wieloletnie historie mogą zająć 30-60 minut i tymczasowo zwiększyć obciążenie serwera.
-        on_the_lite_plan_re_detection_covers_your_visible_12: W planie Lite ponowne wykrywanie obejmuje tylko widoczne 12 miesięcy.
-        available_again_at: Dostępne ponownie o
-        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Zastąpić wszystkie sugerowane wizyty w całej historii? Potwierdzone wizyty pozostaną. Kontynuować?
-      show:
-        tune_how_dawarich_decides_where_you_actually_were: Dostosuj, jak Dawarich określa, gdzie faktycznie byłeś
-        these_settings_control_how_the_app_groups_your_gps_points: Te ustawienia kontrolują, jak aplikacja grupuje punkty GPS w wizyty w miejscach.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkty w tym promieniu są traktowane jako jedna wizyta. Pobyt w tym promieniu kończy też trasę (co najmniej 100 m). Domyślnie 100.
-        lower_more_visits_suggested_including_brief_stops_default_3: Niżej = więcej sugerowanych wizyt, także krótkie postoje. Domyślnie 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Pomiń postoje krótsze niż ten próg. Zwiększ, by ignorować krótkie zatrzymania; zmniejsz, by wykrywać krótkie postoje. Domyślnie 5. Taki postój kończy też trasę, jeśli trwa co najmniej 5 minut."
-        visit_detection: Wykrywanie wizyt
-        visit_radius_meters: Promień wizyty (metry)
-        minimum_points_to_count_as_a_visit: Minimalna liczba punktów, aby uznać wizytę
-        minimum_visit_duration_minutes: Minimalny czas wizyty (minuty)
-        save_settings: Zapisz ustawienia
   share_links:
     hubs:
       body:
         live_location: Lokalizacja na żywo
         time_period: Zakres czasu
-        make_something: Stwórz coś
+        make_something: "Wideo i plakat"
         make_something_intro: Link stale udostępnia Twoje dane. Tutaj powstaje plik, który publikujesz raz — i nic nie pozostaje udostępnione.
         make_video: Film z trasy
         make_video_hint: Animowana powtórka tego okresu jako plik MP4.
@@ -3556,8 +3593,6 @@ pl:
         cannot_delete_yourself_or_last_admin: Nie możesz usunąć własnego konta ani ostatniego aktywnego administratora.
         cannot_remove_last_admin_role: Nie można usunąć roli administratora ostatniemu administratorowi.
         cannot_disable_last_admin: Nie można wyłączyć ostatniego administratora.
-      visits:
-        visit_detection_settings_updated: Ustawienia wykrywania wizyt zostały zaktualizowane
     share_links:
       lives:
         default_name: Lokalizacja na żywo
@@ -4266,7 +4301,6 @@ pl:
       failed_to_load_flights: Nie udało się załadować lotów
       failed_to_load_anomalies: Nie udało się załadować anomalii
       cannot_update_recalculation_is_already_in_progress: 'Nie można zaktualizować: przeliczanie już trwa'
-      globe_view_will_be_applied_after_page_reload: Widok globu zostanie zastosowany po odświeżeniu strony
       reloading_map_data_with_new_settings: Odświeżanie danych mapy z nowymi ustawieniami...
       api_key_not_available_please_reload_the_page: Klucz API niedostępny; odśwież stronę.
       click_on_the_map_to_place_a_visit_esc_to: Kliknij na mapie, aby dodać wizytę (Esc aby anulować)
@@ -4274,7 +4308,6 @@ pl:
       visit_creation_controller_not_available: Kontroler tworzenia wizyty jest niedostępny
       family_feature_not_available: Funkcja rodziny jest niedostępna
       failed_to_load_family_members: Nie udało się załadować członków rodziny
-      centered_on_family_member: Wycentrowano na członku rodziny
       failed_to_load_visit_details: Nie udało się załadować szczegółów wizyty
       failed_to_load_area_details: Nie udało się załadować szczegółów obszaru
       point_deleted_successfully: Punkt usunięty pomyślnie
@@ -4583,7 +4616,6 @@ pl:
       confirm_reset: "Przywrócić domyślny wygląd mapy? Ustawienia trybów transportu i filtrowania pozostaną bez zmian. Strona zostanie odświeżona."
       load_failed: "Nie udało się wczytać ustawień mapy. Zmiany nie zostaną zapisane, dopóki nie odświeżysz strony."
       reset_failed: "Nie udało się przywrócić wyglądu mapy. Spróbuj ponownie."
-      confirm_globe_reload: Widok globu wymaga odświeżenia strony. Odświeżyć teraz?
       changed_fields: 'Zmieniono: %{fields}'
       confirm_reapply_anomaly_filter: |-
         To operacja destrukcyjna i długotrwała.
@@ -4795,9 +4827,6 @@ pl:
       light: Jasny
       white: Biały
     family:
-      loaded_members:
-        one: Załadowano %{count} członka rodziny
-        other: Załadowano %{count} członków rodziny
       member: Członek rodziny
       none_sharing: Żaden członek rodziny nie udostępnia lokalizacji
       sharing_since:

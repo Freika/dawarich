@@ -3,6 +3,7 @@
 # Job to recalculate (hard update) stats, tracks, and digests for a user.
 # Optionally accepts a year to limit the recalculation scope.
 # If no year is provided, recalculates for all tracked years.
+# `only: 'tracks'` rebuilds just the tracks; `only: 'stats'` just stats and digests.
 class Users::RecalculateDataJob < ApplicationJob
   include UserTimezone
 
@@ -29,8 +30,11 @@ class Users::RecalculateDataJob < ApplicationJob
     end
   end
 
-  def perform(user_id, year: nil, notify: true, job_queue: nil)
+  ONLY = %w[tracks stats].freeze
+
+  def perform(user_id, year: nil, notify: true, job_queue: nil, only: nil)
     @user = find_user_or_skip(user_id) || return
+    @only = only.to_s.presence_in(ONLY)
 
     @year = year&.to_i
     @notify = notify
@@ -45,9 +49,9 @@ class Users::RecalculateDataJob < ApplicationJob
           return
         end
 
-        recalculate_stats(years_to_process)
-        recalculate_tracks(years_to_process)
-        recalculate_digests(years_to_process)
+        recalculate_stats(years_to_process) unless @only == 'tracks'
+        recalculate_tracks(years_to_process) unless @only == 'stats'
+        recalculate_digests(years_to_process) unless @only == 'tracks'
 
         create_success_notification(years_to_process) if @notify
       end

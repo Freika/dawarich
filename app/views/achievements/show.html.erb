@@ -24,7 +24,7 @@
                         params: { enabled: true }, class: 'btn btn-sm btn-primary',
                         form: { hidden: @set.sharing_enabled?, data: { card_modal_target: 'createForm',
                                                                      action: 'submit->card-modal#createPublicLink', turbo: false } } do %>
-            <%= icon 'share', class: 'w-4 h-4', 'aria-hidden': true %>
+            <%= icon 'share-2', class: 'w-4 h-4', 'aria-hidden': true %>
             <%= t('achievements.ui.enable_sharing') %>
           <% end %>
           <%= button_to toggle_sharing_achievement_path(@set.definition.key), method: :patch,

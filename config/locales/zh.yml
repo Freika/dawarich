@@ -40,6 +40,8 @@ zh:
           locationiq: "托管服务。需要 API 密钥。"
         points:
           title: "轨迹点"
+        imports:
+          title: "导入"
         fields:
           photon_api_host: "主机"
           photon_api_key: "API 密钥"
@@ -57,6 +59,10 @@ zh:
           photon_api_language_hint: "地名使用的两字母语言代码，或填 default 以使用当地语言的名称。您的 Photon 索引必须包含该语言。更改只影响新的查询，之后同一城市可能在统计中出现两次。"
           api_key_keep_hint: "留空则保留已保存的密钥。"
           store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
+          import_max_file_size_mb: "整体读取的最大文件（MB）"
+          kml_max_file_size_mb: "最大 KML 文件（MB）"
+          import_max_file_size_mb_hint: "JSON、GeoJSON、TCX 等文件会被完整读入内存，占用约为文件大小的三倍。只有在导入进程内存充足时才调高此值。默认：512。"
+          kml_max_file_size_mb_hint: "KML 文件在读取时占用的内存远大于文件本身。默认：64。"
       update:
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
@@ -598,7 +604,11 @@ zh:
       remove_extracted_data: 删除提取的数据
       remove_the_visits_places_and_tracks_this_extraction_created_your: 删除此提取创建的到访记录、地点和轨迹吗？您导入的 GPS 轨迹点将被保留。
     form:
-      supported_import_formats: 支持的导入格式
+      drop_files_here: "将文件拖到此处，或点击选择"
+      each_file_becomes_its_own_import: "每个文件都会成为单独的导入。格式会自动识别。"
+      where_do_i_get_my_data: "我的数据从哪里来？"
+      how_to_export: "如何导出"
+      all_supported_formats: "所有支持的格式"
       google_maps: Google 地图：
       records_json_semantic_history_phone_takeout_json: Records.json、语义历史记录、手机 Takeout (.json)
       google_photos: Google 照片：
@@ -623,7 +633,6 @@ zh:
       swarm_checkins_json: '数据导出（checkins*.json、.zip）'
       zip: ZIP：
       archives_containing_any_of_the_above_zip: 包含上述任何内容的压缩包 (.zip)
-      file_format_is_automatically_detected_during_upload: 上传过程中会自动检测文件格式。
       for_files_larger_than_200mb_consider_compressing_them_into_a: 对于大于 200MB 的文件，建议先压缩为 ZIP 压缩包再上传，可显著缩短上传时间并避免连接超时。
       trial_limitations_max_5_imports_10mb_per_file: 试用限制：最多 5 次导入，每个文件 10MB。
       current_imports: 当前导入：
@@ -681,6 +690,24 @@ zh:
       back_to_imports: 返回导入
       import: 导入
   insights:
+    time_shares:
+      title: "你的时间去哪了"
+      days_title: "日子去哪了"
+      hours_title: "时间去哪了"
+      modes_title: "你如何出行"
+      home: "家"
+      out: "外出"
+      trip: "旅行中"
+      untracked: "未记录"
+      places: "其他地点"
+      moving: "移动中"
+      no_data: "无数据"
+      by_time: "按时间"
+      note: "天数和小时数来自你的到访、轨迹、旅行以及你住过的地方。"
+      other: "其他"
+      day_count:
+        one: "%{count} 天"
+        other: "%{count} 天"
     activity_breakdown:
       activity_breakdown: 活动构成
       no_activity_data_available_for_this_period: 此期间没有可用的活动数据
@@ -1161,7 +1188,6 @@ zh:
         suggested: 建议
         search_visits_places: 搜索到访记录、地点…
         tags: 标签
-        pick_a_day_in_the_calendar_to_see_visits: 在日历中选择一天以查看到访记录。
         create_visit: 创建到访记录
         create_place: 创建地点
         select_data_on_map: 在地图上选择数据
@@ -1396,6 +1422,7 @@ zh:
       add_tag: "添加标签"
       remove_tag: "移除标签"
       survivor: "保留此地点"
+      include_in_merge: "合并到保留的地点"
       merge: "合并地点"
       delete: "删除地点"
       select_all: "选择本页所有地点"
@@ -1426,6 +1453,7 @@ zh:
       total_hours: 总小时数
       avg_dwell: 平均停留时间
       no_tags: 无标签
+      edit_details: "编辑详情"
       recent_visits: 最近到访
       rarr: →
       'on': 于
@@ -1558,6 +1586,34 @@ zh:
         existing_data: "应用到已有数据"
         existing_data_hint: "上面的更改只作用于新的轨迹点。如需应用到历史数据，请重新计算。两者都在后台运行，数据量大的账户可能需要一段时间。"
         rebuilds_need_pro: "重新计算历史数据是 Dawarich Pro 的功能。"
+        rebuild_what: "重新计算的内容"
+        rebuild_all: "全部"
+        rebuild_tracks: "仅轨迹"
+        rebuild_stats: "仅统计和摘要"
+        rebuild_year: "年份"
+        all_years: "所有年份"
+        find_trips: "在我的历史中查找旅行"
+        find_trips_hint: "在全部历史中查找离家过夜的旅行。它也会在每晚和每次导入后运行。"
+        find_trips_off: "请先在“常规”中开启“自动查找旅行”。"
+        these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
+        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。在此半径内停留也会结束一条轨迹（至少 100 米）。默认值为 100。
+        lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。达到此时长且至少 5 分钟的停留也会结束一条轨迹。"
+        visit_detection: 到访检测
+        visit_radius_meters: 到访半径（米）
+        minimum_points_to_count_as_a_visit: 计为一次到访所需的最少轨迹点数
+        minimum_visit_duration_minutes: 最短到访持续时间（分钟）
+      detect_trips:
+        trip_detection_queued: "已开始查找旅行。新的旅行将在几分钟内出现在“旅行”页面。"
+        trip_detection_is_off: "旅行查找已关闭。请在 设置 → 常规 中开启。"
+      visit_redetection:
+        re_run_detection_on_full_history: 对完整历史记录重新运行检测
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh:
+          将使用上述设置，用全新的检测结果替换整个历史记录中的所有建议到访记录。已确认的到访记录和您命名的地点会保留。小型帐户通常几分钟即可完成；多年历史记录可能需要
+          30-60 分钟，并会暂时增加服务器负载。
+        on_the_lite_plan_re_detection_covers_your_visible_12: 在 Lite 计划中，重新检测仅覆盖可见的 12 个月时间范围。
+        available_again_at: 可再次使用时间：
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: 将替换整个历史记录中的所有建议到访记录。已确认的到访记录会保留。继续？
     geofencing_paused_while_archived: 归档期间暂停
     trek_sources:
       select_trips:
@@ -1585,7 +1641,6 @@ zh:
       general: 常规
       integrations: 集成
       map: 地图
-      visits: 到访记录
       two_factor_authentication: 双重验证
       users: 用户
       background_jobs: 后台任务
@@ -1866,26 +1921,6 @@ zh:
         send_password_reset_email: 发送密码重置邮件
         edit_user: 编辑用户
         user_email: 用户：%{email}
-    visits:
-      redetect_panel:
-        re_run_detection_on_full_history: 对完整历史记录重新运行检测
-        replaces_all_suggested_visits_across_your_entire_history_with_fresh:
-          将使用上述设置，用全新的检测结果替换整个历史记录中的所有建议到访记录。已确认的到访记录和您命名的地点会保留。小型帐户通常几分钟即可完成；多年历史记录可能需要
-          30-60 分钟，并会暂时增加服务器负载。
-        on_the_lite_plan_re_detection_covers_your_visible_12: 在 Lite 计划中，重新检测仅覆盖可见的 12 个月时间范围。
-        available_again_at: 可再次使用时间：
-        replace_all_suggested_visits_across_your_full_history_confirmed_visits: 将替换整个历史记录中的所有建议到访记录。已确认的到访记录会保留。继续？
-      show:
-        tune_how_dawarich_decides_where_you_actually_were: 调整 Dawarich 判断您实际位置的方式
-        these_settings_control_how_the_app_groups_your_gps_points: 这些设置控制应用如何将 GPS 轨迹点分组为到访记录。
-        points_within_this_radius_are_treated_as_the_same_visit: 此半径内的轨迹点会被视为同一次到访。在此半径内停留也会结束一条轨迹（至少 100 米）。默认值为 100。
-        lower_more_visits_suggested_including_brief_stops_default_3: 数值越低，建议的到访记录越多（包括短暂停留）。默认值为 3。
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "跳过短于此时间的停留。调高可忽略短暂路过；调低可捕捉短暂的办事停留。默认值为 5。达到此时长且至少 5 分钟的停留也会结束一条轨迹。"
-        visit_detection: 到访检测
-        visit_radius_meters: 到访半径（米）
-        minimum_points_to_count_as_a_visit: 计为一次到访所需的最少轨迹点数
-        minimum_visit_duration_minutes: 最短到访持续时间（分钟）
-        save_settings: 保存设置
     geocoding:
       show:
         title: 地理编码
@@ -1942,7 +1977,7 @@ zh:
         time_period: 时间段
         shared: 共享
         your_live_location_is_shared_via_a_public_link: 您的实时位置通过公共链接共享。
-        make_something: 制作内容
+        make_something: "视频与海报"
         make_something_intro: 链接会持续共享您的数据。下面这些方式则生成一个文件，您发布一次即可，不会有任何内容处于持续共享状态。
         make_video: 路线视频
         make_video_hint: 此时段的动画回放，格式为 MP4。
@@ -3488,8 +3523,6 @@ zh:
         cannot_delete_yourself_or_last_admin: 无法删除您自己的账户或最后一位活跃的管理员。
         cannot_remove_last_admin_role: 无法移除最后一位管理员用户的管理员角色。
         cannot_disable_last_admin: 无法禁用最后一个管理员用户。
-      visits:
-        visit_detection_settings_updated: 到访记录检测设置已更新
     share_links:
       lives:
         default_name: 实时位置
@@ -4179,7 +4212,6 @@ zh:
       failed_to_load_flights: 无法加载航班
       failed_to_load_anomalies: 无法加载异常轨迹点
       cannot_update_recalculation_is_already_in_progress: 无法更新：重新计算已在进行中
-      globe_view_will_be_applied_after_page_reload: 重新加载页面后将应用地球视图
       reloading_map_data_with_new_settings: 正在使用新设置重新加载地图数据...
       api_key_not_available_please_reload_the_page: API 密钥不可用；请重新加载页面。
       click_on_the_map_to_place_a_visit_esc_to: 点击地图以添加到访记录（Esc 取消）
@@ -4187,7 +4219,6 @@ zh:
       visit_creation_controller_not_available: 到访记录创建控制器不可用
       family_feature_not_available: 家庭功能不可用
       failed_to_load_family_members: 无法加载家庭成员
-      centered_on_family_member: 已定位到家庭成员
       failed_to_load_visit_details: 无法加载到访记录详细信息
       failed_to_load_area_details: 无法加载区域详细信息
       point_deleted_successfully: 轨迹点已成功删除
@@ -4475,7 +4506,6 @@ zh:
       confirm_reset: "将地图外观重置为默认值？交通方式和过滤设置保持不变。这将重新加载页面。"
       load_failed: "无法加载地图设置。在重新加载页面之前，更改不会被保存。"
       reset_failed: "无法重置地图外观。请重试。"
-      confirm_globe_reload: 地球视图需要重新加载页面才能生效。现在重新加载？
       changed_fields: 更改：%{fields}
       confirm_reapply_anomaly_filter: |-
         此操作会修改现有数据，且可能运行较长时间。
@@ -4659,9 +4689,6 @@ zh:
       light: 浅色
       white: 白色
     family:
-      loaded_members:
-        one: 已加载 %{count} 名家庭成员
-        other: 已加载 %{count} 名家庭成员
       member: 家庭成员
       none_sharing: 没有家庭成员共享位置
       sharing_since:

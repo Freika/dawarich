@@ -2,10 +2,15 @@ import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
 import {
   applyGlobeProjection,
   globeEnabled,
 } from "maps_maplibre/utils/globe_projection"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
@@ -21,7 +26,7 @@ export class MapInitializer {
    */
   static async initialize(container, settings = {}, apiKey = null) {
     const {
-      mapStyle = "streets",
+      mapStyle = "light",
       center = [0, 0],
       zoom = 2,
       showControls = true,
@@ -33,6 +38,7 @@ export class MapInitializer {
       tilesFallback = false,
     } = settings
 
+    startMapLoading(container)
     const style = await getMapStyle(mapStyle, {
       hiddenTileCategories,
       disabledPoiGroups,
@@ -73,6 +79,7 @@ export class MapInitializer {
     }
 
     const map = new maplibregl.Map(mapOptions)
+    finishMapLoadingOn(map)
 
     if (typeof style === "string") {
       let settled = false
@@ -112,10 +119,7 @@ export class MapInitializer {
       map.addControl(new maplibregl.NavigationControl(), "top-right")
     }
 
-    map.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-      "bottom-right",
-    )
+    map.addControl(collapsedAttributionControl(), "bottom-right")
 
     return map
   }

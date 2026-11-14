@@ -7,9 +7,10 @@ module Users
   class QueueDataRecalculation
     PENDING_TTL = 30.minutes
 
-    def initialize(user, year: nil)
+    def initialize(user, year: nil, only: nil)
       @user = user
       @year = year
+      @only = only
     end
 
     # Returns false while an earlier request for this user is still pending.
@@ -17,7 +18,9 @@ module Users
       return false unless Rails.cache.write("recalculation_pending:#{@user.id}", true,
                                             expires_in: PENDING_TTL, unless_exist: true)
 
-      Users::RecalculateDataJob.perform_later(@user.id, year: @year)
+      options = { year: @year }
+      options[:only] = @only if @only
+      Users::RecalculateDataJob.perform_later(@user.id, **options)
       true
     end
   end

@@ -129,6 +129,12 @@
   padding: 2rem 1rem;
 }
 
+/* Another day is on its way: dim the one still showing. */
+#timeline-feed-frame[busy] > * {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
 .visit-row--hidden {
   display: none !important;
 }

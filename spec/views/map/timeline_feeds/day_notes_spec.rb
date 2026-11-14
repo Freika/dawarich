@@ -26,8 +26,12 @@ RSpec.describe 'map/timeline_feeds/_day', 'map notes' do
     render partial: 'map/timeline_feeds/day', locals: { day: day }
   end
 
-  it 'shows the facts line of the day' do
-    expect(rendered).to have_css('.timeline-day-facts', text: 'Home → Office · 8.5 km')
+  it 'shows the facts line of the day in its header' do
+    expect(rendered).to have_css('.timeline-day-header .timeline-day-facts', text: 'Home → Office · 8.5 km')
+  end
+
+  it 'offers a new note from the day header' do
+    expect(rendered).to have_css('.timeline-day-header [data-testid=timeline-add-note]')
   end
 
   it 'places each note between the entries by its time' do

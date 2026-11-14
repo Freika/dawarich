@@ -28,6 +28,9 @@ class ReplayHost extends Controller {}
       },
       NavigationControl: class {},
     }
+    const startMapLoading = () => {}
+    const finishMapLoadingOn = () => {}
+    const collapsedAttributionControl = () => ({})
     class TripRoutesTileLayer {
       constructor(map, options) { this.options = options; env.tileLayers.push(this) }
       getDayColor(day) { return this.options.dayKeys.includes(day) ? "#000" : null }

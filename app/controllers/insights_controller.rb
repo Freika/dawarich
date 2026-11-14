@@ -4,6 +4,7 @@ class InsightsController < ApplicationController
   ROUTES_FAILURE_TTL = 1.hour
 
   before_action :authenticate_user!
+  helper_method :time_shares
 
   def index
     authorize :insights, :index?
@@ -47,6 +48,11 @@ class InsightsController < ApplicationController
   end
 
   private
+
+  # Read only when the cached Insights card is rendered anew.
+  def time_shares
+    @time_shares ||= Insights::TimeShares.new(current_user, @selected_year).call
+  end
 
   def load_selected_year
     set_available_years

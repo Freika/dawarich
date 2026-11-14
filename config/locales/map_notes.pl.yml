@@ -39,6 +39,7 @@ pl:
         edit: Edytuj
       on_this_day:
         on_this_day: Tego dnia
+        more: "+%{count} więcej"
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Kliknij na mapie, aby umieścić notatkę. Esc, aby anulować.

@@ -55,10 +55,6 @@ export class FamilyManager {
       // Render family members list
       this.renderMembersList(locations)
 
-      Toast.success(
-        translate("family.loaded_members", { count: locations.length }),
-      )
-
       // Load history polylines
       this.loadHistory()
     } catch (error) {
@@ -240,7 +236,6 @@ export class FamilyManager {
     const familyLayer = this.controller.layerManager.getLayer("family")
     if (familyLayer) {
       familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success(translate("messages.centered_on_family_member"))
     }
   }
 }

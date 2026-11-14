@@ -294,7 +294,7 @@ module ApplicationHelper
   # the reference and next steps; the raw exception stays on that page.
   def failure_reason_icon(record)
     alert_icon = icon('circle-alert', class: %w[w-3.5 h-3.5 text-error])
-    tooltip_class = 'tooltip tooltip-left inline-flex items-center'
+    tooltip_class = 'tooltip tooltip-left inline-flex items-center whitespace-normal'
     if record.respond_to?(:failure_summary_in_list)
       summary = record.failure_summary_in_list
       return link_to(alert_icon, record, class: tooltip_class, aria: { label: summary },

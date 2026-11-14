@@ -2,6 +2,11 @@ import * as maplibregl from "maplibre-gl"
 import { TripRoutesTileLayer } from "maps_maplibre/layers/trip_routes_tile_layer"
 import { ReplayHost } from "maps_maplibre/managers/replay_host"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 export default class extends ReplayHost {
@@ -31,6 +36,7 @@ export default class extends ReplayHost {
   }
 
   async initializeMap() {
+    startMapLoading(this.mapContainer)
     const style = await getMapStyle("light")
 
     this.map = new maplibregl.Map({
@@ -38,9 +44,11 @@ export default class extends ReplayHost {
       style,
       center: [0, 0],
       zoom: 1,
-      attributionControl: { compact: true },
+      attributionControl: false,
       interactive: true,
     })
+    finishMapLoadingOn(this.map)
+    this.map.addControl(collapsedAttributionControl())
 
     this.map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),

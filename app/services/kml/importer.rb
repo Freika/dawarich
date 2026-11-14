@@ -70,11 +70,6 @@ class Kml::Importer
     kmz_file?(content) ? extract_kml_from_kmz(content) : content
   end
 
-  # KML parses into a DOM-ish tree whose memory far outweighs the file (a
-  # 100 MiB KML peaks near 2.7 GiB), so it gets its own, lower cap than the
-  # Oj/JSON path. Raise KML_MAX_PARSE_BYTES only with matching worker memory.
-  KML_MAX_PARSE_BYTES = 64.megabytes
-
   def read_file_content
     if file_path && File.exist?(file_path)
       enforce_kml_parse_limit!(File.size(file_path))
@@ -92,7 +87,8 @@ class Kml::Importer
   end
 
   def enforce_kml_parse_limit!(bytes)
-    enforce_parse_limit!(bytes, KML_MAX_PARSE_BYTES, env_var: 'KML_MAX_PARSE_BYTES')
+    # A 100 MiB KML peaks near 2.7 GiB in memory, so it has its own, lower cap.
+    enforce_parse_limit!(bytes, :kml_max_file_size_mb)
   end
 
   def ensure_binary_encoding(content)

@@ -407,6 +407,21 @@ RSpec.describe '/places', type: :request do
   end
 
   describe 'GET /show' do
+    it 'shows the place and folds its editor away' do
+      assigned = create(:tag, user:, name: 'Assigned tag')
+      create(:tag, user:, name: 'Unassigned tag')
+      place = create(:place, user:, note: 'Gate code 42')
+      place.tags << assigned
+
+      get place_url(place)
+
+      details = Nokogiri::HTML(response.body).at_css('.place-drawer__details')
+      shown = details.xpath('./*[not(self::details)]').text
+      expect(shown).to include('Assigned tag', 'Gate code 42')
+      expect(shown).not_to include('Unassigned tag')
+      expect(details.at_css('details:not([open]) input[name="place[name]"]')).to be_present
+    end
+
     let!(:place) do
       create(:place, user:, name: 'Test Cafe', city: 'Berlin', country: 'Germany', source: :manual)
     end

@@ -9,7 +9,7 @@ class Visits::RedetectionsController < ApplicationController
     if cooldown_active?
       respond_to do |format|
         format.html do
-          redirect_to settings_visits_path,
+          redirect_to settings_data_processing_path(anchor: 'visits'),
                       alert: I18n.t('controllers.visits.redetections.re_detect_ran_recently_try_again_in_an_hour'),
                       status: :too_many_requests
         end
@@ -19,7 +19,7 @@ class Visits::RedetectionsController < ApplicationController
     end
 
     Visits::FullHistoryRedetectJob.perform_later(current_user.id)
-    redirect_to settings_visits_path,
+    redirect_to settings_data_processing_path(anchor: 'visits'),
                 notice: I18n.t('controllers.visits.redetections.re_detection_queued_we_ll_notify_you_when_it_finishes')
   end
 

@@ -10,7 +10,7 @@
       create_form_partial — partial path for the create form (rendered when share is nil)
 %>
 <turbo-frame id="share-link-modal">
-  <div class="modal modal-open" data-controller="share-link-modal" style="z-index: 10000;">
+  <div class="modal modal-open items-start pt-[8vh]" data-controller="share-link-modal" style="z-index: 10000;">
     <div class="modal-box max-w-xl">
       <%= link_to close_path,
                   class: "btn btn-sm btn-circle btn-ghost absolute right-3 top-3",

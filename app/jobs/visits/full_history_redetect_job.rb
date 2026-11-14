@@ -143,7 +143,7 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
 
   def notify!(user, kind:, title:, content:)
     Notifications::Create.new(
-      user:, kind:, title:, content:, action_path: Notifications.paths.settings_visits_path
+      user:, kind:, title:, content:, action_path: Notifications.paths.settings_data_processing_path(anchor: 'visits')
     ).call
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn(

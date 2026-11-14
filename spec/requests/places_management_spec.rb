@@ -120,8 +120,13 @@ RSpec.describe 'Places management', type: :request do
     expect(response.body).to include(mine.name, duplicate.name, 'Possible duplicates')
     expect(response.body).not_to include(foreign.name)
     doc = Nokogiri::HTML(response.body)
-    expect(doc.at_css('select[name="survivor_id"] option[selected]')['value']).to eq(mine.id.to_s)
-    expect(doc.at_css('form')['action']).to be_present
+    cluster = doc.at_css('section[data-testid="duplicate-cluster"]')
+    keep = cluster.at_css('input[type="radio"][name="survivor_id"][checked]')
+    expect(keep['value']).to eq(mine.id.to_s)
+    expect(keep['form']).to eq(cluster.at_css('form')['id'])
+    expect(cluster.at_css('form')['action']).to be_present
+    map = cluster.at_css('[data-controller="place-duplicates-map"]')
+    expect(JSON.parse(map['data-place-duplicates-map-places-value']).size).to eq(2)
   end
 
   it 'lets each place in a duplicate cluster be left out of the merge' do

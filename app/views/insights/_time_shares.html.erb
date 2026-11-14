@@ -1,0 +1,38 @@
+<%# Where the year's days and hours went, and how the moving was done. %>
+<% scope = 'insights.time_shares' %>
+<% muted = 'oklch(var(--bc) / 0.18)' %>
+<% warm, green, blue = '#d4a373', '#86a37a', '#7d93b2' %>
+<div class="card bg-base-200" data-testid="time-shares">
+  <div class="card-body p-5">
+    <h2 class="card-title text-lg font-medium flex items-center gap-2">
+      <%= icon 'chart-column', class: 'w-4 h-4 text-base-content/60' %> <%= t("#{scope}.title") %>
+    </h2>
+    <div class="grid gap-6 mt-3 sm:grid-cols-2 xl:grid-cols-3">
+      <% if (shares = time_shares) %>
+        <% days = shares.days %>
+        <%= render 'insights/donut', title: t("#{scope}.days_title"), values: days,
+                                      labels: { home: t("#{scope}.home"), out: t("#{scope}.out"), trip: t("#{scope}.trip"), untracked: t("#{scope}.untracked") },
+                                      colors: { home: warm, out: green, trip: blue, untracked: muted },
+                                      center: t("#{scope}.day_count", count: days.values.sum) %>
+        <% hours = shares.hours %>
+        <% home_share = hours.values.sum.positive? ? (hours[:home] / hours.values.sum * 100).round : 0 %>
+        <%= render 'insights/donut', title: t("#{scope}.hours_title"), values: hours,
+                                      labels: { home: t("#{scope}.home"), places: t("#{scope}.places"), moving: t("#{scope}.moving"), no_data: t("#{scope}.no_data") },
+                                      colors: { home: warm, places: green, moving: blue, no_data: muted },
+                                      center: "#{home_share.zero? && hours[:home].positive? ? '<1' : home_share}%" %>
+      <% end %>
+      <% moving = (@activity_breakdown || {}).except('unknown', 'stationary').transform_values { _1['duration'].to_i }.select { |_, seconds| seconds.positive? }.sort_by { -_2 } %>
+      <% if moving.any? %>
+        <% top = moving.first(4).to_h %>
+        <% rest = moving.drop(4).sum { _2 } %>
+        <% values = top.transform_keys(&:to_sym).merge(rest.positive? ? { other: rest } : {}) %>
+        <% palette = [blue, green, warm, '#b08ca8', muted] %>
+        <%= render 'insights/donut', title: t("#{scope}.modes_title"), values: values,
+                                      labels: values.keys.to_h { [_1, _1 == :other ? t("#{scope}.other") : t("transportation_modes.#{_1}")] },
+                                      colors: values.keys.each_with_index.to_h { |key, index| [key, palette[index]] },
+                                      center: t("#{scope}.by_time") %>
+      <% end %>
+    </div>
+    <p class="text-xs text-base-content/60 mt-4"><%= t("#{scope}.note") %></p>
+  </div>
+</div>

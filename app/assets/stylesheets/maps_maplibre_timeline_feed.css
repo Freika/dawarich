@@ -864,18 +864,36 @@
   opacity: 0.45;
 }
 
-.day-select-toggle {
-  margin-left: 8px;
-  font-size: 11px;
-  padding: 2px 8px;
-  border: 1px solid oklch(var(--bc) / 0.2);
+/* The day's actions beside its date: icon buttons. */
+.timeline-day-header__top {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.timeline-day-header__top .timeline-day-header__nav {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-day-header__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.timeline-day-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid oklch(var(--bc) / 0.15);
   border-radius: 6px;
   background: transparent;
   color: oklch(var(--bc) / 0.7);
   cursor: pointer;
 }
 
-.day-select-toggle:hover {
+.timeline-day-action:hover {
   background: oklch(var(--bc) / 0.05);
   color: oklch(var(--bc));
 }
@@ -884,6 +902,14 @@
   background: oklch(var(--p) / 0.15);
   border-color: oklch(var(--p) / 0.5);
   color: oklch(var(--p));
+}
+
+.timeline-day-header__summary {
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--tl-text-2);
+  overflow-wrap: anywhere;
 }
 
 .selection-bar {
@@ -1225,9 +1251,6 @@
 
 /* ── Day facts line: the places of the day, in order ── */
 .timeline-day-facts {
-  margin: 0 0 6px;
-  font-size: 0.75rem;
-  color: var(--tl-text-2);
   overflow-wrap: anywhere;
 }
 
@@ -1299,51 +1322,75 @@
   overflow-wrap: anywhere;
 }
 
-/* ── On this day: notes about this date in earlier years ── */
+/* ── On this day: notes about this date in earlier years, in today's header ── */
 .on-this-day {
-  margin-top: 0.75rem;
-  padding: 0.75rem var(--tl-pad-x) 0;
-  border-top: 1px solid oklch(var(--bc) / 0.08);
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid
+    color-mix(in oklab, oklch(var(--p)) 25%, oklch(var(--bc) / 0.1));
+  border-radius: 8px;
+  background: color-mix(in oklab, oklch(var(--p)) 7%, oklch(var(--b1)));
 }
 
 .on-this-day__title {
-  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.15rem;
   font-size: 0.7rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--tl-text-2);
+}
+
+.on-this-day__icon {
+  width: 12px;
+  height: 12px;
 }
 
 .on-this-day__list {
   display: grid;
-  gap: 0.25rem;
 }
 
 .on-this-day__note {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.6rem;
-  padding: 0.35rem 0.4rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 0.4rem;
+  padding: 0.15rem 0.25rem;
+  margin-inline: -0.25rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
   line-height: 1.4;
 }
 
 .on-this-day__note:hover,
 .on-this-day__note:focus-visible {
-  background: oklch(var(--bc) / 0.05);
+  background: oklch(var(--bc) / 0.06);
 }
 
 .on-this-day__year {
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--tl-text-2);
 }
 
 .on-this-day__body {
-  min-width: 0;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.on-this-day__more summary {
+  font-size: 0.7rem;
+  color: oklch(var(--p));
+  cursor: pointer;
+  list-style: none;
+}
+
+.on-this-day__more summary::-webkit-details-marker {
+  display: none;
+}
+
+.on-this-day__more[open] summary {
+  display: none;
 }
 
 /* ── A period of several days ──
@@ -1392,7 +1439,16 @@ details.timeline-day[open] {
 }
 
 .timeline-day-header--range:hover {
-  background: oklch(var(--bc) / 0.05);
+  background: color-mix(in oklab, oklch(var(--bc)) 5%, oklch(var(--b1)));
+}
+
+/* The date and where the day went stay in sight while its visits scroll. */
+.timeline-day > .timeline-day-header,
+details.timeline-day[open] > .timeline-day-header--range {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: oklch(var(--b1));
 }
 
 .timeline-day-header--range .timeline-day-header__meta {

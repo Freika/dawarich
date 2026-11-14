@@ -1,15 +1,11 @@
-<div class="mx-auto md:w-2/3 w-full flex">
-  <div class="mx-auto">
-    <%= render @notification %>
+<div class="mx-auto md:w-2/3 w-full my-6">
+  <%= render @notification %>
 
-    <div class='my-5'>
-      <% if @notification.safe_action_path %>
-        <%= link_to t('.open'), @notification.safe_action_path, class: "btn btn-small btn-primary" %>
-      <% end %>
-      <%= link_to t('.back_to_notifications'), notifications_path, class: "btn btn-small" %>
-      <div class="inline-block ml-2">
-        <%= button_to t('.destroy_this_notification'), @notification, data: { turbo_confirm: t('.are_you_sure') }, method: :delete, class: "btn btn-sm btn-ghost text-error" %>
-      </div>
-    </div>
+  <div class="mt-5 flex flex-wrap items-center gap-2">
+    <% if @notification.safe_action_path %>
+      <%= link_to t('.open'), @notification.safe_action_path, class: "btn btn-sm btn-primary" %>
+    <% end %>
+    <%= link_to t('.back_to_notifications'), notifications_path, class: "btn btn-sm" %>
+    <%= button_to t('.destroy_this_notification'), @notification, data: { turbo_confirm: t('.are_you_sure') }, method: :delete, class: "btn btn-sm btn-ghost text-error" %>
   </div>
 </div>

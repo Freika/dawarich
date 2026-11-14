@@ -2,7 +2,6 @@ de:
   places:
     polish:
       selected: "ausgewählt"
-      details: "Details"
       location: "Standort"
       notifications: "Benachrichtigungen"
       visits: "Besuche"

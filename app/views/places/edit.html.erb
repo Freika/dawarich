@@ -1,2 +1,2 @@
 <% content_for :title, t('ux_p2.places.edit') %>
-<div class="max-w-2xl mx-auto my-5"><h1 class="text-3xl font-bold mb-4"><%= t('ux_p2.places.edit') %></h1><%= render 'form' %><%= render 'homes', place: @place %></div>
+<div class="w-full my-5"><%= render 'form', title: t('ux_p2.places.edit'), homes: true %></div>

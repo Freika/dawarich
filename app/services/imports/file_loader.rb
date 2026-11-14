@@ -6,11 +6,8 @@ module Imports
 
     # Whole-file importers (JSON via Oj, TCX via Hash.from_xml) read the entire
     # file into memory and build a full object graph. A small compressed upload
-    # can expand to the 2 GiB disk cap and OOM-kill the worker, so bound the
-    # in-memory size here. Configurable for operators with larger workers.
-    # Measured: a 256 MiB JSON parses to ~690 MiB with Oj, so 512 MiB stays well
-    # within a default 4 GiB worker.
-    DEFAULT_MAX_PARSE_BYTES = 512.megabytes
+    # can expand to the 2 GiB disk cap and OOM-kill the worker, so the in-memory
+    # size is bounded by an Instance setting an admin can raise for larger workers.
 
     private
 
@@ -38,14 +35,14 @@ module Imports
       scrub_to_utf8(content)
     end
 
-    # `limit`/`env_var` let a parser with a different memory profile (KML, whose
-    # DOM amplifies far more than Oj) pass its own, lower bound.
-    def enforce_parse_limit!(bytes, limit = DEFAULT_MAX_PARSE_BYTES, env_var: 'IMPORT_MAX_PARSE_BYTES')
-      max = ENV.fetch(env_var, limit).to_i
-      return if bytes <= max
+    # `setting` lets a parser with a different memory profile (KML, whose DOM
+    # amplifies far more than Oj) apply its own, lower bound.
+    def enforce_parse_limit!(bytes, setting = :import_max_file_size_mb)
+      max_mb = InstanceSettings::Resolver.value(setting)
+      return if bytes <= max_mb.megabytes
 
       raise Imports::FileTooLarge,
-            "import file is #{bytes} bytes (max #{max}); raise #{env_var} to allow it"
+            "import file is #{bytes} bytes (max #{max_mb} MB); raise the limit in Settings → Instance → Imports"
     end
 
     # Returns a local file path, downloading from storage if needed.

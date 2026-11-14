@@ -18,9 +18,12 @@
           </div>
         <% end %>
       </div>
-      <button type="button" class="btn btn-ghost btn-xs" hidden
-              data-timeline-feed-target="allDaysButton"
-              data-action="click->timeline-feed#showAllDays"><%= t('.all_days') %></button>
+      <div class="flex items-center gap-1">
+        <button type="button" class="btn btn-ghost btn-xs" hidden
+                data-timeline-feed-target="allDaysButton"
+                data-action="click->timeline-feed#showAllDays"><%= t('.all_days') %></button>
+        <%= render 'map/timeline_feeds/day_actions' %>
+      </div>
     </div>
   <% end %>
   <% if days.empty? %>
@@ -29,7 +32,13 @@
     <div class="timeline-day">
       <% if local_assigns[:requested_date].present? && !range %>
         <div class="timeline-day-header">
-          <%= render 'map/timeline_feeds/day_nav', date: requested_date %>
+          <div class="timeline-day-header__top">
+            <%= render 'map/timeline_feeds/day_nav', date: requested_date %>
+            <%= render 'map/timeline_feeds/day_actions' %>
+          </div>
+          <% if local_assigns[:on_this_day].present? %>
+            <%= render 'map/timeline_feeds/on_this_day', notes: on_this_day %>
+          <% end %>
         </div>
       <% end %>
       <div class="text-center text-base-content/60 py-8">
@@ -46,7 +55,7 @@
   <% else %>
     <%# A period reads like a diary, from its latest day back. %>
     <% (range ? days.reverse : days).each do |day| %>
-      <%= render partial: 'map/timeline_feeds/day', locals: { day: day, range: range } %>
+      <%= render partial: 'map/timeline_feeds/day', locals: { day: day, range: range, on_this_day: local_assigns[:on_this_day] } %>
     <% end %>
   <% end %>
 </div>

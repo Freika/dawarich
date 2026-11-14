@@ -1,34 +1,59 @@
+<%# Each group is a card: its places' visit circles on a small map, then a
+    card per place in its circle's colour. One place is kept; the others merge
+    into it unless skipped. %>
+<% colors = %w[#2563eb #16a34a #d97706 #9333ea #db2777 #0891b2] %>
 <div class="min-w-0">
   <h1 class="text-2xl font-medium min-w-0 mb-3 tracking-tight"><%= t('places.management.duplicates') %></h1>
   <p class="mb-4"><%= t('places.management.duplicates_description') %></p>
   <%= link_to t('places.index.all_places'), places_path, class: 'btn btn-sm h-auto py-2 mb-4' %>
   <% if clusters.empty? %><p class="p-6 bg-base-200 rounded-box"><%= t('places.management.no_duplicates') %></p><% end %>
   <% clusters.each_with_index do |cluster, index| %>
-    <section class="p-4 mb-4 bg-base-200 rounded-box min-w-0" data-testid="duplicate-cluster">
-      <h2 class="text-lg font-medium mb-2 tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
-      <p class="text-sm mb-3"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
-      <div class="overflow-x-auto max-w-full">
-        <table class="table">
-          <thead><tr><th></th><th><%= t('places.index.name') %></th><th><%= t('places.management.tags') %></th><th><%= t('places.management.active_visits') %></th><th><%= t('places.management.distance') %></th></tr></thead>
-          <tbody>
-            <% cluster.places.each do |place| %>
-              <tr data-place-id="<%= place.id %>">
-                <td><%= check_box_tag 'place_ids[]', place.id, true, id: "duplicate_#{index}_#{place.id}", form: "duplicate_merge_#{index}", class: 'checkbox', aria: { label: place.name } %></td>
-                <td class="min-w-72 max-w-96 break-words"><%= link_to place.name, place_path(place), class: 'link' %></td>
-                <td class="min-w-64 max-w-80"><%= render 'tags', place: %></td>
-                <td class="tabular-nums"><%= place.active_visit_count %></td>
-                <td class="tabular-nums"><%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+    <% form_id = "duplicate_merge_#{index}" %>
+    <section class="mb-4 rounded-box bg-base-200 p-4 min-w-0" data-testid="duplicate-cluster" data-controller="duplicate-group">
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mb-3">
+        <h2 class="text-lg font-medium tabular-nums min-w-0"><%= t('places.management.cluster', number: index + 1) %></h2>
+        <p class="text-xs text-base-content/60"><%= t('places.management.distance_reference', name: cluster.survivor.name) %></p>
       </div>
-      <%= form_with url: bulk_merge_places_path(view: 'duplicates', locale: params[:locale]), method: :post, id: "duplicate_merge_#{index}", class: 'flex flex-wrap items-end gap-3 mt-4 min-w-0', data: { turbo_confirm: t('places.management.merge_confirmation') } do |form| %>
-        <div class="min-w-0 max-w-full">
-          <%= form.label "survivor_#{index}", t('places.management.survivor'), class: 'label' %>
-          <%= form.select :survivor_id, cluster.places.map { |place| [place.name, place.id] }, { selected: cluster.survivor.id }, id: "survivor_#{index}", class: 'select select-bordered w-full max-w-full' %>
-        </div>
-        <%= form.submit t('places.management.merge'), class: 'btn btn-primary h-auto py-2', data: { testid: 'merge-cluster' } %>
+      <div class="h-40 mb-3 overflow-hidden rounded-lg"
+           data-controller="place-duplicates-map"
+           data-place-duplicates-map-places-value="<%= cluster.places.each_with_index.map { |place, i| { lat: place.lat, lon: place.lon, radius: place.visit_radius, color: colors[i % colors.size] } }.to_json %>"
+           data-place-duplicates-map-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+           data-place-duplicates-map-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"></div>
+
+      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <% cluster.places.each_with_index do |place, place_index| %>
+          <div class="group flex flex-col gap-2 rounded-lg border border-base-content/10 bg-base-100 p-3 min-w-0 transition data-[keep]:border-primary data-[keep]:ring-1 data-[keep]:ring-primary data-[skipped]:opacity-50"
+               data-duplicate-card data-place-id="<%= place.id %>">
+            <div class="flex items-start gap-2 min-w-0">
+              <span class="mt-1.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background: <%= colors[place_index % colors.size] %>" aria-hidden="true"></span>
+              <div class="min-w-0">
+                <%= link_to place.name, place_path(place), class: 'link font-medium [overflow-wrap:anywhere]' %>
+                <p class="text-xs text-base-content/60 tabular-nums">
+                  <%= t('places.management.active_visits') %>: <%= place.active_visit_count %>
+                  · <%= t('places.management.meters', distance: cluster.distances.fetch(place.id).round) %>
+                </p>
+                <% if place.tags.any? %><div class="mt-1"><%= render 'tags', place: %></div><% end %>
+              </div>
+            </div>
+            <div class="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <%= radio_button_tag 'survivor_id', place.id, place.id == cluster.survivor.id, id: "survivor_#{index}_#{place.id}", form: form_id,
+                                     class: 'radio radio-sm radio-primary', data: { duplicate_group_target: 'keep', action: 'duplicate-group#sync' } %>
+                <%= t('places.management.survivor') %>
+              </label>
+              <%# The kept place is always merged into, so it needs no choice. %>
+              <label class="flex items-center gap-2 cursor-pointer group-data-[keep]:hidden">
+                <%= check_box_tag 'place_ids[]', place.id, true, id: "duplicate_#{index}_#{place.id}", form: form_id,
+                                  class: 'checkbox checkbox-sm', data: { duplicate_group_target: 'include', action: 'duplicate-group#sync' } %>
+                <%= t('places.management.include_in_merge') %>
+              </label>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <%= form_with url: bulk_merge_places_path(view: 'duplicates', locale: params[:locale]), method: :post, id: form_id, class: 'flex justify-end mt-3', data: { turbo_confirm: t('places.management.merge_confirmation') } do |form| %>
+        <%= form.submit t('places.management.merge'), class: 'btn btn-primary btn-sm', data: { testid: 'merge-cluster', duplicate_group_target: 'submit' } %>
       <% end %>
     </section>
   <% end %>

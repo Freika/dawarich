@@ -31,33 +31,27 @@
         <span class="timeline-diary-head__facts"><%= day[:summary][:facts] %></span>
       <% end %>
     </summary>
+    <%# A day of a period: its note action sits in the period's header. %>
     <% if day_total_visits_count(day) >= 2 %>
       <div class="flex justify-end px-2">
-        <button type="button" class="day-select-toggle" data-testid="day-select-toggle"
-                data-action="click->timeline-feed#enterSelection"><%= t('.select') %></button>
+        <%= render 'map/timeline_feeds/day_actions', selectable: true, note: false %>
       </div>
     <% end %>
   <% else %>
+  <%# The date with the day's actions beside it, how many visits and where the
+      day went under it, then notes about this date in earlier years. %>
   <div class="timeline-day-header">
-    <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
-    <div class="timeline-day-header__meta">
-      <span data-timeline-visit-count aria-live="polite"><%= t('.visit_count', count: day_total_visits_count(day)) %></span>
-      <% if day_total_visits_count(day) >= 2 %>
-        <button type="button"
-                class="day-select-toggle"
-                data-testid="day-select-toggle"
-                data-action="click->timeline-feed#enterSelection">
-          <%= t('.select') %>
-        </button>
-      <% end %>
+    <div class="timeline-day-header__top">
+      <%= render 'map/timeline_feeds/day_nav', date: day[:date] %>
+      <%= render 'map/timeline_feeds/day_actions', selectable: day_total_visits_count(day) >= 2 %>
     </div>
+    <p class="timeline-day-header__summary">
+      <span data-timeline-visit-count aria-live="polite"><%= t('.visit_count', count: day_total_visits_count(day)) %></span><% if day[:summary][:facts].present? %> · <span class="timeline-day-facts"><%= day[:summary][:facts] %></span><% end %>
+    </p>
+    <% if local_assigns[:on_this_day].present? %>
+      <%= render 'map/timeline_feeds/on_this_day', notes: on_this_day %>
+    <% end %>
   </div>
-  <% end %>
-
-  <%# Where the day went, in the names of its places. Generated from the
-      visits, so it is absent on a day that only has notes. %>
-  <% if day[:summary][:facts].present? && !range %>
-    <p class="timeline-day-facts"><%= day[:summary][:facts] %></p>
   <% end %>
 
   <%# One summary line for the whole day: how you moved, and for how long.

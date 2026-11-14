@@ -13,7 +13,8 @@ module Admin
       'nominatim' => %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
       'locationiq' => %i[locationiq_api_key],
       'rate_limit' => %i[reverse_geocoding_rps],
-      'points' => %i[store_geodata]
+      'points' => %i[store_geodata],
+      'imports' => %i[import_max_file_size_mb kml_max_file_size_mb]
     }.freeze
 
     before_action :authenticate_user!

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# How points become tracks, which readings count as GPS noise, how long a stay
-# counts toward a city, and which transportation modes are detected. These
+# How points become tracks and visits, which readings count as GPS noise, how
+# long a stay counts toward a city, and which transportation modes are detected. These
 # change data the user already has, so they live in Settings, not on the map.
 class Settings::DataProcessingController < ApplicationController
   before_action :authenticate_user!
@@ -10,8 +10,10 @@ class Settings::DataProcessingController < ApplicationController
   before_action :require_pro!, only: %i[recalculate reapply_anomaly_filter]
 
   BOOLEAN_KEYS = %w[split_tracks_at_midnight gps_filtering_enabled gps_accuracy_filter_enabled].freeze
+  # Stored as sent, like the visits page they came from did; SafeSettings clamps them on read.
+  VISIT_KEYS = %w[visit_radius_meters visit_min_points visit_min_duration_minutes].freeze
   INTEGER_KEYS = %w[meters_between_routes minutes_between_routes gps_accuracy_threshold
-                    min_minutes_spent_in_city].freeze
+                    min_minutes_spent_in_city].concat(VISIT_KEYS).freeze
   MODES_KEY = 'enabled_transportation_modes'
 
   def show
@@ -29,8 +31,10 @@ class Settings::DataProcessingController < ApplicationController
     stored_modes = current_user.safe_settings.enabled_transportation_modes
     settings.delete(MODES_KEY) if settings[MODES_KEY]&.sort == stored_modes.sort
 
+    visit_settings = settings.extract!(*VISIT_KEYS)
     result = Users::SettingsUpdater.new(current_user, settings).call
     if result.success?
+      current_user.update!(settings: current_user.settings.merge(visit_settings)) if visit_settings.any?
       back_with(notice: t('controllers.settings.general.settings_updated'))
     else
       back_with(alert: result.error || t('controllers.api.v1.settings.something_went_wrong'))
@@ -39,11 +43,21 @@ class Settings::DataProcessingController < ApplicationController
 
   def recalculate
     scope = 'controllers.api.v1.recalculations'
-    if Users::QueueDataRecalculation.new(current_user).call
+    only = params[:only].presence_in(Users::RecalculateDataJob::ONLY)
+    year = Integer(params[:year], exception: false)
+    if Users::QueueDataRecalculation.new(current_user, year:, only:).call
       back_with(notice: t("#{scope}.recalculation_queued_tracks_stats_and_digests_will_be_regenerated_in"))
     else
       back_with(notice: t("#{scope}.recalculation_already_in_progress_for_this_user"))
     end
+  end
+
+  # Trip Detection reads the whole history on every run; this starts one now.
+  def detect_trips
+    return back_with(alert: t('.trip_detection_is_off')) unless current_user.safe_settings.trip_detection_enabled?
+
+    Trips::DetectJob.schedule(current_user.id)
+    back_with(notice: t('.trip_detection_queued'))
   end
 
   def reapply_anomaly_filter

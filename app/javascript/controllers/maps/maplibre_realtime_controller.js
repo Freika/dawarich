@@ -311,8 +311,8 @@ export default class extends Controller {
       connected ? "ux_p3.realtime.connected" : "ux_p3.realtime.disconnected",
     )
     // The indicator is a dot: its words are a tooltip and screen-reader text.
-    indicator.title = words
-    indicator.firstElementChild.textContent = words
+    indicator.dataset.tip = words
+    indicator.querySelector(".sr-only").textContent = words
     indicator.dataset.state = connected ? "connected" : "disconnected"
     indicator.classList.remove("hidden")
   }

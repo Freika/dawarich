@@ -39,6 +39,7 @@ fr:
         edit: Modifier
       on_this_day:
         on_this_day: Ce jour-là
+        more: "+%{count} de plus"
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Cliquez sur la carte pour placer une note. Échap pour annuler.

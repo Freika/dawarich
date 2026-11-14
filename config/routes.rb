@@ -76,8 +76,9 @@ Rails.application.routes.draw do
     resource :data_processing, only: %i[show update], controller: 'data_processing' do
       post :recalculate
       post :reapply_anomaly_filter
+      post :detect_trips
     end
-    resource :visits, only: %i[show update]
+    resource :visits, only: :show
     resources :users, only: %i[index show create destroy edit update] do
       member do
         post 'regenerate_api_key'
@@ -209,7 +210,7 @@ Rails.application.routes.draw do
   # ApplicationController#ensure_family_feature_available!, since the routes are
   # built at boot and cannot depend on the current user's plan.
   resource :family, only: %i[show new create edit update destroy] do
-    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :invitations, except: %i[new edit update], controller: 'family/invitations'
     resources :members, only: %i[destroy], controller: 'family/memberships'
     resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
       member do

@@ -620,20 +620,11 @@
 
           <%# ---------- MAIN COLUMN (visit list) ---------- %>
           <div class="timeline-main">
-            <div class="flex justify-end px-2 pb-2">
-              <button type="button" class="btn btn-primary btn-xs gap-1"
-                      data-action="click->maps--maplibre#startCreateNote"
-                      data-testid="timeline-add-note">
-                <%= icon 'square-pen', class: 'w-3.5 h-3.5' %>
-                <%= t('.add_note') %>
-              </button>
-            </div>
             <turbo-frame id="timeline-feed-frame"
                          data-timeline-feed-target="visitListFrame"
                          data-maps--maplibre-target="timelineFeedContainer">
-              <div class="timeline-main__empty">
-                <%= t('.pick_a_day_in_the_calendar_to_see_visits') %>
-              </div>
+              <%# The day loads as soon as the panel opens; the frame shows a
+                  spinner while it is busy. %>
             </turbo-frame>
           </div>
         </div>

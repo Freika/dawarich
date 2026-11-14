@@ -39,6 +39,7 @@ zh:
         edit: 编辑
       on_this_day:
         on_this_day: 历史上的今天
+        more: "还有 %{count} 条"
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: 点击地图放置笔记。按 Esc 取消。

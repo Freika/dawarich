@@ -1,6 +1,8 @@
-<%# locals: (note:) %>
+<%# locals: (note:, standalone: false) %>
+<%# On its own page the form submits as a normal request and lands on the map;
+    in the map's note modal it stays in its frame. %>
 <%= turbo_frame_tag 'map-note-form' do %>
-  <%= form_with model: note, class: 'space-y-4 min-w-0', data: { testid: 'map-note-form' } do |form| %>
+  <%= form_with model: note, class: 'space-y-4 min-w-0', data: { testid: 'map-note-form', turbo: (false if standalone) }.compact do |form| %>
     <% if note.errors.any? %>
       <div class="alert alert-error text-sm [overflow-wrap:anywhere]" role="alert">
         <%= note.errors.full_messages.to_sentence %>
@@ -8,8 +10,8 @@
     <% end %>
 
     <% unless note.persisted? %>
-      <%= form.hidden_field :latitude %>
-      <%= form.hidden_field :longitude %>
+      <%= form.hidden_field :latitude, data: { place_location_target: 'latitude' } %>
+      <%= form.hidden_field :longitude, data: { place_location_target: 'longitude' } %>
     <% end %>
 
     <div class="form-control min-w-0">
@@ -29,12 +31,17 @@
     </div>
 
     <div class="modal-action flex-wrap gap-2">
-      <% if note.persisted? %>
+      <%# Deleting answers with a stream for the map, so it stays in the modal. %>
+      <% if note.persisted? && !standalone %>
         <%= link_to t('.delete'), note_path(note),
                     class: 'btn btn-ghost text-error mr-auto',
                     data: { turbo_method: :delete, turbo_confirm: t('.delete_this_note'), testid: 'map-note-delete' } %>
       <% end %>
-      <button type="button" class="btn btn-ghost" data-action="map-note#close"><%= t('.cancel') %></button>
+      <% if standalone %>
+        <%= link_to t('.cancel'), map_v2_path, class: 'btn btn-ghost' %>
+      <% else %>
+        <button type="button" class="btn btn-ghost" data-action="map-note#close"><%= t('.cancel') %></button>
+      <% end %>
       <%= form.submit t('.save'), class: 'btn btn-primary', data: { testid: 'map-note-save' } %>
     </div>
   <% end %>

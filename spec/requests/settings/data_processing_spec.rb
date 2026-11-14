@@ -111,12 +111,70 @@ RSpec.describe 'Settings: Data processing', type: :request do
     end
   end
 
+  describe 'visit detection' do
+    it 'shows the visit fields and the full-history re-detection' do
+      get settings_data_processing_path
+
+      expect(page_html.at_css('input[name="settings[visit_radius_meters]"]')['value']).to eq('100')
+      redetect = "form[action='#{visits_redetections_path}'] [data-testid=visit-redetection-button]"
+      expect(page_html.at_css(redetect)).to be_present
+    end
+
+    it 'saves the three visit keys' do
+      patch settings_data_processing_path, params: {
+        settings: { visit_radius_meters: '75', visit_min_points: '4', visit_min_duration_minutes: '7' }
+      }
+
+      settings = user.reload.safe_settings
+      expect([settings.visit_radius_meters, settings.visit_min_points, settings.visit_min_duration_minutes])
+        .to eq([75, 4, 7])
+    end
+
+    it 'stores only the visit key that was sent' do
+      user.update!(settings: { 'timezone' => 'Europe/Berlin' })
+
+      patch settings_data_processing_path, params: { settings: { visit_radius_meters: 75 } }
+
+      expect(user.reload.settings).to eq('timezone' => 'Europe/Berlin', 'visit_radius_meters' => 75)
+    end
+
+    it 'is no longer a tab of its own' do
+      get settings_general_index_path
+
+      expect(page_html.css('nav a.tab').map { _1['href'] }).not_to include(settings_visits_path)
+    end
+  end
+
   describe 'POST /settings/data_processing/recalculate' do
     it 'queues one recalculation of tracks, stats and digests' do
       expect do
         post recalculate_settings_data_processing_path
         post recalculate_settings_data_processing_path
       end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, year: nil).exactly(:once)
+    end
+
+    it 'can rebuild only the tracks of one year' do
+      expect { post recalculate_settings_data_processing_path, params: { only: 'tracks', year: '2025' } }
+        .to have_enqueued_job(Users::RecalculateDataJob).with(user.id, year: 2025, only: 'tracks')
+    end
+
+    it 'rebuilds everything when the choice is not one it knows' do
+      expect { post recalculate_settings_data_processing_path, params: { only: 'points', year: 'soon' } }
+        .to have_enqueued_job(Users::RecalculateDataJob).with(user.id, year: nil)
+    end
+  end
+
+  describe 'POST /settings/data_processing/detect_trips' do
+    it 'looks for trips in the whole history' do
+      expect { post detect_trips_settings_data_processing_path }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+      expect(response).to redirect_to(settings_data_processing_path)
+    end
+
+    it 'does nothing while trip detection is off' do
+      user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+
+      expect { post detect_trips_settings_data_processing_path }.not_to have_enqueued_job(Trips::DetectJob)
+      expect(flash[:alert]).to be_present
     end
   end
 

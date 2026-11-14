@@ -134,16 +134,12 @@ export class MapStyleSettings {
     }
   }
 
-  /**
-   * Toggle globe projection
-   * Requires page reload to apply since projection is set at map initialization
-   */
+  /** Switch between the globe and the flat map in place. */
   async toggleGlobe(event) {
     const toggle = event.target
     const enabled = toggle.checked
 
     if (enabled && isGatedPlan(this.controller.userPlanValue)) {
-      // Globe can't do a timed preview (requires reload), so just show upgrade prompt
       toggle.checked = false
       UpgradeBanner.show({
         message: translate("messages.globe_view_is_a_pro_feature"),
@@ -153,16 +149,12 @@ export class MapStyleSettings {
       return
     }
 
-    await SettingsManager.updateSetting("globeProjection", enabled)
-
-    Toast.info(
-      translate("messages.globe_view_will_be_applied_after_page_reload"),
-    )
-
-    // Prompt user to reload
-    if (confirm(translate("settings.confirm_globe_reload"))) {
-      window.location.reload()
+    if (enabled) {
+      applyGlobeProjection(this.map)
+    } else {
+      this.map.setProjection({ type: "mercator" })
     }
+    await SettingsManager.updateSetting("globeProjection", enabled)
   }
 
   /**

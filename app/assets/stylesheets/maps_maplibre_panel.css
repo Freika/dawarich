@@ -378,12 +378,21 @@
   padding: 6px;
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: calc(100% - 24px);
+}
+
+/* The buttons scroll on short screens; the live dot sits outside this box
+   so its tooltip is not clipped by the scroll overflow. */
+.map-button-cluster__scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: none;
 }
 
-.map-button-cluster::-webkit-scrollbar {
+.map-button-cluster__scroll::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
@@ -464,21 +473,21 @@
   display: none;
 }
 
-.map-button-cluster__live::before {
-  content: "";
+.map-button-cluster__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: oklch(var(--su));
 }
 
-.map-button-cluster__live[data-state="disconnected"]::before {
+.map-button-cluster__live[data-state="disconnected"] .map-button-cluster__dot {
   background: oklch(var(--wa));
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .map-button-cluster__live[data-state="disconnected"]::before {
+  .map-button-cluster__live[data-state="disconnected"]
+    .map-button-cluster__dot {
     animation: none;
   }
 }

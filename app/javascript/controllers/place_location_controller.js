@@ -3,7 +3,7 @@ import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import * as maplibregl from "maplibre-gl"
 
 export default class extends Controller {
-  static targets = ["map", "latitude", "longitude"]
+  static targets = ["map", "latitude", "longitude", "coordinates"]
   static values = {
     latitude: Number,
     longitude: Number,
@@ -49,6 +49,9 @@ export default class extends Controller {
     this.latitudeTarget.value = lat.toFixed(6)
     this.longitudeTarget.value = lng.toFixed(6)
     this.marker.setLngLat([lng, lat])
+    if (this.hasCoordinatesTarget) {
+      this.coordinatesTarget.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`
+    }
     for (const field of [this.latitudeTarget, this.longitudeTarget]) {
       field.dispatchEvent(new Event("input", { bubbles: true }))
     }

@@ -192,7 +192,7 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
 
       described_class.new.perform(empty_user.id)
 
-      expect(empty_user.notifications.last.action_path).to eq('/settings/visits')
+      expect(empty_user.notifications.last.action_path).to eq('/settings/data_processing#visits')
     end
   end
 end

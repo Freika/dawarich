@@ -38,6 +38,8 @@ ca:
           locationiq: "Servei allotjat. Necessita una clau d'API."
         points:
           title: "Punts"
+        imports:
+          title: "Importacions"
         fields:
           photon_api_host: "Amfitrió"
           photon_api_key: "Clau d'API"
@@ -55,6 +57,10 @@ ca:
           photon_api_language_hint: "Codi d'idioma de dues lletres per als noms de llocs, o default per als noms en l'idioma local. El teu índex de Photon ha d'incloure aquest idioma. El canvi només afecta les cerques noves, i una mateixa ciutat pot aparèixer dues vegades a les estadístiques."
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
           store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
+          import_max_file_size_mb: "Fitxer més gran que es llegeix sencer (MB)"
+          kml_max_file_size_mb: "Fitxer KML més gran (MB)"
+          import_max_file_size_mb_hint: "Els fitxers JSON, GeoJSON, TCX i similars es llegeixen sencers a la memòria i hi ocupen unes tres vegades la seva mida. Augmenta-ho només si el procés d’importació té prou memòria. Per defecte: 512."
+          kml_max_file_size_mb_hint: "Un fitxer KML necessita molta més memòria que la seva mida mentre es llegeix. Per defecte: 64."
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
@@ -591,7 +597,11 @@ ca:
       remove_extracted_data: Elimina les dades extretes
       remove_the_visits_places_and_tracks_this_extraction_created_your: Eliminar les visites, llocs i trajectes que ha creat aquesta extracció? Els punts GPS importats es conserven.
     form:
-      supported_import_formats: Formats d'importació admesos
+      drop_files_here: "Arrossega fitxers aquí o fes clic per triar"
+      each_file_becomes_its_own_import: "Cada fitxer serà una importació pròpia. El format es detecta automàticament."
+      where_do_i_get_my_data: "D'on trec les meves dades?"
+      how_to_export: "Com exportar"
+      all_supported_formats: "Tots els formats admesos"
       google_maps: 'Google Maps:'
       records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
       google_photos: 'Google Photos:'
@@ -618,7 +628,6 @@ ca:
       swarm_checkins_json: 'Exportació de dades (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Arxius comprimits que continguin qualsevol dels anteriors (.zip)
-      file_format_is_automatically_detected_during_upload: El format de l'arxiu es detecta automàticament durant la pujada.
       for_files_larger_than_200mb_consider_compressing_them_into_a: Per a arxius de més de 200 MB, considera comprimir-los en un arxiu ZIP abans de pujar-los. Això redueix significativament el temps de pujada i evita els temps d'espera de connexió excedits.
       trial_limitations_max_5_imports_10mb_per_file: 'Limitacions de la prova: Màxim 5 importacions, 10 MB per arxiu.'
       current_imports: 'Importacions actuals:'
@@ -674,6 +683,24 @@ ca:
       back_to_imports: Torna a les importacions
       import: Importació
   insights:
+    time_shares:
+      title: "On ha anat el teu temps"
+      days_title: "On han anat els dies"
+      hours_title: "On han anat les hores"
+      modes_title: "Com t'has desplaçat"
+      home: "Casa"
+      out: "Fora"
+      trip: "De viatge"
+      untracked: "Sense registre"
+      places: "Altres llocs"
+      moving: "En moviment"
+      no_data: "Sense dades"
+      by_time: "per temps"
+      note: "Els dies i les hores surten de les teves visites, trajectes, viatges i els llocs on has viscut."
+      other: "Altres"
+      day_count:
+        one: "%{count} dia"
+        other: "%{count} dies"
     activity_breakdown:
       activity_breakdown: Desglossament d'activitat
       no_activity_data_available_for_this_period: No hi ha dades d'activitat disponibles per a aquest període
@@ -1146,7 +1173,6 @@ ca:
         suggested: Suggerides
         search_visits_places: Cerca visites, llocs…
         tags: Etiquetes
-        pick_a_day_in_the_calendar_to_see_visits: Tria un dia al calendari per veure les visites.
         create_visit: Crea una visita
         create_place: Crea un lloc
         select_data_on_map: Selecciona dades al mapa
@@ -1381,6 +1407,7 @@ ca:
       add_tag: "Afegir etiqueta"
       remove_tag: "Treure etiqueta"
       survivor: "Conservar aquest lloc"
+      include_in_merge: "Fusiona amb el lloc conservat"
       merge: "Fusionar llocs"
       delete: "Eliminar llocs"
       select_all: "Seleccionar tots els llocs d’aquesta pàgina"
@@ -1411,6 +1438,7 @@ ca:
       total_hours: hores totals
       avg_dwell: estada mitjana
       no_tags: Sense etiquetes
+      edit_details: "Edita els detalls"
       recent_visits: Visites recents
       rarr: "→"
       'on': el
@@ -1590,6 +1618,32 @@ ca:
         existing_data: "Aplica a les dades que ja tens"
         existing_data_hint: "Els canvis de dalt s'apliquen als punts nous. Per aplicar-los al teu historial, recalcula'l. Tots dos s'executen en segon pla i poden trigar en un compte gran."
         rebuilds_need_pro: "Recalcular les dades anteriors forma part de Dawarich Pro."
+        rebuild_what: "Què cal recalcular"
+        rebuild_all: "Tot"
+        rebuild_tracks: "Només trajectes"
+        rebuild_stats: "Només estadístiques i resums"
+        rebuild_year: "Any"
+        all_years: "Tots els anys"
+        find_trips: "Cerca viatges al meu historial"
+        find_trips_hint: "Cerca a tot el teu historial viatges amb nit fora de casa. També s'executa cada nit i després de cada importació."
+        find_trips_off: "Activa primer «Troba viatges automàticament» a General."
+        these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
+        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
+        lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5. Una parada tan llarga també acaba un trajecte si dura almenys 5 minuts."
+        visit_detection: Detecció de visites
+        visit_radius_meters: Radi de visita (metres)
+        minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
+        minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
+      detect_trips:
+        trip_detection_queued: "Cerca de viatges iniciada. Els viatges nous apareixeran a la pàgina Viatges en uns minuts."
+        trip_detection_is_off: "La cerca de viatges està desactivada. Activa-la a Configuració → General."
+      visit_redetection:
+        re_run_detection_on_full_history: Torna a executar la detecció en tot l'historial
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Substitueix totes les visites suggerides de tot el teu historial amb noves deteccions fent servir la configuració de dalt. Les visites confirmades i els llocs que has anomenat es conserven. Els comptes petits solen acabar en pocs minuts; els historials de diversos anys poden trigar de 30 a 60 minuts i augmentaran temporalment la càrrega del servidor.
+        on_the_lite_plan_re_detection_covers_your_visible_12: Al pla Lite, la redetecció només cobreix la teva finestra visible de 12 mesos.
+        available_again_at: Disponible de nou el
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Substituir totes les visites suggerides de tot el teu historial? Les visites confirmades es mantenen. Vols continuar?
     geofencing_paused_while_archived: en pausa mentre estigui arxivat
     trek_sources:
       select_trips:
@@ -1617,7 +1671,6 @@ ca:
       general: General
       integrations: Integracions
       map: Mapa
-      visits: Visites
       two_factor_authentication: Autenticació de dos factors
       users: Usuaris
       instance: "Instància"
@@ -1894,30 +1947,12 @@ ca:
         send_password_reset_email: Envia el correu de restabliment de contrasenya
         edit_user: Edita l'usuari
         user_email: 'Usuari: %{email}'
-    visits:
-      redetect_panel:
-        re_run_detection_on_full_history: Torna a executar la detecció en tot l'historial
-        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Substitueix totes les visites suggerides de tot el teu historial amb noves deteccions fent servir la configuració de dalt. Les visites confirmades i els llocs que has anomenat es conserven. Els comptes petits solen acabar en pocs minuts; els historials de diversos anys poden trigar de 30 a 60 minuts i augmentaran temporalment la càrrega del servidor.
-        on_the_lite_plan_re_detection_covers_your_visible_12: Al pla Lite, la redetecció només cobreix la teva finestra visible de 12 mesos.
-        available_again_at: Disponible de nou el
-        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Substituir totes les visites suggerides de tot el teu historial? Les visites confirmades es mantenen. Vols continuar?
-      show:
-        tune_how_dawarich_decides_where_you_actually_were: Ajusta com decideix Dawarich on vas estar realment
-        these_settings_control_how_the_app_groups_your_gps_points: Aquesta configuració controla com l'app agrupa els teus punts GPS en visites a llocs.
-        points_within_this_radius_are_treated_as_the_same_visit: Els punts dins d'aquest radi es tracten com la mateixa visita. Una estada dins d'aquest radi també tanca un trajecte (com a mínim 100 m). Per defecte 100.
-        lower_more_visits_suggested_including_brief_stops_default_3: Com més baix, més visites se suggereixen, incloent-hi parades breus. Per defecte 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Omet les parades més curtes que això. Augmenta'l per ignorar parades breus en cotxe; redueix-lo per detectar recados curts. Per defecte 5. Una parada tan llarga també acaba un trajecte si dura almenys 5 minuts."
-        visit_detection: Detecció de visites
-        visit_radius_meters: Radi de visita (metres)
-        minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
-        minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
-        save_settings: Desa la configuració
   share_links:
     hubs:
       body:
         live_location: Ubicació en directe
         time_period: Període de temps
-        make_something: Crea alguna cosa
+        make_something: "Vídeo i pòster"
         make_something_intro: Un enllaç continua compartint les teves dades. Amb això crees un fitxer que publiques un cop i no queda res compartit.
         make_video: Vídeo de la ruta
         make_video_hint: Una reproducció animada d'aquest període, com a MP4.
@@ -3443,8 +3478,6 @@ ca:
         cannot_delete_yourself_or_last_admin: No pots eliminar el teu compte ni l’últim administrador actiu.
         cannot_remove_last_admin_role: No es pot eliminar el rol d'administrador de l'últim administrador.
         cannot_disable_last_admin: No es pot desactivar l'últim usuari administrador.
-      visits:
-        visit_detection_settings_updated: Configuració de detecció de visites actualitzada
     share_links:
       lives:
         default_name: Ubicació en directe
@@ -4114,7 +4147,6 @@ ca:
       failed_to_load_flights: No s'han pogut carregar els vols
       failed_to_load_anomalies: No s'han pogut carregar les anomalies
       cannot_update_recalculation_is_already_in_progress: 'No es pot actualitzar: ja hi ha un recàlcul en curs'
-      globe_view_will_be_applied_after_page_reload: La vista de globus s'aplicarà després de recarregar la pàgina
       reloading_map_data_with_new_settings: Tornant a carregar les dades del mapa amb la nova configuració...
       api_key_not_available_please_reload_the_page: Clau API no disponible; torna a carregar la pàgina.
       click_on_the_map_to_place_a_visit_esc_to: Fes clic al mapa per col·locar una visita (Esc per cancel·lar)
@@ -4122,7 +4154,6 @@ ca:
       visit_creation_controller_not_available: Controlador de creació de visites no disponible
       family_feature_not_available: Funció de família no disponible
       failed_to_load_family_members: No s'han pogut carregar els membres de la família
-      centered_on_family_member: Centrat en el membre de la família
       failed_to_load_visit_details: No s'han pogut carregar els detalls de la visita
       failed_to_load_area_details: No s'han pogut carregar els detalls de l'àrea
       point_deleted_successfully: Punt suprimit correctament
@@ -4410,7 +4441,6 @@ ca:
       confirm_reset: "Restablir l'aparença del mapa als valors per defecte? La configuració dels mitjans de transport i del filtratge es manté. Això recarregarà la pàgina."
       load_failed: "No s'ha pogut carregar la configuració del mapa. Els canvis no es desaran fins que recarreguis la pàgina."
       reset_failed: "No s'ha pogut restablir l'aparença del mapa. Torna-ho a provar."
-      confirm_globe_reload: La vista de globus requereix recarregar la pàgina perquè tingui efecte. Vols recarregar-la ara?
       changed_fields: 'Canviat: %{fields}'
       confirm_reapply_anomaly_filter: |-
         Això és destructiu i de llarga durada.
@@ -4594,9 +4624,6 @@ ca:
       light: Clar
       white: Blanc
     family:
-      loaded_members:
-        one: "S'ha carregat %{count} membre de la família"
-        other: "S'han carregat %{count} membres de la família"
       member: Membre de la família
       none_sharing: Cap membre de la família comparteix la ubicació
       sharing_since:

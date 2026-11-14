@@ -39,6 +39,7 @@ ca:
         edit: Edita
       on_this_day:
         on_this_day: Tal dia com avui
+        more: "+%{count} més"
   javascript:
     messages:
       click_on_the_map_to_place_a_note_esc_to: Fes clic al mapa per col·locar una nota. Esc per cancel·lar.
