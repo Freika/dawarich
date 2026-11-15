@@ -18,14 +18,14 @@ RSpec.describe 'Language setting', type: :request do
   it 'offers every shipped language on the general settings page' do
     get settings_general_index_path
 
-    expect(choices(response.body).map { |c| c.at_css('input[name="locale"]')['value'] }).to eq(%w[en de es fr pl ca zh])
+    expect(choices(response.body).map { |c| c.at_css('input[name="locale"]')['value'] }).to eq(%w[en de es fr pl ca zh ru])
   end
 
   it 'names each language in its own words' do
     get settings_general_index_path
 
     names = choices(response.body).map { |c| c.at_css('[data-testid="language-name"]').text.strip }
-    expect(names).to eq(%w[English Deutsch Español Français Polski Català 简体中文])
+    expect(names).to eq(%w[English Deutsch Español Français Polski Català 简体中文 Русский])
   end
 
   it 'shows a flag beside each language' do
