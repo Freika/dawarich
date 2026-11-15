@@ -31,7 +31,10 @@ module Achievements
         WHERE #{DisputedArea.near_cell_sql('cells.gx', 'cells.gy', GridDwellCalculator::GRID_DEGREES)}
       ),
       untagged_cells AS MATERIALIZED (
-        SELECT cells.gx, cells.gy, m.code
+        SELECT cells.gx, cells.gy, m.code,
+               CASE WHEN m.code IS NULL
+                    THEN #{GridDwellCalculator.edge_cell_sql('countries', 'cells.gx', 'cells.gy')}
+                    ELSE FALSE END AS edge
         FROM cells
         LEFT JOIN LATERAL (
           SELECT c.iso_a2 AS code
@@ -48,7 +51,10 @@ module Achievements
       located AS MATERIALIZED (
         SELECT p."timestamp" AS ts, p.id, p.country_id,
                CASE WHEN cc.gx IS NOT NULL AND #{DisputedArea.covering_sql('p.lonlat::geometry')}
-                    THEN NULL ELSE COALESCE(c.iso_a2, uc.code) END AS code
+                    THEN NULL
+                    WHEN c.iso_a2 IS NOT NULL THEN c.iso_a2
+                    WHEN uc.edge THEN #{GridDwellCalculator.point_code_sql('countries', 'iso_a2', 'p.lonlat::geometry')}
+                    ELSE uc.code END AS code
         FROM points p
         LEFT JOIN countries c ON c.id = p.country_id
         LEFT JOIN untagged_cells uc

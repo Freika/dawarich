@@ -10,6 +10,22 @@ module Achievements
       'countries' => 'iso_a2'
     }.freeze
 
+    # A cell whose centre misses every shape but whose square still touches
+    # one is a coast or border cell: the centre says nothing about the points
+    # in it, so they are located one by one (#4012). Open-ocean cells and
+    # cells with a centre code skip the per-point probe.
+    def self.edge_cell_sql(table, gx_sql, gy_sql)
+      envelope = "ST_MakeEnvelope(#{gx_sql} * #{GRID_DEGREES}, #{gy_sql} * #{GRID_DEGREES}, " \
+                 "(#{gx_sql} + 1) * #{GRID_DEGREES}, (#{gy_sql} + 1) * #{GRID_DEGREES}, 4326)"
+
+      "EXISTS (SELECT 1 FROM #{table} s WHERE ST_Intersects(s.geom, #{envelope}))"
+    end
+
+    def self.point_code_sql(table, code_column, geometry_sql)
+      "(SELECT s.#{code_column} FROM #{table} s WHERE ST_Intersects(s.geom, #{geometry_sql}) " \
+        "ORDER BY s.#{code_column} LIMIT 1)"
+    end
+
     POINTS_SQL = <<~SQL.freeze
       WITH cells AS (
         SELECT DISTINCT FLOOR(ST_X(lonlat::geometry) / %<grid>f)::int AS gx,
@@ -22,7 +38,8 @@ module Achievements
           AND (anomaly IS DISTINCT FROM TRUE)
       ),
       cell_codes AS MATERIALIZED (
-        SELECT c.gx, c.gy, m.code, #{DisputedArea.near_cell_sql('c.gx', 'c.gy', GRID_DEGREES)} AS near_disputed
+        SELECT c.gx, c.gy, m.code, #{DisputedArea.near_cell_sql('c.gx', 'c.gy', GRID_DEGREES)} AS near_disputed,
+               CASE WHEN m.code IS NULL THEN #{edge_cell_sql('%<table>s', 'c.gx', 'c.gy')} ELSE FALSE END AS edge
         FROM cells c
         LEFT JOIN LATERAL (
           SELECT s.%<code_column>s AS code
@@ -37,8 +54,9 @@ module Achievements
       ),
       located AS (
         SELECT p."timestamp" AS ts, p.id, p.country_id,
-               CASE WHEN cc.near_disputed AND #{DisputedArea.covering_sql('p.lonlat::geometry')}
-                    THEN NULL ELSE cc.code END AS code
+               CASE WHEN cc.near_disputed AND #{DisputedArea.covering_sql('p.lonlat::geometry')} THEN NULL
+                    WHEN cc.edge THEN #{point_code_sql('%<table>s', '%<code_column>s', 'p.lonlat::geometry')}
+                    ELSE cc.code END AS code
         FROM points p
         LEFT JOIN cell_codes cc
           ON cc.gx = FLOOR(ST_X(p.lonlat::geometry) / %<grid>f)::int
