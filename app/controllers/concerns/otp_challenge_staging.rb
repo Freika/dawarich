@@ -15,6 +15,8 @@ module OtpChallengeStaging
   def stage_otp_challenge(user)
     session[:otp_user_id] = user.id
     session[:otp_challenge_at] = Time.current.to_i
+    # Remember-me belongs to a password sign-in; an abandoned one must not carry over.
+    session.delete(:otp_remember_me)
     render 'devise/sessions/otp_challenge', status: :unprocessable_entity
   end
 end

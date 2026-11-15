@@ -51,6 +51,29 @@ describe 'Auth Google API', type: :request do
         run_test!
       end
 
+      response '202', 'two-factor authentication required' do
+        schema type: :object,
+               properties: {
+                 two_factor_required: { type: :boolean },
+                 challenge_token: { type: :string },
+                 ttl: { type: :integer, description: 'Seconds the challenge token stays valid' }
+               },
+               required: %w[two_factor_required challenge_token ttl]
+
+        before do
+          allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+          create(:user, email: 'google@example.com', provider: 'google_oauth2', uid: '999666',
+                        otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+        end
+
+        let(:'X-Dawarich-Client-Capabilities') { 'otp_challenge' }
+        let(:payload) { { id_token: 'fake_token' } }
+
+        run_test! do |response|
+          expect(response.parsed_body).not_to have_key('api_key')
+        end
+      end
+
       response '401', 'google token verification failed' do
         schema type: :object,
                properties: { error: { type: :string }, message: { type: :string } }

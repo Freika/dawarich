@@ -342,6 +342,24 @@ paths:
                     type: string
                     format: date-time
                     nullable: true
+        '202':
+          description: two-factor authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  two_factor_required:
+                    type: boolean
+                  challenge_token:
+                    type: string
+                  ttl:
+                    type: integer
+                    description: Seconds the challenge token stays valid
+                required:
+                - two_factor_required
+                - challenge_token
+                - ttl
         '401':
           description: apple token verification failed
           content:
@@ -440,6 +458,24 @@ paths:
                     type: string
                     format: date-time
                     nullable: true
+        '202':
+          description: two-factor authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  two_factor_required:
+                    type: boolean
+                  challenge_token:
+                    type: string
+                  ttl:
+                    type: integer
+                    description: Seconds the challenge token stays valid
+                required:
+                - two_factor_required
+                - challenge_token
+                - ttl
         '401':
           description: google token verification failed
           content:
