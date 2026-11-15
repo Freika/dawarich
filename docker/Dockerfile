@@ -63,11 +63,12 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
 
 # tzf2 ships no prebuilt gem for 32-bit ARM, so armv7 compiles it from
-# source; rb-sys' bindgen needs libclang for that.
+# source; rb-sys' bindgen needs libclang, and rb-sys fetches its Rust
+# toolchain with curl.
 ARG TARGETARCH
 RUN if [ "$TARGETARCH" = "arm" ]; then \
     apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libclang-dev \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libclang-dev curl \
     && rm -rf /var/lib/apt/lists/*; \
     fi
 
