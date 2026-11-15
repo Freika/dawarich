@@ -33,44 +33,6 @@ RSpec.describe TimelineHelper, type: :helper do
     end
   end
 
-  describe '#heat_bucket' do
-    it 'returns 0 for 0 seconds' do
-      expect(helper.heat_bucket(0)).to eq(0)
-    end
-
-    it 'returns 0 for nil' do
-      expect(helper.heat_bucket(nil)).to eq(0)
-    end
-
-    it 'returns 1 for 1 hour (3600s)' do
-      expect(helper.heat_bucket(3600)).to eq(1)
-    end
-
-    it 'returns 1 for just under 2 hours' do
-      expect(helper.heat_bucket(2 * 3600 - 1)).to eq(1)
-    end
-
-    it 'returns 2 for 3 hours' do
-      expect(helper.heat_bucket(3 * 3600)).to eq(2)
-    end
-
-    it 'returns 3 for 6 hours' do
-      expect(helper.heat_bucket(6 * 3600)).to eq(3)
-    end
-
-    it 'returns 4 for 10 hours' do
-      expect(helper.heat_bucket(10 * 3600)).to eq(4)
-    end
-
-    it 'returns 5 for 13 hours' do
-      expect(helper.heat_bucket(13 * 3600)).to eq(5)
-    end
-
-    it 'returns 5 for 24 hours' do
-      expect(helper.heat_bucket(24 * 3600)).to eq(5)
-    end
-  end
-
   describe '#visit_entry_search_tokens' do
     it 'joins name, place name, city, country, and tag names lowercased' do
       entry = {
@@ -195,76 +157,6 @@ RSpec.describe TimelineHelper, type: :helper do
 
     it 'returns nil when bounds missing' do
       expect(helper.day_bounds_json(bounds: nil)).to be_nil
-    end
-  end
-
-  describe '#calendar_month_nav' do
-    it 'returns prev/next month strings and a formatted title' do
-      result = helper.calendar_month_nav(month: '2026-03')
-
-      expect(result[:prev]).to eq('2026-02')
-      expect(result[:next]).to eq('2026-04')
-      expect(result[:title]).to eq('March 2026')
-    end
-
-    it 'handles year boundaries' do
-      result = helper.calendar_month_nav(month: '2026-01')
-
-      expect(result[:prev]).to eq('2025-12')
-      expect(result[:next]).to eq('2026-02')
-    end
-  end
-
-  describe '#calendar_weekday_labels' do
-    it 'returns Mon-Sun single-letter labels' do
-      expect(helper.calendar_weekday_labels).to eq(%w[M T W T F S S])
-    end
-
-    it 'starts with Sunday for a Sunday week start' do
-      labels = Users::DateTimePreferences.with(Users::DateTimePreferences.new(first_day_of_week: 'sunday')) do
-        helper.calendar_weekday_labels
-      end
-
-      expect(labels).to eq(%w[S M T W T F S])
-    end
-  end
-
-  describe '#calendar_day_number' do
-    it 'returns the day of month integer' do
-      expect(helper.calendar_day_number(date: '2026-03-15')).to eq(15)
-    end
-  end
-
-  describe '#calendar_cell_classes' do
-    it 'includes base cal-cell and heat bucket class for an in-month cell with tracked time' do
-      cell = { tracked_seconds: 3600, suggested_count: 0, in_month: true, disabled: false }
-      result = helper.calendar_cell_classes(cell)
-
-      expect(result).to include('cal-cell')
-      expect(result).to match(/heat-\d/)
-    end
-
-    it 'adds has-suggestions when suggested_count is positive' do
-      cell = { tracked_seconds: 0, suggested_count: 2, in_month: true, disabled: false }
-      expect(helper.calendar_cell_classes(cell)).to include('has-suggestions')
-    end
-
-    it 'adds out-of-month when cell is not in the current month' do
-      cell = { tracked_seconds: 0, suggested_count: 0, in_month: false, disabled: false }
-      expect(helper.calendar_cell_classes(cell)).to include('out-of-month')
-    end
-
-    it 'adds disabled when cell is disabled' do
-      cell = { tracked_seconds: 0, suggested_count: 0, in_month: true, disabled: true }
-      expect(helper.calendar_cell_classes(cell)).to include('disabled')
-    end
-
-    it 'applies dark text for low heat buckets and light text for high ones' do
-      low = { tracked_seconds: 0, suggested_count: 0, in_month: true, disabled: false }
-      high = { tracked_seconds: 12 * 3600, suggested_count: 0, in_month: true, disabled: false }
-
-      expect(helper.calendar_cell_classes(low)).to include('cal-cell--dark-text')
-      expect(helper.calendar_cell_classes(high)).to include('cal-cell--light-text')
     end
   end
 

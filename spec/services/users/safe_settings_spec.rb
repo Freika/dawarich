@@ -29,11 +29,11 @@ RSpec.describe Users::SafeSettings do
             live_map_enabled: true,
             track_color: '#6366F1',
             immich_url: nil,
-            immich_api_key: nil,
+            immich_configured: false,
             photoprism_url: nil,
-            photoprism_api_key: nil,
+            photoprism_configured: false,
             airtrail_url: nil,
-            airtrail_api_key: nil,
+            airtrail_configured: false,
             maps: { 'distance_unit' => 'km' },
             distance_unit: 'km',
             visits_suggestions_enabled: true,
@@ -66,7 +66,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             point_dragging_enabled: false,
             family_enabled: true,
-            achievements_enabled: true
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end
@@ -169,7 +170,8 @@ RSpec.describe Users::SafeSettings do
             'point_dragging_enabled' => false,
             'points_tiled_rendering' => true,
             'family_enabled' => true,
-            'achievements_enabled' => true
+            'achievements_enabled' => true,
+            'trip_detection_enabled' => true
           }
         )
       end
@@ -184,11 +186,11 @@ RSpec.describe Users::SafeSettings do
             live_map_enabled: false,
             track_color: '#0000ff',
             immich_url: 'https://immich.example.com',
-            immich_api_key: 'immich-key',
+            immich_configured: true,
             photoprism_url: 'https://photoprism.example.com',
-            photoprism_api_key: 'photoprism-key',
+            photoprism_configured: true,
             airtrail_url: nil,
-            airtrail_api_key: nil,
+            airtrail_configured: false,
             maps: { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             distance_unit: 'km',
             visits_suggestions_enabled: false,
@@ -221,7 +223,8 @@ RSpec.describe Users::SafeSettings do
             visit_min_duration_minutes: 5,
             point_dragging_enabled: false,
             family_enabled: true,
-            achievements_enabled: true
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end
@@ -1026,6 +1029,57 @@ RSpec.describe Users::SafeSettings do
       %w[false 0 off].push(false, 0).each do |value|
         expect(described_class.feature_enabled?({ 'family_enabled' => value }, 'family')).to be false
       end
+    end
+  end
+
+  describe '#trip_detection_enabled?' do
+    it 'is on when the key is absent and off when switched off' do
+      expect(described_class.new({}).trip_detection_enabled?).to be true
+      expect(described_class.new({ 'trip_detection_enabled' => 'false' }).trip_detection_enabled?).to be false
+    end
+  end
+
+  describe '#trip_detection_long_absence?' do
+    it 'is false when the key is absent and true when recorded' do
+      expect(described_class.new({}).trip_detection_long_absence?).to be false
+      expect(described_class.new({ 'trip_detection_long_absence' => true }).trip_detection_long_absence?).to be true
+    end
+  end
+
+  describe 'integration credentials in the API settings' do
+    let(:stored) do
+      { 'immich_url' => 'https://immich.example.com', 'immich_api_key' => 'immich-key',
+        'photoprism_url' => 'https://photoprism.example.com',
+        'airtrail_url' => 'https://airtrail.example.com', 'airtrail_api_key' => 'airtrail-key' }
+    end
+
+    it 'never includes an integration API key' do
+      keys = described_class.new(stored).api_config.keys
+
+      expect(keys).not_to include(:immich_api_key, :photoprism_api_key, :airtrail_api_key)
+    end
+
+    it 'says whether each integration has both a URL and a key' do
+      config = described_class.new(stored).api_config
+
+      expect(config).to include(immich_configured: true, photoprism_configured: false, airtrail_configured: true)
+    end
+
+    it 'leaves credentials embedded in an integration URL out of the API settings' do
+      config = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan:2283/base' }).api_config
+
+      expect(config[:immich_url]).to eq('http://immich.lan:2283/base')
+      expect(config.to_json).not_to include('proxypass')
+    end
+
+    it 'still gives server-side code the stored URL with its credentials' do
+      settings = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan' })
+
+      expect(settings.immich_url).to eq('http://proxyuser:proxypass@immich.lan')
+    end
+
+    it 'still gives server-side code the stored key' do
+      expect(described_class.new(stored).immich_api_key).to eq('immich-key')
     end
   end
 

@@ -80,11 +80,30 @@ module McpTools
                   distance_unit: { type: 'string', enum: %w[km mi] },
                   places_visited: { type: 'integer' },
                   time_moving_minutes: { type: 'integer' },
-                  time_stationary_minutes: { type: 'integer' }
+                  time_stationary_minutes: { type: 'integer' },
+                  facts: {
+                    type: %w[string null],
+                    description: 'Generated line naming the places of the day in order, with the distance travelled.'
+                  }
                 },
                 required: %w[total_distance distance_unit places_visited time_moving_minutes time_stationary_minutes]
               },
-              entries: { type: 'array', items: ENTRY_SCHEMA }
+              entries: { type: 'array', items: ENTRY_SCHEMA },
+              notes: {
+                type: 'array',
+                description: 'Notes the user wrote on the map about a moment of this day, oldest first.',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    body: { type: 'string' },
+                    noted_at: { type: 'string', format: 'date-time' },
+                    latitude: { type: %w[number null] },
+                    longitude: { type: %w[number null] }
+                  },
+                  required: %w[body noted_at]
+                }
+              }
             },
             required: %w[date summary entries]
           }
@@ -116,7 +135,8 @@ module McpTools
         {
           date: day.fetch(:date),
           summary: serialize_summary(day.fetch(:summary)),
-          entries: day.fetch(:entries).map { |day_entry| entry(day_entry) }
+          entries: day.fetch(:entries).map { |day_entry| entry(day_entry) },
+          notes: Array(day[:notes]).map { |note| note.slice(:body, :noted_at, :latitude, :longitude) }
         }
       end
 
@@ -126,7 +146,8 @@ module McpTools
           distance_unit: summary.fetch(:distance_unit),
           places_visited: summary.fetch(:places_visited).to_i,
           time_moving_minutes: summary.fetch(:time_moving_minutes).to_i,
-          time_stationary_minutes: summary.fetch(:time_stationary_minutes).to_i
+          time_stationary_minutes: summary.fetch(:time_stationary_minutes).to_i,
+          facts: summary[:facts]
         }
       end
 

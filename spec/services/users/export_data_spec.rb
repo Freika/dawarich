@@ -70,6 +70,25 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports notifications without action_path' do
+        create(:notification, user:, title: 'Export finished', action_path: '/exports')
+        temp_dir = Rails.root.join('tmp/test_extract_notifications')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, service.export.file.download)
+
+          lines = Zip::File.open(temp_zip) { |zip| zip.read('notifications.jsonl') }.lines.map { |l| JSON.parse(l) }
+          exported = lines.find { |line| line['title'] == 'Export finished' }
+
+          expect(exported).to be_present
+          expect(exported).not_to have_key('action_path')
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+
       it 'creates JSONL files in the archive' do
         result = service.export
 
@@ -130,6 +149,36 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'leaves integration secrets out of the exported settings and keeps the URLs' do
+        user.update!(settings: {
+                       'immich_url' => 'https://immich.example.test', 'immich_api_key' => 'immich-secret',
+                       'photoprism_url' => 'https://photoprism.example.test', 'photoprism_api_key' => 'prism-secret',
+                       'airtrail_url' => 'https://airtrail.example.test', 'airtrail_api_key' => 'airtrail-secret',
+                       'teslamate_url' => 'https://teslamate.example.test', 'teslamate_username' => 'proxy',
+                       'teslamate_password' => 'tesla-secret', 'teslamate_api_token' => 'tesla-token',
+                       'teslamate_last_synced_url' => 'https://basic:url-secret@teslamate.example.test'
+                     })
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          raw = zip_file.read('settings.jsonl')
+          exported = JSON.parse(raw)
+
+          expect(exported.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key',
+                                               'teslamate_password', 'teslamate_api_token')
+          expect(exported['teslamate_last_synced_url']).to eq('https://teslamate.example.test')
+          %w[immich-secret prism-secret airtrail-secret tesla-secret tesla-token url-secret].each do |secret|
+            expect(raw).not_to include(secret)
+          end
+          expect(exported).to include('immich_url' => 'https://immich.example.test',
+                                      'photoprism_url' => 'https://photoprism.example.test',
+                                      'airtrail_url' => 'https://airtrail.example.test',
+                                      'teslamate_url' => 'https://teslamate.example.test',
+                                      'teslamate_username' => 'proxy')
+        end
+      end
+
       it 'exports the stored Pro-only settings of a Lite user' do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         user.update!(plan: :lite, settings: {
@@ -166,10 +215,19 @@ RSpec.describe Users::ExportData, type: :service do
           user: user,
           title: 'Export completed',
           content: /Your data export has been processed successfully/,
-          kind: :info
+          kind: :info,
+          action_path: '/exports'
         ).and_return(double(call: true))
 
         service.export
+      end
+
+      it 'leaves a notification that leads to the export list' do
+        allow(Notifications::Create).to receive(:new).and_call_original
+
+        service.export
+
+        expect(user.notifications.last).to have_attributes(title: 'Export completed', action_path: '/exports')
       end
 
       it 'does not expose legacy Area compatibility records in the notification' do

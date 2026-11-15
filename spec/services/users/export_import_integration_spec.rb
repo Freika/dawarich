@@ -407,8 +407,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
   def verify_settings_preserved(original_user, target_user)
     expect(target_user.safe_settings.distance_unit).to eq(original_user.safe_settings.distance_unit)
     expect(target_user.settings['timezone']).to eq(original_user.settings['timezone'])
-    expect(target_user.settings['immich_url']).to eq(original_user.settings['immich_url'])
-    expect(target_user.settings['immich_api_key']).to eq(original_user.settings['immich_api_key'])
+    # An archive carries no integration secret and never changes the target
+    # account's integration connections.
+    expect(target_user.settings).not_to include('immich_url', 'immich_api_key')
   end
 
   def verify_files_restored(original_user, target_user)

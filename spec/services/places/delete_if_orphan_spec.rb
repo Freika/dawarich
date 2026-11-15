@@ -47,6 +47,14 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps an untagged discovered place that is a Home' do
+      place = create(:place, user: user, source: :photon, note: nil)
+      create(:home, user: user, place: place)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'keeps places with a note' do
       place = create(:place, user: user, source: :photon, note: 'mine')
 
@@ -103,7 +111,7 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'logs and returns false on InvalidForeignKey' do
       place = create(:place, user: user, source: :photon)
-      allow_any_instance_of(Place).to receive(:delete).and_raise(ActiveRecord::InvalidForeignKey, 'fk')
+      allow(Place).to receive(:delete_orphans).and_raise(ActiveRecord::InvalidForeignKey, 'fk')
 
       expect(Rails.logger).to receive(:warn).with(/DeleteIfOrphan/)
       expect(described_class.call(place.id)).to be(false)

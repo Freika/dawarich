@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { ApiClient } from "maps_maplibre/services/api_client"
 
 const read = (path) =>
   readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
@@ -9,9 +10,6 @@ const load = (source) =>
   import(
     `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
   )
-const { ApiClient } = await load(
-  strip(await read("maps_maplibre/services/api_client.js")),
-)
 const { PlacesManager } = await load(`
   const SettingsManager = { updateSetting() {} }
   ${strip(await read("controllers/maps/maplibre/places_tag_filters.js")).replace(/^export /gm, "")}

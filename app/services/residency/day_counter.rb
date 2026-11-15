@@ -31,7 +31,7 @@ module Residency
 
     def build_countries
       countries = country_days.map do |country_name, dates|
-        iso_a2, _iso_a3 = Countries::IsoCodeMapper.iso_codes_from_country_name(country_name)
+        iso_a2 = iso_a2_for(country_name)
         flag = iso_a2.present? ? Countries::IsoCodeMapper.country_flag(iso_a2) : nil
         days = dates.size
         periods = build_periods(dates.sort)
@@ -49,6 +49,16 @@ module Residency
       end
 
       countries.sort_by { |c| [-c[:days], c[:country_name]] }
+    end
+
+    # The ISO list only approximates seeded names: its partial match gives
+    # "Democratic Republic of the Congo" the code of its neighbour. Territories
+    # the seed marks with a placeholder code still fall back to it.
+    def iso_a2_for(country_name)
+      seeded = Country.names_to_iso_a2[country_name]
+      return seeded if seeded&.match?(/\A[A-Z]{2}\z/)
+
+      Countries::IsoCodeMapper.iso_codes_from_country_name(country_name).first
     end
 
     def build_periods(sorted_dates)
@@ -118,21 +128,26 @@ module Residency
         start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
 
+        # Grouping on the stored text splits a country spelled two ways across
+        # two rows, which can drop each half below the 183-day threshold.
+        country = Countries::NameAliases::POINT_NAME_SQL
+
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
-            country_name,
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
+            #{country} as country_name,
             COUNT(*) as point_count
           FROM points
-          WHERE user_id = $1
-            AND timestamp >= $2
-            AND timestamp <= $3
-            AND country_name IS NOT NULL
-            AND country_name != ''
-            AND #{CountriesAndCities.not_flyover_sql}
-            AND (anomaly IS NOT TRUE)
-          GROUP BY point_date, country_name
-          ORDER BY point_date, country_name COLLATE "C"
+          #{Countries::NameAliases.point_joins_sql}
+          WHERE points.user_id = $1
+            AND points.timestamp >= $2
+            AND points.timestamp <= $3
+            AND points.country_name IS NOT NULL
+            AND points.country_name != ''
+            AND #{CountriesAndCities.not_flyover_sql('points.velocity')}
+            AND (points.anomaly IS NOT TRUE)
+          GROUP BY point_date, #{country}
+          ORDER BY point_date, #{country} COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.exec_query(

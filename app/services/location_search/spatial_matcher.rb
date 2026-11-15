@@ -62,9 +62,10 @@ module LocationSearch
     end
 
     def build_plan_filter(user)
-      return ['', []] unless user.plan_restricted?
+      window_start = user.data_window_start
+      return ['', []] unless window_start
 
-      ['AND p.timestamp >= ?', [user.data_window_start.to_i]]
+      ['AND p.timestamp >= ?', [window_start.to_i]]
     end
 
     def build_date_filter(date_options)

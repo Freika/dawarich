@@ -16,6 +16,15 @@ RSpec.describe Api::UserSerializer do
       expect(serializer[:user][:updated_at]).to eq(user.updated_at)
     end
 
+    it 'leaves credentials embedded in an integration URL out of the response' do
+      user.update!(settings: user.settings.merge('immich_url' => 'http://proxyuser:proxypass@immich.lan',
+                                                 'photoprism_url' => 'http://proxyuser:proxypass@prism.lan'))
+
+      settings = described_class.new(user.reload).call[:user][:settings]
+
+      expect(settings).to include(immich_url: 'http://immich.lan', photoprism_url: 'http://prism.lan')
+    end
+
     it 'returns settings with expected keys and types' do
       settings = serializer[:user][:settings]
       expect(settings).to include(

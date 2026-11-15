@@ -160,6 +160,33 @@ RSpec.describe Immich::ImportGeodata do
       it 'does not enqueue Import::ProcessJob' do
         expect { service }.not_to have_enqueued_job(Import::ProcessJob)
       end
+
+      # The outer stub answers with photos once and then with an empty page.
+      def stub_photos_again
+        stub_request(:any, 'http://immich.app/api/search/metadata')
+          .to_return(status: 200, body: immich_data, headers: { 'content-type' => 'application/json' })
+          .then.to_return(status: 200, body: { assets: { total: 0, count: 0, items: [] } }.to_json,
+                          headers: { 'content-type' => 'application/json' })
+      end
+
+      it 'tells the user and leads to the import list' do
+        stub_photos_again
+
+        expect { described_class.new(user).call }.to change { user.notifications.count }.by(1)
+        expect(user.notifications.last.action_path).to eq('/imports')
+      end
+
+      it 'leaves the existing import alone however often it runs' do
+        blob_id = user.imports.sole.file.blob.id
+
+        3.times do
+          stub_photos_again
+          described_class.new(user).call
+        end
+
+        expect(user.imports.sole.file.blob.id).to eq(blob_id)
+        expect(user.notifications.count).to eq(3)
+      end
     end
   end
 end

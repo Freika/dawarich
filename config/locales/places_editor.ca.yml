@@ -2,7 +2,6 @@ ca:
   places:
     polish:
       selected: "seleccionats"
-      details: "Detalls"
       location: "Ubicació"
       notifications: "Notificacions"
       visits: "Visites"

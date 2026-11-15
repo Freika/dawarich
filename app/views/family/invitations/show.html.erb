@@ -159,6 +159,13 @@
           </div>
         <% end %>
 
+        <% if @family_plan_active %>
+          <p class="text-center">
+            <%= link_to t('.open_in_the_dawarich_app'), mobile_invitation_url(@invitation),
+                  class: "link link-info font-medium" %>
+          </p>
+        <% end %>
+
         <!-- Decline Option -->
         <div class="pt-6 border-t border-base-300 text-center">
           <p class="text-sm text-base-content opacity-60">

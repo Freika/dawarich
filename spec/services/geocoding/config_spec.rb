@@ -6,7 +6,7 @@ RSpec.describe Geocoding::Config do
   let!(:user) { create(:user) }
 
   around do |example|
-    variables = InstanceSettings::Registry::DEFINITIONS.values.map(&:env_var)
+    variables = InstanceSettings::Registry.env_vars
     saved = variables.index_with { |name| ENV.fetch(name, nil) }
     variables.each { |name| ENV[name] = nil }
     InstanceSettings::Resolver.reset!

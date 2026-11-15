@@ -5,14 +5,17 @@ import test from "node:test"
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8")
 
 test("main-map code has no classic Point, Track, or Route renderer switch", async () => {
-  const [settings, loader, layers, tracks, panel, controller] =
+  const [settings, loader, layers, tracks, panel, controller, dataSettings] =
     await Promise.all([
       read("../../app/javascript/maps_maplibre/utils/settings_manager.js"),
       read("../../app/javascript/controllers/maps/maplibre/data_loader.js"),
       read("../../app/javascript/controllers/maps/maplibre/layer_manager.js"),
       read("../../app/javascript/maps_maplibre/layers/tracks_layer.js"),
       read("../../app/views/map/maplibre/_settings_panel.html.erb"),
-      read("../../app/javascript/controllers/maps/maplibre_controller.js"),
+      read(
+        "../../app/javascript/controllers/maps/maplibre/timeline_map_bridge.js",
+      ),
+      read("../../app/views/settings/data_processing/show.html.erb"),
     ])
 
   assert.doesNotMatch(
@@ -23,16 +26,12 @@ test("main-map code has no classic Point, Track, or Route renderer switch", asyn
   assert.doesNotMatch(layers, /PointsLayer|RoutesLayer/)
   assert.doesNotMatch(tracks, /id: this\.id|source: this\.sourceId/)
   assert.doesNotMatch(panel, /pointsTiledRendering|routesToggle/)
-  assert.match(panel, /name="metersBetweenRoutes"/)
-  assert.match(panel, /name="minutesBetweenRoutes"/)
-  const trackSettingsStart = panel.indexOf("t('.track_generation')")
-  const trackSettings = panel.slice(
-    trackSettingsStart,
-    panel.indexOf("</details>", trackSettingsStart),
-  )
-  assert.match(trackSettings, /recalculateUserData/)
+  // Track splitting and the rebuild live in Settings → Data processing.
+  assert.match(dataSettings, /:meters_between_routes/)
+  assert.match(dataSettings, /:minutes_between_routes/)
+  assert.match(dataSettings, /recalculate_settings_data_processing_path/)
   assert.match(
-    trackSettings,
+    dataSettings,
     /rebuild_tracks_stats_and_digests_from_your_current_points_without/,
   )
   assert.match(

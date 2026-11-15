@@ -38,6 +38,16 @@ module Places
     rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
       Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
       nil
+    rescue Geocoding::Cooldown::Active
+      # The provider's refusal was reported when it started the cooldown.
+      Rails.logger.info("Geocoding skipped in NameFetcher for place #{place.id}: provider is over its limit")
+      retry_after_cooldown
+      nil
+    rescue Geocoder::OverQueryLimitError => e
+      Rails.logger.error("Geocoding error in NameFetcher for place #{place.id}: #{e.message}")
+      ExceptionReporter.call(e)
+      retry_after_cooldown
+      nil
     rescue StandardError => e
       if ReverseGeocoding::ProviderErrors.transient_tls?(e)
         Rails.logger.warn("Geocoding provider error in NameFetcher for place #{place.id}: #{e.message}")
@@ -51,5 +61,12 @@ module Places
     private
 
     attr_reader :place
+
+    def retry_after_cooldown
+      wait = Geocoding::Cooldown.retry_after(Geocoding::Config.for(place.user_id))
+      return unless Geocoding::Cooldown.claim_retry("place_name:#{place.id}", wait)
+
+      Places::NameFetchingJob.set(wait: wait).perform_later(place.id)
+    end
   end
 end

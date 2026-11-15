@@ -113,7 +113,7 @@ RSpec.describe 'Admin::Settings' do
     it 'lists every section in the navigation' do
       get '/admin/settings'
 
-      %w[photon geoapify nominatim locationiq rate_limit points].each do |name|
+      %w[photon geoapify nominatim locationiq rate_limit points imports].each do |name|
         expect(section_link(name)).to be_present, "missing #{name} in the section navigation"
       end
     end
@@ -232,6 +232,33 @@ RSpec.describe 'Admin::Settings' do
       )
       expect(raw).to be_present
       expect(raw).not_to include('a-key')
+    end
+  end
+
+  describe 'import limits' do
+    before { sign_in admin }
+
+    it 'shows both limits in their own section, with no environment variable to set' do
+      get '/admin/settings', params: { section: 'imports' }
+
+      expect(response.body).to include('data-testid="instance-setting-import_max_file_size_mb"')
+      expect(response.body).to include('data-testid="instance-setting-kml_max_file_size_mb"')
+      expect(response.body).not_to include('MAX_PARSE_BYTES')
+    end
+
+    it 'saves the limits in megabytes' do
+      patch '/admin/settings', params: { section: 'imports',
+                                         instance_settings: { import_max_file_size_mb: '2048',
+kml_max_file_size_mb: '128' } }
+
+      expect(InstanceSettings::Resolver.value(:import_max_file_size_mb)).to eq(2048)
+      expect(InstanceSettings::Resolver.value(:kml_max_file_size_mb)).to eq(128)
+    end
+
+    it 'keeps the default for a limit below 1 MB, which would refuse every import' do
+      patch '/admin/settings', params: { section: 'imports', instance_settings: { import_max_file_size_mb: '0' } }
+
+      expect(InstanceSettings::Resolver.value(:import_max_file_size_mb)).to eq(512)
     end
   end
 
@@ -439,6 +466,47 @@ RSpec.describe 'Admin::Settings' do
       get '/settings/general'
 
       expect(response.body).not_to include('href="/admin/settings"')
+    end
+  end
+
+  describe 'geocoding pause' do
+    let(:status) { response.body[%r{<div[^>]*data-testid="instance-settings-geocoding-status".*?</form>}m] }
+
+    before do
+      configure_instance_geocoding
+      sign_in admin
+    end
+
+    it 'shows how long lookups stay paused while the provider is over its limit' do
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.paused', minutes: 1)))
+    end
+
+    it 'says nothing about a pause when lookups are going out' do
+      get '/admin/settings'
+
+      expect(status).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.paused', minutes: 1)))
+    end
+
+    it 'points at the public komoot limits while that host is paused' do
+      InstanceSetting.find_by!(key: 'photon_api_host').update!(value: 'photon.komoot.io')
+      InstanceSettings::Resolver.reset!
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.komoot_warning')))
+    end
+
+    it 'does not mention komoot while another host is paused' do
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+
+      get '/admin/settings'
+
+      expect(status).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.komoot_warning')))
     end
   end
 

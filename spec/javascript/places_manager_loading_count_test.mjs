@@ -48,8 +48,10 @@ test("the loading badge counts Places, not their boundary and center features", 
     dataLoader: {},
     settings: {},
     hasPlacesFiltersTarget: false,
-    showProgress() {},
-    updateLoadingCounts: ({ counts: loaded }) => counts.push(loaded.places),
+    loadingBadge: {
+      start: () => counts.push(0),
+      finish: (_source, loaded) => counts.push(loaded),
+    },
   })
   manager.initializePlaceTagFilters = async () => {
     placesLayer.data = {

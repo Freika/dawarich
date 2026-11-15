@@ -276,37 +276,6 @@ RSpec.describe Stat, type: :model do
       end
     end
 
-    describe '#user_timezone' do
-      subject { stat.send(:user_timezone) }
-
-      context 'when user has a timezone set' do
-        let(:user) { create(:user, settings: { 'timezone' => 'Europe/Berlin' }) }
-        let(:stat) { create(:stat, year: year, month: 1, user: user) }
-
-        it 'returns the user timezone' do
-          expect(subject).to eq('Europe/Berlin')
-        end
-      end
-
-      context 'when user timezone is blank' do
-        let(:user) { create(:user, settings: { 'timezone' => '' }) }
-        let(:stat) { create(:stat, year: year, month: 1, user: user) }
-
-        it 'falls back to Time.zone.name' do
-          expect(subject).to eq(Time.zone.name)
-        end
-      end
-
-      context 'when user timezone is not set' do
-        let(:user) { create(:user, settings: {}) }
-        let(:stat) { create(:stat, year: year, month: 1, user: user) }
-
-        it 'returns the default UTC timezone' do
-          expect(subject).to eq('UTC')
-        end
-      end
-    end
-
     describe '#distance_by_day with timezone' do
       let(:stat) { create(:stat, year: year, month: 1, user: user) }
 

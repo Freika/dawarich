@@ -30,6 +30,7 @@ RSpec.describe 'Tracks honor the saved speed coloring preference', type: :reques
         'app/javascript/maps_maplibre/utils/tile_freshness.js',
         'app/javascript/maps_maplibre/utils/settings_manager.js',
         'app/javascript/maps_maplibre/layers/tracks_mvt_layer.js',
+        'app/javascript/controllers/maps/maplibre/layer_events.js',
         'app/javascript/controllers/maps/maplibre/layer_manager.js'
       ];
       const source = files.map(file => readFileSync(file, 'utf8')

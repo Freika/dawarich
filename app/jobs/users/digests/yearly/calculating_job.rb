@@ -23,6 +23,8 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
     true
   rescue StandardError => e
     digest&.update(generation_status: :failed)
+    log_failure("Yearly digest calculation failed for user #{user.id}", e)
+    ExceptionReporter.call(e, "Yearly digest calculation failed for user #{user.id}")
     create_digest_failed_notification(user.id, e)
     false
   end
@@ -41,10 +43,15 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
 
   BACKTRACE_LINE_LIMIT = 20
 
+  # The rescue swallows the error and ExceptionReporter is silent on
+  # self-hosted, so the trace goes to the log for whoever runs the instance.
+  def log_failure(message, error)
+    trace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
+    Rails.logger.error("#{message}: #{error.class}: #{error.message}\n#{trace}")
+  end
+
   def create_digest_failed_notification(user_id, error)
     user = find_user_or_skip(user_id) || return
-
-    backtrace = error.backtrace&.first(BACKTRACE_LINE_LIMIT)&.join("\n")
 
     I18n.with_locale(user.locale) do
       period_label = I18n.t('jobs.users.digests.yearly.calculating_job.year_end_digest')
@@ -52,8 +59,8 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
         user:,
         kind: :error,
         title: I18n.t('jobs.users.digests.yearly.calculating_job.period_label_calculation_failed', period_label:),
-        content: I18n.t('jobs.users.digests.yearly.calculating_job.message_stacktrace_backtrace',
-                        message: error.message, backtrace: backtrace)
+        content: error.message,
+        operator_only: true
       ).call
     end
   rescue ActiveRecord::RecordNotFound

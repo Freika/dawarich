@@ -35,22 +35,20 @@ class Api::V1::Tiles::PointsController < ApiController
   def fence_key
     [
       current_api_user.id, tile_epoch_component,
-      (current_api_user.data_window_start.to_date if current_api_user.plan_restricted?),
+      current_api_user.data_window_start&.to_date,
       cacheable_start_at, cacheable_end_at, params[:import_id].presence
     ]
   end
 
   def filtered_points
     # Parity with the classic points layer — anomalies render in their own layer.
-    scope = tile_privacy_masker.mask_points(scoped_points.without_raw_data.not_anomaly)
+    scope = tile_privacy_masker.mask_points(current_api_user.scoped_points.without_raw_data.not_anomaly)
     scope = scope.where(import_id: params[:import_id]) if params[:import_id].present?
 
-    start_at = safe_timestamp(params[:start_at]) if params[:start_at].present?
-    end_at = safe_timestamp(params[:end_at]) if params[:end_at].present?
     # No range = whole-account scan at low zoom; the statement timeout caps the
     # worst case, and the map JS always sends both params.
-    return scope unless start_at || end_at
+    return scope unless cacheable_range?
 
-    scope.where(timestamp: (start_at || 0)..(end_at || Time.zone.now.to_i))
+    scope.where(timestamp: cacheable_start_at..cacheable_end_at)
   end
 end

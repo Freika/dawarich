@@ -11,6 +11,7 @@ const stripImports = (source) =>
 
 const stubs = `
   class Controller {}
+class ReplayHost extends Controller {}
   const translate = (key) => key
   const maplibregl = {}
   const env = globalThis.__tripEnv

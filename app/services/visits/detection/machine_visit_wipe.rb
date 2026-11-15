@@ -40,7 +40,7 @@ module Visits
       def self.bust_month_caches(user, times)
         return if times.empty?
 
-        tz = user.safe_settings.timezone.presence || 'UTC'
+        tz = user.timezone_or_utc
         Time.use_zone(tz) do
           times.map { |t| t.in_time_zone.to_date.beginning_of_month }.uniq.each do |month_start|
             Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start))

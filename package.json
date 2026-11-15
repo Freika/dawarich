@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node --test spec/javascript/*_test.mjs"
+    "test": "NODE_OPTIONS='--experimental-loader=./spec/javascript/support/importmap_loader.mjs --no-warnings' node --test spec/javascript/*_test.mjs"
   },
   "dependencies": {
     "@hotwired/turbo-rails": "^8.0.21",

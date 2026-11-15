@@ -166,6 +166,22 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
+    context 'when the provider is over its limit' do
+      before do
+        configure_instance_geocoding
+        create_list(:point, 2, user: user, reverse_geocoded_at: nil)
+        Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+      end
+
+      it 'queues no lookups that would only be skipped' do
+        expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'resumes the backlog when the cooldown ends instead' do
+        expect { described_class.perform_now }.to have_enqueued_job(Points::ResumeReverseGeocodingJob)
+      end
+    end
+
     describe 'queue configuration' do
       it 'uses the reverse_geocoding queue' do
         expect(described_class.queue_name).to eq('reverse_geocoding')

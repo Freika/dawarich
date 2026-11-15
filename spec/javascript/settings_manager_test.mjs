@@ -139,6 +139,24 @@ test("reset can be limited to some appearance settings", async () => {
   }
 })
 
+test("a settings object loaded earlier sees a reset", async () => {
+  const loaded = { trackColor: "#111111", photosEnabled: true }
+  SettingsManager.cachedSettings = loaded
+  const fetchStub = stubFetch(() => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ settings: { track_color: "#6366F1" } }),
+  }))
+
+  try {
+    SettingsManager.apiKey = "key"
+    await SettingsManager.resetToDefaults(["track_color"])
+    assert.equal(loaded.trackColor, "#6366F1")
+  } finally {
+    fetchStub.restore()
+  }
+})
+
 test("a failed reset reports no settings", async () => {
   const fetchStub = stubFetch(() => jsonResponse({}, false))
   try {
@@ -228,10 +246,26 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     ),
     "utf8",
   )
-  const withoutImports = controllerSource.replace(
-    /^import[\s\S]*?from "[^"]+";?\n/gm,
-    "",
+  const stripImports = (code) =>
+    code.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const styleSource = await readFile(
+    new URL(
+      "../../app/javascript/controllers/maps/maplibre/map_style_settings.js",
+      import.meta.url,
+    ),
+    "utf8",
   )
+  const formSyncSource = await readFile(
+    new URL(
+      "../../app/javascript/controllers/maps/maplibre/settings_form_sync.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+  const withoutImports = [styleSource, formSyncSource]
+    .map((code) => stripImports(code).replace(/^export /gm, ""))
+    .concat(stripImports(controllerSource))
+    .join("\n")
   globalThis.__settingsManagerTestDouble = settingsManager
   globalThis.__settingsManagerToast = overrides.Toast ?? {
     error() {},
@@ -245,6 +279,8 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const isGatedPlan = globalThis.__settingsManagerIsGatedPlan ?? (() => false)
     const LAYER_NAME_MAP = ${JSON.stringify(LAYER_NAME_MAP ?? {})}
     const SettingsManager = globalThis.__settingsManagerTestDouble
+    const applyGlobeProjection = () => {}
+    const globeEnabled = () => false
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
     const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
     ${basemapUrlSource.replace(/^export /gm, "")}
@@ -343,6 +379,16 @@ test("a saved Areas layer carries over to Places with their boundaries", async (
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+test("a loaded settings object sees later updates", async () => {
+  const loaded = { photosEnabled: false, mapStyle: "light" }
+  SettingsManager.cachedSettings = loaded
+  SettingsManager.saveToBackend = async (settings) => settings
+
+  await SettingsManager.updateSetting("photosEnabled", true)
+
+  assert.equal(loaded.photosEnabled, true)
 })
 
 test("multiple setting updates are persisted in one write", async () => {
@@ -528,8 +574,8 @@ async function styleSwapController({ getMapStyle } = {}) {
     settings: {},
     loadMapData: () => restored.push("loadMapData"),
   })
-  controller.restoreGlobeProjection = () => {}
-  return controller
+  controller.style.restoreGlobeProjection = () => {}
+  return controller.style
 }
 
 let toasts = []

@@ -6,6 +6,13 @@ module Achievements
 
     belongs_to :user
 
+    # The refresh cron reaches an existing row every five minutes, and each
+    # rejected INSERT is an ERROR line in the PostgreSQL log. Read first;
+    # create_or_find_by! still settles a race on the unique index.
+    def self.for_user!(user_id)
+      find_by(user_id: user_id) || create_or_find_by!(user_id: user_id)
+    end
+
     def current?
       shareable? && revision == published_revision
     end

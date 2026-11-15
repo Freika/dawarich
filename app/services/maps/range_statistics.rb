@@ -15,7 +15,7 @@ module Maps
       revision = Points::Revision.for_user(user.id, start_at:, end_at:)
       track_revision = Tracks::Revision.for_user(user.id, start_at:, end_at:)
       key = ['maps/range_statistics/v1', user.id, revision, track_revision, start_at, end_at, import_id,
-             user.entitlements.data_window_start&.to_date, user.safe_settings.minutes_between_routes,
+             user.data_window_start&.to_date, user.safe_settings.minutes_between_routes,
              masker.fingerprint]
       Rails.cache.fetch(key, expires_in: 5.minutes) { aggregate(masker) }
     end

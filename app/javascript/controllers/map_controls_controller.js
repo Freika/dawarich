@@ -17,14 +17,7 @@ function isWallClockValue(value) {
 }
 
 export default class extends Controller {
-  static targets = [
-    "panel",
-    "toggleIcon",
-    "start",
-    "end",
-    "mobileLabel",
-    "dayLink",
-  ]
+  static targets = ["start", "end", "mobileLabel", "dayLink"]
 
   static values = {
     locale: String,
@@ -35,12 +28,6 @@ export default class extends Controller {
   }
 
   connect() {
-    // Restore panel state from sessionStorage on page load
-    const panelState = sessionStorage.getItem("mapControlsPanelState")
-    if (panelState === "visible") {
-      this.showPanel()
-    }
-
     this.boundDateNavigated = this.dateNavigated.bind(this)
     document.addEventListener(
       "timeline-feed:date-navigated",
@@ -63,6 +50,7 @@ export default class extends Controller {
     this.endTarget.value = rangeInputValue(endAt, this.timezoneValue)
 
     this.updateDayLinks(startAt, endAt)
+    this.updateShareLink()
 
     const wallClock = isWallClockValue(startAt)
     const start = new Date(
@@ -75,6 +63,19 @@ export default class extends Controller {
         timeZone: wallClock ? "UTC" : this.timezoneValue,
       })
     }
+  }
+
+  // The Share button (in the map's button cluster) offers the period on
+  // screen, not the one the page was loaded with.
+  updateShareLink() {
+    const link = globalThis.document?.querySelector?.(
+      '[data-testid="timeline-share-button"]',
+    )
+    if (!link) return
+    const url = new URL(link.href, window.location.href)
+    url.searchParams.set("start_date", this.startTarget.value.slice(0, 10))
+    url.searchParams.set("end_date", this.endTarget.value.slice(0, 10))
+    link.href = url.toString()
   }
 
   updateDayLinks(startAt, endAt) {
@@ -119,37 +120,5 @@ export default class extends Controller {
       /%(?:-d|[YmdBeb])/g,
       (token) => tokens[token],
     )
-  }
-
-  toggle() {
-    const isHidden = this.panelTarget.classList.contains("hidden")
-
-    if (isHidden) {
-      this.showPanel()
-      sessionStorage.setItem("mapControlsPanelState", "visible")
-    } else {
-      this.hidePanel()
-      sessionStorage.setItem("mapControlsPanelState", "hidden")
-    }
-  }
-
-  showPanel() {
-    this.panelTarget.classList.remove("hidden")
-
-    // Update icon to chevron-up
-    const currentIcon = this.toggleIconTarget.querySelector("svg")
-    currentIcon.classList.remove("lucide-chevron-down")
-    currentIcon.classList.add("lucide-chevron-up")
-    currentIcon.innerHTML = '<path d="m18 15-6-6-6 6"/>'
-  }
-
-  hidePanel() {
-    this.panelTarget.classList.add("hidden")
-
-    // Update icon to chevron-down
-    const currentIcon = this.toggleIconTarget.querySelector("svg")
-    currentIcon.classList.remove("lucide-chevron-up")
-    currentIcon.classList.add("lucide-chevron-down")
-    currentIcon.innerHTML = '<path d="m6 9 6 6 6-6"/>'
   }
 }

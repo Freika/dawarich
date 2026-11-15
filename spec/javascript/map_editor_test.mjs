@@ -1,15 +1,9 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
-let source = await readFile(
-  new URL(
-    "../../app/javascript/maps_maplibre/editing/map_editor.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-source = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const source = await strippedSource("maps_maplibre/editing/map_editor.js")
 const editingModule = async (name) =>
   (
     await readFile(
@@ -58,14 +52,9 @@ class EditSuccessIndicator {
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(dependencies + source).toString("base64")}`
 const { MapEditor } = await import(moduleUrl)
 
-let managerSource = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/map_data_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
+const managerSource = await strippedSource(
+  "controllers/maps/maplibre/map_data_manager.js",
 )
-managerSource = managerSource.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const managerDependencies = `
 const flightWindows = (geoJSON) => geoJSON?.windows || []
 `
@@ -1427,9 +1416,14 @@ test("point moves, undo and redo refresh exact points for replay", async () => {
   let revision = 2
   const controller = {
     map: fakeMap(),
-    showProgress() {},
-    hideProgress() {},
-    updateLoadingCounts() {},
+    loadingBadge: {
+      show() {},
+      hide() {},
+      start() {},
+      finish() {},
+      update() {},
+      dismissIfIncomplete() {},
+    },
     dataLoader: {
       fetchPointsData: async () => ({
         points: [point(7, position.longitude, position.latitude, revision)],
@@ -1612,15 +1606,9 @@ test("disposing an editor during undo keeps its history control removed", async 
 })
 
 test("style teardown removes the previous history before another editor is created", async () => {
-  const source = (
-    await readFile(
-      new URL(
-        "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
-        import.meta.url,
-      ),
-      "utf8",
-    )
-  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const source = await strippedSource(
+    "controllers/maps/maplibre/layer_manager.js",
+  )
   const { LayerManager } = await import(
     `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
   )

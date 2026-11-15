@@ -8,6 +8,25 @@ RSpec.describe Geocoding::ProviderTest do
 
   before { allow(Geocoding::Search).to receive(:with_config).and_return([result]) }
 
+  context 'when no lookup could go out' do
+    let(:config) { Geocoding::Config.new(source: :stored, provider: :photon, host: 'photon.example.com') }
+
+    before { allow(Geocoding::Search).to receive(:with_config).and_return(nil) }
+
+    it 'says how long lookups stay paused after a refusal' do
+      Geocoding::Cooldown.start(config)
+
+      seconds = Geocoding::Cooldown.remaining(config)
+      expect(described_class.call(config)).to eq(
+        [:alert, I18n.t('admin.settings.test_geocoding.paused', seconds: seconds)]
+      )
+    end
+
+    it 'still calls a merely busy provider busy' do
+      expect(described_class.call(config)).to eq([:alert, I18n.t('admin.settings.test_geocoding.rate_limited')])
+    end
+  end
+
   it 'preserves the existing call without arguments' do
     allow(Geocoding::Config).to receive(:resolved_config).and_return(config)
 

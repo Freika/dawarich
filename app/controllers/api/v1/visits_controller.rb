@@ -5,6 +5,8 @@ class Api::V1::VisitsController < ApiController
   BATCH_VISIT_ATTRIBUTES = %i[name status latitude longitude started_at ended_at].freeze
   ADDRESS_ATTRIBUTES = %i[street house_number postcode city country].freeze
 
+  rescue_from Visits::ResolvePlaceSelection::Invalid, with: :render_invalid_place_selection
+
   def index
     visits = Visits::Finder.new(current_api_user, params, privacy_zone_masker: map_read_masker).call
     visits = map_read_masker.mask_visits(visits)
@@ -14,9 +16,7 @@ class Api::V1::VisitsController < ApiController
       per_page = [params[:per_page]&.to_i || 100, 500].min
       visits = visits.page(params[:page]).per(per_page)
 
-      response.set_header('X-Current-Page', visits.current_page.to_s)
-      response.set_header('X-Total-Pages', visits.total_pages.to_s)
-      response.set_header('X-Total-Count', visits.total_count.to_s)
+      set_pagination_headers(visits, with_total: true)
     end
 
     point_centers = visit_point_centers(visits)
@@ -33,22 +33,7 @@ class Api::V1::VisitsController < ApiController
   end
 
   def create
-    attributes = create_visit_params.to_h
-    if attributes[:place_id].present? && attributes[:area_id].present?
-      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
-                    status: :unprocessable_content
-    end
-
-    if attributes[:area_id].present?
-      area = current_api_user.areas.find_by(id: attributes[:area_id])
-      unless area
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
-                      status: :unprocessable_content
-      end
-
-      attributes['place_id'] = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area).id
-      attributes['area_id'] = nil
-    end
+    attributes = Visits::ResolvePlaceSelection.new(current_api_user).call(create_visit_params.to_h)
 
     service = Visits::Create.new(current_api_user, attributes)
 
@@ -64,33 +49,7 @@ class Api::V1::VisitsController < ApiController
 
   def update
     visit = current_api_user.scoped_visits.find(params[:id])
-    attributes = visit_params.to_h
-
-    if attributes[:place_id].present? && attributes[:area_id].present?
-      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
-                    status: :unprocessable_content
-    end
-
-    if attributes[:place_id].present?
-      place = current_api_user.places.find_by(id: attributes[:place_id]) ||
-              visit.suggested_places.find_by(id: attributes[:place_id])
-      if place.nil?
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_place') },
-                      status: :unprocessable_content
-      end
-    end
-
-    if attributes[:area_id].present?
-      area = current_api_user.areas.find_by(id: attributes[:area_id])
-      if area.nil?
-        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
-                      status: :unprocessable_content
-      end
-
-      mapped_place = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area)
-      attributes['place_id'] = mapped_place.id
-      attributes['area_id'] = nil
-    end
+    attributes = Visits::ResolvePlaceSelection.new(current_api_user, visit: visit).call(visit_params.to_h)
 
     visit = update_visit(visit, attributes: attributes)
 
@@ -195,6 +154,10 @@ class Api::V1::VisitsController < ApiController
 
   private
 
+  def render_invalid_place_selection(error)
+    render json: { error: I18n.t("controllers.api.v1.visits.#{error.reason}") }, status: :unprocessable_content
+  end
+
   def visit_point_centers(visits)
     ids = visits.select { |visit| visit.place.nil? && visit.area.nil? }.map(&:id)
     return {} if ids.empty?
@@ -244,17 +207,8 @@ class Api::V1::VisitsController < ApiController
     end
   end
 
-  def merge_params
-    params.permit(visit_ids: [])
-  end
-
-  def bulk_update_params
-    params.permit(:status, visit_ids: [])
-  end
-
-  def update_visit(visit, attributes: visit_params.to_h)
+  def update_visit(visit, attributes:)
     attributes = attributes.except('latitude', 'longitude')
-    attributes['area_id'] = nil if attributes['place_id'].present?
     attributes['name'] = attributes['name'].presence if attributes.key?('name')
     attributes.delete('name') if visit.name.blank? && attributes['name'] == visit.display_name
     attributes['name'] = nil if attributes['place_id'].present? && attributes['name'].present? &&

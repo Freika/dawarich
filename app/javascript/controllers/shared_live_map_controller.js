@@ -3,7 +3,14 @@ import { createConsumer } from "@rails/actioncable"
 import { formatDateTime, formatTime, translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+
+const LAST_KNOWN_AFTER_SECONDS = 15 * 60
 
 export default class extends Controller {
   static values = {
@@ -11,13 +18,14 @@ export default class extends Controller {
     showRoute: Boolean,
   }
 
-  static targets = ["map", "status", "lastSeen"]
+  static targets = ["map", "status", "lastSeen", "liveBadge", "lastKnownBadge"]
 
   connect() {
     this.initializeMap()
   }
 
   async initializeMap() {
+    startMapLoading(this.mapTarget)
     const style = await getMapStyle("light")
 
     this.map = new maplibregl.Map({
@@ -25,9 +33,11 @@ export default class extends Controller {
       style,
       center: [0, 0],
       zoom: 1,
-      attributionControl: { compact: true },
+      attributionControl: false,
       interactive: true,
     })
+    finishMapLoadingOn(this.map)
+    this.map.addControl(collapsedAttributionControl())
 
     this.map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
@@ -256,6 +266,15 @@ export default class extends Controller {
       date: formatDateTime(seenAt, { seconds: true }),
       relative: this.relativeTime(this.lastSeenTs),
     })
+    this.renderBadge()
+  }
+
+  renderBadge() {
+    if (!this.hasLiveBadgeTarget || !this.hasLastKnownBadgeTarget) return
+    const age = Math.floor(Date.now() / 1000) - this.lastSeenTs
+    const lastKnown = age > LAST_KNOWN_AFTER_SECONDS
+    this.liveBadgeTarget.classList.toggle("hidden", lastKnown)
+    this.lastKnownBadgeTarget.classList.toggle("hidden", !lastKnown)
   }
 
   relativeTime(ts) {

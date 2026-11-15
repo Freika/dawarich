@@ -38,37 +38,55 @@
     <% end %>
   </section>
 
-  <% if place.errors.any? %>
-    <div role="alert" class="alert alert-error"><%= place.errors.full_messages.join(', ') %></div>
-  <% end %>
-
+  <%# The place first: its tags, collection and note. The editor for name,
+      tags and note stays folded until asked for, and opens on a failed save. %>
   <section class="place-drawer__section place-drawer__details">
+    <h3 class="place-drawer__heading"><%= t('places.management.tags') %></h3>
+    <% if place.tags.any? %>
+      <%= render 'places/tags', place: place %>
+    <% else %>
+      <p class="text-sm text-base-content/60"><%= t('.no_tags') %></p>
+    <% end %>
+    <% place.tags.select(&:privacy_zone?).each do |tag| %>
+      <p class="text-sm tabular-nums mt-1" data-testid="place-privacy-line"><%= t('.hidden_by_tag', name: tag.name, radius: tag.privacy_radius_meters) %></p>
+    <% end %>
+
+    <% if place.note.present? %>
+      <h3 class="place-drawer__heading mt-4"><%= t('.notes') %></h3>
+      <p class="text-sm whitespace-pre-line [overflow-wrap:anywhere]"><%= place.note %></p>
+    <% end %>
+
     <% if achievements_visible? %>
       <% collection_place = current_user.achievement_selections.find_by(place_id: place.id) %>
-      <div class="mb-4">
-        <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link' %>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <%= link_to t('achievements.collections.title'), achievement_cards_path, class: 'link text-sm' %>
         <% if collection_place %>
-          <%= button_to t('achievements.collections.remove'), achievement_selection_path(collection_place), method: :delete, class: 'btn btn-sm btn-ghost', form: { data: { turbo_frame: '_top' } } %>
+          <%= button_to t('achievements.collections.remove'), achievement_selection_path(collection_place), method: :delete, class: 'btn btn-xs btn-ghost', form: { data: { turbo_frame: '_top' } } %>
         <% else %>
-          <%= button_to t('achievements.collections.add'), achievement_selections_path, params: { place_id: place.id }, class: 'btn btn-sm btn-ghost', form: { data: { turbo_frame: '_top' } } %>
+          <%= button_to t('achievements.collections.add'), achievement_selections_path, params: { place_id: place.id }, class: 'btn btn-xs btn-outline', form: { data: { turbo_frame: '_top' } } %>
         <% end %>
       </div>
     <% end %>
-    <h3 class="place-drawer__heading"><%= t('places.polish.details') %></h3>
-    <%= form_with model: place, method: :patch, class: 'place-drawer__editor', data: { turbo_frame: 'place-drawer' } do |f| %>
-      <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
-      <%= f.label :name, t('shared.place_creation_modal.place_name') %>
-      <%= f.text_field :name, required: true, maxlength: 255, class: 'input input-bordered w-full' %>
-      <%= render 'shared/place_tags', surface: 'editor', selected_tags: place.tags %>
-      <% place.tags.select(&:privacy_zone?).each do |tag| %>
-        <p class="text-sm tabular-nums" data-testid="place-privacy-line"><%= t('.hidden_by_tag', name: tag.name, radius: tag.privacy_radius_meters) %></p>
-      <% end %>
-      <%= f.label :note, t('.notes') %>
-      <%= f.text_area :note, rows: 3, class: 'textarea textarea-bordered w-full' %>
-      <%= f.submit t('.save'), class: 'btn btn-primary btn-sm self-start' %>
-    <% end %>
 
-    <%= render 'shared/inline_tag_form', surface: 'editor' %>
+    <details class="place-drawer__edit mt-4" <%= 'open' if place.errors.any? %>>
+      <summary class="btn btn-sm btn-outline gap-1"><%= icon 'square-pen', class: 'w-4 h-4' %> <%= t('.edit_details') %></summary>
+      <div class="mt-3">
+        <% if place.errors.any? %>
+          <div role="alert" class="alert alert-error mb-3"><%= place.errors.full_messages.join(', ') %></div>
+        <% end %>
+        <%= form_with model: place, method: :patch, class: 'place-drawer__editor', data: { turbo_frame: 'place-drawer' } do |f| %>
+          <%= hidden_field_tag :map_panel, params[:map_panel] if params[:map_panel].present? %>
+          <%= f.label :name, t('shared.place_creation_modal.place_name') %>
+          <%= f.text_field :name, required: true, maxlength: 255, class: 'input input-bordered w-full' %>
+          <%= render 'shared/place_tags', surface: 'editor', selected_tags: place.tags %>
+          <%= f.label :note, t('.notes') %>
+          <%= f.text_area :note, rows: 3, class: 'textarea textarea-bordered w-full' %>
+          <%= f.submit t('.save'), class: 'btn btn-primary btn-sm self-start' %>
+        <% end %>
+
+        <%= render 'shared/inline_tag_form', surface: 'editor' %>
+      </div>
+    </details>
   </section>
 
   <section class="place-drawer__section place-drawer__location-section">

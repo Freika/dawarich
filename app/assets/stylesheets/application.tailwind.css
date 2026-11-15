@@ -553,3 +553,35 @@ html.dark em-emoji-picker {
     font-size: 12px;
   }
 }
+
+/* A map still fetching its style and first tiles (maps_maplibre/utils/map_loading.js). */
+@keyframes map-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.map-loading {
+  background-color: oklch(var(--b2));
+}
+
+.map-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 2rem;
+  height: 2rem;
+  margin: auto;
+  border: 3px solid oklch(var(--bc) / 0.15);
+  border-top-color: oklch(var(--p));
+  border-radius: 50%;
+  pointer-events: none;
+  animation: map-loading-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-loading::after {
+    animation-duration: 2.4s;
+  }
+}

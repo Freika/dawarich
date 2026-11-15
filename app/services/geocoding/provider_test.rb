@@ -30,7 +30,7 @@ module Geocoding
       return [:alert, message(:not_configured)] unless config.enabled?
 
       results = Search.with_config(config: config, query: coordinates, limit: 1, max_wait: MAX_WAIT)
-      return [:alert, message(:rate_limited)] if results.nil?
+      return [:alert, unavailable_message] if results.nil?
 
       result = results.first
       return [:alert, message(:empty)] unless result
@@ -63,6 +63,11 @@ module Geocoding
 
       number = Float(text, exception: false)
       number if number&.finite? && range.cover?(number)
+    end
+
+    def unavailable_message
+      seconds = Cooldown.remaining(config)
+      seconds ? message(:paused, seconds: seconds) : message(:rate_limited)
     end
 
     def message(key, **interpolations)

@@ -60,6 +60,30 @@ module InsightsChartsHelper
     }
   end
 
+  DonutSegment = Data.define(:key, :value, :percent, :dash, :offset)
+
+  # Segments of a donut drawn with stroke-dasharray on a circle whose length is
+  # 100, starting at 12 o'clock. Zero values are dropped; percents add up to
+  # 100 after rounding by giving the remainder to the largest segment.
+  def donut_segments(values)
+    total = values.values.sum.to_f
+    return [] unless total.positive?
+
+    percents = values.transform_values { (_1 / total * 100).round }
+    largest = percents.max_by { |_, percent| percent }.first
+    percents[largest] += 100 - percents.values.sum
+    start = 0.0
+    values.filter_map do |key, value|
+      next unless value.positive?
+
+      dash = value / total * 100
+      segment = DonutSegment.new(key:, value:, percent: percents[key],
+                                 dash: dash.round(2), offset: (25 - start).round(2))
+      start += dash
+      segment
+    end
+  end
+
   private
 
   def nice_ceiling(value)

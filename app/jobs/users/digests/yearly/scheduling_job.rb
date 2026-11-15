@@ -6,12 +6,14 @@ class Users::Digests::Yearly::SchedulingJob < ApplicationJob
   def perform
     year = 1.year.ago.year # Previous year's digest
 
-    ::User.active_or_trial.find_each do |user|
+    jobs = ::User.active_or_trial.find_each.filter_map do |user|
       next unless user.safe_settings.yearly_digest_emails_enabled?
       next unless user.stats.where(year: year).exists?
 
-      # Schedule calculation; email is chained from the calculating job
-      Users::Digests::Yearly::CalculatingJob.perform_later(user.id, year)
+      # Email is chained from the calculating job
+      Users::Digests::Yearly::CalculatingJob.new(user.id, year)
     end
+
+    ActiveJob.perform_all_later(jobs)
   end
 end

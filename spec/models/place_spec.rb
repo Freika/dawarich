@@ -135,6 +135,14 @@ RSpec.describe Place, type: :model do
         expect(Place.confirmed_for(user1)).to include(suggested_only)
         expect(Place.map_visible(user1)).to include(suggested_only)
       end
+
+      it 'treats a Place that is a Home as confirmed' do
+        create(:home, user: user1, place: suggested_only)
+
+        expect(Place.confirmed_for(user1)).to include(suggested_only)
+        expect(Place.unconfirmed_for(user1)).not_to include(suggested_only)
+        expect(Place.map_visible(user1)).to include(suggested_only)
+      end
     end
   end
 

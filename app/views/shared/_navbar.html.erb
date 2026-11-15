@@ -1,7 +1,8 @@
 <div class="navbar bg-base-100 h-16">
   <div class="navbar-start">
     <% if user_signed_in? %>
-    <details class="dropdown xl:hidden" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+    <%# Top-level menus share name="navbar-menu", so opening one closes the others. %>
+    <details name="navbar-menu" class="dropdown xl:hidden" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
       <summary role="button" aria-expanded="false" class="btn btn-ghost list-none"
                aria-label="<%= t('.open_navigation_menu') %>"
                aria-controls="mobile-navigation-menu">
@@ -28,11 +29,13 @@
           </li>
         <% end %>
         <li>
-          <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+          <%# Submenus inside the mobile menu get their own group, so opening one keeps the menu open. %>
+          <details name="navbar-submenu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
             <summary role="button" aria-expanded="false"><%= t('.my_data') %></summary>
             <ul class="p-2 bg-base-100">
               <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
               <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+              <li><%= link_to t('.notes'), map_v2_path(panel: 'timeline', month: 'latest') %></li>
               <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
               <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
               <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
@@ -48,7 +51,7 @@
           <div class="divider my-1"></div>
           <li><%= render 'shared/navbar/theme_toggle', show_label: true, css_class: 'flex items-center gap-2' %></li>
           <li>
-            <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+            <details name="navbar-submenu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
               <summary role="button" aria-expanded="false"><%= icon 'message-circle-question-mark' %> <%= t('.help') %></summary>
               <ul class="p-2 bg-base-100">
                 <%= render 'shared/navbar/help_links' %>
@@ -93,11 +96,12 @@
         </li>
       <% end %>
       <li>
-        <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+        <details name="navbar-menu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
           <summary role="button" aria-expanded="false"><%= t('.my_data') %></summary>
           <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
             <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
             <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+              <li><%= link_to t('.notes'), map_v2_path(panel: 'timeline', month: 'latest') %></li>
             <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
             <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
             <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
@@ -127,7 +131,7 @@
           <% end %>
         <% end %>
 
-        <details class="dropdown dropdown-end" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+        <details name="navbar-menu" class="dropdown dropdown-end" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
           <summary role="button" aria-expanded="false" class="btn btn-ghost btn-sm list-none" aria-label="<%= t('.account') %>">
             <%= icon 'user' %>
             <% if onboarding_modal_showable?(current_user) %>
@@ -183,21 +187,31 @@
         <ul class="menu menu-horizontal px-1 flex-nowrap">
           <%= turbo_stream_from current_user, :notifications %>
           <li data-controller="notifications">
-            <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+            <details name="navbar-menu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
               <summary role="button" aria-expanded="false" class="relative" aria-label="<%= t('ux_p2.nav.notifications') %>">
                 <%= icon 'bell' %>
                 <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
               </summary>
-              <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
-                <li><%= link_to t('.see_all'), notifications_path %></li>
-                <% @unread_notifications&.first(10)&.each do |notification| %>
-                  <%= render 'notifications/navbar_item', notification: notification %>
-                <% end %>
+              <%# Anchored to the bell's right edge: 20rem to the right of it would leave the viewport. %>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50] w-80 max-w-[90vw] left-auto right-0">
+                <li class="flex flex-row flex-wrap justify-between gap-x-2">
+                  <%= link_to t('.see_all'), notifications_path %>
+                  <%= link_to t('notifications.index.mark_all_as_read'), mark_notifications_as_read_path(inline: true), data: { turbo_method: :post } %>
+                </li>
+                <li class="p-0">
+                  <%# Live notifications are prepended to this list, so it holds nothing else.
+                      Opening one marks it read, so its links must not be prefetched on hover. %>
+                  <ul class="m-0 p-0 before:hidden" id="notifications-list" data-turbo-prefetch="false">
+                    <% @unread_notifications&.first(10)&.each do |notification| %>
+                      <%= render 'notifications/navbar_item', notification: notification %>
+                    <% end %>
+                  </ul>
+                </li>
               </ul>
             </details>
           </li>
           <li>
-            <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+            <details name="navbar-menu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
               <summary role="button" aria-expanded="false" aria-label="<%= t('.help') %>"><%= icon 'message-circle-question-mark' %></summary>
               <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50] w-52">
                 <%= render 'shared/navbar/help_links' %>
@@ -205,7 +219,7 @@
             </details>
           </li>
           <li>
-            <details data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
+            <details name="navbar-menu" data-controller="accessible-menu" data-action="toggle->accessible-menu#sync">
               <summary role="button" aria-expanded="false" aria-label="<%= t('.account') %>">
                 <span class="inline"><%= icon 'user' %></span>
                 <% if onboarding_modal_showable?(current_user) %>

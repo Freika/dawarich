@@ -65,52 +65,17 @@ class Api::V1::InsightsController < ApiController
 
     @travel_patterns = {
       time_of_day: patterns['time_of_day'] || {},
-      day_of_week: calculate_yearly_day_of_week,
+      day_of_week: Insights::WeeklyDistanceTotals.new(current_api_user, @selected_year).call,
       seasonality: patterns['seasonality'] || {},
       activity_breakdown: patterns['activity_breakdown'] || {},
       top_visited_locations: fetch_yearly_top_visits
     }
   end
 
-  def calculate_yearly_day_of_week
-    digests = current_api_user.digests.monthly
-                              .where(year: @selected_year)
-                              .select(:id, :year, :month, :monthly_distances)
-
-    digests.each_with_object(Array.new(7, 0)) do |digest, weekly_totals|
-      pattern = digest.weekly_pattern
-      next unless pattern.is_a?(Array) && pattern.size == 7
-
-      pattern.each_with_index do |distance, idx|
-        weekly_totals[idx] += distance.to_i
-      end
-    end
-  end
-
   def fetch_yearly_top_visits
-    start_time = Time.zone.local(@selected_year, 1, 1)
-    end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
-
-    display_name_sql = Visit.display_name_sql
-    order_sql = "visit_count DESC, total_duration DESC, (#{display_name_sql}) COLLATE \"C\" ASC"
-
-    current_api_user.scoped_visits.confirmed.where(started_at: start_time..end_time)
-                    .left_joins(:place, :area)
-                    .group(Arel.sql(display_name_sql))
-                    .select("#{display_name_sql} AS display_name, COUNT(*) as visit_count, " \
-                            'SUM(duration) as total_duration')
-                    .order(Arel.sql(order_sql)).limit(5)
-                    .map do |visit|
-                      {
-                        name: visit.read_attribute(:display_name),
-                        visitCount: visit.visit_count,
-                        totalDuration: visit.total_duration
-                      }
-                    end
-  end
-
-  def distance_unit
-    params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
+    Insights::TopVisitedLocations.new(current_api_user, @selected_year).call.map do |location|
+      { name: location[:name], visitCount: location[:visit_count], totalDuration: location[:total_duration] }
+    end
   end
 
   def plan_metadata

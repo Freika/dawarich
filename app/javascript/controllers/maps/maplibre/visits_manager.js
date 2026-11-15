@@ -193,20 +193,13 @@ export class VisitsManager {
     if (enabled) {
       try {
         if (!visitsLayer.data?.features?.length) {
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { visits: 0 },
-            isComplete: false,
-          })
+          this.controller.loadingBadge.start("visits")
 
           const visits = await this.fetchVisitsForCurrentViewport()
           this.filterManager.setAllVisits(visits)
           visitsLayer.update(this.dataLoader.visitsToGeoJSON(visits))
 
-          this.controller.updateLoadingCounts({
-            counts: { visits: visits.length },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("visits", visits.length)
         }
         visitsLayer.show()
         if (this.controller.hasVisitsSearchTarget) {
@@ -215,7 +208,7 @@ export class VisitsManager {
         this.attachViewportRefetch()
       } catch (error) {
         console.error("Failed to toggle visits layer:", error)
-        this.controller.hideProgress()
+        this.controller.loadingBadge.hide()
       }
     } else {
       visitsLayer.hide()
@@ -312,9 +305,6 @@ export class VisitsManager {
     this._viewportListenerAttached = false
   }
 
-  /**
-   * Search visits
-   */
   searchVisits(event) {
     const searchTerm = event.target.value.toLowerCase()
     const visitsLayer = this.layerManager.getLayer("visits")
@@ -391,9 +381,6 @@ export class VisitsManager {
     this.createVisitArmed = false
   }
 
-  /**
-   * Open visit creation modal
-   */
   openVisitCreationModal(lat, lng, draft = null) {
     const modalElement = document.querySelector(
       '[data-controller="visit-creation-v2"]',

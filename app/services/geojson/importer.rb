@@ -4,7 +4,6 @@ class Geojson::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
-  include PointValidation
 
   BATCH_SIZE = 1000
   attr_reader :import, :user_id, :file_path
@@ -97,7 +96,8 @@ class Geojson::Importer
         kind: :warning,
         title: I18n.t('services.imports.geojson_importer.points_skipped_title'),
         content: I18n.t('services.imports.geojson_importer.points_skipped',
-                        name: import.name, skipped: @skipped_timeless)
+                        name: import.name, skipped: @skipped_timeless),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end

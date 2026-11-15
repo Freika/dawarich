@@ -42,25 +42,10 @@ module Points
       (file.blob.byte_size / 1024.0 / 1024.0).round(2)
     end
 
-    def verified?
-      verified_at.present?
-    end
-
     # The attachment row survives when the storage object itself is lost, so
     # ask the storage service before relying on this archive as the only copy.
     def file_stored?
       file.attached? && file.blob.service.exist?(file.key)
-    end
-
-    def count_mismatch?
-      return false if metadata.blank?
-
-      expected = metadata['expected_count']
-      actual = metadata['actual_count']
-
-      return false if expected.nil? || actual.nil?
-
-      expected != actual
     end
 
     private

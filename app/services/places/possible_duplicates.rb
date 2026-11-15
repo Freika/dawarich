@@ -30,8 +30,7 @@ module Places
           [curated ? 0 : 1, place.created_at, place.id]
         end
         distances = places.to_h do |place|
-          [place.id, Geocoder::Calculations.distance_between([survivor.lat, survivor.lon], [place.lat, place.lon],
-                                                             units: :km) * 1000]
+          [place.id, GeoDistance.meters([survivor.lat, survivor.lon], [place.lat, place.lon])]
         end
         Cluster.new(places:, survivor:, distances:)
       end

@@ -14,7 +14,8 @@ const source = [
   await read("controllers/trip_maplibre_controller.js"),
 ].join("\n")
 const { default: TripController } = await import(
-  `data:text/javascript;base64,${Buffer.from(`class Controller {}\n${source}`).toString("base64")}`
+  `data:text/javascript;base64,${Buffer.from(`class Controller {}
+class ReplayHost extends Controller {}\n${source}`).toString("base64")}`
 )
 
 function fixture(t, ready) {

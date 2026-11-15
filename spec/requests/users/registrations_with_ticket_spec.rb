@@ -118,24 +118,16 @@ RSpec.describe 'Signup with pending import ticket' do
 
     before { sign_in existing_user }
 
-    it 'claims the pending import immediately' do
+    # Security: a cross-site GET must never claim a pending import into the
+    # signed-in account. Claiming now requires an explicit same-origin POST.
+    it 'does not claim the pending import on a GET' do
       expect { get "/users/sign_up?import_ticket=#{pending.claim_ticket}" }
-        .to change(existing_user.imports, :count).by(1)
+        .not_to(change(existing_user.imports, :count))
     end
 
-    it 'redirects to imports_path' do
+    it 'leaves the pending import unclaimed' do
       get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
-      expect(response).to redirect_to(imports_path)
-    end
-
-    it 'sets a flash notice' do
-      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
-      expect(flash[:notice]).to include(pending.original_filename)
-    end
-
-    it 'does NOT show an expired-ticket flash when ticket is valid' do
-      get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
-      expect(flash[:alert]).to be_blank
+      expect(pending.reload.claimed_by_user_id).to be_nil
     end
   end
 

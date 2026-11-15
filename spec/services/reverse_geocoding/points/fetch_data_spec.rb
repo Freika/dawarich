@@ -27,6 +27,12 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
     it 'resolves the country through the alias map' do
       expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(usa.id)
     end
+
+    it 'stores the canonical country name' do
+      fetch_data
+
+      expect(point.reload.read_attribute(:country_name)).to eq('United States of America')
+    end
   end
 
   context 'when the geocoder result carries a country code' do
@@ -55,6 +61,20 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
     it 'trusts the ISO code over the name' do
       expect { fetch_data }.to change { point.reload.country_id }.from(nil).to(germany.id)
+    end
+
+    # A country border runs up to ~2 MB; reading it once per geocoded point
+    # saturated the database uplink.
+    it 'looks the country up without loading its border geometry' do
+      country_queries = []
+      collect = lambda do |*, payload|
+        country_queries << payload[:sql] if payload[:sql].match?(/FROM "countries"/)
+      end
+
+      ActiveSupport::Notifications.subscribed(collect, 'sql.active_record') { fetch_data }
+
+      expect(country_queries).to include(/"name" = /, /"iso_a2" = /)
+      expect(country_queries.grep(/SELECT "countries"\.\*/)).to be_empty
     end
   end
 
@@ -325,6 +345,44 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
     it 'does not update point' do
       expect { fetch_data }.not_to(change { point.reload.city })
+    end
+  end
+
+  context 'when an earlier over-limit refusal is still cooling down' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      Geocoding::Cooldown.start(Geocoding::Config.resolved_config)
+    end
+
+    it 'leaves the point ungeocoded without asking the provider or reporting the skip' do
+      expect { fetch_data }.not_to raise_error
+
+      expect(Geocoder).not_to have_received(:search)
+      expect(point.reload.reverse_geocoded_at).to be_nil
+      expect(ExceptionReporter).not_to have_received(:call)
+    end
+
+    it 'leaves an already geocoded point as it is when a forced lookup is skipped' do
+      geocoded_at = 1.day.ago.change(usec: 0)
+      point.update_columns(reverse_geocoded_at: geocoded_at)
+
+      described_class.new(point.id, force: true).call
+
+      expect(point.reload.reverse_geocoded_at).to eq(geocoded_at)
+    end
+  end
+
+  context 'when the provider refuses a forced lookup as over its limit' do
+    before do
+      allow(ExceptionReporter).to receive(:call)
+      allow(Geocoder).to receive(:search).and_raise(Geocoder::OverQueryLimitError)
+      point.update_columns(reverse_geocoded_at: 1.day.ago.change(usec: 0))
+    end
+
+    it 'leaves the point as it is and still reports the refusal' do
+      expect { described_class.new(point.id, force: true).call }.not_to(change { point.reload.reverse_geocoded_at })
+
+      expect(ExceptionReporter).to have_received(:call)
     end
   end
 

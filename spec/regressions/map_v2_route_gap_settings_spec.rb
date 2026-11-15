@@ -8,11 +8,11 @@ RSpec.describe 'Map v2 route gap settings', type: :request do
   before { sign_in user }
 
   it 'allows route gap values above the former slider limits' do
-    get map_v2_path
+    get settings_data_processing_path
 
     document = Nokogiri::HTML(response.body)
-    meters = document.at_css('input[name="metersBetweenRoutes"]')
-    minutes = document.at_css('input[name="minutesBetweenRoutes"]')
+    meters = document.at_css('input[name="settings[meters_between_routes]"]')
+    minutes = document.at_css('input[name="settings[minutes_between_routes]"]')
 
     expect(meters['type']).to eq('number')
     expect(meters['min']).to eq('1')
@@ -44,11 +44,11 @@ RSpec.describe 'Map v2 route gap settings', type: :request do
     user.settings['locale'] = 'zh'
     user.save!
 
-    get map_v2_path
+    get settings_data_processing_path
 
-    panel = Nokogiri::HTML(response.body)
-    distance_unit = panel.at_css('#meters-between-routes').parent.at_css('span').text
-    time_unit = panel.at_css('#minutes-between-routes').parent.at_css('span').text
+    page = Nokogiri::HTML(response.body)
+    distance_unit = page.at_css('#settings_meters_between_routes').parent.at_css('span').text
+    time_unit = page.at_css('#settings_minutes_between_routes').parent.at_css('span').text
     expect([distance_unit, time_unit]).to eq(%w[米 分钟])
   end
 

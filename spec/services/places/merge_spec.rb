@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Places::Merge do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:survivor) do
     create(
@@ -64,6 +66,26 @@ RSpec.describe Places::Merge do
     expect(mapping.reload.place).to eq(survivor)
     expect(survivor.notes.find_by(noted_at:).body).to eq("First note\n\nSecond note")
     expect(survivor.note).to eq("Keep this\n\nAlso keep this")
+  end
+
+  it 'keeps the Home of the merged place on the survivor' do
+    home = create(:home, user:, place: duplicate, started_on: Date.new(2020, 1, 1))
+    described_class.new(user:, survivor:, duplicate:).call
+    expect(home.reload.place).to eq(survivor)
+  end
+
+  it 'schedules Trip Detection after moving a Home to the survivor' do
+    create(:home, user:, place: duplicate)
+    clear_trip_detection_schedule(user.id)
+    freeze_time do
+      expect { described_class.new(user:, survivor:, duplicate:).call }
+        .to have_enqueued_job(Trips::DetectJob).with(user.id).at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+    end
+  end
+
+  it 'does not schedule Trip Detection when the merged place has no Home' do
+    clear_trip_detection_schedule(user.id)
+    expect { described_class.new(user:, survivor:, duplicate:).call }.not_to have_enqueued_job(Trips::DetectJob)
   end
 
   it 'keeps a same-day note as a standalone note when the merged text would be too long' do

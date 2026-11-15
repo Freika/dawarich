@@ -296,19 +296,6 @@ export class FamilyLayer extends BaseLayer {
   }
 
   /**
-   * Remove family member
-   */
-  removeMember(memberId) {
-    const features = this.data?.features || []
-    const filtered = features.filter((f) => f.properties.id !== memberId)
-
-    this.update({
-      type: "FeatureCollection",
-      features: filtered,
-    })
-  }
-
-  /**
    * Load all family members from API
    * @param {Object} locations - Array of family member locations
    */
@@ -422,13 +409,5 @@ export class FamilyLayer extends BaseLayer {
         duration: 1500,
       })
     }
-  }
-
-  /**
-   * Get all current family members
-   * @returns {Array} Array of member features
-   */
-  getMembers() {
-    return this.data?.features || []
   }
 }

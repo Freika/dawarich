@@ -10,9 +10,7 @@ class Api::V1::TracksController < ApiController
     geojson = Tracks::GeojsonSerializer.new(paginated_tracks).call
     geojson = map_read_masker.mask_track_features(geojson)
 
-    tracks_query.pagination_headers(paginated_tracks).each do |header, value|
-      response.set_header(header, value)
-    end
+    set_pagination_headers(paginated_tracks, with_total: true)
 
     render json: geojson
   end

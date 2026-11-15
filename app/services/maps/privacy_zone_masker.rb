@@ -29,6 +29,13 @@ module Maps
       mask_relation(relation, 'places.lonlat')
     end
 
+    # A note without a location has nothing to hide.
+    def mask_notes(relation)
+      return relation unless any?
+
+      relation.where("notes.lonlat IS NULL OR NOT #{within_sql('notes.lonlat')}")
+    end
+
     def in_zone_place_ids
       return [] unless any?
 
@@ -221,7 +228,7 @@ module Maps
     end
 
     def distance_m(lat1, lon1, lat2, lon2)
-      Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km) * 1000
+      GeoDistance.meters([lat1, lon1], [lat2, lon2])
     end
   end
 end

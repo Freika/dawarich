@@ -1,22 +1,7 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const source = (
-  await readFile(
-    new URL(
-      "../../app/javascript/controllers/poster_studio_editor_controller.js",
-      import.meta.url,
-    ),
-    "utf8",
-  )
-).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const prelude = `
-class Controller {}
-const translate = (key) => key
-`
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(`${prelude}\n${source}`).toString("base64")}`
-const { default: PosterStudioController } = await import(moduleUrl)
+import PosterStudioController from "controllers/poster_studio_editor_controller"
 
 test("poster studio cannot switch to video during a range reload", () => {
   const calls = []

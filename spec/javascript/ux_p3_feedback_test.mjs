@@ -36,7 +36,7 @@ function fakeTimeouts(t) {
   }
 }
 
-async function controller(path) {
+async function loadModule(path) {
   const source = await readFile(
     new URL(`../../app/javascript/controllers/${path}`, import.meta.url),
     "utf8",
@@ -72,12 +72,11 @@ async function controller(path) {
         : `const ${name} = globalThis.uxP3Stubs?.${name} ?? (() => {})`,
     )
     .join("\n")
-  return (
-    await import(
-      `data:text/javascript;base64,${Buffer.from(`${stubs}\n${body}`).toString("base64")}`
-    )
-  ).default
+  return import(
+    `data:text/javascript;base64,${Buffer.from(`${stubs}\n${body}`).toString("base64")}`
+  )
 }
+const controller = async (path) => (await loadModule(path)).default
 const toasts = []
 globalThis.uxP3Stubs = {
   translate: (key, values = {}) =>
@@ -87,7 +86,7 @@ globalThis.uxP3Stubs = {
     warning: (value) => toasts.push(value),
   },
 }
-const Timeline = await controller("timeline_feed_controller.js")
+const { visitFilters } = await loadModule("timeline_feed/visit_filters.js")
 const Realtime = await controller("maps/maplibre_realtime_controller.js")
 const Video = await controller("video_studio_controller.js")
 function classList(initial = []) {
@@ -124,7 +123,7 @@ function timeline() {
           ? scope
           : empty,
   }
-  const ctl = Object.create(Timeline.prototype)
+  const ctl = Object.create(visitFilters)
   Object.assign(ctl, {
     hasVisitListFrameTarget: true,
     visitListFrameTarget: { querySelectorAll: () => [day] },

@@ -15,15 +15,22 @@ RSpec.describe 'Photo search covers the whole end date' do
   let(:late_night_photo_utc) { '2026-06-11T01:02:00.000Z' }
 
   describe 'Immich' do
+    let(:immich_search) { 'http://immich.app/api/search/metadata' }
+
     def stub_immich_page(items)
-      json_headers = { 'content-type' => 'application/json' }
-      responses = [
-        instance_double(HTTParty::Response, success?: true, code: 200, headers: json_headers,
-                                            body: { assets: { items: items } }.to_json),
-        instance_double(HTTParty::Response, success?: true, code: 200, headers: json_headers,
-                                            body: { assets: { items: [] } }.to_json)
-      ]
-      allow(HTTParty).to receive(:post) { responses.shift || responses.last }
+      json_headers = { 'Content-Type' => 'application/json' }
+      stub_request(:post, immich_search).to_return(
+        { status: 200, headers: json_headers, body: { assets: { items: items } }.to_json },
+        { status: 200, headers: json_headers, body: { assets: { items: [] } }.to_json }
+      )
+    end
+
+    def requested_bound(name)
+      bound = nil
+      expect(
+        a_request(:post, immich_search).with { |request| bound = JSON.parse(request.body)[name] }
+      ).to have_been_made.at_least_once
+      bound
     end
 
     let(:asset) do
@@ -49,12 +56,7 @@ RSpec.describe 'Photo search covers the whole end date' do
 
       described_immich_call
 
-      taken_before = nil
-      expect(HTTParty).to have_received(:post) { |_url, options|
-        taken_before = JSON.parse(options[:body])['takenBefore']
-      }.at_least(:once)
-
-      expect(Time.zone.parse(taken_before)).to be > Time.zone.parse(late_night_photo_utc)
+      expect(Time.zone.parse(requested_bound('takenBefore'))).to be > Time.zone.parse(late_night_photo_utc)
     end
 
     it 'starts a bare start date at midnight in the application time zone' do
@@ -62,12 +64,7 @@ RSpec.describe 'Photo search covers the whole end date' do
 
       Time.use_zone('Asia/Tokyo') { described_immich_call }
 
-      taken_after = nil
-      expect(HTTParty).to have_received(:post) { |_url, options|
-        taken_after = JSON.parse(options[:body])['takenAfter']
-      }.at_least(:once)
-
-      expect(taken_after).to eq('2026-06-09T15:00:00Z')
+      expect(requested_bound('takenAfter')).to eq('2026-06-09T15:00:00Z')
     end
 
     it 'includes a photo taken just after midnight on the start date' do
@@ -103,14 +100,12 @@ RSpec.describe 'Photo search covers the whole end date' do
 
   describe 'Photoprism' do
     it 'includes a photo taken after midnight on the end date' do
-      json_headers = { 'content-type' => 'application/json' }
-      responses = [
-        instance_double(HTTParty::Response, success?: true, code: 200, headers: json_headers,
-                                            body: [{ 'UID' => 'p1', 'Type' => 'image',
-                                                     'TakenAtLocal' => '2026-06-11T01:02:00Z' }].to_json),
-        instance_double(HTTParty::Response, success?: true, code: 200, headers: json_headers, body: [].to_json)
-      ]
-      allow(HTTParty).to receive(:get) { responses.shift || responses.last }
+      json_headers = { 'Content-Type' => 'application/json' }
+      stub_request(:get, 'http://photoprism.app/api/v1/photos').with(query: hash_including({})).to_return(
+        { status: 200, headers: json_headers,
+          body: [{ 'UID' => 'p1', 'Type' => 'image', 'TakenAtLocal' => '2026-06-11T01:02:00Z' }].to_json },
+        { status: 200, headers: json_headers, body: [].to_json }
+      )
 
       result = Photoprism::RequestPhotos.new(
         photoprism_user, start_date: '2026-06-10', end_date: '2026-06-11'

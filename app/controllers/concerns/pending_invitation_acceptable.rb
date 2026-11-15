@@ -19,7 +19,9 @@ module PendingInvitationAcceptable
     return unless invitation&.can_be_accepted?
     return family_invitation_path(invitation.token) unless signing_in_now?
 
-    service = Families::AcceptInvitation.new(invitation: invitation, user: user)
+    # The mobile app is sent on to its own handoff page and never shows the flash below.
+    service = Families::AcceptInvitation.new(invitation: invitation, user: user,
+                                             welcome_notification: mobile_client?)
     session.delete(:invitation_token)
     unless service.call
       Rails.logger.info("Family invitation #{invitation.id} not accepted on sign-in: #{service.error_message}")

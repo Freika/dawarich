@@ -15,6 +15,7 @@ export async function toggleTripReplay(controller) {
     dayRoutesLayer: controller.dayRoutesLayer,
     element: controller.element,
     timezone: controller.timezoneValue,
+    distanceUnit: () => controller.distanceUnitValue,
     loadPoints: async () => {
       const points = await ensureTripPoints(controller)
       return controller.element.isConnected ? points : []

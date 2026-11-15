@@ -1,84 +1,29 @@
-import { bumpTileVersion } from "maps_maplibre/utils/tile_freshness"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
-import { BaseLayer, isAbortedRequest } from "./base_layer"
+import { VectorTileLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
-// FNV-1a over the api key: a non-secret cache partitioner keying URL-based
-// caches per user — auth itself travels only in the Authorization header.
-function cachePartitioner(value) {
-  let hash = 0x811c9dc5
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193)
-  }
-  return (hash >>> 0).toString(16)
-}
-
-/**
- * Read-only vector-tile points layer for parity/performance validation.
- */
-export class PointsMvtLayer extends BaseLayer {
+export class PointsMvtLayer extends VectorTileLayer {
   // Ten minutes in a cell contributes a heatmap weight of one.
   static HEATMAP_DWELL_REFERENCE_SECONDS = 600
 
   constructor(map, options = {}) {
     super(map, { id: "points-mvt", ...options })
-    this.startAt = options.startAt || null
-    this.endAt = options.endAt || null
-    this.apiKey = options.apiKey || null
-    this.importId = options.importId || null
+    this.tileKind = "points"
+    this.flightBounds = ["timestamp", "max_timestamp"]
     this.styleName = options.styleName
-    this._tileUrl = null
     // Heatmap rides the same source and same lifecycle, toggled independently
     this.heatmapVisible = options.heatmapVisible === true
-    this.onTileError = options.onTileError || null
-    this._tileErrorHandler = null
-    this._tileErrorReported = false
-    this.flightWindows = []
     this._visibleCirclePaint = {
       "circle-opacity": 1,
       "circle-stroke-opacity": 1,
     }
   }
 
-  // A failed tile fetch (timeout, throttle, expired session) reaches the page
-  // only as a map `error` event. Unwatched, the layer renders nothing and the
-  // user sees an empty map with no explanation.
   add(data, beforeId = null) {
     super.add(data, beforeId)
     for (const [property, value] of Object.entries(this._visibleCirclePaint)) {
       this.setCircleOpacity(property, value)
     }
-    if (this.flightWindows.length) this._applyFlightFilter()
-    this._tileErrorReported = false
-    this._watchTileErrors()
-  }
-
-  remove() {
-    this._unwatchTileErrors()
-    super.remove()
-  }
-
-  _watchTileErrors() {
-    if (this._tileErrorHandler || !this.onTileError) return
-
-    this._tileErrorHandler = (event) => {
-      if (event?.sourceId !== this.sourceId) return
-      if (isAbortedRequest(event.error)) return
-      // One pan fails a whole screenful of tiles; report the episode once.
-      if (this._tileErrorReported) return
-
-      this._tileErrorReported = true
-      this.onTileError(event)
-    }
-    this.map.on("error", this._tileErrorHandler)
-  }
-
-  _unwatchTileErrors() {
-    if (!this._tileErrorHandler) return
-
-    this.map.off("error", this._tileErrorHandler)
-    this._tileErrorHandler = null
   }
 
   static HEATMAP_LAYER_ID = "points-mvt-heatmap"
@@ -92,31 +37,6 @@ export class PointsMvtLayer extends BaseLayer {
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
   }
 
-  setFlightWindows(windows = []) {
-    this.flightWindows = windows
-    this._applyFlightFilter()
-  }
-
-  _applyFlightFilter() {
-    const masked = this.flightWindows.map(([start, end]) => [
-      "all",
-      [">=", ["get", "timestamp"], start],
-      // An aggregate is hidden only if every constituent point is in the flight window.
-      ["<=", ["get", "max_timestamp"], end],
-    ])
-    const filter = masked.length ? ["!", ["any", ...masked]] : null
-    if (this.map.getLayer(this.id)) this.map.setFilter(this.id, filter)
-    if (this.map.getLayer(PointsMvtLayer.HEATMAP_LAYER_ID)) {
-      this.map.setFilter(PointsMvtLayer.HEATMAP_LAYER_ID, filter)
-    }
-  }
-
-  // The circle and heatmap sub-layers toggle independently; anything keyed to
-  // "is this layer on screen" must consider both.
-  get anyVisible() {
-    return Boolean(this.visible || this.heatmapVisible)
-  }
-
   // Sub-layers are toggled independently, so they cannot share BaseLayer's flag
   setVisibility(visible) {
     this.visible = visible
@@ -127,19 +47,9 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
-  // ⛔ MapLibre loads NO tiles for a source whose layers are all layout-hidden
-  // (Style.update marks it unused and SourceCache evicts). Tiled fog reads
-  // this source via querySourceFeatures, so while fog depends on it the circle
-  // layer hides via PAINT (opacity 0) — isHidden() keys on layout visibility,
-  // keeping the source used and its tiles loading.
-  setSourceKeepAlive(keepAlive) {
-    this.sourceKeepAlive = keepAlive === true
-    this.setVisibility(this.visible)
-  }
-
   setCircleOpacity(property, value) {
     this._visibleCirclePaint[property] = value
-    if (!this._paintHidden && this.map.getLayer(this.id)) {
+    if (this.map.getLayer(this.id)) {
       this.map.setPaintProperty?.(this.id, property, value)
     }
   }
@@ -147,81 +57,11 @@ export class PointsMvtLayer extends BaseLayer {
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
 
-    if (layerId === this.id && !visible && this.sourceKeepAlive) {
-      this.map.setLayoutProperty(layerId, "visibility", "visible")
-      this.map.setPaintProperty?.(layerId, "circle-opacity", 0)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 0)
-      // Radius AND stroke width to 0: the circle hit test uses radius plus
-      // stroke width, and queryRenderedFeatures ignores paint opacity — a
-      // merely-transparent layer stays clickable and cursor-reactive.
-      this.map.setPaintProperty?.(layerId, "circle-radius", 0)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-width", 0)
-      this._paintHidden = true
-      return
-    }
-    if (layerId === this.id && this._paintHidden) {
-      for (const [property, value] of Object.entries(
-        this._visibleCirclePaint,
-      )) {
-        this.map.setPaintProperty?.(layerId, property, value)
-      }
-      this.map.setPaintProperty?.(
-        layerId,
-        "circle-radius",
-        PointsMvtLayer.CIRCLE_RADIUS,
-      )
-      this.map.setPaintProperty?.(
-        layerId,
-        "circle-stroke-width",
-        PointsMvtLayer.CIRCLE_STROKE_WIDTH,
-      )
-      this._paintHidden = false
-    }
-
     this.map.setLayoutProperty(
       layerId,
       "visibility",
       visible ? "visible" : "none",
     )
-  }
-
-  refresh() {
-    bumpTileVersion("/api/v1/tiles/points/")
-    if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
-      this.map.refreshTiles(this.sourceId)
-      return
-    }
-
-    const wasVisible = this.visible
-    const beforeId = this._layerAbove()
-    this.remove()
-    this.add({ startAt: this.startAt, endAt: this.endAt }, beforeId)
-    this.setVisibility(wasVisible)
-  }
-
-  // The id of the layer stacked directly above this one, so a remove+add
-  // cycle can put the sub-layers back where they were instead of on top.
-  _layerAbove() {
-    const styleLayers = this.map.getStyle?.()?.layers ?? []
-    const ownIds = new Set([PointsMvtLayer.HEATMAP_LAYER_ID, this.id])
-    let lastOwnIndex = -1
-    styleLayers.forEach((styleLayer, index) => {
-      if (ownIds.has(styleLayer.id)) lastOwnIndex = index
-    })
-    if (lastOwnIndex === -1 || lastOwnIndex + 1 >= styleLayers.length)
-      return null
-    return styleLayers[lastOwnIndex + 1].id
-  }
-
-  getSourceConfig() {
-    this._tileUrl = this._buildTileUrl()
-
-    return {
-      type: "vector",
-      tiles: [this._tileUrl],
-      minzoom: 0,
-      maxzoom: 22,
-    }
   }
 
   getLayerConfigs() {
@@ -238,11 +78,19 @@ export class PointsMvtLayer extends BaseLayer {
           "heatmap-weight": [
             "case",
             ["has", "dwell"],
-            ["/", ["get", "dwell"], PointsMvtLayer.HEATMAP_DWELL_REFERENCE_SECONDS],
+            [
+              "/",
+              ["get", "dwell"],
+              PointsMvtLayer.HEATMAP_DWELL_REFERENCE_SECONDS,
+            ],
             [
               "min",
               1,
-              ["+", 0.2, ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]]],
+              [
+                "+",
+                0.2,
+                ["*", 0.094, ["ln", ["coalesce", ["get", "count"], 1]]],
+              ],
             ],
           ],
         },
@@ -260,40 +108,5 @@ export class PointsMvtLayer extends BaseLayer {
         },
       },
     ]
-  }
-
-  update(options = {}) {
-    const nextStartAt = options.startAt || null
-    const nextEndAt = options.endAt || null
-    const nextTileUrl = this._buildTileUrl(nextStartAt, nextEndAt)
-
-    if (this._tileUrl === nextTileUrl) {
-      this.startAt = nextStartAt
-      this.endAt = nextEndAt
-      return
-    }
-
-    const wasVisible = this.visible
-    const beforeId = this._layerAbove()
-    this.remove()
-    this.startAt = nextStartAt
-    this.endAt = nextEndAt
-    this.add(options, beforeId)
-    this.setVisibility(wasVisible)
-  }
-
-  _buildTileUrl(startAt = this.startAt, endAt = this.endAt) {
-    const params = new URLSearchParams()
-
-    if (startAt) params.set("start_at", startAt)
-    if (endAt) params.set("end_at", endAt)
-    if (this.importId) params.set("import_id", this.importId)
-    // Never the raw api key: the Bearer header authenticates (transformRequest)
-    if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
-
-    const query = params.toString()
-    const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"
-
-    return query ? `${path}?${query}` : path
   }
 }

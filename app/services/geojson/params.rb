@@ -129,8 +129,4 @@ class Geojson::Params
     numeric /= 3.6 if speed_kmh_alias?(matched_key)
     numeric.round(1)
   end
-
-  def accuracy(feature)
-    find_field(feature[:properties], :accuracy)
-  end
 end

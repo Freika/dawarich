@@ -225,7 +225,22 @@ RSpec.describe 'Personal collection notification batching' do
       end
     end
     expect { Achievements::CollectionChecker.new(user).call }.to change { user.notifications.count }.by(1)
+    expect(user.notifications.last.action_path).to eq('/achievements')
     expect(user.achievement_unlock_events.where(kind: 'collectible').count).to eq(6)
     expect { Achievements::CollectionChecker.new(user).call }.not_to(change { user.notifications.count })
+  end
+
+  it 'leads from each card notification to the achievements page' do
+    user = create(:user)
+    place = create(:place, user: user, name: 'Fixture', latitude: 52.52, longitude: 13.405)
+    user.achievement_selections.create!(place: place)
+    Achievements::CollectionChecker.new(user, notify: false).call
+    [Time.utc(2019, 1, 1, 12), Time.utc(2025, 1, 2, 12)].each do |at|
+      create(:visit, user: user, place: place, status: :confirmed,
+                    started_at: at, ended_at: at + 30.minutes, duration: 1800)
+    end
+
+    expect { Achievements::CollectionChecker.new(user).call }.to(change { user.notifications.count })
+    expect(user.notifications.pluck(:action_path).uniq).to eq(['/achievements'])
   end
 end

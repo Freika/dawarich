@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class Entitlements
-  def self.for(user)
-    new(user)
-  end
-
   def initialize(user)
     @user = user
   end
@@ -16,16 +12,13 @@ class Entitlements
     @user.plan.to_sym
   end
 
+  # A self-hosted instance has no Lite limits, whatever plan the row carries.
+  def map_plan
+    full_access? && effective_plan == :lite ? :pro : effective_plan
+  end
+
   def inherited_family_access?
-    return false unless @user.in_family?
-
-    family = @user.family
-    return family.access_until.future? if family&.access_until
-
-    owner = family&.owner
-    return false unless owner&.family?
-
-    owner.active_until&.future? || false
+    (@user.in_family? && @user.family&.access_live?) || false
   end
 
   def full_access?
@@ -36,27 +29,22 @@ class Entitlements
     !full_access?
   end
 
-  def write_api?
-    full_access?
-  end
-
-  def pro_api?
-    full_access?
-  end
-
-  def integrations?
-    full_access?
-  end
-
-  def public_sharing?
-    full_access?
-  end
-
   def families?
     return true if self_hosted?
     return true if inherited_family_access?
 
     @user.family? && (@user.active_until&.future? || false)
+  end
+
+  # Whether the account may write: web, API and imports all ask this.
+  def in_good_standing?
+    return false unless @user.active? || @user.trial?
+
+    @user.active_until ? @user.active_until.future? : self_hosted?
+  end
+
+  def can_create_family?
+    self_hosted? || @user.family?
   end
 
   def data_window

@@ -38,6 +38,23 @@ RSpec.describe FamilyLocationsChannel, type: :channel do
     expect(transmissions).to eq([other_location])
   end
 
+  it 'stops transmitting once the subscriber membership is removed after subscribe' do
+    member = create(:user, plan: :pro, skip_auto_trial: true)
+    create(:family_membership, user: member, family: family)
+    stub_connection(current_user: member)
+    callback = nil
+    allow_any_instance_of(described_class).to receive(:stream_for) do |_, _, **_options, &block|
+      callback = block
+    end
+
+    subscribe
+    member.family_membership.destroy!
+    member.reload
+
+    callback.call('user_id' => owner.id, 'latitude' => 52.5, 'longitude' => 13.4)
+    expect(transmissions).to be_empty
+  end
+
   it 'rejects a cloud user without the family plan' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     stub_connection(current_user: create(:user, plan: :pro, skip_auto_trial: true))

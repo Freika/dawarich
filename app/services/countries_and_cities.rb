@@ -111,10 +111,7 @@ class CountriesAndCities
   end
 
   def canonical_country_name(point)
-    country_id = point[:country_id]
-    return point[:country_name] if country_id.blank?
-
-    country_names_by_id[country_id] || point[:country_name]
+    country_names_by_id[point[:country_id]] || Countries::NameAliases.canonical(point[:country_name])
   end
 
   def country_names_by_id

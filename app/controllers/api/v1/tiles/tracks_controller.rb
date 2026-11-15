@@ -53,14 +53,11 @@ class Api::V1::Tiles::TracksController < ApiController
       scope = scope.where(id: track_ids)
     end
 
-    start_at = safe_timestamp(params[:start_at]) if params[:start_at].present?
-    end_at = safe_timestamp(params[:end_at]) if params[:end_at].present?
-    return scope unless start_at || end_at
+    return scope unless cacheable_range?
 
     # Overlap semantics, same as Tracks::IndexQuery: a track clipped by the
     # range edge still renders.
-    scope.where('end_at >= ? AND start_at <= ?',
-                Time.zone.at(start_at || 0), Time.zone.at(end_at || Time.zone.now.to_i))
+    scope.where('end_at >= ? AND start_at <= ?', Time.zone.at(cacheable_start_at), Time.zone.at(cacheable_end_at))
   end
 
   def speed_points_scope

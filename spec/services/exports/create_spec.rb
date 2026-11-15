@@ -70,6 +70,12 @@ RSpec.describe Exports::Create do
       expect { create_export }.to change { Notification.count }.by(1)
     end
 
+    it 'leads from the notification to the export list' do
+      create_export
+
+      expect(Notification.last.action_path).to eq('/exports')
+    end
+
     context 'when file format is gpx' do
       let(:file_format) { :gpx }
 
@@ -139,6 +145,30 @@ RSpec.describe Exports::Create do
 
       it 'creates a notification' do
         expect { create_export }.to change { Notification.count }.by(1)
+      end
+
+      it 'tells the user what failed without a stack trace' do
+        create_export
+
+        content = Notification.last.content
+        expect(content).to include(export.name, 'test error')
+        expect(content).not_to match(/stacktrace|\.rb:\d+/)
+      end
+
+      it 'logs the stack trace and reports the failure, which the rescue would otherwise swallow' do
+        allow(Rails.logger).to receive(:error)
+        allow(ExceptionReporter).to receive(:call)
+
+        create_export
+
+        expect(Rails.logger).to have_received(:error).with(/Export #{export.id} failed.*test error.*\.rb:\d+/m)
+        expect(ExceptionReporter).to have_received(:call).with(an_instance_of(StandardError), /Export #{export.id}/)
+      end
+
+      it 'leads from the failure notification to the export list' do
+        create_export
+
+        expect(Notification.last).to have_attributes(kind: 'error', action_path: '/exports')
       end
     end
   end

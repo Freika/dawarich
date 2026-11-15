@@ -48,23 +48,19 @@ class Shared::LinksController < ApplicationController
   def verify_phrase
     return if @link.family_only?
     return if @link.magic_phrase.blank?
-    return if cookies.encrypted[unlock_cookie_key] == @link.unlock_token
+    return if cookies.encrypted[@link.unlock_cookie_name] == @link.unlock_token
 
     render :phrase_prompt, status: :unauthorized
   end
 
   def set_unlock_cookie
-    cookies.encrypted[unlock_cookie_key] = {
+    cookies.encrypted[@link.unlock_cookie_name] = {
       value: @link.unlock_token,
       expires: @link.expires_at || 30.days.from_now,
       httponly: true,
       secure: request.ssl?,
       same_site: :lax
     }
-  end
-
-  def unlock_cookie_key
-    "shared_link_#{@link.id}"
   end
 
   def set_noindex

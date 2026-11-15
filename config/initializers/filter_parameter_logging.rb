@@ -10,8 +10,10 @@ Rails.application.config.filter_parameters += %i[
   email name first_name last_name phone phrase signed_id signed_blob_id
 ]
 
+# Keep in step with Users::IntegrationSettingKeys::SECRETS (not referenced
+# here: initializers run before the app's constants can be autoloaded safely).
 SENSITIVE_SETTINGS_KEYS = %w[
-  immich_api_key photoprism_api_key teslamate_password teslamate_api_token
+  immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token
 ].freeze
 
 Rails.application.config.filter_parameters += [

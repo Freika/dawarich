@@ -4,7 +4,7 @@ module Families
   class Invite
     include ActiveModel::Validations
 
-    attr_reader :family, :email, :invited_by, :invitation
+    attr_reader :family, :email, :invited_by, :invitation, :error_code
 
     validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
 
@@ -15,7 +15,10 @@ module Families
     end
 
     def call
-      return false unless valid?
+      unless valid?
+        @error_code = :invalid_email
+        return false
+      end
 
       family.with_lock do
         family.clear_member_cache!
@@ -48,21 +51,23 @@ module Families
 
     def invite_sendable?
       unless invited_by.family_owner?
-        return add_error_and_false(:invited_by,
-                                   I18n.t('services.families.invite.owner_required'))
+        return add_error_and_false(:invited_by, :owner_required, I18n.t('services.families.invite.owner_required'))
       end
-      return add_error_and_false(:family, I18n.t('services.families.invite.family_full')) if family.full?
+      return add_error_and_false(:family, :family_full, I18n.t('services.families.invite.family_full')) if family.full?
       if user_already_in_family?
-        return add_error_and_false(:email, I18n.t('services.families.invite.user_already_in_family'))
+        return add_error_and_false(:email, :user_already_in_family,
+                                   I18n.t('services.families.invite.user_already_in_family'))
       end
       if pending_invitation_exists?
-        return add_error_and_false(:email, I18n.t('services.families.invite.invitation_already_sent'))
+        return add_error_and_false(:email, :invitation_already_sent,
+                                   I18n.t('services.families.invite.invitation_already_sent'))
       end
 
       true
     end
 
-    def add_error_and_false(attribute, message)
+    def add_error_and_false(attribute, code, message)
+      @error_code = code
       errors.add(attribute, message)
       false
     end
@@ -89,20 +94,19 @@ module Families
       Family::Invitations::SendingJob.perform_later(invitation.id)
     end
 
+    # The page already confirms the invitation. A self-hosted inviter still
+    # gets this, because it explains what to do when no SMTP is configured.
     def send_notification
-      I18n.with_locale(invited_by.locale) do
-        content_key = if DawarichSettings.self_hosted?
-                        'services.families.invite.sent_self_hosted'
-                      else
-                        'services.families.invite.sent'
-                      end
+      return unless DawarichSettings.self_hosted?
 
-        Notification.create!(
+      I18n.with_locale(invited_by.locale) do
+        Notifications::Create.new(
           user: invited_by,
           kind: :info,
           title: I18n.t('services.families.invite.invitation_sent'),
-          content: I18n.t(content_key, email:)
-        )
+          content: I18n.t('services.families.invite.sent_self_hosted', email:),
+          action_path: Notifications.paths.family_path
+        ).call
       end
     rescue StandardError => e
       # Don't fail the entire operation if notification fails
@@ -110,6 +114,7 @@ module Families
     end
 
     def handle_record_invalid_error(error)
+      @error_code = :unexpected_error
       @custom_error_message = if invitation&.errors&.any?
                                 invitation.errors.full_messages.first
                               else
@@ -118,6 +123,7 @@ module Families
     end
 
     def handle_email_error(error)
+      @error_code = :unexpected_error
       Rails.logger.error "Email delivery failed for family invitation: #{error.message}"
       @custom_error_message = I18n.t('services.families.invite.failed_to_send_invitation_email_please_try_again_later')
 
@@ -126,6 +132,7 @@ module Families
     end
 
     def handle_generic_error(error)
+      @error_code = :unexpected_error
       ExceptionReporter.call(error, "Unexpected error in Families::Invite: #{error.message}")
       @custom_error_message = I18n.t(
         'services.families.invite.an_unexpected_error_occurred_while_sending_the_invitation_please_try'

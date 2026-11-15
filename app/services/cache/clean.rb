@@ -28,16 +28,16 @@ class Cache::Clean
     end
 
     def delete_years_tracked_cache(user)
-      Rails.cache.delete("dawarich/user_#{user.id}_years_tracked")
+      Rails.cache.delete(Cache::UserKeys.years_tracked(user.id))
     end
 
     def delete_points_geocoded_stats_cache(user)
-      Rails.cache.delete("dawarich/user_#{user.id}_points_geocoded_stats")
+      Rails.cache.delete(Cache::UserKeys.points_geocoded_stats(user.id))
     end
 
     def delete_countries_cities_cache(user)
-      Rails.cache.delete("dawarich/user_#{user.id}_countries_visited")
-      Rails.cache.delete("dawarich/user_#{user.id}_cities_visited")
+      Rails.cache.delete(Cache::UserKeys.countries_visited(user.id))
+      Rails.cache.delete(Cache::UserKeys.cities_visited(user.id))
     end
   end
 end

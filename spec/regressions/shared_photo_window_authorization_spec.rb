@@ -15,7 +15,7 @@ RSpec.describe 'Shared photo authorization after window edits', type: :request d
       owner, start_date: trip.started_at.iso8601, end_date: trip.ended_at.iso8601
     ).and_return(instance_double(Photos::Search, call: [photo]))
     allow(Photos::Thumbnail).to receive(:new).and_return(
-      instance_double(Photos::Thumbnail, call: instance_double(HTTParty::Response, success?: true, body: 'jpeg-bytes'))
+      instance_double(Photos::Thumbnail, call: Integrations::Transport::Response.new(200, 'jpeg-bytes', nil))
     )
   end
 

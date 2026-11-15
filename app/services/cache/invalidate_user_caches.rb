@@ -19,15 +19,15 @@ class Cache::InvalidateUserCaches
   end
 
   def invalidate_countries_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_countries_visited")
+    Rails.cache.delete(Cache::UserKeys.countries_visited(user_id))
   end
 
   def invalidate_cities_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_cities_visited")
+    Rails.cache.delete(Cache::UserKeys.cities_visited(user_id))
   end
 
   def invalidate_points_geocoded_stats
-    Rails.cache.delete("dawarich/user_#{user_id}_points_geocoded_stats")
+    Rails.cache.delete(Cache::UserKeys.points_geocoded_stats(user_id))
   end
 
   # Deletes the exact versioned keys instead of delete_matched, which scans the

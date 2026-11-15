@@ -3,6 +3,20 @@
 require 'rails_helper'
 
 RSpec.describe Stats::Toponyms do
+  it 'files both spellings of a country without a linked record under one canonical entry' do
+    points = [
+      { timestamp: 0, country_name: 'United States', city: 'Boston' },
+      { timestamp: 7_200, country_name: 'United States', city: 'Boston' },
+      { timestamp: 10_800, country_name: 'United States of America', city: 'Austin' },
+      { timestamp: 18_000, country_name: 'United States of America', city: 'Austin' }
+    ]
+
+    result = described_class.new(points.each, min_minutes_spent_in_city: 60).call
+
+    expect(result.map(&:country)).to eq(['United States of America'])
+    expect(result.first.cities.map(&:city)).to contain_exactly('Boston', 'Austin')
+  end
+
   it 'matches country-only presence without emitting unnamed cities at any stay threshold' do
     country = create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
     points = [

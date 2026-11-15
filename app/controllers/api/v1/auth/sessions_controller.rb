@@ -18,15 +18,7 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
 
     return render_auth_error(I18n.t('controllers.api.v1.auth.sessions.invalid_credentials')) unless authenticated
 
-    if DawarichSettings.two_factor_available? && user.otp_required_for_login?
-      challenge_token = Auth::IssueOtpChallengeToken.new(user).call
-      render json: {
-        two_factor_required: true,
-        challenge_token: challenge_token,
-        ttl: Auth::IssueOtpChallengeToken::TTL.to_i
-      }, status: :accepted
-      return
-    end
+    return render_otp_challenge(user) if otp_challenge_required?(user)
 
     render_auth_success(user)
   end
@@ -46,7 +38,11 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   # response time does not leak account existence.
   def constant_time_authenticate(user, password)
     if user
-      user.valid_password?(password)
+      # Route through Devise lockable: refuse locked accounts and let failed
+      # attempts count toward a lockout, matching the Warden (web) login path.
+      return false if user.access_locked?
+
+      user.valid_for_authentication? { user.valid_password?(password) }
     else
       # Run bcrypt against a dummy hash; result is always false.
       BCrypt::Password.new(DUMMY_PASSWORD_HASH).is_password?(password)

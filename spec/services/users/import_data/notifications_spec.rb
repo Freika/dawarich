@@ -40,7 +40,8 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
           kind: 'info',
           title: 'Import completed',
           content: 'Your data import has been processed successfully',
-          read_at: Time.parse('2024-01-01T12:30:00Z')
+          read_at: Time.parse('2024-01-01T12:30:00Z'),
+          created_at: Time.parse('2024-01-01T12:00:00Z')
         )
 
         error_notification = user.notifications.find_by(title: 'Import failed')
@@ -62,6 +63,25 @@ RSpec.describe Users::ImportData::Notifications, type: :service do
         expect(Rails.logger).to receive(:info).with('Notifications import completed. Created: 2')
 
         service.call
+      end
+    end
+
+    context 'with columns an import file must not set' do
+      let(:other_user) { create(:user) }
+      let!(:existing) { create(:notification, user: other_user) }
+      let(:notifications_data) do
+        [{ 'kind' => 'info', 'title' => 'Hostile', 'content' => 'From a crafted file',
+           'created_at' => '2024-01-01T12:00:00Z', 'action_path' => 'https://evil.example',
+           'id' => existing.id, 'user_id' => other_user.id }]
+      end
+
+      it 'ignores action_path, id and user_id from the file' do
+        expect { service.call }.to change { user.notifications.count }.by(1)
+
+        imported = user.notifications.find_by(title: 'Hostile')
+        expect(imported.action_path).to be_nil
+        expect(imported.id).not_to eq(existing.id)
+        expect(existing.reload.user).to eq(other_user)
       end
     end
 

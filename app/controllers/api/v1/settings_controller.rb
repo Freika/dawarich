@@ -91,7 +91,7 @@ class Api::V1::SettingsController < ApiController
       :min_minutes_spent_in_city,
       :gps_filtering_enabled, :gps_accuracy_filter_enabled, :gps_accuracy_threshold,
       :point_dragging_enabled, :points_tiled_rendering,
-      :family_enabled, :achievements_enabled,
+      :family_enabled, :achievements_enabled, :trip_detection_enabled,
       :app_store_supporter, :app_store_supporter_install,
       enabled_map_layers: [],
       places_tag_filters: [],

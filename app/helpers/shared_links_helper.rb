@@ -41,10 +41,6 @@ module SharedLinksHelper
     I18n.t('helpers.shared_links.timeline_subtitle', range:)
   end
 
-  def trip_share_subtitle(trip)
-    I18n.t('helpers.shared_links.trip_subtitle', trip: trip.name)
-  end
-
   def track_share_label(track, unit)
     mode = track.dominant_mode.presence
     mode = mode ? I18n.t("transportation_modes.#{mode}") : I18n.t('helpers.shared_links.track')
@@ -57,8 +53,8 @@ module SharedLinksHelper
   def shared_link_sections(share)
     keys = case share.resource_type
            when 'trip' then %w[show_route show_stats show_days show_day_notes show_description show_photos]
-           when 'track' then %w[show_route show_stats show_photos]
-           when 'timeline' then %w[show_route show_photos]
+           when 'track' then %w[show_route show_stats show_photos show_map_notes]
+           when 'timeline' then %w[show_route show_photos show_map_notes]
            when 'live' then %w[show_route]
            else []
            end

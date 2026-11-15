@@ -1,83 +1,81 @@
-<!-- Date Navigation Controls - Native Page Element -->
-<div class="relative [@media(hover:hover)]:hover:z-[10000] focus-within:z-[10000] w-full px-4 bg-base-100 border-b border-base-300"
-     data-controller="map-controls"
+<%# The map's period, chosen in one place and floating on the map: a button
+    naming the period with a calendar behind it (Air Datepicker), and arrows
+    that step a day either way. The calendar sets the period only: first click
+    is its start, second its end. A day inside the period is selected in the
+    Timeline or on the replay scale.
+    Locals: start_at, end_at %>
+<div class="map-period"
+     data-controller="map-controls period-picker"
+     data-period-picker-locale-value="<%= I18n.locale %>"
+     data-period-picker-url-value="<%= calendar_map_timeline_feeds_path %>"
      data-map-controls-date-format-value="<%= DateTimePreferencesLocalization::DATE_PRESETS[Current.date_time_preferences.date_format] || I18n.t('date.formats.day_month_year') %>"
      data-map-controls-month-names-value="<%= I18n.t('date.month_names').to_json %>"
      data-map-controls-abbr-month-names-value="<%= I18n.t('date.abbr_month_names').to_json %>"
      data-map-controls-locale-value="<%= I18n.locale %>"
      data-map-controls-timezone-value="<%= current_user.timezone_iana %>">
-  <!-- Mobile: Compact Toggle Button -->
-  <div class="lg:hidden flex justify-center">
-    <button
-      type="button"
-      data-action="click->map-controls#toggle"
-      class="btn btn-primary w-96">
-      <span data-map-controls-target="toggleIcon">
-        <%= icon 'chevron-down' %>
-      </span>
-      <span class="ml-2" data-map-controls-target="mobileLabel"><%= human_date(start_at) %></span>
-    </button>
-  </div>
-
-  <!-- Expandable Panel (hidden on mobile by default, always visible on desktop) -->
-  <div
-    data-map-controls-target="panel"
-    class="hidden lg:!block bg-base-100 rounded-lg p-4 mt-2 lg:mt-0 container mx-auto">
-    <%= form_with url: map_v2_path(import_id: params[:import_id]), method: :get do |f| %>
-      <%# Keep the Timeline panel open across a Search so the range and the
-          panel stay in sync (C1). A GET form drops the action URL's query, so
-          panel must ride along as a hidden field. The panel reads the new
-          range's end date as its day via timeline_feed#hydrateFromUrl. %>
-      <% if params[:panel].present? %><%= f.hidden_field :panel, value: params[:panel] %><% end %>
-      <div class="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4 lg:items-center">
-        <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at - 1.day) %>">
-          <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), aria: { label: t('ux_p2.nav.previous_day') }, class: "btn btn-sm border border-base-300 hover:btn-ghost w-full", data: { map_controls_target: "dayLink", day_offset: -1 } do %>
-            <%= icon 'chevron-left', class: 'w-4 h-4' %>
-          <% end %>
-        </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.start_date_and_time') %>">
-          <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at, aria: { label: t('.start_date_and_time') }, data: { map_controls_target: "start" } %>
-        </div>
-        <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.end_date_and_time') %>">
-          <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at, aria: { label: t('.end_date_and_time') }, data: { map_controls_target: "end" } %>
-        </div>
-        <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
-          <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), aria: { label: t('ux_p2.nav.next_day') }, class: "btn btn-sm border border-base-300 hover:btn-ghost w-full", data: { map_controls_target: "dayLink", day_offset: 1 } do %>
-            <%= icon 'chevron-right', class: 'w-4 h-4' %>
-          <% end %>
-        </div>
-        <div class="w-full lg:w-1/12">
-          <div class="flex flex-col space-y-2">
-            <%= f.submit t('.search'), class: "btn btn-sm btn-primary hover:btn-info w-full" %>
-          </div>
-        </div>
-        <div class="w-full lg:w-1/12">
-          <div class="flex flex-col space-y-2 text-center">
-            <%= link_to t('.today'),
-              map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
-              class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
-          </div>
-        </div>
-        <div class="w-full lg:w-2/12">
-          <div class="flex flex-col space-y-2 text-center">
-            <%= link_to t('.last_7_days'), map_v2_path(start_at: 6.days.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
-          </div>
-        </div>
-        <div class="w-full lg:w-2/12">
-          <div class="flex flex-col space-y-2 text-center">
-            <%= link_to t('.last_month'), map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" %>
-          </div>
-        </div>
-        <div class="w-full lg:w-1/12 relative">
-          <%= link_to share_links_hub_path(tab: 'timeline', start_date: start_at.to_date, end_date: end_at.to_date, import_id: params[:import_id]),
-                      class: "btn btn-sm border border-base-300 hover:btn-ghost w-full flex-nowrap",
-                      data: { turbo_frame: "share-link-modal", testid: "timeline-share-button" } do %>
-            <%= icon 'share', class: 'w-4 h-4' %>
-            <span class="ml-1"><%= t('.share') %></span>
-          <% end %>
-          <%= render "shared/map/share_indicator" %>
-        </div>
-      </div>
+  <div class="tooltip tooltip-bottom map-period__step" data-tip="<%= human_date(start_at - 1.day) %>">
+    <%= link_to map_v2_path(start_at: (start_at - 1.day).iso8601, end_at: (end_at - 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), aria: { label: t('ux_p2.nav.previous_day') }, class: "map-period__button map-period__button--square", data: { map_controls_target: "dayLink", day_offset: -1 } do %>
+      <%= icon 'chevron-left', class: 'w-4 h-4' %>
     <% end %>
   </div>
+
+  <details class="period-picker" data-period-picker-target="popover" data-testid="period-picker"
+           data-action="toggle->period-picker#toggled">
+    <summary class="map-period__button" aria-label="<%= t('.choose_period') %>">
+      <%= icon 'calendar', class: 'w-4 h-4 shrink-0' %>
+      <span class="truncate" data-period-picker-target="label" data-testid="period-label"><%= period_label(start_at, end_at) %></span>
+      <%= icon 'chevron-down', class: 'w-4 h-4 shrink-0' %>
+    </summary>
+
+    <div class="period-picker__panel">
+      <div data-period-picker-target="calendar" data-testid="period-calendar"></div>
+
+      <div class="period-picker__legend">
+        <span class="timeline-rail__heat-legend">
+          <span><%= t('map.maplibre.settings_panel.less') %></span>
+          <% 6.times do |bucket| %><span class="heat-swatch heat-<%= bucket %>"></span><% end %>
+          <span><%= t('map.maplibre.settings_panel.more') %></span>
+        </span>
+        <span class="period-picker__noted"><%= t('.note_days') %></span>
+      </div>
+
+      <%# The period to the minute, for when whole days are too coarse. %>
+      <div class="period-picker__times">
+        <label>
+          <span class="sr-only"><%= t('.start_date_and_time') %></span>
+          <input type="time" class="input input-xs input-bordered" data-period-picker-target="startTime"
+                 data-action="change->period-picker#timeChanged" data-testid="period-start-time">
+        </label>
+        <span aria-hidden="true">–</span>
+        <label>
+          <span class="sr-only"><%= t('.end_date_and_time') %></span>
+          <input type="time" class="input input-xs input-bordered" data-period-picker-target="endTime"
+                 data-action="change->period-picker#timeChanged" data-testid="period-end-time">
+        </label>
+      </div>
+
+      <div class="period-picker__presets">
+        <%= link_to t('.today'),
+                    map_v2_path(start_at: Time.current.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
+                    class: "btn btn-xs border border-base-300 hover:btn-ghost" %>
+        <%= link_to t('.last_7_days'),
+                    map_v2_path(start_at: 6.days.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
+                    class: "btn btn-xs border border-base-300 hover:btn-ghost" %>
+        <%= link_to t('.last_month'),
+                    map_v2_path(start_at: 1.month.ago.beginning_of_day.iso8601, end_at: Time.current.end_of_day.iso8601, import_id: params[:import_id], panel: params[:panel]),
+                    class: "btn btn-xs border border-base-300 hover:btn-ghost" %>
+      </div>
+    </div>
+  </details>
+
+  <div class="tooltip tooltip-bottom map-period__step" data-tip="<%= human_date(start_at + 1.day) %>">
+    <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), aria: { label: t('ux_p2.nav.next_day') }, class: "map-period__button map-period__button--square", data: { map_controls_target: "dayLink", day_offset: 1 } do %>
+      <%= icon 'chevron-right', class: 'w-4 h-4' %>
+    <% end %>
+  </div>
+
+  <%# The period as wall-clock values: what the page's scripts read and keep
+      current as the period changes without a page load. %>
+  <input type="hidden" name="start_at" value="<%= start_at.strftime('%Y-%m-%dT%H:%M') %>" data-map-controls-target="start">
+  <input type="hidden" name="end_at" value="<%= end_at.strftime('%Y-%m-%dT%H:%M') %>" data-map-controls-target="end">
 </div>

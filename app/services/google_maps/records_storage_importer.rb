@@ -8,9 +8,8 @@ class GoogleMaps::RecordsStorageImporter
 
   BATCH_SIZE = 1000
 
-  def initialize(import, user_id, file_path = nil)
+  def initialize(import, _user_id, file_path = nil)
     @import = import
-    @user = User.find_by(id: user_id)
     @file_path = file_path
   end
 
@@ -23,7 +22,7 @@ class GoogleMaps::RecordsStorageImporter
 
   private
 
-  attr_reader :import, :user, :file_path
+  attr_reader :import, :file_path
 
   def process_file_in_batches
     batch = []

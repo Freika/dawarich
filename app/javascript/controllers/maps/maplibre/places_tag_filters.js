@@ -22,9 +22,6 @@ export class PlacesTagFilters {
     }
   }
 
-  /**
-   * Restore saved tag filters
-   */
   restoreSavedTagFilters(savedFilters, { reloadPlaces = true } = {}) {
     const tagCheckboxes = document.querySelectorAll(
       'input[name="place_tag_ids[]"]',

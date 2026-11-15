@@ -256,6 +256,25 @@ RSpec.describe 'Authentication', type: :request do
       expect(invitee.reload.family).to eq(family)
     end
 
+    it 'confirms joining on the family page, without a notification, on the web' do
+      post user_session_path, params: {
+        user: { email: invitee.email, password: 'password123456' },
+        invitation_token: invitation.token
+      }
+
+      expect(flash[:notice]).to include(family.name)
+      expect(invitee.notifications).to be_empty
+    end
+
+    it 'confirms joining with a notification in the mobile app, which never shows the flash' do
+      post user_session_path,
+           params: { user: { email: invitee.email, password: 'password123456' }, invitation_token: invitation.token },
+           headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(invitee.reload.family).to eq(family)
+      expect(invitee.notifications.pluck(:title)).to eq(['Welcome to Family!'])
+    end
+
     it 'joins the family when signing in with invitation token in session' do
       # The invitation token is stored in session by Users::SessionsController#load_invitation_context
       # when accessing the sign-in page with invitation_token param

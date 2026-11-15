@@ -9,10 +9,14 @@
       <%= link_to t('notifications.index.delete_all'), delete_all_notifications_path, data: { turbo_method: :post, turbo_confirm: t('notifications.index.are_you_sure_you_want_to_delete_all_notifications') }, class: "btn btn-sm btn-warning" %>
     <% end %>
   <% end %>
+  <p class="text-sm text-base-content/60 text-center mb-4">
+    <%= t('.read_are_deleted', days: Notifications::CleanupJob::RETENTION.in_days.to_i) %>
+  </p>
   <div class="flex justify-center mb-4">
     <%= paginate @notifications %>
   </div>
-  <div id="notifications" class="w-full max-w-2xl mx-auto">
+  <%# Opening a notification marks it read, so its links must not be prefetched on hover. %>
+  <div id="notifications" class="w-full max-w-2xl mx-auto" data-turbo-prefetch="false">
     <% @notifications.each do |notification| %>
       <%= render notification %>
     <% end %>

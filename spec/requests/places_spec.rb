@@ -406,7 +406,36 @@ RSpec.describe '/places', type: :request do
     end
   end
 
+  describe 'the place form' do
+    it 'shows the chosen spot as text and its tags with their icons' do
+      tag = create(:tag, user:, name: 'Coffee', icon: '☕')
+      place = create(:place, user:, latitude: 52.52, longitude: 13.405)
+
+      get edit_place_url(place)
+
+      doc = Nokogiri::HTML(response.body)
+      expect(doc.at_css('input[name="place[latitude]"]')['type']).to eq('hidden')
+      expect(doc.at_css('[data-testid="place-coordinates"]').text).to eq('52.52, 13.405')
+      expect(doc.at_css("label:has(input[value='#{tag.id}'])").text).to include('☕', 'Coffee')
+    end
+  end
+
   describe 'GET /show' do
+    it 'shows the place and folds its editor away' do
+      assigned = create(:tag, user:, name: 'Assigned tag')
+      create(:tag, user:, name: 'Unassigned tag')
+      place = create(:place, user:, note: 'Gate code 42')
+      place.tags << assigned
+
+      get place_url(place)
+
+      details = Nokogiri::HTML(response.body).at_css('.place-drawer__details')
+      shown = details.xpath('./*[not(self::details)]').text
+      expect(shown).to include('Assigned tag', 'Gate code 42')
+      expect(shown).not_to include('Unassigned tag')
+      expect(details.at_css('details:not([open]) input[name="place[name]"]')).to be_present
+    end
+
     let!(:place) do
       create(:place, user:, name: 'Test Cafe', city: 'Berlin', country: 'Germany', source: :manual)
     end

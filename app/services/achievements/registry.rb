@@ -46,10 +46,6 @@ module Achievements
         @all ||= hand_definitions + continent_definitions + country_definitions
       end
 
-      def region_sets
-        all
-      end
-
       def subdivision_sets
         @subdivision_sets ||= all.select { |definition| definition.level == :subdivision }
       end

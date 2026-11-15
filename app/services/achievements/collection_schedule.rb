@@ -3,7 +3,7 @@
 module Achievements
   class CollectionSchedule
     def self.call(user, notify: true, throttle: true)
-      state = CollectionState.create_or_find_by!(user_id: user.id)
+      state = CollectionState.for_user!(user.id)
       return state if (throttle ? state.settled? : state.current?) || !user.feature_enabled?(:achievements)
 
       now = Time.current

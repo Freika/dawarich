@@ -13,6 +13,15 @@ RSpec.describe 'ShareLinks::Lives', type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('share-link-modal')
     end
+
+    it 'offers the freshness windows with 15 minutes preselected' do
+      get new_share_links_live_path
+
+      page = Nokogiri::HTML(response.body)
+      options = page.css('select[name="shared_link[settings][live_freshness_seconds]"] option')
+      expect(options.map { |option| option['value'] }).to eq(%w[900 3600 21600 86400])
+      expect(options.find { |option| option['selected'] }['value']).to eq('900')
+    end
   end
 
   describe 'POST /share_links/live' do
@@ -48,6 +57,28 @@ RSpec.describe 'ShareLinks::Lives', type: :request do
       post share_links_live_path, params: { shared_link: { magic_phrase: '' } }
       expect(user.shared_links.last.settings['show_route']).to be(false)
     end
+
+    it 'stores the chosen freshness window as a number' do
+      post share_links_live_path,
+           params: { shared_link: { magic_phrase: '', settings: { live_freshness_seconds: '3600' } } }
+
+      expect(user.shared_links.last.settings['live_freshness_seconds']).to eq(3600)
+    end
+
+    it 'defaults the freshness window to 15 minutes' do
+      post share_links_live_path, params: { shared_link: { magic_phrase: '' } }
+
+      expect(user.shared_links.last.live_freshness_seconds).to eq(900)
+    end
+
+    it 'does not create a link with a window outside the allowed list' do
+      expect do
+        post share_links_live_path,
+             params: { shared_link: { magic_phrase: '', settings: { live_freshness_seconds: '604800' } } }
+      end.not_to(change { user.shared_links.count })
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
   end
 
   describe 'PATCH /share_links/live/revoke' do
@@ -74,6 +105,23 @@ RSpec.describe 'ShareLinks::Lives', type: :request do
       new_share = user.shared_links.where(resource_type: :live).active.first
       expect(new_share).to be_present
       expect(new_share.resource_id).to be_nil
+    end
+
+    it 'keeps the chosen freshness window on the new link' do
+      create(:shared_link, :live, user: user, settings: { 'live_freshness_seconds' => 21_600 })
+
+      post regenerate_share_links_live_path
+
+      expect(user.shared_links.where(resource_type: :live).active.first.live_freshness_seconds).to eq(21_600)
+    end
+
+    it 'regenerates a link whose stored freshness window is bad, using the default' do
+      share = create(:shared_link, :live, user: user)
+      share.update_columns(settings: { 'live_freshness_seconds' => 'banana' })
+
+      post regenerate_share_links_live_path
+
+      expect(user.shared_links.where(resource_type: :live).active.first.live_freshness_seconds).to eq(900)
     end
 
     it 'broadcasts a terminal {revoked: true} to the old share stream so open viewers disconnect' do

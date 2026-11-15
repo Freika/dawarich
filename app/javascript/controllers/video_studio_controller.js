@@ -1,47 +1,31 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import * as maplibregl from "maplibre-gl"
-import { studioTilesUrl } from "maps_maplibre/utils/basemap_url"
 import { MapPageProvider } from "poster_studio/data/providers"
-import { loadThemeTokens } from "poster_studio/data/theme_loader"
-import { trackBounds } from "poster_studio/ui/preview"
-import {
-  formatDateTimeRange,
-  selectableDateTimeRange,
-  toLocalDateTimeInput,
-} from "video_studio/date_range"
+import { formatDateTimeRange } from "video_studio/date_range"
+import { datePicker } from "video_studio/editor/date_picker"
+import { preview } from "video_studio/editor/preview"
+import { settingsPanel } from "video_studio/editor/settings_panel"
 import { ensureHudFonts } from "video_studio/hud_fonts"
-import { drawHud } from "video_studio/hud_overlay"
 import { loadTrack } from "video_studio/load_track"
-import { drawFogOverlay, drawRouteMarker } from "video_studio/map_effects"
 import { isVideoExportSupported } from "video_studio/mp4_encoder"
 import { toVideoPoints } from "video_studio/points"
 import { buildRouteClock } from "video_studio/route_clock"
-import {
-  buildRouteTimeline,
-  sliceAtFraction,
-} from "video_studio/route_timeline"
+import { buildRouteTimeline } from "video_studio/route_timeline"
 import { saveVideo } from "video_studio/save_video"
 import {
-  buildVideoStyle,
   DAWARICH_URL,
   defaultSettings,
   formatFor,
-  normalizeSettings,
-  previewFitPadding,
   provenanceOf,
-  rangeRestorePlan,
-  readProvenance,
 } from "video_studio/studio_state"
-import { buildStatRows, computeTrackStats } from "video_studio/video_stats"
+import { computeTrackStats } from "video_studio/video_stats"
 import Flash from "./flash_controller"
 
 // The route video studio: a full-screen overlay that previews the map, renders
 // an MP4 in the browser via WebCodecs, and hands the finished blob to the
 // backend. Rendering lives in video_studio/*; this controller owns the DOM.
-const HUD_PREVIEW_FRACTION = 0.62
 
-export default class extends Controller {
+export default class VideoStudioController extends Controller {
   static targets = [
     "stage",
     "frame",
@@ -170,197 +154,6 @@ export default class extends Controller {
 
   // ===== settings =====
 
-  selectTheme(event) {
-    this.settings.theme = event.currentTarget.dataset.themeKey
-    this.settingsChanged()
-  }
-
-  resetTrackColor() {
-    this.settings.track_color = defaultSettings().track_color
-    this.settingsChanged()
-  }
-
-  resetFogColor() {
-    this.settings.fog_color = defaultSettings().fog_color
-    this.settingsChanged()
-  }
-
-  selectVisualizationMode(event) {
-    this.settings.visualization_mode =
-      event.currentTarget.dataset.visualizationMode
-    this.settingsChanged()
-  }
-
-  selectFormat(event) {
-    this.settings.format = event.currentTarget.dataset.format
-    this.settingsChanged()
-  }
-
-  updateSetting(event) {
-    const { setting } = event.currentTarget.dataset
-    const input = event.currentTarget
-    const value =
-      input.type === "checkbox"
-        ? input.checked
-        : input.type === "range" || input.type === "number"
-          ? Number(input.value)
-          : input.value
-
-    this.settings[setting] = value
-    this.settingsChanged()
-  }
-
-  // Re-seeds the studio from an expired video's stored recipe (option C: the
-  // row outlives the blob, so the settings are enough to make it again).
-  async restoreSettings(event) {
-    if (this.rendering || this.rangeLoading) return
-    const operation = this.startOperation()
-    let raw = null
-    try {
-      raw = JSON.parse(event.currentTarget.dataset.settings)
-      this.settings = normalizeSettings(raw)
-    } catch {
-      this.settings = defaultSettings()
-    }
-    this.syncControls()
-    const restored = await this.restoreRange(readProvenance(raw), operation)
-    if (!restored || !this.operationIsCurrent(operation)) return
-    await this.settingsChanged(operation)
-    if (!this.operationIsCurrent(operation)) return
-    this.syncDateTimeControls()
-  }
-
-  // Styling alone is not the recipe: a video made from a different date range
-  // has to bring that range back, or "re-render" quietly rebuilds whatever the
-  // page is showing now under the old video's looks.
-  async restoreRange(provenance, operation = this.startOperation()) {
-    const plan = rangeRestorePlan(
-      provenance,
-      this.provider.dateRange(),
-      this.provider,
-    )
-    if (plan.action === "none") return true
-
-    const warn = () => {
-      this.statusTarget.textContent = translate("video.range_mismatch", {
-        range: plan.range,
-      })
-    }
-    if (plan.action === "warn") {
-      warn()
-      return true
-    }
-
-    this.clearResult()
-    this.style = null
-    this.setRangeBusy(true)
-    this.statusTarget.textContent = translate("video.restoring_range")
-    try {
-      await this.provider.applyDates(plan.start_at, plan.end_at)
-      if (!this.operationIsCurrent(operation)) return false
-      await this.reloadTrack(operation)
-      if (!this.operationIsCurrent(operation)) return false
-      this.statusTarget.textContent = ""
-      return true
-    } catch {
-      // A reload that never lands leaves the old track in place, which is the
-      // route the user did not ask for — say so rather than render it.
-      if (this.operationIsCurrent(operation)) warn()
-      return false
-    } finally {
-      if (this.operationIsCurrent(operation)) this.setRangeBusy(false)
-    }
-  }
-
-  // Date changes stay inside the open studio. Map-backed providers update the
-  // main map in place; trip-backed providers keep their fixed range display.
-  syncDateTimeControls() {
-    const editable = Boolean(this.provider?.supportsDateNavigation)
-    if (this.hasRangeControlsTarget) {
-      this.rangeControlsTarget.classList.toggle("hidden", !editable)
-    }
-    if (this.hasRangeDisplayTarget) {
-      this.rangeDisplayTarget.classList.toggle("hidden", editable)
-    }
-    if (!editable || !this.hasDateStartTarget || !this.hasDateEndTarget) return
-
-    const { startAt, endAt } = this.provider.dateRange()
-    const timeZone = this.provider.timeZone?.()
-    this.dateStartTarget.value = toLocalDateTimeInput(startAt, timeZone)
-    this.dateEndTarget.value = toLocalDateTimeInput(endAt, timeZone)
-  }
-
-  async applyDateTimeRange() {
-    if (
-      !this.provider?.supportsDateNavigation ||
-      this.rendering ||
-      this.rangeLoading
-    )
-      return
-    const range = selectableDateTimeRange(
-      this.dateStartTarget.value,
-      this.dateEndTarget.value,
-      this.provider.timeZone?.(),
-    )
-    if (!range) {
-      this.dateEndTarget.setCustomValidity(
-        translate("datetime.start_before_end"),
-      )
-      this.dateEndTarget.reportValidity()
-      return
-    }
-
-    this.dateEndTarget.setCustomValidity("")
-    // The provider mutates its range before a failed map reload rejects. The
-    // visible range label only changes after a successful track reload, so it
-    // remains the reliable reference for whether this name is automatic.
-    const currentRangeLabel = this.hasRangeLabelTarget
-      ? this.rangeLabelTarget.textContent
-      : this.dateRangeLabel()
-    const nameWasAuto = this.nameInputTarget.value === currentRangeLabel
-    const operation = this.startOperation()
-    this.clearResult()
-    this.style = null
-    this.setRangeBusy(true)
-    this.statusTarget.textContent = translate("poster.loading_tracks")
-    try {
-      await this.provider.applyDates(range.start, range.end)
-      if (!this.operationIsCurrent(operation)) return
-      await this.reloadTrack(operation)
-      if (!this.operationIsCurrent(operation)) return
-      this.syncDateTimeControls()
-      if (nameWasAuto) this.nameInputTarget.value = this.dateRangeLabel()
-      await this.refreshStyle(operation)
-      if (!this.operationIsCurrent(operation)) return
-      this.renderStats()
-    } catch (error) {
-      if (this.operationIsCurrent(operation)) {
-        Flash.show(
-          "error",
-          translate("video.open_failed", { error: error.message }),
-        )
-      }
-    } finally {
-      if (this.operationIsCurrent(operation)) {
-        this.statusTarget.textContent = ""
-        this.setRangeBusy(false)
-      }
-    }
-  }
-
-  setRangeBusy(value) {
-    this.rangeLoading = value
-    if (this.hasLoadButtonTarget) this.loadButtonTarget.disabled = value
-    if (this.hasLoadSpinnerTarget) {
-      this.loadSpinnerTarget.classList.toggle("hidden", !value)
-    }
-    if (this.hasDateStartTarget) this.dateStartTarget.disabled = value
-    if (this.hasDateEndTarget) this.dateEndTarget.disabled = value
-    if (this.hasSwitchButtonTarget) this.switchButtonTarget.disabled = value
-    if (value && this.hasSaveButtonTarget) this.saveButtonTarget.disabled = true
-    this.syncRenderAvailability()
-  }
-
   async reloadTrack(operation = null) {
     const { trackGeojson, points } = await loadTrack(this.provider)
     if (operation !== null && !this.operationIsCurrent(operation)) return
@@ -451,187 +244,7 @@ export default class extends Controller {
     }
   }
 
-  // ===== preview =====
-
-  async refreshStyle(operation = null) {
-    const tokens = await loadThemeTokens(this.settings.theme)
-    if (operation !== null && !this.operationIsCurrent(operation)) return
-    this.themeTokens = tokens
-    this.style = buildVideoStyle({
-      tokens,
-      trackGeojson: this.trackGeojson,
-      settings: this.settings,
-      tileUrl: studioTilesUrl(this.tilesUrlValue, this.tilesFallbackValue),
-    })
-    this.drawPreview()
-  }
-
-  // Sizes the frame to the largest box of the chosen aspect ratio that fits
-  // the stage. Doing it here rather than in CSS keeps the frame exact at every
-  // format — an aspect-ratio box with a definite height overflows the stage
-  // horizontally the moment the format goes wide.
-  resizeFrame() {
-    if (!this.hasStageTarget || !this.hasFrameTarget) return
-    const { width, height } = formatFor(this.settings)
-    const stage = this.stageTarget.getBoundingClientRect()
-    const padding = 48
-    const available = {
-      width: Math.max(0, stage.width - padding),
-      height: Math.max(0, stage.height - padding),
-    }
-    const scale = Math.min(available.width / width, available.height / height)
-    this.frameTarget.style.width = `${Math.round(width * scale)}px`
-    this.frameTarget.style.height = `${Math.round(height * scale)}px`
-    this.drawHudPreview()
-  }
-
-  // Paints the real HUD over the preview at preview resolution. Every size in
-  // the overlay derives from the frame's short edge, so drawing it small is
-  // proportionally identical to the render — what you see here is what gets
-  // burned in.
-  drawHudPreview() {
-    if (!this.hasOverlayTarget || !this.stats) return
-    const canvas = this.overlayTarget
-    const box = this.frameTarget.getBoundingClientRect()
-    if (!box.width || !box.height) return
-
-    const ratio = Math.min(window.devicePixelRatio || 1, 2)
-    canvas.width = Math.round(box.width * ratio)
-    canvas.height = Math.round(box.height * ratio)
-    const ctx = canvas.getContext("2d")
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    const slice = sliceAtFraction(this.timeline, HUD_PREVIEW_FRACTION)
-    if (this.settings.visualization_mode === "fog") {
-      drawFogOverlay(ctx, {
-        map: this.previewMap,
-        features: slice.features,
-        head: slice.head,
-        width: canvas.width,
-        height: canvas.height,
-        opacity: this.settings.fog_opacity / 100,
-        color: this.settings.fog_color,
-      })
-    }
-    if (this.settings.show_marker) {
-      drawRouteMarker(ctx, {
-        map: this.previewMap,
-        coordinate: slice.head,
-        width: canvas.width,
-        height: canvas.height,
-        accent: this.settings.track_color,
-      })
-    }
-
-    drawHud(ctx, {
-      width: canvas.width,
-      height: canvas.height,
-      // A representative moment mid-draw: far enough in that the readouts
-      // carry real values rather than zeroes.
-      fraction: HUD_PREVIEW_FRACTION,
-      outroProgress: 0,
-      distanceM: (this.stats?.distanceM ?? 0) * HUD_PREVIEW_FRACTION,
-      stats: this.stats,
-      units: this.settings.units,
-      accent: this.settings.track_color,
-      clock: this.clock,
-      families: this.families,
-      labels: this.hudLabels(),
-      watermark: this.settings.watermark ? DAWARICH_URL : null,
-      themeBg: this.themeTokens?.bg,
-      hudScale: this.settings.hud_scale / 100,
-    })
-  }
-
-  drawPreview() {
-    if (!this.style) return
-    this.resizeFrame()
-
-    const bounds =
-      trackBounds(this.trackGeojson) ?? this.provider.fallbackBounds()
-
-    if (this.previewMap) {
-      this.previewMap.setStyle(this.style)
-      this.previewMap.resize()
-      // A new format changes the viewport's shape, and MapLibre keeps the old
-      // camera through setStyle/resize — without re-fitting, the preview shows
-      // a framing the render will not reproduce.
-      this.fitPreview(bounds)
-      return
-    }
-
-    this.previewMap = new maplibregl.Map({
-      container: this.previewTarget,
-      style: this.style,
-      ...(bounds
-        ? { bounds, fitBoundsOptions: this.fitOptions() }
-        : { center: [0, 0], zoom: 1 }),
-      interactive: false,
-      attributionControl: false,
-    })
-    this.previewMap.once("idle", () => this.drawHudPreview())
-  }
-
-  // Padding is scaled to the preview's size so it covers the same fraction of
-  // the frame the renderer's does; a fixed 40px would zoom the preview out
-  // more than the video, since the preview is smaller.
-  fitOptions() {
-    return {
-      padding: previewFitPadding(
-        this.settings,
-        this.frameTarget.getBoundingClientRect().width,
-      ),
-      animate: false,
-    }
-  }
-
-  fitPreview(bounds) {
-    if (!bounds || !this.previewMap) return
-    this.previewMap.fitBounds(bounds, this.fitOptions())
-  }
-
-  // Mirrors the poster studio's summary block: plain label/value lines under
-  // the controls rather than a separate readout component.
-  renderStats() {
-    if (!this.hasSummaryTarget) return
-    const rows = buildStatRows(this.stats, this.settings.units, {
-      distance: translate("video.stats.distance"),
-      duration: translate("video.stats.duration"),
-      avgSpeed: translate("video.stats.avg_speed"),
-    })
-
-    // Leading line mirrors the poster studio's summary: what this render will
-    // produce, before the numbers describing what goes into it.
-    const { width, height } = formatFor(this.settings)
-    const descriptor = document.createElement("div")
-    descriptor.className = "pb-1"
-    descriptor.textContent = translate("video.summary", {
-      format: this.formatLabel(),
-      width,
-      height,
-      theme: this.themeTokens?.name ?? "",
-      seconds: this.settings.duration_sec,
-    })
-
-    this.summaryTarget.replaceChildren(
-      descriptor,
-      ...rows.map((row) => {
-        const line = document.createElement("div")
-        line.className = "flex items-baseline justify-between gap-2"
-        const label = document.createElement("span")
-        label.className = "min-w-0"
-        label.textContent = row.label
-        const value = document.createElement("span")
-        value.className = "shrink-0 tabular-nums opacity-90"
-        value.textContent = row.value
-        line.append(label, value)
-        return line
-      }),
-    )
-  }
-
   // ===== render =====
-
   async render() {
     if (!this.style || this.rendering || this.rangeLoading) return
     if (this.points.length < 2) {
@@ -834,3 +447,10 @@ export default class extends Controller {
     this.clearResult()
   }
 }
+
+Object.assign(
+  VideoStudioController.prototype,
+  settingsPanel,
+  datePicker,
+  preview,
+)

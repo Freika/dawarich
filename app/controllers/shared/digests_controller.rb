@@ -3,6 +3,7 @@
 class Shared::DigestsController < ApplicationController
   include DefaultDateTimePreferences
   include FlashStreamable
+  include SharingToggleable
 
   helper Users::DigestsHelper
   helper CountryFlagHelper
@@ -33,42 +34,6 @@ class Shared::DigestsController < ApplicationController
 
     return head :not_found unless @digest
 
-    if params[:enabled] == '1'
-      @digest.enable_sharing!(expiration: params[:expiration] || '24h')
-      @sharing_url = shared_users_digest_url(@digest.sharing_uuid)
-      @message = I18n.t('controllers.shared.digests.sharing_enabled')
-    else
-      @digest.disable_sharing!
-      @sharing_url = ''
-      @message = I18n.t('controllers.shared.digests.sharing_disabled')
-    end
-
-    respond_to do |format|
-      format.turbo_stream do
-        render turbo_stream: [
-          turbo_stream.replace('sharing-link-display',
-                               partial: 'shared/sharing_link',
-                               locals: { sharing_url: @sharing_url }),
-          stream_flash(:success, I18n.t('controllers.shared.digests.auto_saved'))
-        ]
-      end
-      format.json do
-        render json: { success: true, sharing_url: @sharing_url, message: @message }
-      end
-    end
-  rescue StandardError
-    respond_to do |format|
-      format.turbo_stream do
-        render turbo_stream: stream_flash(
-          :error,
-          I18n.t('controllers.shared.digests.failed_to_update_sharing_settings')
-        )
-      end
-      format.json do
-        message = I18n.t('controllers.shared.digests.failed_to_update_sharing_settings')
-        render json: { success: false, message: message },
-               status: :unprocessable_content
-      end
-    end
+    toggle_sharing(@digest, 'controllers.shared.digests') { |uuid| shared_users_digest_url(uuid) }
   end
 end

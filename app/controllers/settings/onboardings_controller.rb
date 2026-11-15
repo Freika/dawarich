@@ -42,7 +42,7 @@ module Settings
     private
 
     def demo_data_landing_path
-      tz = current_user.safe_settings.timezone.presence || 'UTC'
+      tz = current_user.timezone_or_utc
       Time.use_zone(tz) do
         yesterday = Time.zone.today - 1
         map_v2_path(

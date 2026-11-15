@@ -6,6 +6,9 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
   def perform
     config = Geocoding::Config.resolved_config
     return unless config.enabled?
+    # Every job queued now would only be skipped; resume once the provider's
+    # over-limit cooldown ends instead.
+    return Points::ResumeReverseGeocodingJob.schedule(config) if Geocoding::Cooldown.active?(config)
 
     processed_user_ids = Set.new
 

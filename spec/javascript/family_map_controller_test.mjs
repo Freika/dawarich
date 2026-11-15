@@ -10,7 +10,7 @@ async function loadFamilyMapController(theme = "dark") {
     ),
     "utf8",
   )
-  const withoutImports = source.replace(/^import .*\n/gm, "")
+  const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
   const dependencies = `
     class Controller {}
     class HtmlLabelManager {
@@ -21,6 +21,8 @@ async function loadFamilyMapController(theme = "dark") {
       constructor() { this.coordinates = [] }
       extend(coordinates) { this.coordinates.push(coordinates) }
     }
+    const startMapLoading = () => {}
+    const finishMapLoadingOn = () => {}
     const maplibregl = { LngLatBounds }
     const escapeHtml = (value) => value
     const getCurrentTheme = () => ${JSON.stringify(theme)}

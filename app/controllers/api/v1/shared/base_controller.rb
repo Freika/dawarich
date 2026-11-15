@@ -40,7 +40,7 @@ module Api
           return if @link.nil?
           return if @link.family_only?
           return if @link.magic_phrase.blank?
-          return if cookies.encrypted["shared_link_#{@link.id}"] == @link.unlock_token
+          return if cookies.encrypted[@link.unlock_cookie_name] == @link.unlock_token
 
           render json: { error: 'unauthorized' }, status: :unauthorized
         end

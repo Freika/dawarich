@@ -26,7 +26,10 @@ import { RENDER_CSS_SCALE, RENDER_FIT_PADDING } from "video_studio/studio_state"
 
 const FRESH_SOURCE_ID = "video-fresh"
 const EMPTY_FC = { type: "FeatureCollection", features: [] }
-const IDLE_TIMEOUT_MS = 400
+// A long route takes MapLibre longer than a frame to re-tile after setData,
+// and a frame captured before "idle" shows an older route under the current
+// marker. Wait for the map, up to a limit for one that never settles.
+const IDLE_TIMEOUT_MS = 30_000
 const OUTRO_FADE_FRAMES = 12
 
 // Recency fade: the whole drawn route stays as a dim base while the last
@@ -91,17 +94,36 @@ function styleForVideo(style, accent, dimOpacity) {
   return prepared
 }
 
-function nextIdle(map) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      map.off("idle", onIdle)
-      resolve()
-    }, IDLE_TIMEOUT_MS)
-    const onIdle = () => {
+// MapLibre paints on requestAnimationFrame, which a hidden tab pauses, so the
+// clock only runs while the tab is visible. A frame captured past the limit
+// would be the stale route this wait exists to prevent, so the export stops.
+export function nextIdle(map, signal) {
+  return new Promise((resolve, reject) => {
+    let timer = null
+    const settle = (finish, value) => {
       clearTimeout(timer)
-      resolve()
+      map.off("idle", onIdle)
+      document.removeEventListener("visibilitychange", restartClock)
+      signal?.removeEventListener("abort", onAbort)
+      finish(value)
+    }
+    const onIdle = () => settle(resolve)
+    const onAbort = () => settle(reject, new Error("Render cancelled"))
+    const onTimeout = () =>
+      settle(
+        reject,
+        new Error(
+          "The map stopped drawing, so the export was stopped. Please try again.",
+        ),
+      )
+    const restartClock = () => {
+      clearTimeout(timer)
+      if (!document.hidden) timer = setTimeout(onTimeout, IDLE_TIMEOUT_MS)
     }
     map.once("idle", onIdle)
+    document.addEventListener("visibilitychange", restartClock)
+    signal?.addEventListener("abort", onAbort, { once: true })
+    restartClock()
     map.triggerRepaint()
   })
 }
@@ -253,7 +275,7 @@ export async function renderRouteVideo({
         const camera = lerpCamera(pullFrom, pullTo, eased)
         map.jumpTo({ center: camera.center, zoom: camera.zoom })
       }
-      await nextIdle(map)
+      await nextIdle(map, signal)
 
       ctx.drawImage(map.getCanvas(), 0, 0, width, height)
       if (visualizationMode === "fog") {

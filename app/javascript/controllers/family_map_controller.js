@@ -1,8 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { HtmlLabelManager } from "maps_maplibre/utils/html_label_manager"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -53,6 +58,7 @@ export default class extends Controller {
       }
 
       const theme = getCurrentTheme()
+      startMapLoading(container)
       const style = await getMapStyle(theme)
 
       this.map = new maplibregl.Map({
@@ -62,8 +68,10 @@ export default class extends Controller {
         zoom: 2,
         attributionControl: false,
       })
+      finishMapLoadingOn(this.map)
 
       this.map.addControl(new maplibregl.NavigationControl(), "top-right")
+      this.map.addControl(collapsedAttributionControl())
       this.map.on("load", () => this.addMembers())
     } catch (error) {
       console.error("Family map init failed:", error)

@@ -46,6 +46,15 @@ RSpec.describe Families::CreateLocationRequest do
         expect { result }.to change { Notification.where(user: target_user).count }.by(1)
       end
 
+      it 'leads straight to the request, where it can be answered' do
+        result
+        notification = Notification.where(user: target_user).last
+        request_path = "/family/location_requests/#{Family::LocationRequest.last.id}"
+
+        expect(notification.action_path).to eq(request_path)
+        expect(notification.content).to include(request_path)
+      end
+
       it 'creates notification with XSS-safe content' do
         result
         notification = Notification.where(user: target_user).last

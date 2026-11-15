@@ -10,7 +10,7 @@
       <p class="py-4"><%= t('.monthly_digest') %></p>
       <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
               onclick="sharing_modal.showModal()">
-        <%= icon 'share' %> <%= t('.share') %>
+        <%= icon 'share-2' %> <%= t('.share') %>
       </button>
     </div>
   </div>
@@ -199,7 +199,7 @@
 <div class="flex flex-wrap gap-4 mt-8 justify-center">
   <%= link_to "#{t('.back_to')} #{year}", insights_path(year:), class: 'btn btn-outline' %>
   <button class="btn btn-outline" onclick="sharing_modal.showModal()">
-    <%= icon 'share' %> <%= t('.share') %>
+    <%= icon 'share-2' %> <%= t('.share') %>
   </button>
 </div>
 

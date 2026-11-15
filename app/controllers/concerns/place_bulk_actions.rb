@@ -12,10 +12,7 @@ module PlaceBulkActions
   rescue Places::BulkAction::InvalidSelection
     redirect_to places_url(place_list_params), alert: I18n.t('places.management.invalid_selection'), status: :see_other
   rescue Places::Merge::VisitConflict => e
-    conflict = e.conflicts.first
-    message = I18n.t('controllers.places.merge_visit_conflict', first_id: conflict[:survivor_id],
-                    second_id: conflict[:duplicate_id], started_at: I18n.l(conflict[:started_at], format: :long))
-    redirect_to places_url(place_list_params), alert: message, status: :see_other
+    redirect_to places_url(place_list_params), alert: e.user_message, status: :see_other
   end
 
   def place_list_params

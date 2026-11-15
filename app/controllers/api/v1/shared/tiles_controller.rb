@@ -25,7 +25,7 @@ module Api
           return head :no_content if tile.blank?
 
           send_data tile, type: 'application/vnd.mapbox-vector-tile', disposition: 'inline'
-        rescue ::Trips::RoutesTileQuery::InvalidTileCoordinatesError
+        rescue TileCoordinates::InvalidTileCoordinatesError
           force_uncacheable_response
           render json: { error: 'Invalid tile coordinates' }, status: :bad_request
         rescue ActiveRecord::QueryCanceled
@@ -72,7 +72,7 @@ module Api
             TILE_SCHEMA_VERSION, link.id, link.updated_at.to_i, trip.updated_at.to_i,
             Digest::SHA256.hexdigest(privacy_zones.to_json),
             trip.recording_devices_cache_key, link.user.timezone_iana,
-            (link.user.data_window_start.to_date if link.user.plan_restricted?), params[:z], params[:x], params[:y]
+            link.user.data_window_start&.to_date, params[:z], params[:x], params[:y]
           ]
         end
 

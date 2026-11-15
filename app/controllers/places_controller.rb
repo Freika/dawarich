@@ -10,7 +10,7 @@ class PlacesController < ApplicationController
   before_action :authenticate_user!
   before_action :set_place, only: %i[edit confirm destroy update merge]
 
-  helper_method :place_list_context
+  helper_method :place_list_params
 
   def index
     @tags = current_user.tags.ordered
@@ -56,7 +56,7 @@ class PlacesController < ApplicationController
 
       respond_to do |format|
         format.html do
-          redirect_to place_path(@place, place_list_context), notice: I18n.t('controllers.places.created'),
+          redirect_to place_path(@place, place_list_params), notice: I18n.t('controllers.places.created'),
                                                             status: :see_other
         end
         format.turbo_stream do
@@ -84,7 +84,7 @@ class PlacesController < ApplicationController
 
       respond_to do |format|
         format.html do
-          redirect_to place_path(@place, place_list_context), notice: I18n.t('controllers.places.updated'),
+          redirect_to place_path(@place, place_list_params), notice: I18n.t('controllers.places.updated'),
                                                             status: :see_other
         end
         format.turbo_stream do
@@ -95,7 +95,6 @@ class PlacesController < ApplicationController
         end
       end
     else
-      prepare_drawer
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: [drawer_stream, stream_flash(:error, @place.errors.full_messages.join(', '))],
@@ -136,7 +135,7 @@ class PlacesController < ApplicationController
         stream_flash(:success, message)
       ]
     else
-      redirect_to places_url(place_list_context), notice: message, status: :see_other
+      redirect_to places_url(place_list_params), notice: message, status: :see_other
     end
   end
 
@@ -144,7 +143,7 @@ class PlacesController < ApplicationController
     @place.update!(source: :manual, name_locked_at: (Time.current unless @place.name == Place::DEFAULT_NAME))
     @place.adopt!
 
-    redirect_to places_url(place_list_context),
+    redirect_to places_url(place_list_params),
                 notice: I18n.t('controllers.places.updated'), status: :see_other
   end
 
@@ -179,26 +178,15 @@ class PlacesController < ApplicationController
       end
     end
   rescue Places::Merge::VisitConflict => e
-    conflict = e.conflicts.first
-    message = I18n.t(
-      'controllers.places.merge_visit_conflict',
-      first_id: conflict[:survivor_id],
-      second_id: conflict[:duplicate_id],
-      started_at: I18n.l(conflict[:started_at], format: :long)
-    )
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, message), status: :unprocessable_content
+        render turbo_stream: stream_flash(:error, e.user_message), status: :unprocessable_content
       end
-      format.html { redirect_to places_url, alert: message, status: :see_other }
+      format.html { redirect_to places_url, alert: e.user_message, status: :see_other }
     end
   end
 
   private
-
-  def place_list_context
-    place_list_params
-  end
 
   def set_place
     @place = current_user.places.find(params[:id])

@@ -49,6 +49,7 @@ async function load(source, bindings = {}) {
       }
       for (const name of names) {
         if (name === "Controller") declarations.push("class Controller {}")
+        else if (name === "ReplayHost") declarations.push("class ReplayHost {}")
         else
           declarations.push(
             `const ${name}=globalThis.__reviewBindings[${id}][${JSON.stringify(name)}] ?? (()=>{throw new Error('Unexpected dependency ${name} executed')})`,
@@ -87,17 +88,31 @@ const { RouteSegmenter } = await load(
   arcs,
 )
 async function exercise(initial, zone) {
+  const { MapDateRange } = await load(
+    await read("app/javascript/controllers/maps/maplibre/date_range.js"),
+    { DateManager, SettingsManager, anomaliesVisible },
+  )
   const { default: MapController } = await load(
     await read("app/javascript/controllers/maps/maplibre_controller.js"),
-    { ...i18n, DateManager, SettingsManager, anomaliesVisible },
+    i18n,
   )
   const { MapPageProvider } = await load(
     await read("app/javascript/poster_studio/data/providers.js"),
     { RouteSegmenter },
   )
+  const { datePicker } = await load(
+    await read("app/javascript/poster_studio/editor/date_picker.js"),
+    { ...i18n, ...dateRange },
+  )
   const { default: Poster } = await load(
     await read("app/javascript/controllers/poster_studio_editor_controller.js"),
-    { ...i18n, ...dateRange, MapPageProvider, trackBounds: () => null },
+    {
+      ...i18n,
+      ...dateRange,
+      MapPageProvider,
+      trackBounds: () => null,
+      datePicker,
+    },
   )
   const map = Object.create(MapController.prototype)
   const network = []
@@ -116,10 +131,11 @@ async function exercise(initial, zone) {
     loadMapData: async () => {
       network.push({ start_at: map.startDateValue, end_at: map.endDateValue })
     },
-    _clearDayHighlight() {},
+    timelineBridge: { clearDayHighlight() {} },
     refreshTimelineFeedIfActive() {},
-    debouncedLoadFamilyHistory() {},
+    familyManager: { debouncedLoadHistory() {} },
   })
+  map.dateRange = new MapDateRange(map)
   const navigationRequests = []
   const element = { id: "maps-maplibre-container" }
   globalThis.window = {

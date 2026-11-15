@@ -18,6 +18,22 @@ RSpec.describe GoogleMaps::SemanticHistoryImporter do
       )
     end
 
+    context 'when a batch fails to save' do
+      let(:file_name) { 'with_activitySegment_with_startLocation' }
+
+      before { allow(Point).to receive(:upsert_all).and_raise(StandardError, 'Database error') }
+
+      it 'reports it once and leads to the import list' do
+        parser
+        described_class.new(import, user.id).call
+
+        notifications = user.notifications.where(kind: :error)
+        expect(notifications.count).to eq(1)
+        expect(notifications.first.content).to include('Database error')
+        expect(notifications.first.action_path).to eq('/imports')
+      end
+    end
+
     context 'when activitySegment is present' do
       context 'when startLocation is blank' do
         let(:file_name) { 'with_activitySegment_without_startLocation' }

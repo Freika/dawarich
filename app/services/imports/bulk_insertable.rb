@@ -72,12 +72,13 @@ module Imports
 
     def create_import_error_notification(message)
       I18n.with_locale(import.user.locale) do
-        Notification.create!(
-          user_id: import.user_id,
+        Notifications::Create.new(
+          user: import.user,
+          kind: :error,
           title: I18n.t('services.imports.bulk_insertable.importer_name_import_error', importer_name: importer_name),
           content: message,
-          kind: :error
-        )
+          action_path: Notifications.paths.imports_path
+        ).call
       end
     end
 

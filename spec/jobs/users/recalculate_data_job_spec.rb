@@ -17,6 +17,26 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       allow_any_instance_of(Users::Digests::CalculateYear).to receive(:call)
     end
 
+    context 'when only the tracks are rebuilt' do
+      it 'leaves stats and digests alone' do
+        described_class.perform_now(user.id, year: 2024, only: 'tracks')
+
+        expect(Tracks::ParallelGenerator).to have_received(:new).once
+        expect(Stats::CalculateMonth).not_to have_received(:new)
+        expect(Users::Digests::CalculateYear).not_to have_received(:new)
+      end
+    end
+
+    context 'when only stats and digests are rebuilt' do
+      it 'leaves the tracks alone' do
+        described_class.perform_now(user.id, year: 2024, only: 'stats')
+
+        expect(Stats::CalculateMonth).to have_received(:new).exactly(12).times
+        expect(Users::Digests::CalculateYear).to have_received(:new).once
+        expect(Tracks::ParallelGenerator).not_to have_received(:new)
+      end
+    end
+
     context 'with a specific year' do
       let(:year) { 2024 }
 
@@ -58,6 +78,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('info')
         expect(Notification.last.title).to eq('Data recalculation completed')
         expect(Notification.last.content).to include('2024')
+        expect(Notification.last.action_path).to eq('/stats')
       end
     end
 
@@ -185,6 +206,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('error')
         expect(Notification.last.title).to eq('Data recalculation failed')
         expect(Notification.last.content).to include('Test error')
+        expect(Notification.last.content).not_to match(/stacktrace|\.rb:\d+/)
       end
 
       it 're-raises the error' do

@@ -22,7 +22,7 @@ class Api::V1::DigestsController < ApiController
   def create
     year = params[:year].to_i
 
-    unless valid_year?(year)
+    unless Users::Digest.generatable_year?(current_api_user, year)
       render json: { error: I18n.t('controllers.api.v1.digests.invalid_year') }, status: :unprocessable_entity
       return
     end
@@ -52,15 +52,5 @@ class Api::V1::DigestsController < ApiController
                                        .map(&:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
-  end
-
-  def valid_year?(year)
-    return false if year < 1970 || year >= Time.current.year
-
-    current_api_user.scoped_stats.exists?(year: year)
-  end
-
-  def distance_unit
-    params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
   end
 end

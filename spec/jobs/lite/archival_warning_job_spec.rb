@@ -77,6 +77,13 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(notification.title).to include('archive')
       end
 
+      it 'does not repeat the warning when the sent-marker is lost while it is unread' do
+        described_class.perform_now
+        lite_user.reload.update!(settings: lite_user.settings.except('archival_warnings'))
+
+        expect { described_class.perform_now }.not_to change(Notification, :count)
+      end
+
       it 'uses the recipient saved locale for the persisted notification' do
         lite_user.update!(settings: { 'locale' => 'fr' })
 
@@ -198,11 +205,21 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
 
       it 'notifies again when the user upgrades and is downgraded again' do
         described_class.perform_now
+        downgraded.notifications.update_all(read_at: Time.current)
         downgraded.update!(plan: :pro)
         downgraded.update!(plan: :lite)
 
         expect { described_class.perform_now }
           .to change { Notification.where(user: downgraded).count }.by(1)
+      end
+
+      it 'keeps a single notice when the first one was never read before the second downgrade' do
+        described_class.perform_now
+        downgraded.update!(plan: :pro)
+        downgraded.update!(plan: :lite)
+
+        expect { described_class.perform_now }
+          .not_to(change { Notification.where(user: downgraded).unread.count })
       end
     end
   end

@@ -1,25 +1,8 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const read = (path) =>
-  readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
-const url = (source) =>
-  `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 
-const { TracksLayer } = await import(
-  url(
-    (await read("maps_maplibre/layers/tracks_layer.js"))
-      .replace(
-        '"./base_layer"',
-        `"${url(await read("maps_maplibre/layers/base_layer.js"))}"`,
-      )
-      .replace(
-        '"../utils/flight_arcs"',
-        `"${url(await read("maps_maplibre/utils/flight_arcs.js"))}"`,
-      ),
-  )
-)
 globalThis.requestAnimationFrame = () => 1
 globalThis.cancelAnimationFrame = () => {}
 

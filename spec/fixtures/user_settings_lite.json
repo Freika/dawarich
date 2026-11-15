@@ -26,7 +26,7 @@
     "maps": { "distance_unit": "mi" },
     "distance_unit": "mi",
     "immich_url": "https://immich.example",
-    "immich_api_key": "stored-key"
+    "immich_configured": true
   },
   "lite_reads_default": [
     "maps_maplibre_custom_theme",

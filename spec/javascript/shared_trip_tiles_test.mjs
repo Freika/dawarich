@@ -15,6 +15,7 @@ globalThis.__sharedEnv = env
 const { default: SharedTripController } = await import(
   moduleUrl(`
     class Controller {}
+class ReplayHost extends Controller {}
     const env = globalThis.__sharedEnv
     const getMapStyle = async () => ({})
     const maplibregl = {
@@ -27,6 +28,9 @@ const { default: SharedTripController } = await import(
       },
       NavigationControl: class {},
     }
+    const startMapLoading = () => {}
+    const finishMapLoadingOn = () => {}
+    const collapsedAttributionControl = () => ({})
     class TripRoutesTileLayer {
       constructor(map, options) { this.options = options; env.tileLayers.push(this) }
       getDayColor(day) { return this.options.dayKeys.includes(day) ? "#000" : null }

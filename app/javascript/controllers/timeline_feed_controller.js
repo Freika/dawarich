@@ -1,17 +1,19 @@
 import { Controller } from "@hotwired/stimulus"
-import { firstDayOfWeek, translate } from "i18n"
-import { monthGridStart } from "maps_maplibre/utils/month_grid"
+import { openEntry } from "./timeline_feed/open_entry"
+import { periodDays } from "./timeline_feed/period_days"
+import { visitFilters } from "./timeline_feed/visit_filters"
+import { visitSelection } from "./timeline_feed/visit_selection"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
  *
- * Coordinates the Timeline tab's calendar, visit list, and filters, and
+ * Coordinates the Timeline tab's period, visit list, and filters, and
  * dispatches events the MapLibre layer listens for.
  *
  * See docs/specs for contract details — event names and DOM attributes must match
  * what the views (Task 5), CSS (Task 6), and MapLibre layer/manager (Task 8) emit/expect.
  */
-export default class extends Controller {
+export default class TimelineFeedController extends Controller {
   static targets = [
     "visitListFrame",
     "scopeBadge",
@@ -24,6 +26,7 @@ export default class extends Controller {
     "mergeButton",
     "deleteForm",
     "deleteButton",
+    "allDaysButton",
   ]
 
   connect() {
@@ -63,12 +66,13 @@ export default class extends Controller {
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
 
     this.boundDateNavigated = (event) => {
-      if (event.detail?.date) return
-      this.selectedDate = null
-      for (const el of this.element.querySelectorAll(".cal-cell--selected")) {
-        el.classList.remove("cal-cell--selected")
-      }
+      if (!event.detail?.date) this.selectedDate = null
+      this.syncAllDays()
     }
+    // The period picker says what was picked; the period is ours.
+    this.boundPickRange = (event) =>
+      this.navigateToPeriod(event.detail.startAt, event.detail.endAt)
+    document.addEventListener("period-picker:range", this.boundPickRange)
     document.addEventListener(
       "timeline-feed:date-navigated",
       this.boundDateNavigated,
@@ -80,20 +84,22 @@ export default class extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      this.boundFrameFailure = this.handleVisitFrameFailure.bind(this)
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.addEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
 
-    // The calendar is rendered into a lazy turbo-frame, so the cell for the
-    // URL-driven selected day doesn't exist when hydrateFromUrl() first runs.
-    // Re-apply the highlight once the calendar frame finishes loading.
-    this.boundCalendarLoad = (e) => {
-      if (e.target?.id !== "timeline-calendar-frame") return
-      if (!this.selectedDate) return
-      const cell = this.element.querySelector(
-        `[data-day="${this.selectedDate}"]`,
-      )
-      if (cell) cell.classList.add("cal-cell--selected")
+    // Replay moved into another day of the period: when a day is selected,
+    // the selection follows it (the camera stays with the replay marker).
+    this.boundReplayDay = (event) => {
+      const day = event.detail?.day
+      if (!this.rangeDay(this.selectedDate) || this.selectedDate === day) return
+      this.selectInRange(day, { keepCamera: true })
     }
-    document.addEventListener("turbo:frame-load", this.boundCalendarLoad)
+    document.addEventListener("replay:day-changed", this.boundReplayDay)
 
     // Re-apply filter + search visibility after any turbo_stream update
     // (e.g., VisitsController#update replaces the row with fresh state, and
@@ -111,8 +117,25 @@ export default class extends Controller {
       const dayFrameUpdated =
         action === "update" && target === "timeline-feed-frame"
 
+      // Merge and the bulk actions answer with one re-rendered day for the
+      // whole frame. Inside a period that would throw the other days away:
+      // refuse the stream and re-read the period instead (the selected day
+      // is opened again once it has loaded, see syncRange).
+      // A visit past midnight is listed on both of its days under one id,
+      // and a row stream would reach only the first copy.
+      const rowListedTwice =
+        visitRowReplaced &&
+        document.querySelectorAll(`[id="${target}"]`).length > 1
+      if ((dayFrameUpdated || rowListedTwice) && this.periodSpansDays()) {
+        event.preventDefault()
+        this.visitListFrameTarget.reload()
+        document.dispatchEvent(new CustomEvent("visit:updated"))
+        return
+      }
+
       requestAnimationFrame(() => {
         this.applyVisibility()
+        if (dayFrameUpdated) this.syncRange()
         if (visitRowReplaced || dayFrameUpdated) {
           document.dispatchEvent(new CustomEvent("visit:updated"))
         }
@@ -135,9 +158,8 @@ export default class extends Controller {
       "timeline-feed:date-navigated",
       this.boundDateNavigated,
     )
-    if (this.boundCalendarLoad) {
-      document.removeEventListener("turbo:frame-load", this.boundCalendarLoad)
-    }
+    document.removeEventListener("replay:day-changed", this.boundReplayDay)
+    document.removeEventListener("period-picker:range", this.boundPickRange)
     if (this.boundStreamRender) {
       document.removeEventListener(
         "turbo:before-stream-render",
@@ -149,198 +171,17 @@ export default class extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      for (const event of ["turbo:fetch-request-error", "turbo:frame-missing"])
+        this.visitListFrameTarget.removeEventListener(
+          event,
+          this.boundFrameFailure,
+        )
     }
   }
 
-  handleOpenVisit(event) {
-    const { visitId, date } = event.detail || {}
-    if (Number.isFinite(Number(visitId))) {
-      this.pendingVisitId = Number(visitId)
-    }
-    if (date) this.selectDayByDate(date)
-  }
-
-  handleOpenTrack(event) {
-    const { trackId, date, startAtMs, endAtMs } = event.detail || {}
-    const tid = Number.parseInt(trackId, 10)
-
-    if (Number.isFinite(tid)) {
-      this.pendingTrackId = tid
-    } else if (Number.isFinite(Number(startAtMs))) {
-      // Route click: no track id, so focus the journey whose time range
-      // overlaps the route's. Both are epoch ms, so the match is tz-safe.
-      this.pendingTrackTime = {
-        startAtMs: Number(startAtMs),
-        endAtMs: Number.isFinite(Number(endAtMs))
-          ? Number(endAtMs)
-          : Number(startAtMs),
-      }
-    } else {
-      return
-    }
-
-    // If the clicked track is on the already-selected day, the journey
-    // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler consumes the pending target once the
-    // new day's entries render.
-    this.keepCameraOnDate = date || this.selectedDate
-    if (date && date !== this.selectedDate) {
-      this.navigateToDay(date, { fitBounds: false })
-    } else {
-      this._tryExpandPendingTrack()
-    }
-  }
-
-  // ---------- URL hydration ----------
-  hydrateFromUrl() {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get("panel") !== "timeline") return
-
-    // Status filter
-    const status = params.get("status")
-    if (status) {
-      for (const cb of this.element.querySelectorAll(
-        'input[type="checkbox"][data-status]',
-      )) {
-        cb.checked = cb.dataset.status === status
-      }
-      this.filterChanged()
-    }
-
-    // Date selection — "today" means the user's local today, not UTC today.
-    // Using toISOString() would shift the date near midnight in non-UTC zones.
-    // Fall back to the range's end date when there's no explicit `date=` param
-    // (arriving via the top date-range form / Search / Last 7 days) so the
-    // panel lands on the most recent day of the range instead of going blank —
-    // keeping the range and the panel in sync (C1).
-    const date = params.get("date") || this.renderedDay()
-    if (date) {
-      const isoDate =
-        date === "today" ? new Date().toLocaleDateString("en-CA") : date
-      requestAnimationFrame(() => this.selectDayByDate(isoDate, false))
-    }
-
-    // Specific visit selection — deferred until the visit list frame loads
-    // (see handleVisitFrameLoad). Supports deep links (`?visit_id=N`) and
-    // same-page navigation dispatched via the `timeline:open-visit` event.
-    const visitId = params.get("visit_id")
-    if (visitId) {
-      const parsedVisit = Number.parseInt(visitId, 10)
-      if (Number.isFinite(parsedVisit)) this.pendingVisitId = parsedVisit
-    }
-  }
-
-  handleVisitFrameLoad() {
-    // Reapply the current filter + search state to newly-rendered rows so
-    // user intent ("hide declined" / "search: café") persists across day switches.
-    this.applyVisibility()
-
-    // Extract the day's bounds from the rendered DOM and re-dispatch
-    // day-selected with bounds so the map can fit to the visits.
-    const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
-    const keepCamera =
-      this.pendingTrackId ||
-      this.pendingTrackTime ||
-      this.keepCameraOnDate === this.selectedDate
-    if (dayEl?.dataset?.bounds && !keepCamera) {
-      try {
-        const bounds = JSON.parse(dayEl.dataset.bounds)
-        if (bounds && typeof bounds === "object") {
-          document.dispatchEvent(
-            new CustomEvent("timeline-feed:day-selected", {
-              detail: { date: this.selectedDate, bounds },
-            }),
-          )
-        }
-      } catch {
-        // Malformed bounds JSON — silently skip fit
-      }
-    }
-
-    if (this.pendingTrackId || this.pendingTrackTime) {
-      this._tryExpandPendingTrack()
-    }
-
-    if (!this.pendingVisitId) return
-    const row = this.element.querySelector(
-      `[data-visit-id="${this.pendingVisitId}"]`,
-    )
-    this.pendingVisitId = null
-    if (!row) return
-    // Synthesize a Stimulus-shaped event and run through the normal path so
-    // visual selection + the `timeline-feed:visit-selected` dispatch are consistent.
-    this.selectVisit({ currentTarget: row, target: row })
-  }
-
-  // Expands the journey entry for `this.pendingTrackId` if it's present in
-  // the currently rendered day. Idempotent — re-clicking the same track
-  // collapses via `toggleTrackInfo`, but programmatic expansion only opens
-  // a closed entry, never collapses an open one.
-  _tryExpandPendingTrack() {
-    let toggle = null
-
-    if (this.pendingTrackId) {
-      const tid = this.pendingTrackId
-      this.pendingTrackId = null
-      toggle = this.element.querySelector(
-        `.journey-leg[data-track-id="${tid}"]`,
-      )
-    } else if (this.pendingTrackTime) {
-      const { startAtMs, endAtMs } = this.pendingTrackTime
-      this.pendingTrackTime = null
-      toggle = this._findJourneyToggleByTime(startAtMs, endAtMs)
-    }
-
-    if (!toggle) return
-
-    const frameId = toggle.dataset.frameId
-    const frame = frameId ? document.getElementById(frameId) : null
-    if (!frame) return
-
-    if (frame.classList.contains("hidden")) {
-      this.toggleTrackInfo({ currentTarget: toggle })
-    }
-
-    toggle.closest(".timeline-entry")?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    })
-  }
-
-  // Find the journey leg whose [started_at, ended_at] window overlaps the most
-  // with a given epoch-ms range (a clicked route). Returns the `.journey-leg`
-  // toggle so `_tryExpandPendingTrack` can open it. Journey timestamps are
-  // ISO8601 with offset, so Date.parse yields a tz-safe epoch.
-  _findJourneyToggleByTime(startAtMs, endAtMs) {
-    const entries = this.element.querySelectorAll(
-      '.timeline-entry[data-entry-type="journey"]',
-    )
-    let best = null
-    let bestOverlap = 0
-    for (const entry of entries) {
-      const s = new Date(entry.dataset.startedAt).getTime()
-      const e = new Date(entry.dataset.endedAt).getTime()
-      if (!Number.isFinite(s) || !Number.isFinite(e)) continue
-      const overlap = Math.min(e, endAtMs) - Math.max(s, startAtMs)
-      if (overlap > bestOverlap) {
-        bestOverlap = overlap
-        best = entry
-      }
-    }
-    return best?.querySelector(".journey-leg[data-track-id]") || null
-  }
-
-  // ---------- Calendar ----------
-  // User-facing actions trigger a full Turbo navigation so the whole map
-  // page (points / routes / fog-of-war / any enabled layer) rebinds to the
-  // new date range — consistent with the existing top-of-page date form.
-  selectDay(event) {
-    const cell = event.currentTarget
-    const date = cell.dataset.day
-    if (!date || cell.disabled) return
-    this.navigateToDay(date)
-  }
-
+  // ---------- Period ----------
+  // A day is opened without a page load: the map instance stays alive, layers
+  // refetch in place, the URL updates via pushState.
   navigateToDay(date, { fitBounds = true } = {}) {
     if (fitBounds) this.keepCameraOnDate = null
     // Fully SPA — no Turbo.visit. The map instance stays alive, layers
@@ -362,11 +203,20 @@ export default class extends Controller {
     params.set("end_at", endAtLocal)
     params.set("panel", "timeline")
     params.set("date", date)
+    params.delete("month")
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { date, startAt: startAtLocal, endAt: endAtLocal, fitBounds },
+        // timelineLoaded: the list for this day is already on its way, so the
+        // map must not reload it once more (see MapDateRange#setDateRange).
+        detail: {
+          date,
+          startAt: startAtLocal,
+          endAt: endAtLocal,
+          fitBounds,
+          timelineLoaded: true,
+        },
       }),
     )
   }
@@ -376,25 +226,7 @@ export default class extends Controller {
   applySelectedDayUI(date) {
     this.selectedDate = date
 
-    for (const el of this.element.querySelectorAll(".cal-cell--selected")) {
-      el.classList.remove("cal-cell--selected")
-    }
-    const cell = this.element.querySelector(`[data-day="${date}"]`)
-    if (cell) {
-      cell.classList.add("cal-cell--selected")
-    }
-
-    // If the date is outside the calendar's currently-rendered month, fetch
-    // the matching month so the cell becomes visible. `boundCalendarLoad`
-    // re-applies `.cal-cell--selected` once the new cells are in the DOM.
-    const calendarFrame = document.getElementById("timeline-calendar-frame")
-    if (calendarFrame && !cell) {
-      const month = date.slice(0, 7)
-      const newSrc = `/map/timeline_feeds/calendar?month=${encodeURIComponent(month)}`
-      if (calendarFrame.getAttribute("src") !== newSrc) {
-        calendarFrame.setAttribute("src", newSrc)
-      }
-    }
+    this.syncAllDays()
 
     if (this.hasVisitListFrameTarget) {
       const start = `${date}T00:00:00`
@@ -427,6 +259,16 @@ export default class extends Controller {
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
   selectDayByDate(date, alignInputs = true) {
+    // A day of the period on screen is selected in place. Not on hydration
+    // (alignInputs false): after a page visit the feed on screen belongs to
+    // the previous period and has to be loaded anew.
+    if (
+      alignInputs &&
+      this.selectInRange(date, { keepCamera: Boolean(this.pendingVisitId) })
+    ) {
+      this.selectPendingVisit()
+      return
+    }
     this.keepCameraOnDate = null
     if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
@@ -512,20 +354,15 @@ export default class extends Controller {
     this.applyVisibility()
   }
 
-  deselectVisit() {
-    this.selectedVisitId = null
-    for (const el of this.element.querySelectorAll(".visit-row--selected")) {
-      el.classList.remove("visit-row--selected")
-    }
-    document.dispatchEvent(new CustomEvent("timeline-feed:visit-deselected"))
-  }
-
   // ---------- Journey entries (track segments between visits) ----------
   toggleTrackInfo(event) {
     const target = event.currentTarget
     const frameId = target.dataset.frameId
     const trackId = target.dataset.trackId
-    const frame = document.getElementById(frameId)
+    // The entry's own frame: a journey past midnight is listed on both days.
+    const frame =
+      target.closest?.(".timeline-entry")?.querySelector(`[id="${frameId}"]`) ||
+      document.getElementById(frameId)
     if (!frame) return
 
     const chevron = target.querySelector(".track-info-chevron")
@@ -571,202 +408,22 @@ export default class extends Controller {
     document.dispatchEvent(new CustomEvent("timeline-feed:entry-unhover"))
   }
 
-  // ---------- Filters + Search ----------
-  filterChanged() {
-    if (this.selectionMode) this.exitSelection()
-    this.applyVisibility()
-    document.dispatchEvent(
-      new CustomEvent("timeline-feed:filter-changed", {
-        detail: this.readFilterDetail(),
-      }),
-    )
-  }
-
-  // Stimulus action wired via `data-action="input->timeline-feed#search"`.
-  search() {
-    this.applyVisibility()
-  }
-
-  // Stimulus action on tag chips. Toggles `--active` class + aria-pressed and
-  // re-applies row visibility. Multiple active chips AND together.
-  toggleTag(event) {
-    const btn = event.currentTarget
-    const isActive = btn.classList.toggle("tag-chip--active")
-    btn.setAttribute("aria-pressed", isActive ? "true" : "false")
-    this.applyVisibility()
-  }
-
-  // Single source of truth — walks the rendered visit rows and toggles the
-  // hidden class based on filter checkboxes, search query, and active tag chips.
-  // Keeping them unified prevents the three from drifting out of sync.
-  //
-  // Tag semantics are OR (union) — selecting "#home" + "#gym" shows visits
-  // tagged with either. AND would require visits carrying BOTH tags, which
-  // doesn't match how users read "show me home AND gym visits".
-  applyVisibility() {
-    if (!this.hasVisitListFrameTarget) return
-
-    const filter = this.readFilterDetail()
-    const query = this.readSearchQuery()
-    const activeTags = this.readActiveTags()
-
-    const filtersActive =
-      query.length > 0 ||
-      activeTags.length > 0 ||
-      Object.values(filter).some((v) => v === false)
-
-    for (const day of this.visitListFrameTarget.querySelectorAll(
-      ".timeline-day",
-    )) {
-      const rows = day.querySelectorAll(".visit-row[data-status]")
-      let visibleCount = 0
-      // Searching includes the normally collapsed low-confidence stops.
-      day.classList.toggle("timeline-day--filtering", filtersActive)
-      for (const row of rows) {
-        const tokens = row.dataset.searchTokens || ""
-        const statusOk = filter[row.dataset.status] !== false
-        const searchOk = !query || tokens.includes(query)
-        const tagsOk =
-          activeTags.length === 0 || activeTags.some((t) => tokens.includes(t))
-        const hidden = !(statusOk && searchOk && tagsOk)
-        row.classList.toggle("visit-row--hidden", hidden)
-        const collapsed =
-          !filtersActive &&
-          row.classList.contains("visit-row--lowconf") &&
-          !day.classList.contains("timeline-day--show-lowconf")
-        if (!hidden && !collapsed) visibleCount += 1
-      }
-      const count = day.querySelector("[data-timeline-visit-count]")
-      if (count) {
-        count.textContent = translate(
-          filtersActive || visibleCount !== rows.length
-            ? "ux_p3.timeline.filtered_count"
-            : "ux_p3.timeline.visit_count",
-          { count: visibleCount, total: rows.length },
-        )
-      }
-      day
-        .querySelector("[data-timeline-filter-scope]")
-        ?.classList.toggle("hidden", !filtersActive)
-      day
-        .querySelector('[data-timeline-feed-target="emptyFiltered"]')
-        ?.classList.toggle(
-          "hidden",
-          !(rows.length > 0 && visibleCount === 0 && filtersActive),
-        )
-    }
-  }
-
-  // Wired from the empty-filtered helper's "Clear search & filters" button.
-  clearVisitFilters() {
-    if (this.hasSearchInputTarget) {
-      this.searchInputTarget.value = ""
-    }
-    const checkboxes = this.element.querySelectorAll(
-      'input[type="checkbox"][data-status]',
-    )
-    for (const cb of checkboxes) {
-      if (!cb.checked) cb.checked = true
-    }
-    const activeTagChips = this.element.querySelectorAll(
-      ".tag-chip--toggle.tag-chip--active",
-    )
-    for (const chip of activeTagChips) {
-      chip.classList.remove("tag-chip--active")
-    }
-    this.applyVisibility()
-  }
-
-  // Built from whatever status checkboxes exist in the DOM. With none
-  // rendered (stateless visits), the empty detail filters nothing.
-  readFilterDetail() {
-    const detail = {}
-    const checkboxes = this.element.querySelectorAll(
-      'input[type="checkbox"][data-status]',
-    )
-    for (const cb of checkboxes) {
-      detail[cb.dataset.status] = cb.checked
-    }
-    return detail
-  }
-
-  readSearchQuery() {
-    if (!this.hasSearchInputTarget) return ""
-    return (this.searchInputTarget.value || "").trim().toLowerCase()
-  }
-
-  readActiveTags() {
-    return Array.from(
-      this.element.querySelectorAll(".tag-chip--toggle.tag-chip--active"),
-    ).map((b) => b.dataset.tagName || "")
-  }
-
-  // ---------- Calendar month skeleton ----------
-  // Paints a "neutral" version of the target month immediately on click,
-  // so users see the new month structure without waiting for the
-  // turbo_stream round-trip. The stream then swaps this skeleton out for
-  // the real heat-colored cells the moment the response arrives.
-  previewMonth(event) {
-    const link = event.currentTarget
-    const targetMonth = link?.dataset?.targetMonth
-    if (!targetMonth) return
-
-    const calendar = this.element.querySelector(
-      '[data-testid="timeline-calendar"]',
-    )
-    if (!calendar) return
-
-    const grid = calendar.querySelector(
-      ".grid.grid-cols-7.gap-0\\.5:last-child",
-    )
-    const title = calendar.querySelector('[data-testid="calendar-title"]')
-    if (!grid || !title) return
-
-    const [yearStr, monthStr] = targetMonth.split("-")
-    const year = Number.parseInt(yearStr, 10)
-    const monthIdx = Number.parseInt(monthStr, 10) - 1
-    if (!Number.isFinite(year) || !Number.isFinite(monthIdx)) return
-
-    // Force English locale to match the server-rendered title
-    // (`strftime('%B %Y')`) — otherwise users on a non-English browser see
-    // a brief "Январь 2025" → "January 2025" flicker as the turbo_stream
-    // response replaces the skeleton.
-    title.textContent = new Date(year, monthIdx, 1).toLocaleDateString("en", {
-      month: "long",
-      year: "numeric",
-    })
-
-    // 6×7 grid aligned to the first day of week — mirrors MonthSummary.
-    const gridStart = monthGridStart(year, monthIdx, firstDayOfWeek())
-
-    const cells = []
-    for (let i = 0; i < 42; i += 1) {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      const inMonth = d.getMonth() === monthIdx
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-      const selected = iso === this.selectedDate
-      const classes = [
-        "cal-cell",
-        "heat-0",
-        "cal-cell--dark-text",
-        inMonth ? null : "out-of-month",
-        selected ? "cal-cell--selected" : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
-      cells.push(
-        `<button type="button" class="${classes}" data-day="${iso}" data-action="click->timeline-feed#selectDay" data-testid="calendar-day" disabled><span class="cal-cell__day">${d.getDate()}</span></button>`,
-      )
-    }
-
-    grid.innerHTML = cells.join("")
-    calendar.classList.add("timeline-calendar--loading")
-  }
-
   // ---------- Day navigation ----------
   navigateDay(event) {
     const direction = event.currentTarget.dataset.direction
+    // Inside a period the arrows step through its days, by the calendar
+    // whatever order the days are listed in.
+    const days = this.hasVisitListFrameTarget
+      ? [
+          ...this.visitListFrameTarget.querySelectorAll("details.timeline-day"),
+        ].sort((a, b) => (a.dataset.day < b.dataset.day ? -1 : 1))
+      : []
+    if (days.length) {
+      const step = direction === "prev" ? -1 : 1
+      const next = days[days.findIndex((day) => day.open) + step]
+      if (next) next.open = true
+      return
+    }
     const current = this.selectedDate || this.renderedDay()
     if (!current) return
     // Work in UTC throughout to avoid local-timezone drift. `new Date("YYYY-MM-DDT00:00:00")`
@@ -812,213 +469,12 @@ export default class extends Controller {
     const fakeEvent = { currentTarget: { dataset: { direction } } }
     this.navigateDay(fakeEvent)
   }
-
-  enterSelection(event) {
-    const day = event.currentTarget.closest(".timeline-day")
-    if (!day) return
-
-    if (this.selectionMode) {
-      const wasSameDay = this.activeDayElement === day
-      this.exitSelection()
-      if (wasSameDay) return
-    }
-
-    this.selectionMode = true
-    this.selectedVisitIds.clear()
-    this.activeDayElement = day
-    day.dataset.selectionMode = "true"
-
-    const bar = this.activeSelectionBar()
-    if (bar) bar.hidden = false
-    this.syncSelectionUI()
-  }
-
-  exitSelection() {
-    this.selectionMode = false
-    this.selectedVisitIds.clear()
-
-    for (const day of this.element.querySelectorAll(
-      '[data-selection-mode="true"]',
-    )) {
-      day.removeAttribute("data-selection-mode")
-    }
-
-    for (const cb of this.rowCheckTargets) {
-      cb.checked = false
-    }
-
-    const bar = this.activeSelectionBar()
-    if (bar) bar.hidden = true
-
-    this.syncSelectionUI()
-    this.activeDayElement = null
-  }
-
-  toggleVisitId(id) {
-    const idStr = String(id)
-    if (this.selectedVisitIds.has(idStr)) {
-      this.selectedVisitIds.delete(idStr)
-    } else {
-      this.selectedVisitIds.add(idStr)
-    }
-    const scope = this.activeDayElement || this.element
-    const cb = scope.querySelector(
-      `input[type="checkbox"][data-visit-id="${idStr}"]`,
-    )
-    if (cb) cb.checked = this.selectedVisitIds.has(idStr)
-    this.syncSelectionUI()
-  }
-
-  rowCheckChanged(event) {
-    if (!this.selectionMode) return
-    const id = event.target.dataset.visitId
-    if (!id) return
-    if (event.target.checked) {
-      this.selectedVisitIds.add(String(id))
-    } else {
-      this.selectedVisitIds.delete(String(id))
-    }
-    this.syncSelectionUI()
-  }
-
-  stopPropagation(event) {
-    event.stopPropagation()
-  }
-
-  activeSelectionBar() {
-    const scope = this.activeDayElement
-    if (!scope) return null
-    return scope.querySelector('[data-timeline-feed-target="selectionBar"]')
-  }
-
-  activeSelectionForm() {
-    return this.scopedQuery('[data-timeline-feed-target="selectionForm"]')
-  }
-
-  activeSelectionCount() {
-    return this.scopedQuery('[data-timeline-feed-target="selectionCount"]')
-  }
-
-  activeMergeButton() {
-    return this.scopedQuery('[data-timeline-feed-target="mergeButton"]')
-  }
-
-  activeDeleteForm() {
-    return this.scopedQuery('[data-timeline-feed-target="deleteForm"]')
-  }
-
-  activeDeleteButton() {
-    return this.scopedQuery('[data-timeline-feed-target="deleteButton"]')
-  }
-
-  scopedQuery(selector) {
-    const scope = this.activeDayElement
-    if (!scope) return null
-    return scope.querySelector(selector)
-  }
-
-  maxBulkVisits() {
-    const bar = this.activeSelectionBar()
-    const raw = bar?.dataset?.maxBulkVisits
-    const n = Number.parseInt(raw, 10)
-    return Number.isFinite(n) && n > 0 ? n : 500
-  }
-
-  syncSelectionUI() {
-    const n = this.selectedVisitIds.size
-    const max = this.maxBulkVisits()
-    const overCap = n > max
-    const countEl = this.activeSelectionCount()
-    if (countEl) {
-      countEl.textContent = overCap
-        ? translate("timeline.selected_with_max", { count: n, max })
-        : translate("timeline.selected", { count: n })
-    }
-    const mergeBtn = this.activeMergeButton()
-    if (mergeBtn) {
-      mergeBtn.disabled = n < 2 || overCap
-      mergeBtn.textContent =
-        n >= 2
-          ? translate("timeline.merge_count", { count: n })
-          : translate("visits.merge")
-    }
-    for (const [getter, key] of [
-      [this.activeDeleteButton.bind(this), "common.delete"],
-    ]) {
-      const btn = getter()
-      if (!btn) continue
-      btn.disabled = n < 1 || overCap
-      btn.textContent =
-        n >= 1
-          ? translate("timeline.action_count", {
-              action: translate(key),
-              count: n,
-            })
-          : translate(key)
-    }
-  }
-
-  submitMerge(event) {
-    this.submitBulkAction(event, {
-      formGetter: this.activeSelectionForm.bind(this),
-      buttonGetter: this.activeMergeButton.bind(this),
-      minSelected: 2,
-    })
-  }
-
-  submitBulkDelete(event) {
-    const n = this.selectedVisitIds.size
-    if (n < 1) {
-      event.preventDefault()
-      return
-    }
-    const noun = n === 1 ? "visit" : "visits"
-    const message = `Delete ${n} ${noun}? Your location points stay — only the visit grouping is removed.`
-    if (!window.confirm(message)) {
-      event.preventDefault()
-      return
-    }
-    this.submitBulkAction(event, {
-      formGetter: this.activeDeleteForm.bind(this),
-      buttonGetter: this.activeDeleteButton.bind(this),
-      minSelected: 1,
-    })
-  }
-
-  submitBulkAction(event, { formGetter, buttonGetter, minSelected }) {
-    const form = formGetter()
-    if (!form || form !== event.currentTarget) {
-      event.preventDefault()
-      return
-    }
-    if (this.selectedVisitIds.size < minSelected) {
-      event.preventDefault()
-      return
-    }
-
-    for (const old of form.querySelectorAll('input[name="visit_ids[]"]')) {
-      old.remove()
-    }
-    for (const id of this.selectedVisitIds) {
-      const input = document.createElement("input")
-      input.type = "hidden"
-      input.name = "visit_ids[]"
-      input.value = id
-      form.appendChild(input)
-    }
-
-    const btn = buttonGetter()
-    if (btn) btn.disabled = true
-
-    const onEnd = (e) => {
-      if (e.target !== form) return
-      document.removeEventListener("turbo:submit-end", onEnd)
-      if (e.detail?.success) {
-        this.exitSelection()
-      } else {
-        this.syncSelectionUI()
-      }
-    }
-    document.addEventListener("turbo:submit-end", onEnd)
-  }
 }
+
+Object.assign(
+  TimelineFeedController.prototype,
+  visitFilters,
+  visitSelection,
+  openEntry,
+  periodDays,
+)

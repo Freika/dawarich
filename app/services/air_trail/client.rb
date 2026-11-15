@@ -2,8 +2,6 @@
 
 module AirTrail
   class Client
-    include SslConfigurable
-
     class Error < StandardError
       attr_reader :status
 
@@ -18,6 +16,7 @@ module AirTrail
     end
 
     MAX_SUMMARY_PAGES = 1_000
+    TIMEOUT = 15
 
     def initialize(url, api_key, skip_ssl_verification: false)
       @url = url.to_s.chomp('/')
@@ -57,21 +56,19 @@ module AirTrail
     private
 
     def get_json(path)
-      response = HTTParty.get(
-        "#{@url}#{path}",
-        http_options_with_ssl_flag(@skip_ssl_verification, {
-                                     headers: {
-                                       'Authorization' => "Bearer #{@api_key}",
-                                       'accept' => 'application/json'
-                                     },
-                                     timeout: 15
-                                   })
+      response = Integrations::Transport.request(
+        :get, "#{@url}#{path}",
+        headers: { 'Authorization' => "Bearer #{@api_key}", 'accept' => 'application/json' },
+        skip_ssl_verification: @skip_ssl_verification,
+        timeout: TIMEOUT
       )
 
       raise Error.new("AirTrail responded with #{response.code}", status: response.code) unless response.success?
 
       parse_body(response)
-    rescue *Photos::ConnectionErrors::HANDLED => e
+    rescue Integrations::Transport::Error => e
+      # No status, also for a refused redirect: callers treat a status as an
+      # answer about one resource and anything else as a failed connection.
       raise Error, e.message
     end
 

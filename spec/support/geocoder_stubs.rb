@@ -22,7 +22,7 @@ RSpec.configure do |config|
   # A developer's .env can set a provider variable, and the resolver reads the
   # environment first, so each example starts from an unconfigured instance.
   config.around(:each) do |example|
-    variables = InstanceSettings::Registry::DEFINITIONS.values.map(&:env_var)
+    variables = InstanceSettings::Registry.env_vars
     saved = variables.index_with { |name| ENV.fetch(name, nil) }
     variables.each { |name| ENV.delete(name) }
     InstanceSettings::Resolver.reset!

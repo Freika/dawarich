@@ -2,7 +2,6 @@ zh:
   places:
     polish:
       selected: "已选"
-      details: "详情"
       location: "位置"
       notifications: "通知"
       visits: "访问"

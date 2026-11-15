@@ -5,6 +5,7 @@ class Trip < ApplicationRecord
   include Calculateable
   include DistanceConvertible
   include Notable
+  include TripDetectionOrigin
 
   RECALCULATE_COOLDOWN = 60.seconds
   # A stamped point reads its device from point_sources exclusively; the
@@ -177,7 +178,17 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    self.visited_countries = points.not_flyover.pluck(:country_name).uniq.compact
+    country = Countries::NameAliases::POINT_NAME_SQL
+
+    self.visited_countries = points.not_flyover.where.not(country_name: nil)
+                                   .joins(Countries::NameAliases.point_joins_sql)
+                                   .group(country).reorder(Arel.sql('MIN(points.timestamp)'))
+                                   .pluck(Arel.sql(country))
+  end
+
+  # Rows calculated before the names were unified can hold both spellings.
+  def canonical_visited_countries
+    Array(visited_countries).map { |country| Countries::NameAliases.canonical(country) }.uniq
   end
 
   private

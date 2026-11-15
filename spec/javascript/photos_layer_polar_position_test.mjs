@@ -1,10 +1,11 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 async function loadModule(relativePath, dependencies = "") {
-  const source = await readFile(new URL(relativePath, import.meta.url), "utf8")
-  const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const withoutImports = await strippedSource(
+    relativePath.replace("../../app/javascript/", ""),
+  )
   const url = `data:text/javascript;base64,${Buffer.from(
     `${dependencies}\n${withoutImports}`,
   ).toString("base64")}`

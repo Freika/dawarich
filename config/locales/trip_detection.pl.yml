@@ -1,0 +1,74 @@
+pl:
+  trip_detection:
+    # A Detected Trip's name: places (a city or up to three countries), then the month.
+    name: "%{places}, %{month}"
+    list_separator: ", "
+    # The name used when no city or country is known.
+    fallback_name: "Podróż, %{range}"
+    formats:
+      month_year: "%b %Y"
+    # Date ranges. Each part is a strftime format localized by I18n.l (%b is the
+    # abbreviated month name); the pattern joins the two dates.
+    range:
+      same_month:
+        pattern: "%{start}–%{end}"
+        start: "%-d"
+        end: "%-d %b %Y"
+      same_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b"
+        end: "%-d %b %Y"
+      cross_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b %Y"
+        end: "%-d %b %Y"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "Znaleziono podróż: %{name}"
+        content: "Dawarich znalazł nową podróż w Twojej historii. <a href=\"%{url}\">Otwórz podróż</a>"
+      many:
+        title:
+          one: "Znaleziono %{count} podróż"
+          few: "Znaleziono %{count} podróże"
+          many: "Znaleziono %{count} podróży"
+          other: "Znaleziono %{count} podróży"
+        content: "Dawarich znalazł nowe podróże w Twojej historii. <a href=\"%{url}\">Zobacz podróże znalezione automatycznie</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "Mieszkam / mieszkałem(-am) tutaj"
+      help: "Puste pole „Od” oznacza: od pierwszego zapisu Twojej lokalizacji w tym miejscu; puste pole „Do” oznacza, że nadal tu mieszkasz."
+      from: "Od"
+      until: "Do"
+      save: "Zapisz"
+      remove: "Usuń"
+      remove_confirm: "Usunąć ten okres? Jego daty zostaną usunięte, a podróże znalezione automatycznie w tym okresie mogą zostać usunięte."
+      add: "Dodaj okres"
+      end_before_start: "Data „Do” nie może być wcześniejsza niż „Od”."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Pokaż"
+      all: "Wszystkie podróże"
+      manual: "Utworzone przeze mnie"
+      detected: "Znalezione automatycznie"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Dodaj swój dom, aby Dawarich mógł automatycznie znajdować Twoje podróże."
+      long_absence: "Dawarich pominął okres dłuższy niż %{days} dni poza domem. Jeśli mieszkałeś(-aś) wtedy gdzie indziej, dodaj ten wcześniejszy dom."
+      add_home: "Dodaj dom na stronie Miejsca"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Dom"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Dodaj swój dom"
+      intro: "Dawarich korzysta z Twojego domu, aby automatycznie znajdować Twoje podróże. Udostępnij swoją lokalizację lub kliknij mapę, a następnie potwierdź."
+      use_my_location: "Użyj mojej lokalizacji"
+      confirm: "Tu mieszkam"
+      skip: "Pomiń"
+      location_denied: "Nie udało się odczytać Twojej lokalizacji. Kliknij mapę, aby wskazać swój dom, albo ustaw go później na stronie Miejsca."
+      home_saved: "Twój dom został zapisany. Dawarich poszuka Twoich podróży."
+      invalid_location: "Najpierw wybierz miejsce na mapie."
+      # Onboarding never adds a second Home.
+      home_exists: "Masz już dom. Możesz go zmienić na stronie Miejsca."
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "Dalej"

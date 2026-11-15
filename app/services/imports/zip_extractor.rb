@@ -68,8 +68,7 @@ module Imports
           next unless File.expand_path(dest).start_with?("#{File.expand_path(temp_dir)}/")
 
           FileUtils.mkdir_p(File.dirname(dest))
-          total_size += extract_entry(entry, dest)
-          raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
+          total_size += extract_entry(entry, dest, total_size)
         end
       end
     end
@@ -79,17 +78,24 @@ module Imports
         SUPPORTED_EXTENSIONS.include?(File.extname(entry.name).downcase)
     end
 
-    def extract_entry(entry, dest)
+    def extract_entry(entry, dest, total_so_far = 0)
       bytes_written = 0
       File.open(dest, 'wb') do |out|
         entry.get_input_stream do |stream|
           while (chunk = stream.read(8192))
             bytes_written += chunk.bytesize
+            # Enforce the cap mid-stream so one deflated entry can't fill the disk
+            # before the per-archive check runs.
+            raise "Archive too large (max #{@max_size} bytes)" if total_so_far + bytes_written > @max_size
+
             out.write(chunk)
           end
         end
       end
       bytes_written
+    rescue StandardError
+      File.delete(dest) if File.exist?(dest)
+      raise
     end
 
     def collect_supported_files(temp_dir)

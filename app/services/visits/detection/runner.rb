@@ -212,7 +212,7 @@ module Visits
       def within_stay_radius?(here, there)
         return false unless here&.first && there&.first
 
-        Geocoder::Calculations.distance_between(here, there, units: :km) * 1000 <= policy.stay_radius_m
+        GeoDistance.meters(here, there) <= policy.stay_radius_m
       end
 
       def no_points_between?(from_ts, to_ts)

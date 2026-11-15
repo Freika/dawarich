@@ -5,8 +5,8 @@ module TeslaMate
     queue_as :imports
 
     def perform
-      User.where("settings->>'teslamate_url' <> ''")
-          .find_each { |user| TeslaMate::SyncJob.perform_later(user.id) }
+      user_ids = User.where("settings->>'teslamate_url' <> ''").ids
+      ActiveJob.perform_all_later(user_ids.map { |user_id| TeslaMate::SyncJob.new(user_id) })
     end
   end
 end

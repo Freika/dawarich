@@ -41,7 +41,7 @@ RSpec.describe 'Place editor tags and geofencing', type: :request do
     get place_path(place)
 
     headings = document.css('.place-drawer__section > .place-drawer__heading').map { |node| node.text.strip }
-    expect(headings).to eq(%w[Details Location Notifications Visits Manage])
+    expect(headings).to eq(%w[Tags Location Notifications Visits Manage])
     expect(document.css('[data-testid="place-geofence-events-link"]').size).to eq(1)
     expect(document.css("a[href='#{settings_geofencing_path(place_id: place.id)}']").size).to eq(1)
     visit = document.at_css('.place-drawer__visit')

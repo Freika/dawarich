@@ -40,6 +40,17 @@ RSpec.describe 'User feature toggles', type: :request do
       expect(user.reload.feature_enabled?(:achievements)).to be false
       expect(response.parsed_body['settings']['achievements_enabled']).to be false
     end
+
+    it 'schedules Trip Detection when the API switches it back on' do
+      user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+      clear_trip_detection_schedule(user.id)
+
+      expect do
+        patch api_v1_settings_path, params: { settings: { trip_detection_enabled: 'true' } },
+                                    headers: { 'Authorization' => "Bearer #{user.api_key}" }
+      end.to have_enqueued_job(Trips::DetectJob).with(user.id).at(a_value > Time.current)
+      expect(response.parsed_body['settings']['trip_detection_enabled']).to be true
+    end
   end
 
   describe 'GET /settings/general' do

@@ -33,7 +33,7 @@
     <% end %>
   </div>
 
-  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="live" class="hidden pt-2">
+  <div data-hub-tabs-target="panel" data-tab="live" class="hidden pt-2">
     <% if hub.live_share %>
       <%= render 'shared_links/modal_active', share: hub.live_share, paths: live_paths,
                  subtitle: t('.your_live_location_is_shared_via_a_public_link') %>
@@ -42,7 +42,7 @@
     <% end %>
   </div>
 
-  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="timeline" class="hidden pt-2">
+  <div data-hub-tabs-target="panel" data-tab="timeline" class="hidden pt-2">
     <% if hub.timeline_share %>
       <%= render 'shared_links/modal_active', share: hub.timeline_share, paths: timeline_paths,
                  subtitle: timeline_share_subtitle(hub.timeline_share) %>
@@ -53,33 +53,39 @@
 
   <%# A link hands someone your live data; these hand them a file instead —
       nothing stays shared after you post it. %>
-  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="make" class="hidden pt-2"
+  <div data-hub-tabs-target="panel" data-tab="make" class="hidden pt-2"
        data-controller="studio-launcher">
     <p class="text-sm opacity-70 mb-4"><%= t('.make_something_intro') %></p>
     <div class="grid gap-3 sm:grid-cols-2">
       <button type="button"
-              class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex flex-col items-stretch overflow-hidden rounded-lg border border-base-content/10 bg-base-200 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               data-action="studio-launcher#openVideo" data-testid="hub-make-video">
-        <span class="flex items-center gap-2 font-medium">
-          <%= icon 'video', class: 'h-4 w-4 opacity-70' %>
-          <%= t('.make_video') %>
+        <%= image_tag 'layer_previews/tracks.gif', alt: '', loading: 'lazy', class: 'h-28 w-full object-cover' %>
+        <span class="flex flex-col gap-1 p-4 pt-3">
+          <span class="flex items-center gap-2 font-medium">
+            <%= icon 'video', class: 'h-4 w-4 opacity-70' %>
+            <%= t('.make_video') %>
+          </span>
+          <span class="text-xs opacity-60"><%= t('.make_video_hint') %></span>
         </span>
-        <span class="text-xs opacity-60"><%= t('.make_video_hint') %></span>
       </button>
       <button type="button"
-              class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex flex-col items-stretch overflow-hidden rounded-lg border border-base-content/10 bg-base-200 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               data-action="studio-launcher#openPoster" data-testid="hub-make-poster">
-        <span class="flex items-center gap-2 font-medium">
-          <%= icon 'image', class: 'h-4 w-4 opacity-70' %>
-          <%= t('.make_poster') %>
+        <%= image_tag 'poster_themes/lg/midnight_blue.webp', alt: '', loading: 'lazy', class: 'h-28 w-full object-cover' %>
+        <span class="flex flex-col gap-1 p-4 pt-3">
+          <span class="flex items-center gap-2 font-medium">
+            <%= icon 'image', class: 'h-4 w-4 opacity-70' %>
+            <%= t('.make_poster') %>
+          </span>
+          <span class="text-xs opacity-60"><%= t('.make_poster_hint') %></span>
         </span>
-        <span class="text-xs opacity-60"><%= t('.make_poster_hint') %></span>
       </button>
     </div>
   </div>
 
   <% if hub.any_shares? %>
-    <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="shared" class="hidden pt-2">
+    <div data-hub-tabs-target="panel" data-tab="shared" class="hidden pt-2">
       <%= render 'share_links/hubs/shared_list', shares: hub.all_shares, query: q %>
     </div>
   <% end %>

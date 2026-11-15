@@ -1,0 +1,72 @@
+fr:
+  trip_detection:
+    # A Detected Trip's name: places (a city or up to three countries), then the month.
+    name: "%{places}, %{month}"
+    list_separator: ", "
+    # The name used when no city or country is known.
+    fallback_name: "Voyage, %{range}"
+    formats:
+      month_year: "%b %Y"
+    # Date ranges. Each part is a strftime format localized by I18n.l (%b is the
+    # abbreviated month name); the pattern joins the two dates.
+    range:
+      same_month:
+        pattern: "%{start}–%{end}"
+        start: "%-d"
+        end: "%-d %b %Y"
+      same_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b"
+        end: "%-d %b %Y"
+      cross_year:
+        pattern: "%{start} – %{end}"
+        start: "%-d %b %Y"
+        end: "%-d %b %Y"
+    # In-app notifications about the Detected Trips a run created.
+    notifications:
+      one:
+        title: "Voyage trouvé : %{name}"
+        content: "Dawarich a trouvé un nouveau voyage dans votre historique. <a href=\"%{url}\">Ouvrir le voyage</a>"
+      many:
+        title:
+          one: "%{count} voyage trouvé"
+          other: "%{count} voyages trouvés"
+        content: "Dawarich a trouvé de nouveaux voyages dans votre historique. <a href=\"%{url}\">Voir les voyages trouvés automatiquement</a>"
+    # The Home periods on a Place's edit page. An empty date is an open end.
+    homes:
+      title: "J'habite / j'ai habité ici"
+      help: "Un « Du » vide signifie depuis votre premier enregistrement ici ; un « Au » vide signifie que vous y habitez toujours."
+      from: "Du"
+      until: "Au"
+      save: "Enregistrer"
+      remove: "Supprimer"
+      remove_confirm: "Supprimer cette période ? Ses dates seront effacées, et les voyages trouvés automatiquement pour cette période pourront être supprimés."
+      add: "Ajouter une période"
+      end_before_start: "« Au » ne peut pas précéder « Du »."
+    # The origin filter on the Trips list. Managed Trips count as created by the user.
+    filter:
+      label: "Afficher"
+      all: "Tous les voyages"
+      manual: "Créés par moi"
+      detected: "Trouvés automatiquement"
+    # Hints on the Trips page; each ends with a link to the Places page.
+    hints:
+      no_home: "Ajoutez votre domicile pour que Dawarich puisse trouver vos voyages automatiquement."
+      long_absence: "Dawarich a ignoré une absence de plus de %{days} jours hors de votre domicile. Si vous habitiez ailleurs à ce moment-là, ajoutez ce domicile précédent."
+      add_home: "Ajouter un domicile sur la page Lieux"
+    # The name of the Place created for a Home picked in onboarding.
+    home_place_name: "Domicile"
+    # The optional "Add your home" screen of the onboarding modal.
+    onboarding:
+      title: "Ajoutez votre domicile"
+      intro: "Dawarich utilise votre domicile pour trouver vos voyages automatiquement. Partagez votre position ou cliquez sur la carte, puis confirmez."
+      use_my_location: "Utiliser ma position"
+      confirm: "J’habite ici"
+      skip: "Passer"
+      location_denied: "Votre position n’a pas pu être lue. Cliquez plutôt sur la carte pour placer votre domicile, ou définissez-le plus tard sur la page Lieux."
+      home_saved: "Votre domicile est enregistré. Dawarich va chercher vos voyages."
+      invalid_location: "Choisissez d’abord un lieu sur la carte."
+      # Onboarding never adds a second Home.
+      home_exists: "Vous avez déjà un domicile. Vous pouvez le modifier sur la page Lieux."
+      # Leaves the import screen for the home step (or closes the modal).
+      continue: "Continuer"

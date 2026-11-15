@@ -21,9 +21,10 @@ module Points
     end
 
     def self.plan_scope(scope, user)
-      return scope unless user.plan_restricted?
+      window_start = user.data_window_start
+      return scope unless window_start
 
-      first = user.points.where('timestamp >= ?', user.data_window_start.to_i).order(:timestamp).pick(:timestamp)
+      first = user.points.where('timestamp >= ?', window_start.to_i).order(:timestamp).pick(:timestamp)
       first ? scope.where('timestamp >= ?', first) : scope.none
     end
 

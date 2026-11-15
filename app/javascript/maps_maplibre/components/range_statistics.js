@@ -1,32 +1,38 @@
 import { formatNumber, translate } from "i18n"
 
 export class RangeStatistics {
-  constructor(element, api, unit = "km") {
+  constructor(element, api, unit = "km", onData = null) {
     this.element = element
     this.api = api
     this.unit = unit
+    this.onData = onData
     this.generation = 0
   }
 
   async load(start_at, end_at) {
     clearTimeout(this.refreshTimer)
+    // A refresh of the same range keeps what is shown until the new result.
+    const sameRange = this.range?.[0] === start_at && this.range?.[1] === end_at
     this.range = [start_at, end_at]
     this.abort?.abort()
     const generation = ++this.generation
     this.abort = new AbortController()
     this.data = null
+    if (!sameRange) this.onData?.(null)
     this.element.textContent = translate("common.loading")
     this.element.setAttribute("aria-busy", "true")
     try {
-      const data = await this.api.fetchRangeStatistics({
+      this.pending = this.api.fetchRangeStatistics({
         start_at,
         end_at,
         signal: this.abort.signal,
       })
+      const data = await this.pending
       if (generation !== this.generation) return
       this.data = data
       this.render()
-    } catch (error) {
+      this.onData?.(data)
+    } catch {
       if (generation !== this.generation) return
       this.element.textContent = translate("range_statistics.unavailable")
     } finally {

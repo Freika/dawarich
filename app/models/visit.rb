@@ -105,19 +105,6 @@ class Visit < ApplicationRecord
     SQL
   end
 
-  # in meters
-  def default_radius
-    return area&.radius if area.present?
-
-    radius = points.map do |point|
-      Geocoder::Calculations.distance_between(
-        center, [point.lat, point.lon], units: user.safe_settings.distance_unit.to_sym
-      )
-    end.max
-
-    radius && radius >= 15 ? radius : 15
-  end
-
   def center
     if area.present?
       [area.lat, area.lon]
@@ -188,11 +175,8 @@ class Visit < ApplicationRecord
   def bust_timeline_month_summary_cache
     return unless user
 
-    tz = user.safe_settings.timezone.presence || 'UTC'
     spans = [[started_at, ended_at], [started_at_before_last_save, ended_at_before_last_save]]
-
-    spans.select(&:first).flat_map { |from, to| Timeline::MonthSummary.months_spanning(from, to, tz) }
-         .uniq.each { |month_start| Rails.cache.delete(Timeline::MonthSummary.cache_key_for(user, month_start)) }
+    Timeline::MonthSummary.expire(user, spans)
   rescue StandardError => e
     Rails.logger.warn("[Visit##{id}] timeline month cache bust failed: #{e.class}: #{e.message}")
   end

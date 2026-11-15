@@ -15,9 +15,7 @@ module Points
 
         Encryption.ensure_key_configured!
 
-        User.find_each do |user|
-          ArchiveUserJob.perform_later(user.id)
-        end
+        ActiveJob.perform_all_later(User.ids.map { |user_id| ArchiveUserJob.new(user_id) })
       rescue StandardError => e
         ExceptionReporter.call(e, 'Points raw data archival scheduling failed')
         raise

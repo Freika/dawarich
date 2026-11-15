@@ -46,9 +46,7 @@ module PlacesHelper
   def place_geofence_events(place)
     return GeofenceEvent.none unless place.geofence?
 
-    events = current_user.geofence_events.real.where(place_id: place.id)
-    events = events.where(occurred_at: current_user.data_window_start..) if current_user.plan_restricted?
-    events.order(occurred_at: :desc, id: :desc).limit(10)
+    current_user.scoped_geofence_events.where(place_id: place.id).order(occurred_at: :desc, id: :desc).limit(10)
   end
 
   def place_delete_confirmation(place)

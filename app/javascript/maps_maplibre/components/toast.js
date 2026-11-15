@@ -1,83 +1,139 @@
 /**
  * Toast notification system
- * Displays temporary notifications in the top-right corner
+ * Quiet notes at the bottom centre of the screen. On the map they sit at the
+ * top, under the loading badge, centred on the part of the map in view. The
+ * surface follows the theme; only a small dot carries the type's colour.
  */
 export class Toast {
   static container = null
 
-  /**
-   * Initialize toast container
-   */
   static init() {
-    if (Toast.container) return
+    const dock = document.querySelector(".map-toast-stack")
+    const host = dock || document.body
+    // Turbo replaces the page, so a container from an earlier page is gone.
+    if (Toast.container?.isConnected && Toast.container.parentElement === host)
+      return
 
+    Toast.container?.remove()
     Toast.container = document.createElement("div")
-    Toast.container.className = "toast-container"
-    Toast.container.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      max-width: calc(100vw - 40px);
-      gap: 12px;
-      pointer-events: none;
-    `
-    document.body.appendChild(Toast.container)
+    Toast.container.className = dock
+      ? "toast-container toast-container--docked"
+      : "toast-container"
+    Toast.container.setAttribute("role", "status")
+    Toast.container.setAttribute("aria-live", "polite")
+    if (dock) dock.prepend(Toast.container)
+    else document.body.appendChild(Toast.container)
 
-    // Add CSS animations
     Toast.addStyles()
   }
 
-  /**
-   * Add CSS animations for toasts
-   */
   static addStyles() {
     if (document.getElementById("toast-styles")) return
 
     const style = document.createElement("style")
     style.id = "toast-styles"
     style.textContent = `
-      @keyframes toast-slide-in {
-        from {
-          transform: translateX(400px);
-          opacity: 0;
-        }
-        to {
-          transform: translateX(0);
-          opacity: 1;
-        }
+      @keyframes toast-in {
+        from { transform: translateY(8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
 
-      @keyframes toast-slide-out {
-        from {
-          transform: translateX(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateX(400px);
-          opacity: 0;
-        }
+      .toast-container {
+        position: fixed;
+        bottom: 72px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: max-content;
+        max-width: calc(100vw - 32px);
+        pointer-events: none;
+      }
+
+      .toast-container--docked {
+        position: static;
+        transform: none;
+        width: auto;
+        max-width: 100%;
+      }
+
+      @keyframes toast-in-top {
+        from { transform: translateY(-8px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+
+      .toast-container--docked > .toast {
+        animation-name: toast-in-top;
+      }
+
+      .toast-container--docked > .toast.removing {
+        transform: translateY(-8px);
       }
 
       .toast-container > .toast {
         position: relative;
         inset: auto;
-        min-width: 0;
-        white-space: normal;
+        transform: none;
+        display: flex;
         flex-direction: row;
         flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        max-width: min(420px, calc(100vw - 32px));
+        padding: 8px 14px;
+        border: 1px solid oklch(var(--bc) / 0.12);
+        border-radius: 10px;
+        background: oklch(var(--b1) / 0.97);
+        color: oklch(var(--bc));
+        box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+        font-size: 13px;
+        line-height: 1.4;
+        white-space: normal;
         pointer-events: none;
-        animation: toast-slide-in 0.3s ease-out;
+        animation: toast-in 0.2s ease-out;
+        transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+      }
+
+      .toast-container > .toast::before {
+        content: "";
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: oklch(var(--in));
+      }
+
+      .toast-container > .toast-success::before { background: oklch(var(--su)); }
+      .toast-container > .toast-error::before { background: oklch(var(--er)); }
+      .toast-container > .toast-warning::before { background: oklch(var(--wa)); }
+
+      .toast-container > .toast span {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
 
       .toast-container > .toast button {
         pointer-events: auto;
+        padding: 2px 8px;
+        border: 1px solid oklch(var(--bc) / 0.25);
+        border-radius: 6px;
+        font-weight: 600;
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
 
       .toast-container > .toast.removing {
-        animation: toast-slide-out 0.3s ease-out;
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .toast-container > .toast { animation: none; transition: none; }
       }
     `
     document.head.appendChild(style)
@@ -95,40 +151,13 @@ export class Toast {
     const toast = document.createElement("div")
     toast.className = `toast toast-${type}`
     const messageElement = document.createElement("span")
-    messageElement.style.cssText = "min-width: 0; overflow-wrap: anywhere;"
     messageElement.textContent = message
     toast.appendChild(messageElement)
-
-    toast.style.cssText = `
-      padding: 12px 20px;
-      background: ${Toast.getBackgroundColor(type)};
-      color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      font-size: 14px;
-      font-weight: 500;
-      max-width: 300px;
-      line-height: 1.4;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    `
 
     if (action?.label && action?.callback) {
       const button = document.createElement("button")
       button.type = "button"
       button.textContent = action.label
-      button.style.cssText = `
-        border: 1px solid rgba(255, 255, 255, 0.8);
-        border-radius: 6px;
-        padding: 4px 8px;
-        color: white;
-        font-weight: 700;
-        min-width: 0;
-        max-width: 100%;
-        white-space: normal;
-        overflow-wrap: anywhere;
-      `
       button.addEventListener("click", () => {
         Toast.dismiss(toast)
         action.callback()
@@ -138,7 +167,6 @@ export class Toast {
 
     Toast.container.appendChild(toast)
 
-    // Auto dismiss after duration
     if (duration > 0) {
       setTimeout(() => {
         Toast.dismiss(toast)
@@ -159,21 +187,6 @@ export class Toast {
     setTimeout(() => {
       toast.remove()
     }, 300)
-  }
-
-  /**
-   * Get background color for toast type
-   * @param {string} type - Toast type
-   * @returns {string} CSS color
-   */
-  static getBackgroundColor(type) {
-    const colors = {
-      success: "#22c55e",
-      error: "#ef4444",
-      warning: "#f59e0b",
-      info: "#3b82f6",
-    }
-    return colors[type] || colors.info
   }
 
   /**
@@ -214,17 +227,5 @@ export class Toast {
    */
   static info(message, duration = 3000) {
     return Toast.show(message, "info", duration)
-  }
-
-  /**
-   * Clear all toasts
-   */
-  static clearAll() {
-    if (!Toast.container) return
-
-    const toasts = Toast.container.querySelectorAll(".toast")
-    toasts.forEach((toast) => {
-      Toast.dismiss(toast)
-    })
   }
 }

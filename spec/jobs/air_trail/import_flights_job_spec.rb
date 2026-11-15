@@ -28,6 +28,7 @@ RSpec.describe AirTrail::ImportFlightsJob, type: :job do
     notification = user.notifications.last
     expect(notification.kind).to eq('error')
     expect(notification.content).to include('connection refused')
+    expect(notification.action_path).to eq('/settings/integrations')
   end
 
   it 'notifies a failed sync in the user saved locale' do

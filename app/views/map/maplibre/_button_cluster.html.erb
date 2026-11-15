@@ -1,122 +1,144 @@
 <div class="map-button-cluster" data-controller="map-panel" role="toolbar" aria-label="<%= t('.map_controls') %>">
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->map-panel#openTab"
-          aria-expanded="false"
-          data-tab="timeline-feed"
-          data-testid="map-button-timeline"
-          aria-label="<%= t('.timeline') %>"
-          aria-keyshortcuts="T"
-          title="<%= t('.timeline_t') %>">
-    <%= icon 'calendar-clock' %>
-  </button>
-
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->map-panel#openTab"
-          aria-expanded="false"
-          data-tab="layers"
-          data-testid="map-button-layers"
-          aria-label="<%= t('.layers') %>"
-          aria-keyshortcuts="L"
-          title="<%= t('.layers_l') %>">
-    <%= icon 'layer' %>
-  </button>
-
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->map-panel#openTab"
-          aria-expanded="false"
-          data-tab="search"
-          data-testid="map-button-search"
-          aria-label="<%= t('.search') %>"
-          aria-keyshortcuts="/"
-          title="<%= t('.search_2') %>">
-    <%= icon 'search' %>
-  </button>
-
-  <% if family_feature_available? && current_user.in_family? %>
+  <div class="map-button-cluster__scroll">
     <button type="button"
             class="map-button-cluster__btn"
             data-action="click->map-panel#openTab"
             aria-expanded="false"
-            data-tab="family"
-            data-testid="map-button-family"
-            aria-label="<%= t('.family') %>"
-            aria-keyshortcuts="F"
-            title="<%= t('.family_f') %>">
-      <%= icon 'users' %>
+            data-tab="timeline-feed"
+            data-testid="map-button-timeline"
+            aria-label="<%= t('.timeline') %>"
+            aria-keyshortcuts="T"
+            title="<%= t('.timeline_t') %>">
+      <%= icon 'calendar-clock' %>
     </button>
-  <% end %>
 
-  <button type="button"
-          class="map-button-cluster__btn map-button-cluster__btn--create"
-          data-action="click->map-panel#openTab"
-          aria-expanded="false"
-          data-tab="tools"
-          data-testid="map-button-create"
-          aria-label="<%= t('.tools') %>"
-          aria-keyshortcuts="C"
-          title="<%= t('.tools_c') %>">
-    <%= icon 'wrench' %>
-  </button>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openTab"
+            aria-expanded="false"
+            data-tab="layers"
+            data-testid="map-button-layers"
+            aria-label="<%= t('.layers') %>"
+            aria-keyshortcuts="L"
+            title="<%= t('.layers_l') %>">
+      <%= icon 'layer' %>
+    </button>
 
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->maps--maplibre#toggleReplay"
-          data-testid="map-button-replay"
-          aria-label="<%= t('.replay') %>"
-          aria-keyshortcuts="R"
-          title="<%= t('.replay_points_for_the_current_date_range_r') %>">
-    <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
-  </button>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openTab"
+            aria-expanded="false"
+            data-tab="search"
+            data-testid="map-button-search"
+            aria-label="<%= t('.search') %>"
+            aria-keyshortcuts="/"
+            title="<%= t('.search_2') %>">
+      <%= icon 'search' %>
+    </button>
 
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->map-panel#openPosterStudio"
-          data-testid="map-button-poster"
-          aria-label="<%= t('.poster_studio') %>"
-          title="<%= t('.poster_studio') %>">
-    <%= icon 'image' %>
-  </button>
+    <% if family_feature_available? && current_user.in_family? %>
+      <button type="button"
+              class="map-button-cluster__btn"
+              data-action="click->map-panel#openTab"
+              aria-expanded="false"
+              data-tab="family"
+              data-testid="map-button-family"
+              aria-label="<%= t('.family') %>"
+              aria-keyshortcuts="F"
+              title="<%= t('.family_f') %>">
+        <%= icon 'users' %>
+      </button>
+    <% end %>
 
-  <button type="button"
-          class="map-button-cluster__btn"
-          data-action="click->map-panel#openVideoStudio"
-          data-testid="map-button-video"
-          aria-label="<%= t('.video_studio') %>"
-          title="<%= t('.video_studio') %>">
-    <%= icon 'video' %>
-  </button>
+    <button type="button"
+            class="map-button-cluster__btn map-button-cluster__btn--create"
+            data-action="click->map-panel#openTab"
+            aria-expanded="false"
+            data-tab="tools"
+            data-testid="map-button-create"
+            aria-label="<%= t('.tools') %>"
+            aria-keyshortcuts="C"
+            title="<%= t('.tools_c') %>">
+      <%= icon 'wrench' %>
+    </button>
 
-  <div class="map-button-cluster__divider" aria-hidden="true"></div>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->maps--maplibre#toggleReplay"
+            data-testid="map-button-replay"
+            aria-label="<%= t('.replay') %>"
+            aria-keyshortcuts="R"
+            title="<%= t('.replay_points_for_the_current_date_range_r') %>">
+      <%= icon 'play', class: 'w-5 h-5', aria: { hidden: true } %>
+    </button>
 
-  <button type="button"
-          class="map-button-cluster__btn map-button-cluster__btn--muted"
-          data-action="click->map-panel#openTab"
-          aria-expanded="false"
-          data-tab="settings"
-          data-testid="map-button-settings"
-          aria-label="<%= t('.settings') %>"
-          aria-keyshortcuts="S"
-          title="<%= t('.settings_s') %>">
-    <%= icon 'settings' %>
-  </button>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openPosterStudio"
+            data-testid="map-button-poster"
+            aria-label="<%= t('.poster_studio') %>"
+            title="<%= t('.poster_studio') %>">
+      <%= icon 'image' %>
+    </button>
 
-  <%# Cloud-only — same gating as the previous in-panel `Links` tab so
-      self-hosted instances aren't pointed at marketing/help URLs. The Links
-      tab content is still rendered in the side panel (just without its own
-      tab button there); this cluster icon is the only entry point. %>
-  <% if !DawarichSettings.self_hosted? %>
+    <button type="button"
+            class="map-button-cluster__btn"
+            data-action="click->map-panel#openVideoStudio"
+            data-testid="map-button-video"
+            aria-label="<%= t('.video_studio') %>"
+            title="<%= t('.video_studio') %>">
+      <%= icon 'video' %>
+    </button>
+
+    <div class="map-button-cluster__divider" aria-hidden="true"></div>
+
     <button type="button"
             class="map-button-cluster__btn map-button-cluster__btn--muted"
             data-action="click->map-panel#openTab"
-          aria-expanded="false"
-            data-tab="links"
-            data-testid="map-button-links"
-            aria-label="<%= t('.links') %>"
-            title="<%= t('.links') %>">
-      <%= icon 'info' %>
+            aria-expanded="false"
+            data-tab="settings"
+            data-testid="map-button-settings"
+            aria-label="<%= t('.settings') %>"
+            aria-keyshortcuts="S"
+            title="<%= t('.settings_s') %>">
+      <%= icon 'settings' %>
     </button>
-  <% end %>
+
+    <div class="relative">
+      <%= link_to share_links_hub_path(tab: 'timeline', start_date: start_at.to_date, end_date: end_at.to_date, import_id: params[:import_id]),
+                  class: 'map-button-cluster__btn',
+                  title: t('shared.map.date_navigation_v2.share'),
+                  'aria-label': t('shared.map.date_navigation_v2.share'),
+                  data: { turbo_frame: 'share-link-modal', testid: 'timeline-share-button' } do %>
+        <%= icon 'share-2', class: 'w-5 h-5', aria: { hidden: true } %>
+      <% end %>
+      <%= render 'shared/map/share_indicator' %>
+    </div>
+
+    <%# Cloud-only — same gating as the previous in-panel `Links` tab so
+        self-hosted instances aren't pointed at marketing/help URLs. The Links
+        tab content is still rendered in the side panel (just without its own
+        tab button there); this cluster icon is the only entry point. %>
+    <% if !DawarichSettings.self_hosted? %>
+      <button type="button"
+              class="map-button-cluster__btn map-button-cluster__btn--muted"
+              data-action="click->map-panel#openTab"
+            aria-expanded="false"
+              data-tab="links"
+              data-testid="map-button-links"
+              aria-label="<%= t('.links') %>"
+              title="<%= t('.links') %>">
+        <%= icon 'info' %>
+      </button>
+    <% end %>
+
+  </div>
+
+  <%# Live updates: a dot at the foot of the cluster. Green while connected,
+      amber and pulsing while the connection is down; the words are its
+      tooltip and are announced to screen readers. Hidden until the state
+      is known. %>
+  <span class="map-button-cluster__live tooltip tooltip-right hidden" role="status" aria-live="polite"
+        data-testid="realtime-status"
+        data-maps--maplibre-realtime-target="connectionStatus"><span class="map-button-cluster__dot" aria-hidden="true"></span><span class="sr-only"></span></span>
 </div>
