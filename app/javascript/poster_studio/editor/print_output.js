@@ -139,6 +139,7 @@ export const printOutput = {
         layout,
         dpi: 300,
         format: "pdf",
+        bleedMm: product.bleedMm,
         theme: this.resolvedTheme,
         text: this.posterText(),
         font: this.fontFamily,
