@@ -86,6 +86,64 @@ RSpec.describe Visits::Detection::MovementReconciler do
 
       expect(result.first[:end_ts]).to eq(base_ts + 3300)
     end
+
+    it 'still trims the start when the overlap is exactly snap_max_s' do
+      result = reconcile([fragment(0, 3600)], [seg('driving', -1200, 900)])
+
+      expect(result.first[:start_ts]).to eq(base_ts + 900)
+    end
+
+    # A slow "walking" segment that runs 17 minutes into a stationary stop is
+    # below the veto fraction, so the fragment survives — but its dwell time
+    # must not be handed to the movement either.
+    it 'keeps the start when movement overlaps it by more than snap_max_s' do
+      result = reconcile([fragment(0, 3600)], [seg('walking', -600, 1020)])
+
+      expect(result.size).to eq(1)
+      expect(result.first[:start_ts]).to eq(base_ts)
+      expect(result.first[:end_ts]).to eq(base_ts + 3600)
+    end
+
+    it 'keeps the end when movement overlaps it by more than snap_max_s' do
+      result = reconcile([fragment(0, 3600)], [seg('walking', 2580, 5000)])
+
+      expect(result.size).to eq(1)
+      expect(result.first[:start_ts]).to eq(base_ts)
+      expect(result.first[:end_ts]).to eq(base_ts + 3600)
+    end
+
+    it 'keeps a stay that a long overlap would have trimmed below the minimum dwell' do
+      long_dwell = Visits::Detection::Policy.new(
+        stay_radius_m: 100, min_dwell_s: 1800, min_points: 3, merge_gap_s: 900
+      )
+      points = [0, 1200, 2400].each_with_index.map do |at, i|
+        Visits::Detection::CandidateLoader::Pt.new(i + 1, lat0, lon0, base_ts + at, 10)
+      end
+
+      reconciled = described_class.new(long_dwell).call([fragment(0, 2400)], [seg('walking', -600, 1020)])
+      stays = Visits::Detection::StayAssembler.new(long_dwell).call(reconciled, points.index_by(&:id))
+
+      expect(stays.size).to eq(1)
+      expect(stays.first[:start_ts]).to eq(base_ts)
+    end
+
+    # A refused trim must not fall through to the extend, which would jump the
+    # boundary back over the refused segment onto the one before it.
+    it 'does not extend the start across a movement segment whose trim was refused' do
+      segments = [seg('driving', -2000, -300), seg('walking', -300, 1020)]
+
+      result = reconcile([fragment(0, 3600)], segments)
+
+      expect(result.first[:start_ts]).to eq(base_ts)
+    end
+
+    it 'does not extend the end across a movement segment whose trim was refused' do
+      segments = [seg('walking', 2580, 3900), seg('driving', 3900, 7000)]
+
+      result = reconcile([fragment(0, 3600)], segments)
+
+      expect(result.first[:end_ts]).to eq(base_ts + 3600)
+    end
   end
 
   describe 'corroboration' do
