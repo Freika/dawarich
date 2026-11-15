@@ -1,0 +1,8 @@
+nl:
+  javascript:
+    range_statistics:
+      scope: "Je punten in de geselecteerde periode; exclusief privézones en familiegeschiedenis."
+      unavailable: "Statistieken niet beschikbaar"
+      summary:
+        one: "%{points} punt · %{distance} %{unit}"
+        other: "%{points} punten · %{distance} %{unit}"

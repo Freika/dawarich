@@ -1,0 +1,10 @@
+nl:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "Breedtegraad"
+          test_longitude: "Lengtegraad"
+          test_coordinates_hint: "Eén zoekopdracht met de opgeslagen instellingen. Voer beide coördinaten in, of laat beide velden leeg om 51.3402, 12.3712 te gebruiken. De coördinaten worden niet opgeslagen."
+      test_geocoding:
+        invalid_coordinates: "Voer zowel de breedtegraad (−90 tot 90) als de lengtegraad (−180 tot 180) in als geldige getallen, of laat beide velden leeg om de standaardcoördinaten te gebruiken."

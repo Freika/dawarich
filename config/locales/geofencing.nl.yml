@@ -1,0 +1,123 @@
+nl:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: "moet https gebruiken"
+            base:
+              too_many: "Je kunt maximaal %{count} webhooks hebben."
+  webhooks:
+    notifications:
+      deactivated:
+        title: "Webhook uitgeschakeld"
+        content: "De webhook “%{name}” heeft vijf keer achter elkaar een foutieve verzending gegeven en is daarom uitgeschakeld. Controleer de ontvangst-URL en schakel de webhook vervolgens weer in via Instellingen → Geofencing."
+  settings:
+    navigation:
+      geofencing: "Geofencing"
+    geofencing:
+      show:
+        title: Geofencing
+        intro: "Dawarich registreert wanneer je een locatie betreedt of verlaat als de optie 'Meld bij binnenkomst en vertrek' is ingeschakeld; dit wordt gemeld door je telefoon of afgeleid uit de coördinaten die het ontvangt, en kan elke gebeurtenis naar je eigen diensten sturen."
+        webhooks: "Webhooks"
+        webhooks_intro: "Elke gebeurtenis wordt verzonden als een ondertekende JSON-POST. Vergelijk de X-Dawarich-Signature-header met een HMAC-SHA256 van de body, gemaakt met je geheim."
+        no_webhooks: "Er zijn nog geen webhooks."
+        new_webhook: Nieuwe webhook
+        upgrade_title: "Webhooks maken deel uit van Pro"
+        upgrade_text: "Stuur 'binnenkomst'- en 'vertrek'-gebeurtenissen naar Home Assistant, Node-RED, n8n of je eigen dienst."
+        upgrade: "Upgrade naar Pro"
+        events: Events
+        no_events: "Er zijn nog geen aankomst- of vertrekgebeurtenissen. Deze verschijnen wanneer je telefoon of tracking-app een locatie binnen een van deze plaatsen registreert."
+        no_places: "Er worden nog geen meldingen bij binnenkomst en vertrek geregistreerd. Maak een locatie aan en schakel de optie 'Melding bij binnenkomst en vertrek' in."
+        open_places: "Open plaatsen"
+        place: "Plaats"
+        all_places: "Alle plaatsen"
+        from: "vanaf"
+        to: "naar"
+        filter: "Filter"
+        time: "Tijd"
+        event: "Event"
+        source: "Bron"
+        deliveries: "Leveringen"
+        event_types:
+          enter: "Aangekomen"
+          leave: "Vertrokken"
+        sources:
+          native_app: "Telefoon"
+          server_inferred: "Locatiepunten"
+          owntracks_native: "OwnTracks"
+        delivered: "'%{count} afgeleverd'"
+        failed: "'%{count} mislukt'"
+        in_progress: "'%{count} bezig'"
+        not_sent_late: "Niet verzonden: meer dan %{minutes} minuten te laat aangekomen"
+        not_sent_throttled: "Niet verzonden: meer dan %{count} binnenkomende en uitgaande gebeurtenissen in een hour"
+    webhooks:
+      form:
+        name: "Naam"
+        url: "URL"
+        events: "Events"
+        places: "Plaatsen"
+        places_hint: "Laat alle vakjes leeg om gebeurtenissen te ontvangen voor elke locatie die meldingen verstuurt."
+        home_assistant_hint: "Home Assistant beantwoordt elk verzoek met de waarde 200, zelfs als de webhook-ID onjuist is. Daarom betekent 'Delivered' hier niet dat je automatisering is uitgevoerd: controleer de trace ervan in Home Assistant. Home Assistant kan de handtekening niet controleren; de webhook-ID in de URL zorgt ervoor dat deze privé blijft."
+        home_assistant_cloud_hint: "Standaard accepteert Home Assistant alleen webhooks vanuit zijn eigen netwerk. Gebruik een Nabu Casa-webhook-URL of schakel de optie `local_only` uit in de webhook-instellingen van de trigger."
+        active: "Actief"
+        save: "Opslaan"
+        create: "Maak webhook"
+      webhook:
+        active: "Actief"
+        inactive: "Uitgeschakeld"
+        failing: "Faalt"
+        every_place: "Overal"
+        places_count:
+          one: "%{count} plaats"
+          other: "%{count} plaatsen"
+        last_success: "Laatst afgeleverd %{time} geleden"
+        never_delivered: "Not niets afgeleverd"
+        failures:
+          one: "'%{count} mislukte levering op rij'"
+          other: "'%{count} mislukte leveringen op rij'"
+        test: "Stuur test"
+        deliveries: "Leveringen"
+        regenerate: "Nieuw geheim"
+        delete: "Verwijder"
+        edit: "Bewerk"
+        confirm_regenerate: "Een nieuw geheim genereren? Het oude werkt dan meteen niet meer."
+        confirm_delete: "Deze webhook verwijderen?"
+      secret:
+        title: "Ondertekeningsgeheim voor %{name}"
+        text: "Kopieer het nu — het wordt niet nog een keer weergegeven."
+        copy: "Kopieer"
+      show:
+        title: 'Leveringen: %{name}'
+        back: "Terug naar geofencing"
+        empty: "Nog geen leveringen."
+        time: "Tijd"
+        event: "Event"
+        status: "Status"
+        attempts: "Pogingen"
+        response: "Antwoord"
+        retry: "Opnieuw proberen"
+        test: "Test"
+        statuses:
+          pending: "In behandeling"
+          success: "Afgeleverd"
+          failure: "Mislukt"
+          retrying: "Opnieuw proberen"
+      create:
+        created: "Webhook toegevoegd."
+      update:
+        updated: "Webhook opgeslagen."
+      destroy:
+        deleted: "Webhook verwijderd."
+      test:
+        sent: "Testbericht verzonden."
+        no_place: "Schakel eerst 'Meld bij binnenkomst en vertrek' in voor een locatie om een testmelding te versturen."
+        rate_limited: "Er zijn te veel testberichten verzonden. Wacht even en probeer het nog eens."
+      retry_delivery:
+        queued: "De levering staat weer in de wachtrij."
+  places:
+    drawer:
+      geofence: "Melding bij binnenkomst en vertrek"
+      geofence_hint: "Maakt gebruik van de bezoekradius (%{radius} m)."
+      geofence_link: "Events en webhooks"
