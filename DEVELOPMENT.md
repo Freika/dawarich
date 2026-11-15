@@ -64,15 +64,4 @@ RAILS_ENV=test bundle exec rspec
 
 Dotenv automatically loads `.env.test` so no extra setup is needed.
 
-To run the suite in parallel, create one test database per process once (and again after schema changes), then run up to 8 processes:
-
-```bash
-RAILS_ENV=test bundle exec rake "parallel:create[8]" "parallel:load_schema[8]"
-bundle exec parallel_rspec -n 8
-```
-
-Process N uses the database `dawarich_test` with N appended (`dawarich_test`, `dawarich_test2`, …) and its own pair of Redis databases (0–15), so 8 processes fit a default Redis. Run nothing else against that Redis while the suite runs.
-
-Each run records spec timings in `tmp/parallel_runtime_rspec.log` (see `.rspec_parallel`), and the next run uses them to give every process an equal share.
-
 > ⚠️ **Never run `rails db:test:prepare` or `rails db:schema:load` against an existing local database that has the `tiger_geocoder` extension** (common on long-lived local Postgres installs). The schema load fails midway and leaves `dawarich_test` empty. If your test DB breaks, rebuild it by cloning a known-good database with `pg_dump`/`pg_restore` — fresh databases (new containers, CI) load `db/schema.rb` without issue.
