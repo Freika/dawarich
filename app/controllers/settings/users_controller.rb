@@ -27,6 +27,8 @@ class Settings::UsersController < ApplicationController
     update_params = filtered_user_params
 
     if @user.update(update_params)
+      # A password set by an admin replaces the one the lock was guarding (#4013).
+      @user.unlock_access! if update_params.key?('password') && @user.access_locked?
       redirect_to settings_users_url, notice: I18n.t('controllers.settings.users.user_was_successfully_updated')
     else
       redirect_to settings_users_url,
