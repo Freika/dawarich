@@ -9,7 +9,7 @@ require 'rails_helper'
 # `semantic_type` identity keys the enhanced-import `PlaceWriter` wrote and
 # `find_by_external_id` depends on. The fix merges the Photon payload into
 # the existing `geodata` and stops rewriting `source` for `gpx_waypoint`
-# imports, on both the primary and the sibling (bulk) update paths. It also
+# imports. Geocoding a neighbouring place must not touch the import either. It also
 # brings this writer in line with its peers on `store_geodata?`: on an opt-out
 # instance only the import identity and the four osm properties the app itself
 # looks up are kept, not the whole provider payload.
@@ -136,7 +136,7 @@ RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' d
       expect(place.country).to eq('Germany')
     end
 
-    it 'keeps the sibling path reduced too' do
+    it 'keeps a neighbouring place reduced too' do
       imported, = writer.upsert(extracted)
       fetch_data(imported.id)
 
@@ -150,8 +150,8 @@ RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' d
     end
   end
 
-  context 'when the imported place comes back as a sibling of another place' do
-    it 'keeps identity and source through the bulk sibling update' do
+  context "when the imported place comes back in another place's lookup" do
+    it 'keeps its identity and source' do
       imported, = writer.upsert(extracted)
       fetch_data(imported.id)
 
