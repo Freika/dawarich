@@ -76,4 +76,78 @@ RSpec.describe 'Homes of a Place', type: :request do
     post place_homes_path(demo_place), params: { home: { started_on: '2022-03-01', ended_on: '2022-02-01' } }
     expect(demo_place.reload.demo).to be(true)
   end
+
+  describe 'on the Places list' do
+    def page = Nokogiri::HTML(response.body)
+
+    before { place }
+
+    it 'asks for a Home and offers "I live here" on each Place while there is none' do
+      get places_path
+      expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+      expect(page.at_css("[role='status'] a[href='#{new_place_path(home: 1)}']")).to be_present
+      expect(page.at_css("form[action='#{place_homes_path(place, list: 1)}']")).to be_present
+    end
+
+    it 'marks the Home and stops asking once there is one' do
+      create(:home, user:, place:)
+      get places_path
+      expect(page.at_css('[data-testid="place-home-badge"]')).to be_present
+      expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      expect(page.at_css("form[action^='#{place_homes_path(place)}']")).to be_nil
+    end
+
+    it 'does not ask when trip detection is off' do
+      user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+      get places_path
+      expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      expect(page.at_css("form[action^='#{place_homes_path(place)}']")).to be_nil
+    end
+
+    it 'makes the Place an open-dated Home in one click and returns to the list' do
+      expect do
+        post place_homes_path(place, list: 1), params: { home: { started_on: '' } },
+                                               headers: { 'HTTP_REFERER' => places_url(q: 'flat') }
+      end.to change(place.homes, :count).by(1)
+      expect(place.homes.last).to have_attributes(started_on: nil, ended_on: nil)
+      expect(response).to redirect_to(places_url(q: 'flat'))
+      expect(flash[:notice]).to eq(I18n.t('trip_detection.onboarding.home_saved'))
+    end
+  end
+
+  describe 'the "I live here" checkbox of a new Place' do
+    let(:place_params) { { name: 'Flat', latitude: 52.52, longitude: 13.405, visit_radius: 100 } }
+
+    def checkbox = Nokogiri::HTML(response.body).at_css('input[type="checkbox"][name="place[home]"]')
+
+    it 'is offered unticked on the new Place form' do
+      get new_place_path
+      expect(checkbox).to be_present
+      expect(checkbox['checked']).to be_nil
+    end
+
+    it 'is ticked, with the Place named Home, when the form is opened to add a Home' do
+      get new_place_path(home: 1)
+      expect(checkbox['checked']).to be_present
+      expect(Nokogiri::HTML(response.body).at_css('input[name="place[name]"]')['value'])
+        .to eq(I18n.t('trip_detection.home_place_name'))
+    end
+
+    it 'is left out of the edit form, which has the Home periods instead' do
+      get edit_place_path(place)
+      expect(checkbox).to be_nil
+    end
+
+    it 'makes the new Place an open-dated Home when ticked' do
+      expect { post places_path, params: { place: place_params.merge(home: '1') } }
+        .to change(user.homes, :count).by(1)
+      expect(user.homes.last).to have_attributes(place: user.places.last, started_on: nil, ended_on: nil)
+    end
+
+    it 'adds no Home when left unticked' do
+      expect { post places_path, params: { place: place_params.merge(home: '0') } }
+        .to change(user.places, :count).by(1)
+      expect(Home.count).to eq(0)
+    end
+  end
 end

@@ -1,5 +1,17 @@
 ca:
   places:
+    # The Add home and Add work buttons of the Places list; the last is the name of the Place and of the tag.
+    shortcuts:
+      add_home: "Afegeix la llar"
+      add_work: "Afegeix la feina"
+      work_place_name: "Feina"
+    # The optional dates of a Place: a fieldset on its form and a line under its name in the Places list.
+    period:
+      title: "Quan"
+      help: "Opcional: quan aquest lloc formava part de la teva vida. Deixa «Fins a» buit si encara en forma part."
+      since: "des de %{date}"
+      until: "fins a %{date}"
+      range: "%{from} – %{to}"
     polish:
       selected: "seleccionats"
       location: "Ubicació"

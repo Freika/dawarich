@@ -35,7 +35,10 @@ class PlacesController < ApplicationController
   end
 
   def new
-    @place = current_user.places.new
+    name = if params[:home].present? then I18n.t('trip_detection.home_place_name')
+           elsif params[:work].present? then I18n.t('places.shortcuts.work_place_name')
+           end
+    @place = current_user.places.new(name:)
   end
 
   def edit; end
@@ -210,7 +213,7 @@ class PlacesController < ApplicationController
 
   def place_params
     params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived,
-                                  tag_ids: [])
+                                  :started_on, :ended_on, tag_ids: [])
   end
 
   def tag_ids
@@ -266,11 +269,19 @@ class PlacesController < ApplicationController
       return false unless @place.save
 
       add_tags if tag_ids.present?
+      @place.tags |= [Tag.work_tag!(current_user)] if params.dig(:place, :work) == '1'
+      move_period_to_home if params.dig(:place, :home) == '1'
       visit&.clear_echoed_name
       visit&.update!(place: @place, area: nil, location_label: @place.name, status: :confirmed)
     end
 
     true
+  end
+
+  # A new Home takes the dates of the form as its period; the Place keeps none of its own.
+  def move_period_to_home
+    current_user.homes.create!(place: @place, started_on: @place.started_on, ended_on: @place.ended_on)
+    @place.update!(started_on: nil, ended_on: nil)
   end
 
   def serialize_place(place)
