@@ -4075,6 +4075,9 @@ de:
       import_flights_job:
         airtrail_sync_failed: AirTrail-Synchronisation fehlgeschlagen
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Deine AirTrail-Flugdatensynchronisation ist fehlgeschlagen mit Fehler: %{message}. Prüfe deine AirTrail-Einstellungen und versuche es erneut.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Deine Punkte wurden erneut mit dem GPS-Rauschfilter geprüft. Es hat sich nichts geändert, daher wurden deine Tracks, Statistiken und Zusammenfassungen nicht neu erstellt."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: GPS-Rauschprüfung abgeschlossen

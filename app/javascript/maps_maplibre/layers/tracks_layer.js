@@ -140,13 +140,6 @@ export class TracksLayer extends BaseLayer {
     if (!feature.geometry?.type?.endsWith("LineString")) return feature
 
     const greatCircles = lines.flatMap((line) => greatCircleLines(line))
-    if (
-      greatCircles.length === lines.length &&
-      greatCircles.every((line, i) => line.length === lines[i].length)
-    ) {
-      return feature
-    }
-
     return {
       ...feature,
       geometry:

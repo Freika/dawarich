@@ -4020,6 +4020,9 @@ es:
       import_flights_job:
         airtrail_sync_failed: Sincronización de AirTrail fallida
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Tu sincronización de vuelos con AirTrail ha fallado con error: %{message}. Revisa tus ajustes de AirTrail y vuelve a intentarlo.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Tus puntos se han revisado de nuevo con el filtro de ruido GPS. No ha cambiado nada, así que tus trayectos, estadísticas y resúmenes se han dejado como estaban."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: Revisión de ruido GPS finalizada

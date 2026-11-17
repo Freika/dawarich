@@ -1,5 +1,17 @@
 zh:
   places:
+    # The Add home and Add work buttons of the Places list; the last is the name of the Place and of the tag.
+    shortcuts:
+      add_home: "添加住所"
+      add_work: "添加工作地点"
+      work_place_name: "工作"
+    # The optional dates of a Place: a fieldset on its form and a line under its name in the Places list.
+    period:
+      title: "时间"
+      help: "可选：此地点属于您生活的时间段。如果现在仍是，请将“至”留空。"
+      since: "自 %{date} 起"
+      until: "至 %{date}"
+      range: "%{from} – %{to}"
     polish:
       selected: "已选"
       location: "位置"

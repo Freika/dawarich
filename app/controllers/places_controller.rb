@@ -35,7 +35,10 @@ class PlacesController < ApplicationController
   end
 
   def new
-    @place = current_user.places.new
+    name = if params[:home].present? then I18n.t('trip_detection.home_place_name')
+           elsif params[:work].present? then I18n.t('places.shortcuts.work_place_name')
+           end
+    @place = current_user.places.new(name:)
   end
 
   def edit; end
@@ -77,7 +80,9 @@ class PlacesController < ApplicationController
   end
 
   def update
-    if @place.update(place_params.except(:tag_ids))
+    # A Home keeps its period in its Home periods; date fields left on an open edit form are ignored.
+    ignored = @place.homes.exists? ? %i[tag_ids started_on ended_on] : %i[tag_ids]
+    if @place.update(place_params.except(*ignored))
       @place.adopt!
       set_tags if params[:place]&.key?(:tag_ids)
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
@@ -210,7 +215,7 @@ class PlacesController < ApplicationController
 
   def place_params
     params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived,
-                                  tag_ids: [])
+                                  :started_on, :ended_on, tag_ids: [])
   end
 
   def tag_ids
@@ -266,6 +271,11 @@ class PlacesController < ApplicationController
       return false unless @place.save
 
       add_tags if tag_ids.present?
+      @place.tags |= [Tag.work_tag!(current_user)] if params.dig(:place, :work) == '1'
+      # A new Home takes the dates of the form as its period.
+      if params.dig(:place, :home) == '1'
+        current_user.homes.create!(place: @place, started_on: @place.started_on, ended_on: @place.ended_on)
+      end
       visit&.clear_echoed_name
       visit&.update!(place: @place, area: nil, location_label: @place.name, status: :confirmed)
     end
