@@ -7,7 +7,17 @@ module Visits
     # battery at home) and is bridged into one fragment. A gap that ends
     # somewhere else is honest ignorance: the fragments stay apart, the
     # silence stays a hole on the timeline — never a fabricated visit.
+    #
+    # The mobile app's smart tracking is the one exception it trusts: it pauses
+    # GPS only after reporting a stop anchor, and wakes only once the device
+    # leaves a geofence around it. Tracking that resumes near the anchor
+    # therefore means the stay lasted until then, even though the first fix is
+    # already outside the stay radius.
     class GapBridger
+      # Covers the app's wake geofence (a user setting, 150 m by default) plus
+      # a late geofence trigger; resuming further away is not trusted.
+      RESUME_NEAR_STOP_M = 500
+
       def initialize(policy)
         @policy = policy
       end
@@ -23,6 +33,7 @@ module Visits
           if previous && bridgeable?(previous, current)
             merge_into(previous, current)
           else
+            extend_to_resume(previous, current) if previous && resumed_after_stop?(previous, current)
             merged << current
           end
         end
@@ -59,6 +70,20 @@ module Visits
           within_stay_radius?(current[:first_fix], center(previous))
       end
 
+      def resumed_after_stop?(previous, current)
+        previous[:paused_at_stop] && gap(previous, current) <= policy.bridge_cap_s &&
+          GeoDistance.meters(previous[:last_fix], current[:first_fix]) <= RESUME_NEAR_STOP_M
+      end
+
+      # The stay ends when tracking resumed; the fixes after that are the way
+      # out and stay with their own fragment.
+      def extend_to_resume(previous, current)
+        silence = gap(previous, current)
+        previous[:end_ts] = current[:start_ts]
+        previous[:paused_at_stop] = false
+        previous[:bridged_s] += silence if silence > policy.sweep_gap_s
+      end
+
       def center(fragment)
         [fragment[:center_lat], fragment[:center_lon]]
       end
@@ -78,6 +103,7 @@ module Visits
         previous[:point_ids] += current[:point_ids]
         previous[:end_ts] = current[:end_ts]
         previous[:last_fix] = current[:last_fix]
+        previous[:paused_at_stop] = current[:paused_at_stop]
         previous[:count] = total
         # Only true silence counts as bridged time — sub-sweep-gap blips are
         # ordinary tracking, not inference.
