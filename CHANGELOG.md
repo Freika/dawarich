@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Re-checking past points against the GPS noise filter now rebuilds tracks, stats and digests only for the years where the set of hidden points changed, and skips the rebuild when nothing changed. Before, every re-check rebuilt all of a user's tracks, which on large instances grew the database by tens of gigabytes a day during the upgrade's background re-check.
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes

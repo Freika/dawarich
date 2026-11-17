@@ -26,10 +26,12 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect(legitimate_anomaly.reload.anomaly).to be true
     end
 
-    it 'enqueues a tracks/stats/digests recalculation afterwards' do
+    it 'enqueues a tracks/stats/digests recalculation of the changed year afterwards' do
+      changed_year = Time.zone.at(wrongly_flagged.timestamp).year
+
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [changed_year])
     end
 
     it 'rebuilds achievements after anomaly flags are cleared and re-evaluated' do
@@ -97,6 +99,42 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       perform_enqueued_jobs(only: Users::RecalculateDataJob)
 
       expect(user.notifications.where(title: 'Data recalculation completed')).not_to exist
+    end
+  end
+
+  describe '#perform with reset: true when the flags come out the same' do
+    let!(:unchanged_anomaly) do
+      create(:point, user: user, accuracy: 50_000, anomaly: true,
+             timestamp: Time.utc(2024, 6, 15).to_i, lonlat: 'POINT(13.405 52.52)')
+    end
+    let!(:wrongly_flagged) do
+      create(:point, user: user, accuracy: 60, anomaly: true,
+             timestamp: Time.utc(2025, 6, 15).to_i, lonlat: 'POINT(13.4051 52.5201)')
+    end
+
+    it 'rebuilds only the years whose anomalies changed' do
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2025])
+    end
+
+    it 'skips the rebuild and achievements when no year changed' do
+      wrongly_flagged.destroy!
+
+      expect do
+        expect(described_class.new.perform(user.id, reset: true)).to be true
+      end.not_to have_enqueued_job(Users::RecalculateDataJob)
+
+      expect(Achievements::CheckJob).not_to have_been_enqueued
+      expect(unchanged_anomaly.reload.anomaly).to be true
+    end
+
+    it 'does not rebuild inline when no year changed' do
+      wrongly_flagged.destroy!
+
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued
     end
   end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Job to recalculate (hard update) stats, tracks, and digests for a user.
-# Optionally accepts a year to limit the recalculation scope.
+# Optionally accepts a year, or a list of years, to limit the recalculation scope.
 # If no year is provided, recalculates for all tracked years.
 # `only: 'tracks'` rebuilds just the tracks; `only: 'stats'` just stats and digests.
 class Users::RecalculateDataJob < ApplicationJob
@@ -36,7 +36,7 @@ class Users::RecalculateDataJob < ApplicationJob
     @user = find_user_or_skip(user_id) || return
     @only = only.to_s.presence_in(ONLY)
 
-    @year = year&.to_i
+    @years = Array(year).map(&:to_i)
     @notify = notify
     @job_queue = job_queue
 
@@ -65,11 +65,11 @@ class Users::RecalculateDataJob < ApplicationJob
 
   private
 
-  attr_reader :user, :year, :job_queue
+  attr_reader :user, :years, :job_queue
 
   def determine_years
-    if year.present?
-      [year]
+    if years.any?
+      years
     else
       user.years_tracked.map { |yt| yt[:year] }
     end

@@ -4,6 +4,7 @@
 # guarded by an advisory lock so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
   include Resumable
+  include UserTimezone
 
   queue_as :low_priority
 
@@ -13,7 +14,10 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
     lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
       step :reset_flags do
-        reset_existing_flags(user) if reset
+        next unless reset
+
+        @anomalies_before = anomaly_fingerprints(user)
+        reset_existing_flags(user)
       end
 
       step :filter_months, start: 0 do |step|
@@ -25,12 +29,14 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
     if lock_acquired
       # When we reset & re-evaluated anomalies, the tracks/stats/digests built
-      # off the old anomaly state are stale. Rebuild them with the new flags.
+      # off the old anomaly state are stale. Rebuild them with the new flags,
+      # but only for the years whose flagged points changed: a full-history
+      # rebuild rewrites every point's track_id, and on a fleet-wide sweep that
+      # bloated the points indexes by ~25 GB a day.
       # A fleet-wide data migration passes notify: false so an upgrade does not
       # hand every user a notification they never asked for, and rebuild: :inline
       # to keep the rebuild on the caller's queue and its failures visible to it.
-      rebuild_data(user, notify: notify, rebuild: rebuild) if reset
-      rebuild_achievements(user, notify: notify) if reset
+      rebuild_after_reset(user, notify: notify, rebuild: rebuild) if reset
     else
       Rails.logger.info("Skipping anomaly backfill for user #{user.id} — already locked")
     end
@@ -42,16 +48,47 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
   private
 
+  def rebuild_after_reset(user, notify:, rebuild:)
+    years = changed_years(user)
+    return if years && years.empty?
+
+    rebuild_data(user, notify: notify, rebuild: rebuild, years: years)
+    rebuild_achievements(user, notify: notify)
+  end
+
+  # nil when the run resumed after the reset step, so the flags it started
+  # from are gone: rebuild everything, as before.
+  def changed_years(user)
+    return if @anomalies_before.nil?
+
+    after = anomaly_fingerprints(user)
+    (@anomalies_before.keys | after.keys).reject { |year| @anomalies_before[year] == after[year] }.sort
+  end
+
+  # { year => [count, digest of the ids] } of the user's flagged points, the
+  # year taken in the user's timezone as Users::RecalculateDataJob splits it.
+  def anomaly_fingerprints(user)
+    zone = with_user_timezone(user) { Time.zone.tzinfo.name }
+    year_sql = "EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE #{Point.connection.quote(zone)})::int"
+
+    user.points.where(anomaly: true).group(Arel.sql(year_sql))
+        .pluck(Arel.sql(year_sql), Arel.sql("count(*), md5(string_agg(id::text, ',' ORDER BY id))"))
+        .to_h { |year, count, digest| [year, [count, digest]] }
+  end
+
   # #perform rather than .perform_now: perform_now routes exceptions through
   # rescue_with_handler, and Users::RecalculateDataJob's retry_on swallows a
   # PerUserLock::AcquisitionTimeout there — it re-enqueues onto :stats and
   # returns normally, so an inline caller would record a rebuild that never
   # happened. Calling perform directly lets the timeout reach us.
-  def rebuild_data(user, notify:, rebuild:)
+  def rebuild_data(user, notify:, rebuild:, years:)
+    options = { notify: notify }
+    options[:year] = years if years
+
     if rebuild == :inline
-      Users::RecalculateDataJob.new.perform(user.id, notify: notify, job_queue: :low_priority)
+      Users::RecalculateDataJob.new.perform(user.id, **options, job_queue: :low_priority)
     else
-      Users::RecalculateDataJob.perform_later(user.id, notify: notify)
+      Users::RecalculateDataJob.perform_later(user.id, **options)
     end
   end
 

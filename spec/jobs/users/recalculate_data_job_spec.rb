@@ -37,6 +37,20 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
+    context 'with a list of years' do
+      it 'rebuilds only the listed years' do
+        described_class.perform_now(user.id, year: [2022, 2024], only: 'tracks')
+
+        expect(Tracks::ParallelGenerator).to have_received(:new).twice
+        expect(Tracks::ParallelGenerator).to have_received(:new).with(
+          user, hash_including(start_at: Time.use_zone('UTC') { Time.zone.local(2022, 1, 1) })
+        )
+        expect(Tracks::ParallelGenerator).to have_received(:new).with(
+          user, hash_including(start_at: Time.use_zone('UTC') { Time.zone.local(2024, 1, 1) })
+        )
+      end
+    end
+
     context 'with a specific year' do
       let(:year) { 2024 }
 
