@@ -55,4 +55,17 @@ RSpec.describe 'Visited island country achievements' do
 
     expect_island_earned
   end
+
+  it 'recalculates progress stored by the previous calculation, so the island is earned later' do
+    insert_untagged_island_hour
+    Achievements::RegionSetChecker.new(user, notify: false).call
+    progress = Achievements::Progress.find_by!(user: user, achievement_key: 'exploration')
+    # Progress as the previous calculation left it: settled, without the island.
+    progress.update!(state: progress.state.merge('calculation_version' => 6,
+                                                 'earned' => progress.state['earned'].except('NC'),
+                                                 'dwell' => progress.state['dwell'].except('NC')))
+    user.user_achievements.where(achievement_key: 'country_nc').delete_all
+
+    expect_island_earned
+  end
 end
