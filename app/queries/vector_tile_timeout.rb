@@ -7,7 +7,7 @@
 #
 # Tile queries also run with JIT off: compiling a tile query costs seconds
 # while the query itself takes milliseconds, so several tiles at once blow
-# the timeout (#4024).
+# the timeout.
 module VectorTileTimeout
   DEFAULT_QUERY_TIMEOUT_MS = 5_000
 
