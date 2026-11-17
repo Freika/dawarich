@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### ⚠️ Upgrade notes
+
+- After the upgrade a background job re-checks imports that came without speed data. Countries you only flew over disappear from monthly stats, trips and digests once it finishes.
+
+### Fixed
+
+- Countries only flown over are no longer counted as visited for imports without speed data: KML (including Flightradar24 exports), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps files. Existing KML, GPX and GeoJSON imports are re-checked; for the other formats only points stored without a speed are. Only flight speeds are derived now, so these imports no longer get a derived walking or driving speed.
+- Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes

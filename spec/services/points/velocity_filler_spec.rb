@@ -80,6 +80,26 @@ RSpec.describe Points::VelocityFiller do
       expect(kmh(points[1])).to be < 10
     end
 
+    it 'stores no speed for fixes on the ground' do
+      walk = create_fixes(import, [0, 15, 30, 45, 60], seconds_between: 10)
+
+      described_class.new(import.id).call
+
+      expect(walk.map { |point| point.reload.velocity }).to all(be_nil)
+    end
+
+    it 'ignores fixes flagged as anomalies' do
+      # A fix on the ground between two clusters of position jumps that read as ~840 km/h.
+      jumps = [7_000, 14_000, 21_000]
+      offsets = [0, 0, 0] + jumps + [0] + jumps + [0, 0]
+      points = create_fixes(import, offsets, seconds_between: 30)
+      (points[3..5] + points[7..9]).each { |point| point.update_columns(anomaly: true) }
+
+      described_class.new(import.id).call
+
+      expect(points[6].reload.velocity).to be_nil
+    end
+
     it 'leaves recorded speeds alone' do
       points = jittery_cruise(import)
       points.each { |point| point.update_columns(velocity: '3.0') }
@@ -107,7 +127,7 @@ RSpec.describe Points::VelocityFiller do
     end
 
     it 'upgrades zero speeds only when told they stand for a missing speed' do
-      points = jittery_cruise(import)
+      points = create_fixes(import, (0...40).map { |index| index * cruise_meters_per_fix })
       points.each { |point| point.update_columns(velocity: '0') }
 
       described_class.new(import.id, upgrade_flyovers: true).call
@@ -118,6 +138,48 @@ RSpec.describe Points::VelocityFiller do
         expect(kept).to all(be_zero)
         expect(points[1..-2].map { |point| kmh(point) }).to all(be > 500)
       end
+    end
+
+    it 'recognises a speed the old formula derived next to a fix flagged later as an anomaly' do
+      points = jittery_cruise(import, stale_offset: (19 * 500) + 10)
+      derived = legacy_adjacent_speed(*points[19..21])
+      points[20].update_columns(velocity: derived)
+      points[19].update_columns(anomaly: true)
+
+      described_class.new(import.id, upgrade_flyovers: true).call
+
+      expect(kmh(points[20])).to be > 500
+    end
+
+    it 'upgrades a zero an older formula left where a neighbouring leg was unreadable' do
+      # 1.19-1.21 kept 0.0 when a leg took no time or read above 1200 km/h; index 30 jumps ahead.
+      points = jittery_cruise(import)
+      points.each { |point| point.update_columns(velocity: '250.0') }
+      points[29..30].each { |point| point.update_columns(velocity: '0.0') }
+
+      described_class.new(import.id, upgrade_flyovers: true).call
+
+      expect(points[29..30].map { |point| kmh(point) }).to all(be > 500)
+    end
+
+    it 'upgrades the zeros an older formula left on two fixes recorded in the same second' do
+      points = jittery_cruise(import)
+      points.each { |point| point.update_columns(velocity: '250.0') }
+      points[25].update_columns(timestamp: points[24].timestamp)
+      points[24..25].each { |point| point.update_columns(velocity: '0.0') }
+
+      described_class.new(import.id, upgrade_flyovers: true).call
+
+      expect(points[24..25].map { |point| kmh(point) }).to all(be > 500)
+    end
+
+    it 'keeps a recorded zero between readable legs when the import recorded other speeds' do
+      points = create_fixes(import, (0...40).map { |index| index * cruise_meters_per_fix }, velocity: '250.0')
+      points[20].update_columns(velocity: '0')
+
+      described_class.new(import.id, upgrade_flyovers: true).call
+
+      expect(points[20].reload.velocity).to eq('0')
     end
 
     it 'keeps a recorded slow speed the old formula would not have produced' do

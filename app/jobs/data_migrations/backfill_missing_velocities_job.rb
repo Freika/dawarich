@@ -4,6 +4,9 @@ class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
   queue_as :low_priority
 
   SOURCES = Points::VelocityFiller::TRACK_SOURCES
+  # Imports whose speeds 1.22-1.23 derived from adjacent fixes at import time.
+  LEGACY_SOURCES = %w[kml gpx geojson].freeze
+  NOTHING_FILLED = Points::VelocityFiller::Result.new(updated: 0, flyover_timestamps: []).freeze
 
   def perform(import_id = nil)
     return enqueue_imports if import_id.nil?
@@ -31,8 +34,13 @@ class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
   end
 
   def fill_flyovers(import)
-    Points::VelocityFiller.new(import.id, upgrade_flyovers: true,
-                                          zero_is_missing: !Points::VelocityFiller.recorded_speed?(import.id)).call
+    if LEGACY_SOURCES.include?(import.source)
+      zero_is_missing = !Points::VelocityFiller.recorded_speed?(import.id)
+      return Points::VelocityFiller.new(import.id, upgrade_flyovers: true, zero_is_missing:).call
+    end
+    return NOTHING_FILLED unless import.points.where(velocity: nil).exists?
+
+    Points::VelocityFiller.new(import.id).call
   end
 
   def recalculate_months(user, timestamps)

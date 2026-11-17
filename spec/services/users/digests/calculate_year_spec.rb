@@ -225,6 +225,16 @@ RSpec.describe Users::Digests::CalculateYear do
         end
       end
 
+      it 'leaves out the country of a fix flagged as an anomaly' do
+        day = Time.zone.local(2024, 1, 2, 10, 0, 0).to_i
+        create(:point, user: user, timestamp: day, country_name: 'Germany')
+        create(:point, user: user, timestamp: day + 600, country_name: 'Poland', anomaly: true)
+
+        countries = calculate_digest.time_spent_by_location['countries'].map { |country| country['name'] }
+
+        expect(countries).not_to include('Poland')
+      end
+
       context 'when there are large gaps between points on same day' do
         it 'still counts the full day for single-country day' do
           point_1 = Time.zone.local(2024, 1, 1, 10, 0, 0).to_i
