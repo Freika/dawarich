@@ -45,15 +45,18 @@ module Achievements
         ) m ON TRUE
         WHERE cells.untagged
       ),
+      edge_pieces AS MATERIALIZED (#{GridDwellCalculator.edge_pieces_sql('countries', 'iso_a2', 'untagged_cells')}),
+      edge_codes AS MATERIALIZED (#{GridDwellCalculator.edge_codes_sql("#{SCOPE_SQL.squish} AND p.country_id IS NULL")}),
       located AS MATERIALIZED (
         SELECT p."timestamp" AS ts, p.id, p.country_id,
                CASE WHEN cc.gx IS NOT NULL AND #{DisputedArea.covering_sql('p.lonlat::geometry')}
-                    THEN NULL ELSE COALESCE(c.iso_a2, uc.code) END AS code
+                    THEN NULL ELSE COALESCE(c.iso_a2, uc.code, ec.code) END AS code
         FROM points p
         LEFT JOIN countries c ON c.id = p.country_id
         LEFT JOIN untagged_cells uc
           ON p.country_id IS NULL
          AND uc.gx = #{format(CELL_SQL, axis: 'X')} AND uc.gy = #{format(CELL_SQL, axis: 'Y')}
+        LEFT JOIN edge_codes ec ON ec.id = p.id
         LEFT JOIN candidate_cells cc
           ON cc.gx = #{format(CELL_SQL, axis: 'X')} AND cc.gy = #{format(CELL_SQL, axis: 'Y')}
         WHERE #{SCOPE_SQL}
