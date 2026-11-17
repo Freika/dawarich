@@ -155,4 +155,12 @@ RSpec.describe Trips::RoutesTileQuery do
 
     expect { query.feature_rows }.to raise_error(described_class::InvalidTileCoordinatesError)
   end
+
+  it 'cancels a tile query that exceeds the tile statement timeout' do
+    recorded_track([minutes_after(1, 10), minutes_after(1, 10, 30)], [-140.02, -140.03])
+    allow(VectorTileTimeout).to receive(:query_timeout_ms).and_return(50)
+    slow_points = Trip.find(trip.id).primary_device_points.where('(SELECT pg_sleep(0.3)) IS NOT NULL')
+
+    expect { features(points_scope: slow_points) }.to raise_error(ActiveRecord::QueryCanceled)
+  end
 end

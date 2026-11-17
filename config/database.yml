@@ -16,7 +16,8 @@ development:
 
 test:
   <<: *default
-  database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %>
+  # parallel_tests gives every process its own database: dawarich_test, dawarich_test2, …
+  database: <%= ENV['DATABASE_NAME'] || 'dawarich_test' %><%= ENV['TEST_ENV_NUMBER'] %>
 
 production:
   <<: *default
