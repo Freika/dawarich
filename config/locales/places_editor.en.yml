@@ -1,5 +1,17 @@
 en:
   places:
+    # The Add home and Add work buttons of the Places list; the last is the name of the Place and of the tag.
+    shortcuts:
+      add_home: "Add home"
+      add_work: "Add work"
+      work_place_name: "Work"
+    # The optional dates of a Place: a fieldset on its form and a line under its name in the Places list.
+    period:
+      title: "When"
+      help: "Optional: when this place was part of your life. Leave “Until” empty if it still is."
+      since: "since %{date}"
+      until: "until %{date}"
+      range: "%{from} – %{to}"
     polish:
       selected: "selected"
       location: "Location"

@@ -27,7 +27,7 @@ RSpec.describe 'Deleting a place preserves the current pagination page', type: :
     expect(response).to be_successful
     doc = Nokogiri::HTML(response.body)
     expect(doc.css('[data-testid="place-row"]').map { |row| row['data-place-id'] }).to eq([target.id.to_s])
-    form = doc.at_css("tr[data-place-id='#{target.id}'] form")
+    form = doc.at_css("tr[data-place-id='#{target.id}'] form[action^='#{bulk_destroy_places_path}']")
     expect(form).to be_present
     expect(form.at_css('button')['aria-label']).to eq('Delete')
     action = URI.parse(form['action'])

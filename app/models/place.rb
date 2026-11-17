@@ -37,6 +37,7 @@ class Place < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
+  validate :period_in_order
   validates :visit_radius,
             numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_VISIT_RADIUS }
 
@@ -170,6 +171,12 @@ class Place < ApplicationRecord
   end
 
   private
+
+  def period_in_order
+    return unless started_on && ended_on && ended_on < started_on
+
+    errors.add(:base, I18n.t('trip_detection.homes.end_before_start'))
+  end
 
   def build_lonlat
     self.lonlat = "POINT(#{longitude} #{latitude})"

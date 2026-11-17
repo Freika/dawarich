@@ -21,6 +21,19 @@ class Tag < ApplicationRecord
   scope :ordered, -> { order(:name) }
   scope :privacy_zones, -> { where.not(privacy_radius_meters: nil) }
 
+  WORK_ICON = '💼'
+
+  # The user's Work tag, under its name in any locale: a user who switches language keeps one tag.
+  def self.work_tag(user)
+    names = I18n.available_locales.map { |locale| I18n.t('places.shortcuts.work_place_name', locale:).downcase }
+    user.tags.order(:id).find_by('lower(name) IN (?)', names.uniq)
+  end
+
+  def self.work_tag!(user)
+    work_tag(user) ||
+      user.tags.create!(name: I18n.t('places.shortcuts.work_place_name'), icon: WORK_ICON, color: '#33FF57')
+  end
+
   def privacy_zone?
     privacy_radius_meters.present?
   end

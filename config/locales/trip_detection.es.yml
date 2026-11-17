@@ -43,6 +43,11 @@ es:
       remove_confirm: "¿Eliminar este periodo? Se borrarán sus fechas y es posible que se eliminen los viajes encontrados automáticamente en ese periodo."
       add: "Añadir un periodo"
       end_before_start: "«Hasta» no puede ser anterior a «Desde»."
+      # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
+      live_here: "Aquí vivo"
+      live_here_at: "Vivo en %{place}"
+      live_here_help: "Dawarich usa tu hogar para encontrar tus viajes automáticamente."
+      open_home_note_html: "Ya tienes un hogar sin fecha de fin: %{places}. Si te mudaste, indica allí cuándo lo dejaste."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "Mostrar"
@@ -54,6 +59,9 @@ es:
       no_home: "Añade tu hogar para que Dawarich pueda encontrar tus viajes automáticamente."
       long_absence: "Dawarich ha omitido un periodo de más de %{days} días fuera de tu hogar. Si entonces vivías en otro lugar, añade ese hogar anterior."
       add_home: "Añadir un hogar en la página Lugares"
+      # On the Places list while there is no Home; the second is a link to the new Place form.
+      pick_home: "Haz clic en «Aquí vivo» junto a tu hogar en la lista."
+      new_home_place: "¿No está en la lista? Añádelo como lugar nuevo."
     # The name of the Place created for a Home picked in onboarding.
     home_place_name: "Casa"
     # The optional "Add your home" screen of the onboarding modal.
