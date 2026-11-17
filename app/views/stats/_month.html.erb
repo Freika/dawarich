@@ -107,7 +107,7 @@
     <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
       <%= column_chart(
           stat.daily_distance.map { |day, distance_meters|
-            [day, Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
+            [day, distance_meters.to_i.zero? ? nil : Stat.convert_distance(distance_meters, current_user.safe_settings.distance_unit).round]
           },
           id: "chart-month-daily-#{stat.year}-#{stat.month}",
           height: '200px',
@@ -123,6 +123,7 @@
             '#757575', '#546e7a', '#d32f2f'
           ],
           library: {
+            datasets: { bar: { minBarLength: 5 } },
             plugins: {
               legend: { display: false }
             },
