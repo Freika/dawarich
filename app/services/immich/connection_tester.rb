@@ -49,7 +49,7 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
       :post, "#{url}/api/search/metadata",
       headers: { 'x-api-key' => api_key, 'accept' => 'application/json', 'Content-Type' => 'application/json' },
       body: { takenAfter: Time.current.beginning_of_day.iso8601, size: 1, page: 1, order: 'asc',
-              withExif: true }.to_json,
+              withExif: true, visibility: 'timeline' }.to_json,
       skip_ssl_verification:
     )
   end
