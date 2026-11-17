@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A stop during which the Android app's smart tracking turned GPS off now becomes one visit that lasts until tracking resumed, instead of a gap. This needs Android app 2.9.155 or newer; stops recorded earlier don't change. Thanks @Toastie! (#3989)
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes
