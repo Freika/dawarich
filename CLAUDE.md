@@ -121,7 +121,8 @@ This file contains essential information for Claude to work effectively with the
 ### Test Commands
 ```bash
 bundle exec rspec                    # Run all specs
-bundle exec parallel_rspec -n 8      # All specs in 8 processes (once: RAILS_ENV=test bundle exec rake "parallel:create[8]" "parallel:load_schema[8]")
+bundle exec parallel_rspec -n 8      # All specs in 8 processes, at most 8 (once and after schema changes: RAILS_ENV=test bundle exec rake "parallel:create[8]" "parallel:load_schema[8]")
+                                     # it takes over Redis dbs 0–15 of REDIS_URL: run no other suite against that Redis
 bundle exec rspec spec/models/       # Model specs only
 npm test                             # JavaScript unit tests
 ```
