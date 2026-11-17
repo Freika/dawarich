@@ -21,14 +21,15 @@ RSpec.describe 'Distance charts keep small bars visible beside an outlier', type
 
     expect(values).to include(small_value)
     expect(options.dig('library', 'datasets', 'bar', 'minBarLength')).to be >= 5
-    # A day or month without movement has no bar, not a minimum-height one.
+    # A day or month without movement, or with less than half a unit, has no
+    # bar, not a minimum-height one labelled 0.
     expect(values).not_to include(0)
   end
 
   describe 'Daily Activity' do
     let!(:stat) do
       create(:stat, :with_sharing_enabled, user:, year: 2026, month: 6, toponyms: [], distance: 10_150_000,
-                                           daily_distance: [[1, 150_000], [2, 10_000_000], [3, 0]])
+                                           daily_distance: [[1, 150_000], [2, 10_000_000], [3, 0], [4, 300]])
     end
 
     it 'gives a 150 km day a visible bar next to a 10,000 km day on the month page' do
@@ -51,7 +52,7 @@ RSpec.describe 'Distance charts keep small bars visible beside an outlier', type
     let!(:digest) do
       create(:users_digest, :with_sharing_enabled, user:, year: 2025,
                                                    monthly_distances: { '1' => '150000', '2' => '10000000',
-                                                                        '3' => '0' })
+                                                                        '3' => '0', '4' => '300' })
     end
 
     it 'gives a 150 km month a visible bar next to a 10,000 km month on the digest page' do
