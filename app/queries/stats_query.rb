@@ -22,9 +22,10 @@ class StatsQuery
   end
 
   # Both are daily-cached counts. The geocoded count is the total minus the
-  # points still waiting for geocoding, which the partial index on
-  # reverse_geocoded_at IS NULL serves; counting the geocoded rows directly
-  # reads every row of the user. The empty-result count has no index and
+  # points still waiting for geocoding. The partial index on
+  # reverse_geocoded_at IS NULL serves that while the instance's backlog is
+  # small; otherwise the planner reads the user's rows, as counting the
+  # geocoded rows directly always did. The empty-result count has no index and
   # scans, so it is only computed where it is actually rendered: the stats
   # panel is wrapped in DawarichSettings.store_geodata?, so without this guard
   # every Cloud user paid for a scan whose result was never displayed.
