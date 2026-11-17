@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Re-checking past points against the GPS noise filter now rebuilds tracks, stats and digests only for the years where hidden points changed, and tells you when nothing did. Before, every re-check rebuilt all tracks, which grew large databases by tens of gigabytes a day.
+- Re-checking past points against the GPS noise filter now rebuilds tracks, stats and digests only for the years where hidden points changed, and shows a short "nothing changed" notice instead when nothing did.
 
 ## [1.23.0] - 2026-11-14, Berlin
 

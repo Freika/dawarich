@@ -6,6 +6,8 @@
 # `only: 'tracks'` rebuilds just the tracks; `only: 'stats'` just stats and digests.
 # `digest_years:` refreshes the digests of further years once the stats are
 # rebuilt, since every yearly digest carries all-time totals.
+# `anomaly_rebuild: true` marks the rebuild a GPS noise re-check queued: it
+# forgets the re-check's fingerprint only once the rebuild has succeeded.
 class Users::RecalculateDataJob < ApplicationJob
   include UserTimezone
 
@@ -34,7 +36,7 @@ class Users::RecalculateDataJob < ApplicationJob
 
   ONLY = %w[tracks stats].freeze
 
-  def perform(user_id, year: nil, notify: true, job_queue: nil, only: nil, digest_years: nil)
+  def perform(user_id, year: nil, notify: true, job_queue: nil, only: nil, digest_years: nil, anomaly_rebuild: false)
     @user = find_user_or_skip(user_id) || return
     @only = only.to_s.presence_in(ONLY)
 
@@ -48,6 +50,7 @@ class Users::RecalculateDataJob < ApplicationJob
 
         if years_to_process.empty?
           Rails.logger.info "No data to recalculate for user #{user_id}"
+          Points::AnomalyRebuildScope.new(user).forget if anomaly_rebuild
           return
         end
 
@@ -61,6 +64,7 @@ class Users::RecalculateDataJob < ApplicationJob
         create_success_notification(years_to_process) if @notify
       end
     end
+    Points::AnomalyRebuildScope.new(user).forget if anomaly_rebuild
   rescue Tracks::PerUserLock::AcquisitionTimeout
     raise
   rescue StandardError => e

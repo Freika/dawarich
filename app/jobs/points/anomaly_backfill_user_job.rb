@@ -53,7 +53,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
     if years && years.empty?
       Rails.logger.info("[AnomalyBackfill] User #{user.id}: no flags changed, nothing to rebuild")
-      notify_nothing_changed(user) if notify
+      notify_nothing_changed(user) if notify && detached_track_ids.empty?
     else
       Rails.logger.info("[AnomalyBackfill] User #{user.id}: rebuilding years #{years&.join(', ') || 'all'}")
       rebuild_data(user, notify: notify, rebuild: rebuild, years: years)
@@ -61,7 +61,13 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     end
     recalculate_detached_tracks if years
 
-    scope.forget
+    # A queued rebuild forgets the fingerprint itself once it succeeds, so a
+    # rebuild that fails for good leaves it for the next re-check to compare.
+    scope.forget unless queued_rebuild?(years, rebuild)
+  end
+
+  def queued_rebuild?(years, rebuild)
+    rebuild != :inline && (years.nil? || years.any?)
   end
 
   # Points left unflagged between the reset and the re-filter can be joined to
@@ -109,7 +115,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     if rebuild == :inline
       Users::RecalculateDataJob.new.perform(user.id, **options, job_queue: :low_priority)
     else
-      Users::RecalculateDataJob.perform_later(user.id, **options)
+      Users::RecalculateDataJob.perform_later(user.id, **options, anomaly_rebuild: true)
     end
   end
 

@@ -11,6 +11,10 @@
 # when absent and forgotten only after the rebuild is under way.
 class Points::AnomalyRebuildScope
   SETTINGS_KEY = 'anomaly_rebuild_fingerprint'
+  # The flags as this run found them. When an older SETTINGS_KEY was kept, the
+  # live filter may have flagged points since; comparing with both only ever
+  # adds years. Stored too, so a resumed run still has it.
+  LATEST_KEY = 'anomaly_rebuild_fingerprint_latest'
   SETTINGS_OBJECT = "CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END"
 
   def initialize(user)
@@ -21,6 +25,9 @@ class Points::AnomalyRebuildScope
     current = fingerprints
     return if current.nil?
 
+    User.where(id: user.id).update_all(
+      ["settings = #{SETTINGS_OBJECT} || jsonb_build_object(?, ?::jsonb)", LATEST_KEY, current.to_json]
+    )
     User.where(id: user.id)
         .where("NOT jsonb_exists(#{SETTINGS_OBJECT}, ?)", SETTINGS_KEY)
         .update_all(
@@ -31,24 +38,30 @@ class Points::AnomalyRebuildScope
   # Sorted years to rebuild, or nil when the caller cannot tell what changed:
   # nothing was stored, or the database cannot take the user's timezone.
   def changed_years
-    before = stored_fingerprints
+    before = stored_fingerprints(SETTINGS_KEY)
     return if before.nil?
 
     after = fingerprints
     return if after.nil?
 
-    changed = (before.keys | after.keys).reject { |year| before[year] == after[year] }
+    latest = stored_fingerprints(LATEST_KEY)
+    changed = years_differing(before, after)
+    changed |= years_differing(latest, after) if latest
     with_years_sharing_a_track(changed).sort
   end
 
   def forget
     User.where(id: user.id).where("jsonb_typeof(settings) = 'object'")
-        .update_all(['settings = settings - ?', SETTINGS_KEY])
+        .update_all(['settings = settings - ARRAY[?, ?]::text[]', SETTINGS_KEY, LATEST_KEY])
   end
 
   private
 
   attr_reader :user
+
+  def years_differing(before, after)
+    (before.keys | after.keys).reject { |year| before[year] == after[year] }
+  end
 
   # { year => [count, md5 of the ids, any still on a track] } of the flagged
   # points, the year taken in the user's timezone as Users::RecalculateDataJob
@@ -70,8 +83,8 @@ class Points::AnomalyRebuildScope
     nil
   end
 
-  def stored_fingerprints
-    stored = User.where(id: user.id).pick(Arel.sql("settings -> #{Point.connection.quote(SETTINGS_KEY)}"))
+  def stored_fingerprints(key)
+    stored = User.where(id: user.id).pick(Arel.sql("settings -> #{Point.connection.quote(key)}"))
     stored = JSON.parse(stored) if stored.is_a?(String)
     stored&.to_h { |year, fingerprint| [year.to_i, fingerprint] }
   end

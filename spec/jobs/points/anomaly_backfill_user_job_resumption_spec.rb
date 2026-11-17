@@ -46,7 +46,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       perform_enqueued_jobs(only: described_class)
 
-      expect(Users::RecalculateDataJob).to have_been_enqueued.with(user.id, notify: true, year: [2026])
+      expect(Users::RecalculateDataJob).to have_been_enqueued
+        .with(user.id, notify: true, year: [2026], anomaly_rebuild: true)
     end
 
     it 'completes in a single run when the worker is not shutting down' do

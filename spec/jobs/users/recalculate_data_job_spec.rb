@@ -37,6 +37,32 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
+    context 'when a GPS noise re-check queued the rebuild' do
+      let(:fingerprint_key) { Points::AnomalyRebuildScope::SETTINGS_KEY }
+
+      before { user.update_columns(settings: user.settings.merge(fingerprint_key => {})) }
+
+      it 'forgets the re-check fingerprint once the rebuild succeeded' do
+        described_class.perform_now(user.id, year: [2024], anomaly_rebuild: true)
+
+        expect(user.reload.settings).not_to have_key(fingerprint_key)
+      end
+
+      it 'keeps the re-check fingerprint when the rebuild fails' do
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_raise(StandardError, 'boom')
+
+        expect { described_class.perform_now(user.id, year: [2024], anomaly_rebuild: true) }
+          .to raise_error(StandardError, 'boom')
+        expect(user.reload.settings).to have_key(fingerprint_key)
+      end
+
+      it 'forgets the re-check fingerprint when there is nothing to rebuild' do
+        described_class.perform_now(user.id, anomaly_rebuild: true)
+
+        expect(user.reload.settings).not_to have_key(fingerprint_key)
+      end
+    end
+
     context 'with further digest years' do
       it 'refreshes their digests after the stats, without rebuilding their stats or tracks' do
         calls = []

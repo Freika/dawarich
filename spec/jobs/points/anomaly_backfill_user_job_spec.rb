@@ -31,7 +31,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [changed_year])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [changed_year], anomaly_rebuild: true)
     end
 
     it 'rebuilds achievements after anomaly flags are cleared and re-evaluated' do
@@ -115,7 +116,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     it 'rebuilds only the years whose anomalies changed' do
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2025])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2025], anomaly_rebuild: true)
     end
 
     it 'skips the rebuild and achievements when no year changed' do
@@ -168,7 +170,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2025])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2025], anomaly_rebuild: true)
     end
 
     it 'rebuilds a year whose flagged point still sat on a track' do
@@ -177,7 +180,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2024])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024], anomaly_rebuild: true)
     end
 
     it 'also rebuilds the neighbouring year when a track crosses into it' do
@@ -185,7 +189,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2024, 2025])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024, 2025], anomaly_rebuild: true)
     end
 
     it 'refreshes the yearly digests of the years it does not rebuild' do
@@ -195,10 +200,28 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect do
         described_class.new.perform(user.id, reset: true)
       end.to have_enqueued_job(Users::RecalculateDataJob)
-        .with(user.id, notify: true, year: [2025], digest_years: [2023])
+        .with(user.id, notify: true, year: [2025], digest_years: [2023], anomaly_rebuild: true)
     end
 
-    it 'forgets the fingerprint once the rebuild is under way' do
+    it 'forgets the fingerprint once an inline rebuild is done' do
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+    end
+
+    it 'keeps the fingerprint until the queued rebuild has run' do
+      described_class.new.perform(user.id, reset: true)
+
+      expect(user.reload.settings).to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+    end
+
+    it 'forgets the fingerprint when nothing changed' do
+      wrongly_flagged.destroy!
+
       described_class.new.perform(user.id, reset: true)
 
       expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
@@ -217,6 +240,7 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id).on_queue('low_priority')
 
       expect(Users::RecalculateDataJob).not_to have_been_enqueued
+      expect(user.notifications.where(title: 'GPS noise re-check finished')).not_to exist
     end
 
     it 'takes the year in the user timezone' do
@@ -225,7 +249,22 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true, year: [2026])
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2026], anomaly_rebuild: true)
+    end
+  end
+
+  describe '#perform with reset: true after an older fingerprint was left behind' do
+    it 'rebuilds a year the live filter flagged in the meantime' do
+      released = create(:point, user: user, accuracy: 60, anomaly: false,
+                                timestamp: Time.utc(2024, 6, 15).to_i, lonlat: 'POINT(13.405 52.52)')
+      Points::AnomalyRebuildScope.new(user).remember
+      released.update_columns(anomaly: true)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024], anomaly_rebuild: true)
     end
   end
 

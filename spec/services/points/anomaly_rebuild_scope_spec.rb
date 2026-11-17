@@ -42,6 +42,17 @@ RSpec.describe Points::AnomalyRebuildScope do
     expect(scope.changed_years).to eq([2024])
   end
 
+  it 'also compares with the flags the latest run found, even from a new instance' do
+    released = create(:point, user: user, anomaly: false, timestamp: Time.utc(2024, 5, 1).to_i,
+                              lonlat: 'POINT(13.405 52.52)')
+    scope.remember
+    released.update!(anomaly: true)
+    described_class.new(user).remember
+    released.update!(anomaly: false)
+
+    expect(described_class.new(user).changed_years).to eq([2024])
+  end
+
   it 'follows tracks across several New Years' do
     flagged = flag(Time.utc(2024, 5, 1))
     scope.remember
@@ -57,6 +68,6 @@ RSpec.describe Points::AnomalyRebuildScope do
     scope.forget
 
     expect(scope.changed_years).to be_nil
-    expect(user.reload.settings).not_to have_key(described_class::SETTINGS_KEY)
+    expect(user.reload.settings.keys).not_to include(described_class::SETTINGS_KEY, described_class::LATEST_KEY)
   end
 end
