@@ -50,6 +50,33 @@ RSpec.describe 'Place shortcuts and periods', type: :request do
         .not_to change(Tag, :count)
       expect(user.places.last.tags).to eq([tag])
     end
+
+    it 'reuses a Work tag created under another language' do
+      tag = create(:tag, user:, name: 'Arbeit')
+      expect { post places_path, params: { place: place_params.merge(work: '1') } }
+        .not_to change(Tag, :count)
+      expect(user.places.last.tags).to eq([tag])
+    end
+  end
+
+  describe 'adding a Home while another Home has no end date' do
+    def note = page.at_css('[data-testid="open-home-note"]')
+
+    it 'names that Home on the new Place form and links to it' do
+      old_flat = create(:place, user:, name: 'Old flat')
+      create(:home, user:, place: old_flat, started_on: Date.new(2015, 1, 1))
+
+      get new_place_path(home: 1)
+
+      expect(note.text).to include('Old flat')
+      expect(note.at_css("a[href='#{edit_place_path(old_flat)}']")).to be_present
+    end
+
+    it 'says nothing when every Home has ended' do
+      create(:home, user:, place: create(:place, user:), ended_on: Date.new(2020, 1, 1))
+      get new_place_path(home: 1)
+      expect(note).to be_nil
+    end
   end
 
   describe 'the period of a Place' do
@@ -71,12 +98,30 @@ RSpec.describe 'Place shortcuts and periods', type: :request do
       expect(place).to have_attributes(started_on: nil, ended_on: nil)
     end
 
+    it 'still hands the suggested visits nearby to a dated new Home' do
+      expect { post places_path, params: { place: place_params.merge(home: '1', started_on: '2021-03-01') } }
+        .to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
+    end
+
     it 'refuses an end before the start and creates nothing' do
       backwards = place_params.merge(home: '1', started_on: '2022-03-01', ended_on: '2022-02-01')
       expect { post places_path, params: { place: backwards } }.not_to change(Place, :count)
       expect(response).to have_http_status(:unprocessable_content)
       expect(response.body).to include(ERB::Util.html_escape(I18n.t('trip_detection.homes.end_before_start')))
       expect(Home.count).to eq(0)
+    end
+
+    it 'keeps the Add home title when the form comes back with an error' do
+      backwards = place_params.merge(home: '1', started_on: '2022-03-01', ended_on: '2022-02-01')
+      post places_path, params: { place: backwards }
+      expect(page.at_css('h1').text).to eq(I18n.t('places.shortcuts.add_home'))
+    end
+
+    it 'is not written back by the edit form once the Place is a Home' do
+      place = create(:place, user:)
+      create(:home, user:, place:)
+      patch place_path(place), params: { place: { name: 'Flat', started_on: '2019-09-01', ended_on: '2022-06-30' } }
+      expect(place.reload).to have_attributes(name: 'Flat', started_on: nil, ended_on: nil)
     end
 
     it 'is changed on the edit form' do

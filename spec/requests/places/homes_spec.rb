@@ -60,6 +60,28 @@ RSpec.describe 'Homes of a Place', type: :request do
     expect { delete place_home_path(place, home) }.to change(Home, :count).by(-1)
   end
 
+  describe "a Place's own period" do
+    let(:place) { create(:place, user:, started_on: Date.new(2019, 9, 1), ended_on: Date.new(2022, 6, 30)) }
+
+    it 'gives way to an open-dated Home when the user says they live there now' do
+      post place_homes_path(place, list: 1), params: { home: { started_on: '' } }
+      expect(place.homes.last).to have_attributes(started_on: nil, ended_on: nil)
+      expect(place.reload).to have_attributes(started_on: nil, ended_on: nil)
+    end
+
+    it 'gives way to the open Home of the onboarding, which stays a single Home' do
+      2.times { Homes::CreateAtLocation.new(user:, latitude: place.lat, longitude: place.lon).call }
+      expect(place.homes.pluck(:ended_on)).to eq([nil])
+      expect(place.reload).to have_attributes(started_on: nil, ended_on: nil)
+    end
+
+    it 'gives way to the dates of a Home that has its own' do
+      post place_homes_path(place), params: { home: { started_on: '2020-01-01' } }
+      expect(place.homes.last).to have_attributes(started_on: Date.new(2020, 1, 1), ended_on: nil)
+      expect(place.reload).to have_attributes(started_on: nil, ended_on: nil)
+    end
+  end
+
   it "does not reach another user's place" do
     post place_homes_path(create(:place)), params: { home: { started_on: '' } }
     expect(response).to have_http_status(:not_found)
@@ -87,6 +109,12 @@ RSpec.describe 'Homes of a Place', type: :request do
       expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
       expect(page.at_css("[role='status'] a[href='#{new_place_path(home: 1)}']")).to be_present
       expect(page.at_css("form[action='#{place_homes_path(place, list: 1)}']")).to be_present
+    end
+
+    it 'names the Place on each "I live here" button for screen readers' do
+      get places_path
+      button = page.at_css("form[action='#{place_homes_path(place, list: 1)}'] button")
+      expect(button['aria-label']).to eq(I18n.t('trip_detection.homes.live_here_at', place: place.name))
     end
 
     it 'marks the Home and stops asking once there is one' do

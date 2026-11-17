@@ -45,7 +45,9 @@ ca:
       end_before_start: "«Fins a» no pot ser anterior a «Des de»."
       # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
       live_here: "Aquí visc"
+      live_here_at: "Visc a %{place}"
       live_here_help: "Dawarich fa servir la teva llar per trobar els teus viatges automàticament."
+      open_home_note_html: "Ja tens una llar sense data de fi: %{places}. Si t'has mudat, indica-hi quan la vas deixar."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "Mostra"

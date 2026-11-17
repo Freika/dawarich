@@ -45,7 +45,9 @@ zh:
       end_before_start: "“至”不能早于“从”。"
       # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
       live_here: "我住在这里"
+      live_here_at: "我住在%{place}"
       live_here_help: "Dawarich 会根据您的住所自动发现您的旅行。"
+      open_home_note_html: "您已有一个没有结束日期的住所：%{places}。如果您已搬家，请在那里设置您离开的时间。"
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "显示"

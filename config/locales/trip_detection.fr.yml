@@ -45,7 +45,9 @@ fr:
       end_before_start: "« Au » ne peut pas précéder « Du »."
       # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
       live_here: "J’habite ici"
+      live_here_at: "J’habite à %{place}"
       live_here_help: "Dawarich utilise votre domicile pour trouver vos voyages automatiquement."
+      open_home_note_html: "Vous avez déjà un domicile sans date de fin : %{places}. Si vous avez déménagé, indiquez-y quand vous l'avez quitté."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "Afficher"

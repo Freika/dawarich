@@ -34,7 +34,7 @@
           <td>
             <%= link_to t('ux_p2.places.edit'), edit_place_path(place, place_list_params), class: 'btn btn-ghost btn-xs h-auto py-2' %>
             <% if offer_home %>
-              <%= button_to t('trip_detection.homes.live_here'), place_homes_path(place, list: 1), params: { home: { started_on: '' } }, class: 'btn btn-ghost btn-xs h-auto py-2' %>
+              <%= button_to t('trip_detection.homes.live_here'), place_homes_path(place, list: 1), params: { home: { started_on: '' } }, class: 'btn btn-ghost btn-xs h-auto py-2', aria: { label: t('trip_detection.homes.live_here_at', place: place.name) } %>
             <% end %>
             <% if params[:filter] == 'unconfirmed' %>
               <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, place_list_params), method: :patch, class: 'btn btn-ghost btn-xs h-auto py-2 text-success' %>

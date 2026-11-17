@@ -49,10 +49,20 @@
         </fieldset>
       <% end %>
       <% unless local_assigns[:homes] %>
-        <label class="flex items-start gap-2">
-          <%= check_box_tag 'place[home]', '1', params[:home].present? || params.dig(:place, :home) == '1', class: 'checkbox checkbox-sm mt-0.5' %>
-          <span class="min-w-0"><%= t('trip_detection.homes.live_here') %><span class="block text-sm text-base-content/70"><%= t('trip_detection.homes.live_here_help') %></span></span>
-        </label>
+        <%# Trip detection counts every Home in effect, so a move needs the old Home closed, not a second open one. %>
+        <% open_home_places = current_user.places.where(id: current_user.homes.where(ended_on: nil).select(:place_id)).order(:name) %>
+        <div class="group space-y-1">
+          <label class="flex items-start gap-2">
+            <%= check_box_tag 'place[home]', '1', params[:home].present? || params.dig(:place, :home) == '1', class: 'checkbox checkbox-sm mt-0.5' %>
+            <span class="min-w-0"><%= t('trip_detection.homes.live_here') %><span class="block text-sm text-base-content/70"><%= t('trip_detection.homes.live_here_help') %></span></span>
+          </label>
+          <% if open_home_places.any? %>
+            <%# Shown while "I live here" is ticked; the links open in a new tab so this form keeps its input. %>
+            <p class="hidden group-has-[:checked]:block text-sm text-base-content/70 ml-6 [overflow-wrap:anywhere]" data-testid="open-home-note">
+              <%= t('trip_detection.homes.open_home_note_html', places: safe_join(open_home_places.map { |home_place| link_to home_place.name, edit_place_path(home_place), class: 'link', target: '_blank', rel: 'noopener' }, ', ')) %>
+            </p>
+          <% end %>
+        </div>
       <% end %>
       <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_params), class: 'btn btn-ghost' %></div>
     <% end %>

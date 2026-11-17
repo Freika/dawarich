@@ -1,5 +1,5 @@
-<% title = if params[:home].present? then t('places.shortcuts.add_home')
-            elsif params[:work].present? then t('places.shortcuts.add_work')
+<% title = if params[:home].present? || params.dig(:place, :home) == '1' then t('places.shortcuts.add_home')
+            elsif params[:work].present? || params.dig(:place, :work) == '1' then t('places.shortcuts.add_work')
             else t('ux_p2.places.add')
             end %>
 <% content_for :title, title %>

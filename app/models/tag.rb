@@ -23,10 +23,10 @@ class Tag < ApplicationRecord
 
   WORK_ICON = '💼'
 
-  # The user's Work tag, under its English or its localized name.
+  # The user's Work tag, under its name in any locale: a user who switches language keeps one tag.
   def self.work_tag(user)
-    names = [I18n.t('places.shortcuts.work_place_name'), 'Work'].uniq
-    user.tags.order(:id).find_by('lower(name) IN (?)', names.map(&:downcase))
+    names = I18n.available_locales.map { |locale| I18n.t('places.shortcuts.work_place_name', locale:).downcase }
+    user.tags.order(:id).find_by('lower(name) IN (?)', names.uniq)
   end
 
   def self.work_tag!(user)

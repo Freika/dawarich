@@ -45,7 +45,9 @@ es:
       end_before_start: "«Hasta» no puede ser anterior a «Desde»."
       # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
       live_here: "Aquí vivo"
+      live_here_at: "Vivo en %{place}"
       live_here_help: "Dawarich usa tu hogar para encontrar tus viajes automáticamente."
+      open_home_note_html: "Ya tienes un hogar sin fecha de fin: %{places}. Si te mudaste, indica allí cuándo lo dejaste."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "Mostrar"
