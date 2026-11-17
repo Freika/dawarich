@@ -2,8 +2,10 @@
 
 module Trips
   class DayPathSql
-    def initialize(points_scope:, timezone:, gap_seconds:, excluded_sql: nil, segment_sql: nil)
+    def initialize(points_scope:, timezone:, gap_seconds:, excluded_sql: nil, segment_sql: nil,
+                   split_tracks_at_gaps: false)
       @points_scope = points_scope
+      @split_tracks_at_gaps = split_tracks_at_gaps
       @timezone = timezone
       @gap_seconds = gap_seconds.to_i
       @excluded_sql = excluded_sql.presence || 'false'
@@ -44,11 +46,15 @@ module Trips
 
     private
 
+    # A points scope that drops another device's window leaves no point behind
+    # to break the track on, so such a caller keeps the gap check for tracks.
+    # ponytail: a window shorter than the route gap is still drawn straight;
+    # numbering the track's own points before the device filter would fix it.
     def segment_conditions(tracked:)
       conditions = ['previous_position IS NOT NULL', 'sequence - previous_sequence = 1', @segment_sql]
-      return conditions if tracked
-
-      conditions + ['previous_day = day', "timestamp - previous_timestamp <= #{@gap_seconds}"]
+      conditions << "timestamp - previous_timestamp <= #{@gap_seconds}" if !tracked || @split_tracks_at_gaps
+      conditions << 'previous_day = day' unless tracked
+      conditions
     end
 
     def points_sql

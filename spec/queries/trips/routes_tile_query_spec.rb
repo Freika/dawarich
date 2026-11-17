@@ -69,6 +69,20 @@ RSpec.describe Trips::RoutesTileQuery do
     expect(coordinates(rows.first).map(&:first)).to all(be_between(-140.06, -140.0))
   end
 
+  it "does not draw a straight line across another device's recording window" do
+    phone_times = (0..24).map { |step| minutes_after(1, 10, 0) + (step * 5).minutes }
+    phone = recorded_track(phone_times, (0..24).map { |step| -140.0 - (step * 0.001) })
+    watch_times = (0..140).map { |step| minutes_after(1, 10, 30) + (step * 30).seconds }
+    recorded_track(watch_times, watch_times.map { -140.1 }, tracker: 'watch')
+
+    phone_segments = features.select { |row| row['track_id'] == phone.id }.flat_map do |row|
+      coordinates(row).each_cons(2).map { |from, to| [from.first.round(3), to.first.round(3)] }
+    end
+
+    # 10:25 and 11:45 are the phone fixes on either side of the watch's window.
+    expect(phone_segments).not_to include([-140.005, -140.021])
+  end
+
   it 'keeps a rebuilt track joined across a pause longer than the route gap, as the map draws it' do
     trip.update_columns(started_at: minutes_after(1, 10))
     times = [minutes_after(1, 9, 50), minutes_after(1, 10, 5), minutes_after(1, 10, 15),
