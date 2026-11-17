@@ -4001,6 +4001,9 @@ en:
       import_flights_job:
         airtrail_sync_failed: AirTrail sync failed
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Your AirTrail flight sync failed with error: %{message}. Check your AirTrail settings and try again.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Your points were re-checked against the GPS noise filter. Nothing changed, so your tracks, stats and digests were left as they were."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: GPS noise re-check finished

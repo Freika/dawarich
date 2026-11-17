@@ -131,7 +131,8 @@ module Trips
 
     def day_paths(points_scope, segment_sql: nil)
       Trips::DayPathSql.new(points_scope:, timezone: @timezone, excluded_sql:, segment_sql:,
-                            gap_seconds: trip.user.safe_settings.minutes_between_routes.to_i * 60)
+                            gap_seconds: trip.user.safe_settings.minutes_between_routes.to_i * 60,
+                            split_tracks_at_gaps: trip.multiple_recording_devices?)
     end
 
     def untracked_day_paths
@@ -186,13 +187,8 @@ module Trips
       ActiveRecord::Base.connection.quote(value)
     end
 
-    def with_statement_timeout
-      conn = Point.connection
-      conn.transaction do
-        conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
-                        'TripRoutesTileQuery Timeout')
-        yield conn
-      end
+    def with_statement_timeout(&)
+      VectorTileTimeout.within(Point.connection, 'TripRoutesTileQuery', &)
     end
   end
 end

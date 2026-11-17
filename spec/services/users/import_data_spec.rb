@@ -6,7 +6,7 @@ require 'oj'
 
 RSpec.describe Users::ImportData, type: :service do
   let(:user) { create(:user) }
-  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
+  let(:archive_path) { Rails.root.join("tmp/test_export_#{SecureRandom.hex(4)}.zip") }
   let(:service) { described_class.new(user, archive_path) }
   let(:import_directory) { Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_1234567890") }
 
