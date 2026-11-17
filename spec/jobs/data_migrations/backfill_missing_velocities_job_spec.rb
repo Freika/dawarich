@@ -29,9 +29,9 @@ RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
     import.points.order(:timestamp).map { |point| (point.velocity.to_f * 3.6).round }
   end
 
-  it 'queues one backfill per KML, GPX and GeoJSON import' do
-    imports = %w[kml gpx geojson].each_with_index.map { |source, day| flight_import(source:, day:) }
-    flight_import(source: 'owntracks', day: 3)
+  it 'queues one backfill per track import and none for photo or check-in imports' do
+    imports = %w[kml gpx google_semantic_history].each_with_index.map { |source, day| flight_import(source:, day:) }
+    %w[immich_api swarm].each_with_index { |source, day| flight_import(source:, day: day + 3) }
 
     expect { described_class.perform_now }.to have_enqueued_job(described_class).exactly(3).times
     imports.each { |import| expect(described_class).to have_been_enqueued.with(import.id) }
@@ -46,6 +46,31 @@ RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
 
       expect(speeds_kmh(import)).to match([0, 0, be > 500, be > 500, 0, 0])
     end
+  end
+
+  it 'derives airborne speeds for other track sources stored without one' do
+    import = flight_import(source: 'owntracks', velocity: nil)
+
+    described_class.perform_now(import.id)
+
+    expect(speeds_kmh(import)).to match([0, 0, be > 500, be > 500, 0, 0])
+  end
+
+  it 'fills only the missing speeds of other track sources' do
+    import = flight_import(source: 'owntracks', velocity: nil)
+    import.points.order(:timestamp).first.update_columns(velocity: '5.0')
+
+    described_class.perform_now(import.id)
+
+    expect(speeds_kmh(import)).to match([18, 0, be > 500, be > 500, 0, 0])
+  end
+
+  it 'leaves recorded zeros of other track sources untouched' do
+    import = flight_import(source: 'owntracks', velocity: '0.0')
+
+    described_class.perform_now(import.id)
+
+    expect(import.points.pluck(:velocity)).to all(eq('0.0'))
   end
 
   it 'recalculates the affected month, existing digests and overlapping trips' do
@@ -136,7 +161,7 @@ RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
     expect(user.stats).to be_empty
   end
 
-  it 'leaves imports that recorded some speeds untouched' do
+  it 'leaves the zeros of imports that recorded some speeds untouched' do
     import = flight_import
     import.points.order(:timestamp).first.update_columns(velocity: '5.0')
 

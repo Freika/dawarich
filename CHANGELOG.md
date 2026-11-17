@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### ⚠️ Upgrade notes
+
+- After the upgrade a background job re-checks imports that came without speed data. Countries you only flew over disappear from monthly stats, trips and digests once it finishes.
+
 ### Fixed
 
 - Re-checking past points against the GPS noise filter now rebuilds tracks, stats and digests only for the years where hidden points changed, and shows a short "nothing changed" notice instead when nothing did.
@@ -14,6 +18,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Small days and months stay visible next to a much larger one in the Daily Activity chart and the distance-by-month chart of the year digest, on your own pages and on shared ones. A day or month without movement has no bar. Thanks @binnichtaktiv! (#4029)
 - Visit detection no longer stretches two short stops next to each other into visits that cover the same time. A single short stop is still stretched to the movement around it. Thanks @Mason10198! (#4023)
 - A stop during which the Android app's smart tracking turned GPS off now becomes one visit that lasts until tracking resumed, instead of a gap. This needs Android app 2.9.155 or newer; stops recorded earlier don't change. Thanks @Toastie! (#3989)
+- Countries only flown over are no longer counted as visited for imports without speed data: KML (including Flightradar24 exports), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps files. Existing KML, GPX and GeoJSON imports are re-checked; for the other formats only points stored without a speed are. Only flight speeds are derived now, so these imports no longer get a derived walking or driving speed.
+- Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
 
 ## [1.23.0] - 2026-11-14, Berlin
 

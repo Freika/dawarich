@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'tempfile'
 
 RSpec.describe 'Countries flown over in GPX and GeoJSON imports' do
   let(:user) { create(:user) }
@@ -24,14 +23,12 @@ RSpec.describe 'Countries flown over in GPX and GeoJSON imports' do
     (start_time + minute.minutes).iso8601
   end
 
-  def import_file(importer, source, body)
+  # Through Imports::Create: speeds are derived after the importer has run.
+  def import_file(source, body)
     import = create(:import, user:, name: "synthetic-flight.#{source}", source:, skip_background_processing: true)
+    import.file.attach(io: StringIO.new(body), filename: "synthetic-flight.#{source}")
 
-    Tempfile.create(['synthetic-flight', ".#{source}"], Rails.root.join('tmp')) do |file|
-      file.write(body)
-      file.flush
-      importer.new(import, user.id, file.path).call
-    end
+    Imports::Create.new(user, import).call
   end
 
   def gpx(tracks)
@@ -89,19 +86,19 @@ RSpec.describe 'Countries flown over in GPX and GeoJSON imports' do
   end
 
   context 'with a GPX track without speed' do
-    before { import_file(Gpx::TrackImporter, 'gpx', gpx([samples])) }
+    before { import_file('gpx', gpx([samples])) }
 
     it_behaves_like 'excludes the overflown country'
   end
 
   context 'with GeoJSON points without speed' do
-    before { import_file(Geojson::Importer, 'geojson', geojson) }
+    before { import_file('geojson', geojson) }
 
     it_behaves_like 'excludes the overflown country'
   end
 
   context 'with GeoJSON points that recorded a speed of zero' do
-    before { import_file(Geojson::Importer, 'geojson', geojson(speed: 0)) }
+    before { import_file('geojson', geojson(speed: 0)) }
 
     it 'keeps the recorded speed' do
       expect(user.points.pluck(:velocity).map(&:to_f)).to all(eq(0.0))
@@ -111,7 +108,7 @@ RSpec.describe 'Countries flown over in GPX and GeoJSON imports' do
   context 'with two GPX tracks recorded a kilometre apart at the same time' do
     let(:samples) { (0..11).map { |step| [Rational(step, 12), step.even? ? -142 : -141.987, 'Homeland'] } }
 
-    before { import_file(Gpx::TrackImporter, 'gpx', gpx(samples.partition { |minute, *| (minute * 12).to_i.even? })) }
+    before { import_file('gpx', gpx(samples.partition { |minute, *| (minute * 12).to_i.even? })) }
 
     it 'does not read the jumps between the tracks as a flight' do
       expect(user.points.map { |point| point.velocity.to_f * 3.6 }).to all(be <= 500)

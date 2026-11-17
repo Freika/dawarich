@@ -162,6 +162,7 @@ module Users
             AND points.timestamp <= #{end_of_year.to_i}
             AND points.country_name IS NOT NULL
             AND points.country_name != ''
+            AND points.anomaly IS NOT TRUE
             AND #{CountriesAndCities.not_flyover_sql('points.velocity')}
           GROUP BY point_date, #{country}
           ORDER BY point_date, min_timestamp, #{country} COLLATE "C"

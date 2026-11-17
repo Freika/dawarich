@@ -22,7 +22,6 @@ class Geojson::Importer
       stream_features(path)
       flush_batch
     end
-    fill_missing_velocities
     report_skipped_timeless
   ensure
     cleanup_temp_file
