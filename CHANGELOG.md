@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- The nightly stats cache counts geocoded points from the points still waiting for geocoding, which an index serves, instead of reading every point of the user. Instances with one large account no longer run long sequential scans of the points table at night. Thanks @sylvainmetayer! (#4028)
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes
