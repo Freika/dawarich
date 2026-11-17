@@ -37,6 +37,9 @@ RSpec.describe 'Visit boundary snapping across separate locations' do
     expect(bridged.map { |f| f[:point_ids] }).to eq([[1, 2, 3, 4], [5, 6, 7, 8]])
     expect(assembler.call(bridged, points.index_by(&:id))).to be_empty
 
+    reconciled = Visits::Detection::MovementReconciler.new(policy).call(bridged, segments)
+    expect(reconciled.map { |f| [f[:start_ts], f[:end_ts]] }).to eq([[900, 1006], [1100, 1840]])
+
     stays = accepted_stays(segments)
     overlaps = stays.combination(2).map do |a, b|
       [a[:end_ts], b[:end_ts]].min - [a[:start_ts], b[:start_ts]].max
