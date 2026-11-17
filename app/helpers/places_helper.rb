@@ -55,4 +55,16 @@ module PlacesHelper
     I18n.t('places.drawer.delete_consequences', visits: place.active_visits.count,
            privacy_tags: privacy_tags.presence || I18n.t('places.drawer.no_tags'), webhooks:)
   end
+
+  # "since Mar 2021", "until Jun 2022" or "Sep 2019 – Jun 2022"; nil when neither date is set.
+  def place_period_label(started_on, ended_on)
+    from, to = [started_on, ended_on].map do |date|
+      I18n.l(date, format: I18n.t('trip_detection.formats.month_year')) if date
+    end
+
+    if from && to then I18n.t('places.period.range', from:, to:)
+    elsif from then I18n.t('places.period.since', date: from)
+    elsif to then I18n.t('places.period.until', date: to)
+    end
+  end
 end

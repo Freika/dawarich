@@ -292,13 +292,7 @@ class Points::VectorTileQuery
     scope.except(:select, :order, :includes, :preload, :eager_load)
   end
 
-  def with_statement_timeout
-    conn = Point.connection
-    conn.transaction do
-      conn.exec_query('SET LOCAL jit = off', 'VectorTileQuery JIT')
-      conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
-                      'VectorTileQuery Timeout')
-      yield conn
-    end
+  def with_statement_timeout(&)
+    VectorTileTimeout.within(Point.connection, 'VectorTileQuery', &)
   end
 end

@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Users Export-Import Integration', type: :service do
   let(:original_user) { create(:user, email: 'original@example.com') }
   let(:target_user) { create(:user, email: 'target@example.com') }
-  let(:temp_archive_path) { Rails.root.join('tmp/test_export.zip') }
+  let(:temp_archive_path) { Rails.root.join("tmp/test_export_#{SecureRandom.hex(4)}.zip") }
 
   after do
     File.delete(temp_archive_path) if File.exist?(temp_archive_path)

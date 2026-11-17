@@ -3,6 +3,18 @@
 require 'rails_helper'
 
 RSpec.describe Place, type: :model do
+  describe 'period' do
+    it 'cannot end before it starts' do
+      place = build(:place, started_on: Date.new(2022, 3, 1), ended_on: Date.new(2022, 2, 1))
+      expect(place).not_to be_valid
+      expect(place.errors[:base]).to include(I18n.t('trip_detection.homes.end_before_start'))
+    end
+
+    it 'may be open on either side' do
+      expect(build(:place, started_on: nil, ended_on: Date.new(2022, 2, 1))).to be_valid
+    end
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:visits).dependent(:nullify) }

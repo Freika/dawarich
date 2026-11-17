@@ -47,7 +47,7 @@ RSpec.describe 'Zip entries carry a UTC-tagged mtime so cross-TZ extractors do n
       export_record = Users::ExportData.new(user).export
       after_epoch = Time.now.to_i
 
-      temp_zip = Rails.root.join('tmp', "regression_#{user.id}.zip")
+      temp_zip = Rails.root.join('tmp', "regression_#{SecureRandom.hex(4)}.zip")
       File.binwrite(temp_zip, export_record.file.download)
 
       begin

@@ -27,10 +27,43 @@
       <label class="form-control"><span><%= t('ux_p2.places.note') %></span><%= f.text_area :note, class: 'textarea textarea-bordered w-full' %></label>
       <fieldset><legend class="font-medium mb-2"><%= t('ux_p2.places.tag') %></legend>
         <%= hidden_field_tag 'place[tag_ids][]', '' %>
+        <%# Add work: its tag is ticked here and created on save when the user has none. %>
+        <% work_shortcut = params[:work].present? || params.dig(:place, :work) == '1' %>
+        <% work_tag = Tag.work_tag(current_user) if work_shortcut %>
+        <% if work_shortcut %>
+          <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[work]', '1', true, class: 'checkbox checkbox-sm' %><%= work_tag&.icon || Tag::WORK_ICON %> <%= work_tag&.name || t('places.shortcuts.work_place_name') %></label>
+        <% end %>
         <% current_user.tags.order(:name).each do |tag| %>
+          <% next if tag == work_tag %>
           <label class="inline-flex items-center gap-2 mr-4 mb-2"><%= check_box_tag 'place[tag_ids][]', tag.id, @place.tags.include?(tag), class: 'checkbox checkbox-sm' %><%= tag.icon %> <%= tag.name %></label>
         <% end %>
       </fieldset>
+      <%# A Home has its periods below the form instead. %>
+      <% unless @place.persisted? && @place.homes.exists? %>
+        <fieldset class="min-w-0"><legend class="font-medium mb-2"><%= t('places.period.title') %></legend>
+          <div class="flex flex-wrap gap-2">
+            <label class="form-control flex-1 min-w-32"><span class="label-text"><%= t('trip_detection.homes.from') %></span><%= f.date_field :started_on, class: 'input input-bordered w-full' %></label>
+            <label class="form-control flex-1 min-w-32"><span class="label-text"><%= t('trip_detection.homes.until') %></span><%= f.date_field :ended_on, class: 'input input-bordered w-full' %></label>
+          </div>
+          <p class="text-sm text-base-content/70 mt-1"><%= t('places.period.help') %></p>
+        </fieldset>
+      <% end %>
+      <% unless local_assigns[:homes] %>
+        <%# Trip detection counts every Home in effect, so a move needs the old Home closed, not a second open one. %>
+        <% open_home_places = current_user.places.where(id: current_user.homes.where(ended_on: nil).select(:place_id)).order(:name) %>
+        <div class="group space-y-1">
+          <label class="flex items-start gap-2">
+            <%= check_box_tag 'place[home]', '1', params[:home].present? || params.dig(:place, :home) == '1', class: 'checkbox checkbox-sm mt-0.5' %>
+            <span class="min-w-0"><%= t('trip_detection.homes.live_here') %><span class="block text-sm text-base-content/70"><%= t('trip_detection.homes.live_here_help') %></span></span>
+          </label>
+          <% if open_home_places.any? %>
+            <%# Shown while "I live here" is ticked; the links open in a new tab so this form keeps its input. %>
+            <p class="hidden group-has-[:checked]:block text-sm text-base-content/70 ml-6 [overflow-wrap:anywhere]" data-testid="open-home-note">
+              <%= t('trip_detection.homes.open_home_note_html', places: safe_join(open_home_places.map { |home_place| link_to home_place.name, edit_place_path(home_place), class: 'link', target: '_blank', rel: 'noopener' }, ', ')) %>
+            </p>
+          <% end %>
+        </div>
+      <% end %>
       <div class="flex flex-wrap gap-2"><%= f.submit t('ux_p2.places.save'), class: 'btn btn-primary' %><%= link_to t('ux_p2.places.back'), places_path(place_list_params), class: 'btn btn-ghost' %></div>
     <% end %>
     <%= render 'homes', place: @place if local_assigns[:homes] %>
