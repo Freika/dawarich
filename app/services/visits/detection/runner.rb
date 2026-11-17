@@ -75,14 +75,16 @@ module Visits
         @start_at = previous.started_at.to_i
       end
 
-      # GapBridger's smart tracking rule: the stay ended on the app's stop
-      # anchor and tracking woke near it.
+      # GapBridger's smart tracking rule: the stay still ends on the app's stop
+      # anchor and tracking woke near it. Once bridged, the stay ends when
+      # tracking resumed, so later runs no longer reach back for it.
       def resumed_after_stop?(visit, next_point)
-        anchor = Point.where(user_id: user.id, visit_id: visit.id).order(timestamp: :desc).first
-        return false unless anchor&.stationary_presence?
+        action, timestamp, lat, lon = Point.where(user_id: user.id, visit_id: visit.id).order(timestamp: :desc)
+                                           .pick(Arel.sql("motion_data->>'action'"), :timestamp,
+                                                 Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'))
+        return false unless action == 'stationary_presence' && visit.ended_at.to_i <= timestamp
 
-        GeoDistance.meters([anchor.lat, anchor.lon], [next_point.lat, next_point.lon]) <=
-          GapBridger::RESUME_NEAR_STOP_M
+        GeoDistance.meters([lat, lon], [next_point.lat, next_point.lon]) <= GapBridger::RESUME_NEAR_STOP_M
       end
 
       def owned_fixes_summary(visit)
