@@ -10,9 +10,14 @@ module Trips
       @segment_sql = segment_sql.presence || 'true'
     end
 
+    # A track is drawn whole, as the map draws it: a segment across midnight
+    # belongs to the day it started and a pause inside the track stays joined.
+    # Points without a track are split at midnight and at long gaps.
     def sql(track_id_sql:)
+      day_sql = track_id_sql ? 'previous_day' : 'day'
+
       <<~SQL.squish
-        SELECT day,
+        SELECT #{day_sql} AS day,
           ST_LineMerge(ST_Collect(ST_MakeLine(previous_position, position) ORDER BY timestamp)) AS path,
           MIN(previous_timestamp) AS start_timestamp, MAX(timestamp) AS end_timestamp
         FROM (
@@ -32,16 +37,19 @@ module Trips
           WHERE NOT ordered.excluded
           WINDOW kept AS (ORDER BY timestamp, id)
         ) AS kept_points
-        WHERE previous_position IS NOT NULL
-          AND previous_day = day
-          AND sequence - previous_sequence = 1
-          AND timestamp - previous_timestamp <= #{@gap_seconds}
-          AND #{@segment_sql}
-        GROUP BY day
+        WHERE #{segment_conditions(tracked: track_id_sql.present?).join(' AND ')}
+        GROUP BY #{day_sql}
       SQL
     end
 
     private
+
+    def segment_conditions(tracked:)
+      conditions = ['previous_position IS NOT NULL', 'sequence - previous_sequence = 1', @segment_sql]
+      return conditions if tracked
+
+      conditions + ['previous_day = day', "timestamp - previous_timestamp <= #{@gap_seconds}"]
+    end
 
     def points_sql
       @points_scope.route_observations.except(:select, :order, :includes, :preload, :eager_load)

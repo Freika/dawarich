@@ -69,16 +69,16 @@ RSpec.describe Trips::RoutesTileQuery do
     expect(coordinates(rows.first).map(&:first)).to all(be_between(-140.06, -140.0))
   end
 
-  it "breaks a rebuilt route at the owner's route gap" do
+  it 'keeps a rebuilt track joined across a pause longer than the route gap, as the map draws it' do
     trip.update_columns(started_at: minutes_after(1, 10))
     times = [minutes_after(1, 9, 50), minutes_after(1, 10, 5), minutes_after(1, 10, 15),
              minutes_after(1, 12, 15), minutes_after(1, 12, 25)]
     recorded_track(times, [-140.0, -140.01, -140.02, -140.03, -140.04])
 
-    expect(JSON.parse(features.first['geojson'])['type']).to eq('MultiLineString')
+    geometry = JSON.parse(features.first['geojson'])
 
-    user.update!(settings: user.settings.merge('minutes_between_routes' => 240))
-    expect(JSON.parse(features.first['geojson'])['type']).to eq('LineString')
+    expect(geometry['type']).to eq('LineString')
+    expect(geometry['coordinates'].map(&:first)).to eq([-140.01, -140.02, -140.03, -140.04])
   end
 
   it 'cuts a track that starts before the trip' do

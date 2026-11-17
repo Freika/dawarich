@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A trip's route is drawn the way the map draws tracks: a track no longer breaks at midnight or at a pause inside it, and the preview of a trip whose only segment crosses midnight shows its line instead of an empty map. Each day keeps its own colour. Thanks @binnichtaktiv! (#4026, #4027)
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes
