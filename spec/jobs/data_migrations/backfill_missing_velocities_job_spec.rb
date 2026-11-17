@@ -29,9 +29,9 @@ RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
     import.points.order(:timestamp).map { |point| (point.velocity.to_f * 3.6).round }
   end
 
-  it 'queues one backfill per KML, GPX and GeoJSON import' do
-    imports = %w[kml gpx geojson].each_with_index.map { |source, day| flight_import(source:, day:) }
-    flight_import(source: 'owntracks', day: 3)
+  it 'queues one backfill per track import and none for photo or check-in imports' do
+    imports = %w[kml gpx google_semantic_history].each_with_index.map { |source, day| flight_import(source:, day:) }
+    %w[immich_api swarm].each_with_index { |source, day| flight_import(source:, day: day + 3) }
 
     expect { described_class.perform_now }.to have_enqueued_job(described_class).exactly(3).times
     imports.each { |import| expect(described_class).to have_been_enqueued.with(import.id) }
@@ -136,7 +136,7 @@ RSpec.describe DataMigrations::BackfillMissingVelocitiesJob, type: :job do
     expect(user.stats).to be_empty
   end
 
-  it 'leaves imports that recorded some speeds untouched' do
+  it 'leaves the zeros of imports that recorded some speeds untouched' do
     import = flight_import
     import.points.order(:timestamp).first.update_columns(velocity: '5.0')
 
