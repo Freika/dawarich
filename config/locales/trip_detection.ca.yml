@@ -43,6 +43,11 @@ ca:
       remove_confirm: "Vols eliminar aquest període? Se n’esborraran les dates, i és possible que s’eliminin els viatges trobats automàticament en aquest període."
       add: "Afegeix un període"
       end_before_start: "«Fins a» no pot ser anterior a «Des de»."
+      # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
+      live_here: "Aquí visc"
+      live_here_at: "Visc a %{place}"
+      live_here_help: "Dawarich fa servir la teva llar per trobar els teus viatges automàticament."
+      open_home_note_html: "Ja tens una llar sense data de fi: %{places}. Si t'has mudat, indica-hi quan la vas deixar."
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "Mostra"
@@ -54,6 +59,9 @@ ca:
       no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
       long_absence: "Dawarich ha omès un període de més de %{days} dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
       add_home: "Afegeix una llar a la pàgina Llocs"
+      # On the Places list while there is no Home; the second is a link to the new Place form.
+      pick_home: "Fes clic a «Aquí visc» al costat de la teva llar a la llista."
+      new_home_place: "No és a la llista? Afegeix-la com a lloc nou."
     # The name of the Place created for a Home picked in onboarding.
     home_place_name: "Casa"
     # The optional "Add your home" screen of the onboarding modal.

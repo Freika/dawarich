@@ -106,7 +106,9 @@ export function densifyGreatCircle(coordinates, maxStepDegrees = 1) {
 /**
  * Densify along great circles and break the line where it leaves the Web
  * Mercator world, so polar stretches exit and re-enter like vector tiles do
- * instead of tracing the map's top edge.
+ * instead of tracing the map's top edge. Each line is unwrapped across the
+ * antimeridian (longitudes may leave ±180) so it draws the short way; the
+ * input coordinates are not modified.
  * @param {Array<[number, number]>} coordinates
  * @returns {Array<Array<[number, number]>>}
  */
@@ -116,10 +118,10 @@ export function greatCircleLines(coordinates) {
     if (Math.abs(coord[1]) > MERCATOR_MAX_LATITUDE) {
       if (lines.at(-1).length) lines.push([])
     } else {
-      lines.at(-1).push(coord)
+      lines.at(-1).push([...coord])
     }
   }
-  return lines.filter((line) => line.length)
+  return lines.filter((line) => line.length).map(unwrapLongitudes)
 }
 
 /**

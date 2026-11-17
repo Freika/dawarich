@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Users::ImportDataJob, type: :job do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :user_data_archive, name: 'test_export.zip') }
-  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
+  let(:archive_path) { Rails.root.join("tmp/test_export_#{SecureRandom.hex(4)}.zip") }
   let(:job) { described_class.new }
 
   before do

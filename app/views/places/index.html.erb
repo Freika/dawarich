@@ -7,6 +7,8 @@
       <%= link_to t('.places'), places_path, role: 'tab', class: 'tab tab-active' %>
     </div>
     <div class="flex flex-wrap gap-2 min-w-0">
+      <%= link_to new_place_path(home: 1), class: 'btn btn-sm h-auto py-2', data: { testid: 'add-home' } do %><%= icon 'house', class: 'w-4 h-4 shrink-0' %><%= t('places.shortcuts.add_home') %><% end %>
+      <%= link_to new_place_path(work: 1), class: 'btn btn-sm h-auto py-2', data: { testid: 'add-work' } do %><%= icon 'briefcase', class: 'w-4 h-4 shrink-0' %><%= t('places.shortcuts.add_work') %><% end %>
       <%= link_to t('places.management.duplicates'), places_path(view: 'duplicates'), class: 'btn btn-sm h-auto py-2', data: { testid: 'possible-duplicates' } %>
       <span data-testid="create-place"><%= link_to t('places.management.create'), new_place_path(place_list_params), class: 'btn btn-primary btn-sm h-auto py-2', data: { testid: 'new-place' } %></span>
     </div>
@@ -15,6 +17,18 @@
   <% if @clusters %>
     <%= render 'duplicates', clusters: @clusters %>
   <% else %>
+    <% homes_by_place = current_user.homes.order(Home.arel_table[:started_on].asc.nulls_first, :id).group_by(&:place_id) %>
+    <% offer_home = homes_by_place.empty? && current_user.safe_settings.trip_detection_enabled? %>
+    <% if offer_home %>
+      <div role="status" class="alert mb-4" data-testid="home-hint">
+        <%= icon 'house', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
+        <p class="min-w-0 [overflow-wrap:anywhere]">
+          <%= t('trip_detection.hints.no_home') %>
+          <%= t('trip_detection.hints.pick_home') if @places.any? %>
+          <%= link_to t('trip_detection.hints.new_home_place'), new_place_path(home: 1), class: 'link link-primary whitespace-normal' %>
+        </p>
+      </div>
+    <% end %>
     <%= render 'filters' %>
     <div data-controller="<%= 'places-selection' if @places.any? %>" data-places-selection-delete-message-value="<%= t('places.management.delete_confirmation', places: '%{places}', visits: '%{visits}', geofences: '%{geofences}', privacy: '%{privacy}') %>">
       <%= render 'bulk_actions' if @places.any? %>
@@ -23,7 +37,7 @@
           <p class="p-8 text-center bg-base-200 rounded-box"><%= t('places.management.no_results') %></p>
         <% else %>
           <div class="flex justify-center my-5"><%= paginate @places %></div>
-          <%= render 'table' %>
+          <%= render 'table', homes_by_place:, offer_home: %>
           <div class="flex justify-center my-5"><%= paginate @places %></div>
         <% end %>
       </div>
