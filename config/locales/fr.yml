@@ -5155,6 +5155,9 @@ fr:
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Votre synchronisation
           de vol AirTrail a échoué avec l''erreur : %{message}. Vérifiez vos paramètres
           AirTrail et essayez à nouveau.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Vos points ont été revérifiés avec le filtre de bruit GPS. Rien n'a changé, vos trajets, statistiques et résumés sont donc restés tels quels."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: La relecture du bruit GPS est terminée

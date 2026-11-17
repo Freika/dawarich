@@ -4,7 +4,6 @@
 # guarded by an advisory lock so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
   include Resumable
-  include UserTimezone
 
   queue_as :low_priority
 
@@ -16,7 +15,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
       step :reset_flags do
         next unless reset
 
-        @anomalies_before = anomaly_fingerprints(user)
+        Points::AnomalyRebuildScope.new(user).remember
         reset_existing_flags(user)
       end
 
@@ -49,31 +48,45 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   private
 
   def rebuild_after_reset(user, notify:, rebuild:)
-    years = changed_years(user)
-    return if years && years.empty?
+    scope = Points::AnomalyRebuildScope.new(user)
+    years = scope.changed_years
 
-    rebuild_data(user, notify: notify, rebuild: rebuild, years: years)
-    rebuild_achievements(user, notify: notify)
+    if years && years.empty?
+      Rails.logger.info("[AnomalyBackfill] User #{user.id}: no flags changed, nothing to rebuild")
+      notify_nothing_changed(user) if notify
+    else
+      Rails.logger.info("[AnomalyBackfill] User #{user.id}: rebuilding years #{years&.join(', ') || 'all'}")
+      rebuild_data(user, notify: notify, rebuild: rebuild, years: years)
+      rebuild_achievements(user, notify: notify)
+    end
+    recalculate_detached_tracks if years
+
+    scope.forget
   end
 
-  # nil when the run resumed after the reset step, so the flags it started
-  # from are gone: rebuild everything, as before.
-  def changed_years(user)
-    return if @anomalies_before.nil?
-
-    after = anomaly_fingerprints(user)
-    (@anomalies_before.keys | after.keys).reject { |year| @anomalies_before[year] == after[year] }.sort
+  # Points left unflagged between the reset and the re-filter can be joined to
+  # a track by live generation; flagging them again detaches them without
+  # changing the fingerprint, so those tracks are rebuilt one by one.
+  # ponytail: held in memory, so a run resumed mid-filter forgets the tracks
+  # detached before the restart; persist them if that window ever matters.
+  def recalculate_detached_tracks
+    jobs = detached_track_ids.uniq.map { |track_id| Tracks::RecalculateJob.new(track_id).set(queue: :low_priority) }
+    ActiveJob.perform_all_later(jobs) if jobs.any?
   end
 
-  # { year => [count, digest of the ids] } of the user's flagged points, the
-  # year taken in the user's timezone as Users::RecalculateDataJob splits it.
-  def anomaly_fingerprints(user)
-    zone = with_user_timezone(user) { Time.zone.tzinfo.name }
-    year_sql = "EXTRACT(YEAR FROM to_timestamp(timestamp) AT TIME ZONE #{Point.connection.quote(zone)})::int"
+  def detached_track_ids
+    @detached_track_ids ||= []
+  end
 
-    user.points.where(anomaly: true).group(Arel.sql(year_sql))
-        .pluck(Arel.sql(year_sql), Arel.sql("count(*), md5(string_agg(id::text, ',' ORDER BY id))"))
-        .to_h { |year, count, digest| [year, [count, digest]] }
+  def notify_nothing_changed(user)
+    I18n.with_locale(user.locale) do
+      Notifications::Create.new(
+        user: user,
+        kind: :info,
+        title: I18n.t('jobs.data_migrations.recalculate_anomalies_user_job.gps_noise_re_check_finished'),
+        content: I18n.t('jobs.points.anomaly_backfill_user_job.nothing_changed')
+      ).call
+    end
   end
 
   # #perform rather than .perform_now: perform_now routes exceptions through
@@ -81,9 +94,17 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   # PerUserLock::AcquisitionTimeout there — it re-enqueues onto :stats and
   # returns normally, so an inline caller would record a rebuild that never
   # happened. Calling perform directly lets the timeout reach us.
+  #
+  # Every yearly digest carries all-time totals and a comparison with the
+  # year before, so the job also refreshes the digests of the other years,
+  # after the changed years' stats.
   def rebuild_data(user, notify:, rebuild:, years:)
     options = { notify: notify }
-    options[:year] = years if years
+    if years
+      options[:year] = years
+      other_digest_years = user.digests.yearly.distinct.pluck(:year) - years
+      options[:digest_years] = other_digest_years if other_digest_years.any?
+    end
 
     if rebuild == :inline
       Users::RecalculateDataJob.new.perform(user.id, **options, job_queue: :low_priority)
@@ -108,8 +129,8 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
   end
 
   # invalidate_dependents mirrors the reset flow: a resetting run rebuilds
-  # tracks and stats wholesale afterwards, a non-resetting one has no rebuild
-  # coming and must let the filter queue its own.
+  # tracks and stats afterwards, a non-resetting one has no rebuild coming and
+  # must let the filter queue its own.
   def run_filter_in_monthly_chunks(user, step, invalidate_dependents:)
     populated_months = user.points
                            .distinct
@@ -126,10 +147,12 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
       chunk_end = (month_start + 1.month).to_i
 
-      marked = Points::AnomalyFilter.new(
+      filter = Points::AnomalyFilter.new(
         user.id, chunk_start, chunk_end,
         invalidate_dependents: invalidate_dependents, job_queue: :low_priority
-      ).call
+      )
+      marked = filter.call
+      detached_track_ids.concat(filter.detached_track_ids) unless invalidate_dependents
       Rails.logger.info(
         "[AnomalyBackfill] User #{user.id}: month #{index + 1}/#{total_months}, marked #{marked} anomalies"
       )

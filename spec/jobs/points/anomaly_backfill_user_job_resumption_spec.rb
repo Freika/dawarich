@@ -34,6 +34,8 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
     end
 
     it 'defers the downstream recalculation until every month has been filtered' do
+      create(:point, user: user, accuracy: 60, anomaly: true,
+                     timestamp: Time.utc(2026, 3, 16).to_i, lonlat: 'POINT(13.4061 52.5301)')
       described_class.perform_later(user.id, reset: true)
 
       interrupt_job_during_step(described_class, :filter_months, cursor: month_cursor(1)) do
@@ -44,7 +46,7 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
 
       perform_enqueued_jobs(only: described_class)
 
-      expect(Users::RecalculateDataJob).to have_been_enqueued.with(user.id, notify: true)
+      expect(Users::RecalculateDataJob).to have_been_enqueued.with(user.id, notify: true, year: [2026])
     end
 
     it 'completes in a single run when the worker is not shutting down' do

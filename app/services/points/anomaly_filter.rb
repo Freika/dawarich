@@ -136,6 +136,12 @@ class Points::AnomalyFilter
     count
   end
 
+  # Tracks the last #call detached flagged points from. A caller that passed
+  # invalidate_dependents: false owns their rebuild.
+  def detached_track_ids
+    (@flagged_for_rebuild || []).filter_map { |_id, track_id, _timestamp| track_id }.uniq
+  end
+
   private
 
   def user_settings

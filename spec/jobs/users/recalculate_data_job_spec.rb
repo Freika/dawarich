@@ -37,6 +37,23 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
+    context 'with further digest years' do
+      it 'refreshes their digests after the stats, without rebuilding their stats or tracks' do
+        calls = []
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call) { calls << :stats }
+        allow(Users::Digests::CalculateYear).to receive(:new).and_wrap_original do |original, user_id, digest_year|
+          calls << [:digest, digest_year]
+          original.call(user_id, digest_year)
+        end
+
+        described_class.perform_now(user.id, year: [2024], digest_years: [2022, 2024])
+
+        expect(calls.last(2)).to eq([[:digest, 2024], [:digest, 2022]])
+        expect(calls.index(:stats)).to be < calls.index([:digest, 2022])
+        expect(Tracks::ParallelGenerator).to have_received(:new).once
+      end
+    end
+
     context 'with a list of years' do
       it 'rebuilds only the listed years' do
         described_class.perform_now(user.id, year: [2022, 2024], only: 'tracks')
