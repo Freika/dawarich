@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Visit detection no longer stretches two short stops next to each other into visits that cover the same time. A single short stop is still stretched to the movement around it. Thanks @Mason10198! (#4023)
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes

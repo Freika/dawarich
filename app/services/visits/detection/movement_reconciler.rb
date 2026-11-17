@@ -6,7 +6,8 @@ module Visits
     # minute is never both "driving" and "visiting". Confident moving
     # segments veto fragments they cover (road stops can't become visits),
     # stay boundaries snap to adjacent movement edges (GPS cold start on
-    # arrival, warm-up on departure), and stationary segments corroborate.
+    # arrival, warm-up on departure) without reaching past a neighbouring
+    # fragment, and stationary segments corroborate.
     class MovementReconciler
       MOVING_MODES_EXCLUDED = %w[stationary unknown].freeze
       CONFIDENT_MIN = 0.5
@@ -20,11 +21,14 @@ module Visits
         moving = segments.select { |s| moving?(s) && confident?(s) }
         stationary = segments.select { |s| s.mode == 'stationary' }
 
-        fragments.filter_map do |fragment|
+        fragments.each_with_index.filter_map do |fragment, index|
           current = fragment.dup
           next nil if vetoed?(current, moving)
 
-          snap_boundaries(current, moving)
+          earliest = fragments[index - 1][:end_ts] if index.positive?
+          latest = fragments[index + 1]&.fetch(:start_ts)
+          snap_start(current, moving, earliest)
+          snap_end(current, moving, latest)
           current[:corroborated] = stationary.any? { |s| overlap_s(current, s).positive? }
           current
         end
@@ -53,15 +57,11 @@ module Visits
         end
       end
 
-      def snap_boundaries(fragment, moving)
-        snap_start(fragment, moving)
-        snap_end(fragment, moving)
-      end
-
       # Arrival edge: movement that ended inside the fragment trims its start
       # forward; movement that ended shortly before the first fix extends the
-      # start back over the cold-start silence.
-      def snap_start(fragment, moving)
+      # start back over the cold-start silence, but never before the end of the
+      # previous fragment as the sweep found it.
+      def snap_start(fragment, moving, earliest)
         trim = moving.select do |s|
           s.start_ts < fragment[:start_ts] && s.end_ts > fragment[:start_ts] && s.end_ts < fragment[:end_ts]
         end
@@ -71,11 +71,12 @@ module Visits
         extend_to = moving.select do |s|
           s.end_ts <= fragment[:start_ts] && (fragment[:start_ts] - s.end_ts) <= policy.snap_max_s
         end.map(&:end_ts).max
+        extend_to = [extend_to, earliest].compact.max if extend_to
         fragment[:start_ts] = extend_to if extend_to && extend_to < fragment[:start_ts]
       end
 
       # Departure edge, symmetric to snap_start.
-      def snap_end(fragment, moving)
+      def snap_end(fragment, moving, latest)
         trim = moving.select do |s|
           s.start_ts > fragment[:start_ts] && s.start_ts < fragment[:end_ts] && s.end_ts > fragment[:end_ts]
         end
@@ -85,6 +86,7 @@ module Visits
         extend_to = moving.select do |s|
           s.start_ts >= fragment[:end_ts] && (s.start_ts - fragment[:end_ts]) <= policy.snap_max_s
         end.map(&:start_ts).min
+        extend_to = [extend_to, latest].compact.min if extend_to
         fragment[:end_ts] = extend_to if extend_to && extend_to > fragment[:end_ts]
       end
 
