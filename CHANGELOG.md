@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - A trip's route is drawn the way the map draws tracks: a track no longer breaks at midnight, nor at a pause inside it on a trip recorded by one device, and the preview of a trip whose only segment crosses midnight shows its line instead of an empty map. Each day keeps its own colour. Thanks @binnichtaktiv! (#4026, #4027)
+- The nightly stats cache counts geocoded points from the points still waiting for geocoding, which an index serves, instead of reading every point of the user. Instances with one large account no longer run long sequential scans of the points table at night. Thanks @sylvainmetayer! (#4028)
+- Small days and months stay visible next to a much larger one in the Daily Activity chart and the distance-by-month chart of the year digest, on your own pages and on shared ones. A day or month without movement has no bar. Thanks @binnichtaktiv! (#4029)
+- Visit detection no longer stretches two short stops next to each other into visits that cover the same time. A single short stop is still stretched to the movement around it. Thanks @Mason10198! (#4023)
+- A stop during which the Android app's smart tracking turned GPS off now becomes one visit that lasts until tracking resumed, instead of a gap. This needs Android app 2.9.155 or newer; stops recorded earlier don't change. Thanks @Toastie! (#3989)
 
 ## [1.23.0] - 2026-11-14, Berlin
 
