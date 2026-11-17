@@ -186,13 +186,8 @@ module Trips
       ActiveRecord::Base.connection.quote(value)
     end
 
-    def with_statement_timeout
-      conn = Point.connection
-      conn.transaction do
-        conn.exec_query("SET LOCAL statement_timeout = #{VectorTileTimeout.query_timeout_ms}",
-                        'TripRoutesTileQuery Timeout')
-        yield conn
-      end
+    def with_statement_timeout(&)
+      VectorTileTimeout.within(Point.connection, 'TripRoutesTileQuery', &)
     end
   end
 end
