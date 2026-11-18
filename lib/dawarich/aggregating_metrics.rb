@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'net/http'
+require 'timeout'
 require 'uri'
 
 module Dawarich
@@ -9,9 +10,11 @@ module Dawarich
   # Sidekiq container's WEBrick exporter). The combined response is served from a
   # single external URL — used when the remote endpoint cannot be exposed publicly.
   #
-  # Failure mode: if the remote fetch fails (network error, non-200), the middleware
-  # logs a warning and returns local metrics only. Prometheus sees a momentary gap
-  # in remote metrics rather than a scrape failure.
+  # Failure mode: if the remote fetch fails (network error, non-200, or slower than
+  # `deadline`), the middleware logs a warning and returns local metrics only.
+  # Prometheus sees a momentary gap in remote metrics rather than a scrape failure.
+  # Net::HTTP's read_timeout bounds each socket read, not the whole response, so a
+  # slow worker exporter could otherwise outlast Prometheus' 10s scrape timeout.
   class AggregatingMetrics
     HELP_PREFIX = '# HELP '
     TYPE_PREFIX = '# TYPE '
@@ -22,12 +25,13 @@ module Dawarich
     LABEL_PAIR = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:\\.|[^"\\])*)"/
     PROCESS_LABEL_PRESENT = /[{,]process="/
 
-    def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
+    def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 2, deadline: 3)
       @local_app = local_app
       @remote_url = URI(remote_url)
       @remote_user = remote_user
       @remote_password = remote_password
       @timeout = timeout
+      @deadline = deadline
     end
 
     def call(env)
@@ -43,6 +47,13 @@ module Dawarich
     private
 
     def fetch_remote_metrics
+      Timeout.timeout(@deadline) { request_remote_metrics }
+    rescue StandardError => e
+      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{e.message}") if defined?(Rails.logger)
+      ''
+    end
+
+    def request_remote_metrics
       Net::HTTP.start(@remote_url.host, @remote_url.port,
                       open_timeout: @timeout, read_timeout: @timeout) do |http|
         req = Net::HTTP::Get.new(@remote_url.request_uri)
@@ -53,9 +64,6 @@ module Dawarich
         Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics returned #{res.code}") if defined?(Rails.logger)
         ''
       end
-    rescue StandardError => e
-      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{e.message}") if defined?(Rails.logger)
-      ''
     end
 
     # Concatenates local and remote bodies. Deduplicates `# HELP <name> ...` and
