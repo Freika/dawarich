@@ -106,6 +106,16 @@ RSpec.describe '/trips', type: :request do
         expect(Nokogiri::HTML(response.body).at_css('[role="status"] a[href="/places"]')).to be_present
       end
 
+      it 'explains that a Home tag on a Place does not set the Home' do
+        tag = create(:tag, user:, name: 'home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Casa'))
+        get trips_path
+        expect(response.body).to include(
+          ERB::Util.html_escape(I18n.t('trip_detection.hints.tagged_home', place: 'Casa', tag: 'home'))
+        )
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      end
+
       it 'shows no hint once there is a Home' do
         create(:home, user:, place: create(:place, user:))
         get trips_path
