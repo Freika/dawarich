@@ -114,6 +114,34 @@ RSpec.describe '/trips', type: :request do
           ERB::Util.html_escape(I18n.t('trip_detection.hints.tagged_home', place: 'Casa', tag: 'home'))
         )
         expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+        link = Nokogiri::HTML(response.body).at_css('[role="status"] a')
+        expect(link['href']).to eq(places_path(tag_ids: [tag.id]))
+      end
+
+      it 'keeps the plain Places link on the long-absence hint next to the Home tag hint' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Casa'))
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        links = Nokogiri::HTML(response.body).css('[data-testid="trip-detection-hint"] a').map { |a| a['href'] }
+        expect(links).to eq([places_path(tag_ids: [tag.id]), places_path])
+      end
+
+      it 'recognises a Home tag named in another language' do
+        tag = create(:tag, user:, name: 'Zuhause')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Wohnung'))
+        get trips_path
+        expect(response.body).to include(
+          ERB::Util.html_escape(I18n.t('trip_detection.hints.tagged_home', place: 'Wohnung', tag: 'Zuhause'))
+        )
+      end
+
+      it 'asks for a Home when the only Place with the Home tag is archived' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Old flat', archived_at: Time.current))
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+        expect(response.body).not_to include('Old flat')
       end
 
       it 'shows no hint once there is a Home' do

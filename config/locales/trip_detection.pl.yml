@@ -60,7 +60,7 @@ pl:
     hints:
       no_home: "Dodaj swój dom, aby Dawarich mógł automatycznie znajdować Twoje podróże."
       # A Place carries a tag named Home, which does not make it a Home.
-      tagged_home: "„%{place}” ma tag „%{tag}”, ale tag nie ustawia Twojego domu, więc Dawarich nie może jeszcze znaleźć Twoich podróży. Kliknij „Tu mieszkam” obok niego na stronie Miejsca."
+      tagged_home: "„%{place}” ma tag „%{tag}”, ale tag nie ustawia Twojego domu. Kliknij obok niego „Tu mieszkam”."
       long_absence: "Dawarich pominął okres dłuższy niż %{days} dni poza domem. Jeśli mieszkałeś(-aś) wtedy gdzie indziej, dodaj ten wcześniejszy dom."
       add_home: "Dodaj dom na stronie Miejsca"
       # On the Places list while there is no Home; the second is a link to the new Place form.

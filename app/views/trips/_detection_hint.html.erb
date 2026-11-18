@@ -1,23 +1,26 @@
 <% settings = current_user.safe_settings %>
 <% if settings.trip_detection_enabled? %>
+  <%# Each hint is its text and where its link to the Places page goes. %>
   <% hints = [] %>
   <% unless current_user.homes.exists? %>
     <%# A Place tagged Home looks like a Home to the user, but only a Home record counts for detection. %>
     <% home_tag = Tag.home_tag(current_user) %>
-    <% tagged_place = home_tag&.places&.order(:name)&.first %>
-    <% hints << if tagged_place then t('trip_detection.hints.tagged_home', place: tagged_place.name, tag: home_tag.name)
-                else t('trip_detection.hints.no_home') end %>
+    <% tagged_place = home_tag&.places&.not_archived&.order(:name)&.first %>
+    <% hints << if tagged_place
+                  [t('trip_detection.hints.tagged_home', place: tagged_place.name, tag: home_tag.name),
+                   places_path(tag_ids: [home_tag.id])]
+                else [t('trip_detection.hints.no_home'), places_path] end %>
   <% end %>
   <% if settings.trip_detection_long_absence? %>
-    <% hints << t('trip_detection.hints.long_absence',
-                  days: Trips::Detection::Policy::MAX_TRIP_DURATION.in_days.to_i) %>
+    <% hints << [t('trip_detection.hints.long_absence', days: Trips::Detection::Policy::MAX_TRIP_DURATION.in_days.to_i),
+                 places_path] %>
   <% end %>
-  <% hints.each do |hint| %>
+  <% hints.each do |hint, path| %>
     <div role="status" class="alert mb-4" data-testid="trip-detection-hint">
       <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
       <p class="min-w-0 [overflow-wrap:anywhere]">
         <%= hint %>
-        <%= link_to t('trip_detection.hints.add_home'), places_path, class: 'link link-primary whitespace-normal' %>
+        <%= link_to t('trip_detection.hints.add_home'), path, class: 'link link-primary whitespace-normal' %>
       </p>
     </div>
   <% end %>
