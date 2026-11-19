@@ -1,5 +1,5 @@
 # Base-Image for Ruby and Node.js
-FROM ruby:4.0.9-slim
+FROM ruby:4.0.10-slim
 
 ENV APP_PATH=/var/app
 ENV BUNDLE_PATH=/usr/local/bundle/gems
