@@ -25,9 +25,24 @@ class Tag < ApplicationRecord
 
   # The user's Work tag, under its name in any locale: a user who switches language keeps one tag.
   def self.work_tag(user)
-    names = I18n.available_locales.map { |locale| I18n.t('places.shortcuts.work_place_name', locale:).downcase }
-    user.tags.order(:id).find_by('lower(name) IN (?)', names.uniq)
+    named_in_any_locale(user, 'places.shortcuts.work_place_name').first
   end
+
+  # The first live Place carrying a tag the user named Home, with that tag, or nil.
+  # Such a tag does not make the Place a Home; the Trips hint uses it to say so.
+  def self.home_tagged_place(user)
+    named_in_any_locale(user, 'trip_detection.home_place_name').each do |tag|
+      place = tag.places.not_archived.order(:name).first
+      return [tag, place] if place
+    end
+    nil
+  end
+
+  def self.named_in_any_locale(user, key)
+    names = I18n.available_locales.map { |locale| I18n.t(key, locale:).downcase }
+    user.tags.order(:id).where('lower(name) IN (?)', names.uniq)
+  end
+  private_class_method :named_in_any_locale
 
   def self.work_tag!(user)
     work_tag(user) ||

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Countries only flown over are no longer counted as visited for imports without speed data: KML (including Flightradar24 exports), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps files. Existing KML, GPX and GeoJSON imports are re-checked; for the other formats only points stored without a speed are. Only flight speeds are derived now, so these imports no longer get a derived walking or driving speed.
 - Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
 - A slow Sidekiq metrics exporter no longer makes `/metrics` outlast Prometheus' scrape timeout: after 3 seconds the endpoint answers with web metrics only.
+- The Trips page no longer just asks you to add a Home when a place carries a tag named Home: it explains that a tag doesn't set your Home and links to the places with that tag, where you can click "I live here".
 
 ## [1.23.0] - 2026-11-14, Berlin
 

@@ -57,6 +57,9 @@ ca:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "Afegeix la teva llar perquè Dawarich pugui trobar els teus viatges automàticament."
+      # A Place carries a tag named Home, which does not make it a Home.
+      tagged_home: "«%{place}» té l’etiqueta «%{tag}», però una etiqueta no defineix la teva llar. Fes clic a «Aquí visc» al costat."
+      tagged_home_link: "Mostra els llocs amb l’etiqueta «%{tag}»"
       long_absence: "Dawarich ha omès un període de més de %{days} dies fora de casa. Si aleshores vivies en un altre lloc, afegeix aquella llar anterior."
       add_home: "Afegeix una llar a la pàgina Llocs"
       # On the Places list while there is no Home; the second is a link to the new Place form.
