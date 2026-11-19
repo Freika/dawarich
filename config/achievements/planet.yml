@@ -2562,7 +2562,25 @@ continents:
           lat: 46.621
           lon: 2.452
           zoom: 3.8
-        subdivisions: {}
+        subdivisions:
+          FR-ARA: Auvergne-Rhône-Alpes
+          FR-BFC: Bourgogne-Franche-Comté
+          FR-BRE: Bretagne
+          FR-CVL: Centre-Val de Loire
+          FR-COR: Corse
+          FR-GES: Grand Est
+          FR-HDF: Hauts-de-France
+          FR-IDF: Île-de-France
+          FR-NOR: Normandie
+          FR-NAQ: Nouvelle-Aquitaine
+          FR-OCC: Occitanie
+          FR-PDL: Pays de la Loire
+          FR-PAC: Provence-Alpes-Côte d'Azur
+          FR-GP: Guadeloupe
+          FR-GF: Guyane
+          FR-MQ: Martinique
+          FR-RE: La Réunion
+          FR-YT: Mayotte
       DE:
         name: Germany
         art:
