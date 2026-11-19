@@ -59,6 +59,7 @@ de:
       no_home: "Füge dein Zuhause hinzu, damit Dawarich deine Reisen automatisch finden kann."
       # A Place carries a tag named Home, which does not make it a Home.
       tagged_home: "„%{place}“ hat den Tag „%{tag}“, aber ein Tag legt dein Zuhause nicht fest. Klicke daneben auf „Hier wohne ich“."
+      tagged_home_link: "Orte mit dem Tag „%{tag}“ anzeigen"
       long_absence: "Dawarich hat eine Zeit von mehr als %{days} Tagen außerhalb deines Zuhauses übersprungen. Wenn du damals woanders gewohnt hast, füge dieses frühere Zuhause hinzu."
       add_home: "Zuhause auf der Seite „Orte“ hinzufügen"
       # On the Places list while there is no Home; the second is a link to the new Place form.

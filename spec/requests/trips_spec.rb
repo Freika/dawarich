@@ -116,6 +116,16 @@ RSpec.describe '/trips', type: :request do
         expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
         link = Nokogiri::HTML(response.body).at_css('[role="status"] a')
         expect(link['href']).to eq(places_path(tag_ids: [tag.id]))
+        expect(link.text.strip).to eq(I18n.t('trip_detection.hints.tagged_home_link', tag: 'home'))
+      end
+
+      it 'escapes the Place and tag names in the Home tag hint' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: '<b>Casa</b>'))
+        get trips_path
+        hint = Nokogiri::HTML(response.body).at_css('[data-testid="trip-detection-hint"]')
+        expect(hint.at_css('b')).to be_nil
+        expect(hint.text).to include('<b>Casa</b>')
       end
 
       it 'keeps the plain Places link on the long-absence hint next to the Home tag hint' do
