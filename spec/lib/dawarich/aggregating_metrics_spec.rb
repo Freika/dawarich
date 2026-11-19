@@ -84,6 +84,7 @@ RSpec.describe Dawarich::AggregatingMetrics do
     end
 
     it 'returns local metrics within the deadline instead of waiting for the remote' do
+      allow(Rails.logger).to receive(:warn)
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       status, _headers, body = request
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
@@ -93,6 +94,7 @@ RSpec.describe Dawarich::AggregatingMetrics do
       expect(elapsed).to be < 1
       expect(out).to include('rails_requests_total')
       expect(out).not_to include('sidekiq_jobs_executed_total')
+      expect(Rails.logger).to have_received(:warn).with(/exceeded the 0.2s deadline/)
     end
   end
 

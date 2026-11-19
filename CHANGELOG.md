@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A stop during which the Android app's smart tracking turned GPS off now becomes one visit that lasts until tracking resumed, instead of a gap. This needs Android app 2.9.155 or newer; stops recorded earlier don't change. Thanks @Toastie! (#3989)
 - Countries only flown over are no longer counted as visited for imports without speed data: KML (including Flightradar24 exports), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps files. Existing KML, GPX and GeoJSON imports are re-checked; for the other formats only points stored without a speed are. Only flight speeds are derived now, so these imports no longer get a derived walking or driving speed.
 - Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
+- A slow Sidekiq metrics exporter no longer makes `/metrics` outlast Prometheus' scrape timeout: after 3 seconds the endpoint answers with web metrics only.
 
 ## [1.23.0] - 2026-11-14, Berlin
 

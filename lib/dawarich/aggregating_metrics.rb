@@ -49,7 +49,8 @@ module Dawarich
     def fetch_remote_metrics
       Timeout.timeout(@deadline) { request_remote_metrics }
     rescue StandardError => e
-      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{e.message}") if defined?(Rails.logger)
+      reason = e.is_a?(Timeout::Error) ? "exceeded the #{@deadline}s deadline" : e.message
+      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{reason}") if defined?(Rails.logger)
       ''
     end
 
