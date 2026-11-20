@@ -215,6 +215,7 @@ es:
         password_confirmation: Confirmación de contraseña
         current_password: Contraseña actual
         required_to_confirm_your_changes: "(requerido para confirmar tus cambios)"
+        oauth_current_password_hint: "(solo necesaria para cambiar tu correo o contraseña. ¿Nunca has creado una contraseña? Cierra sesión y usa «¿Olvidaste tu contraseña?»)"
         import_your_data: Importar tus datos
         upload_a_zip_file_containing_your_exported_dawarich_data_to: "Sube un archivo ZIP que contenga tus datos exportados de Dawarich para restaurar tus puntos, viajes y ajustes. Las conexiones de integraciones (Immich, Photoprism, AirTrail, TeslaMate) no se restauran; vuelve a conectarlas en Ajustes → Integraciones."
         select_zip_archive: Selecciona archivo ZIP
