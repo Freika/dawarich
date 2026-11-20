@@ -1037,18 +1037,27 @@ RSpec.describe 'Users::Registrations', type: :request do
   end
 
   describe 'PUT /users (account update)' do
-    context 'when an OAuth user sets a password' do
-      let(:oauth_user) do
-        create(:user, provider: 'google_oauth2', uid: '999', password: SecureRandom.hex(16))
+    let(:oauth_user) do
+      create(:user, provider: 'google_oauth2', uid: '999', password: 'original-secret-1')
+    end
+
+    before { sign_in oauth_user }
+
+    context 'when an OAuth user changes the password' do
+      it 'rejects the change without the current password' do
+        put user_registration_path, params: {
+          user: { password: 'new-password-123', password_confirmation: 'new-password-123' }
+        }
+
+        expect(oauth_user.reload.valid_password?('original-secret-1')).to be(true)
       end
 
-      before { sign_in oauth_user }
-
-      it 'persists the new password so the user can sign in with email/password' do
+      it 'persists the new password with the current password' do
         put user_registration_path, params: {
           user: {
             password: 'new-password-123',
-            password_confirmation: 'new-password-123'
+            password_confirmation: 'new-password-123',
+            current_password: 'original-secret-1'
           }
         }
 
@@ -1056,19 +1065,38 @@ RSpec.describe 'Users::Registrations', type: :request do
       end
     end
 
-    context 'when an OAuth user updates profile fields without a password' do
-      let(:oauth_user) do
-        create(:user, provider: 'google_oauth2', uid: '998', password: 'original-secret-1')
+    context 'when an OAuth user changes the email' do
+      it 'rejects the change without the current password' do
+        expect do
+          put user_registration_path, params: { user: { email: 'attacker@example.com' } }
+        end.not_to(change { oauth_user.reload.email })
       end
 
-      before { sign_in oauth_user }
+      it 'treats an address that only matches under Unicode case folding as a change' do
+        oauth_user.update!(email: 'kate@strasse.de')
 
+        expect do
+          put user_registration_path, params: { user: { email: 'kate@straße.de' } }
+        end.not_to(change { oauth_user.reload.email })
+      end
+
+      it 'applies the change with the current password' do
+        put user_registration_path, params: {
+          user: { email: 'new-address@example.com', current_password: 'original-secret-1' }
+        }
+
+        expect(oauth_user.reload.email).to eq('new-address@example.com')
+      end
+    end
+
+    context 'when an OAuth user updates profile fields without a password' do
       it 'updates the profile and leaves the existing password intact' do
         put user_registration_path, params: {
           user: {
             email: oauth_user.email,
             password: '',
-            password_confirmation: ''
+            password_confirmation: '',
+            current_password: ''
           }
         }
 
