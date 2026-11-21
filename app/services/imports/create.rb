@@ -65,6 +65,7 @@ class Imports::Create
   def post_import_processing
     run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
     run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
+    run_post_import_step('fill_missing_velocities') { fill_missing_velocities }
     run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
     run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
     run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
@@ -194,6 +195,22 @@ class Imports::Create
     return unless min_ts && max_ts
 
     Points::AnomalyFilter.new(user.id, min_ts, max_ts).call
+  end
+
+  # Before stats: without a speed every fix counts as time on the ground.
+  # After the anomaly filter, so flagged position jumps cannot fake a flight.
+  def fill_missing_velocities
+    return unless Points::VelocityFiller::TRACK_SOURCES.include?(import.source)
+
+    return unless import.points.where(velocity: nil).exists?
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    filled = Points::VelocityFiller.new(import.id).call
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(1)
+    Rails.logger.info(
+      "[Imports::Create] import_id=#{import.id} flight_speeds_derived=#{filled.updated} seconds=#{elapsed}"
+    )
+    Points::TileEpoch.bump_range(user.id, filled.first_timestamp, filled.last_timestamp) if filled.updated.positive?
   end
 
   def schedule_stats_creating(user_id)

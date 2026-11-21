@@ -27,10 +27,8 @@ class Kml::Importer
     # one element at a time and insert in batches, keeping peak memory bounded.
     # Placemarks first, then gx:Tracks, to preserve the point order (and
     # therefore the batching) of the former whole-document parse.
-    inserted = stream_insert(xml, 'Placemark') { |node| parse_placemark(node) }
-    inserted += stream_insert(xml, 'gx:Track') { |node| parse_gx_track(node) }
-
-    fill_missing_velocities if inserted.positive?
+    stream_insert(xml, 'Placemark') { |node| parse_placemark(node) }
+    stream_insert(xml, 'gx:Track') { |node| parse_gx_track(node) }
   end
 
   private

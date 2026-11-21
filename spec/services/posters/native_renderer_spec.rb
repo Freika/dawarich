@@ -101,6 +101,16 @@ RSpec.describe Posters::NativeRenderer do
       expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
     end
 
+    it 'still reports the timeout when the OS refuses to signal the process group' do
+      # macOS answers EPERM when the group leader has already exited.
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      allow(Process).to receive(:kill).and_call_original
+      allow(Process).to receive(:kill).with('TERM', anything).and_raise(Errno::EPERM)
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
+    end
+
     it 'times out when the process leader exits but a descendant retains its pipes' do
       stub_const("#{described_class}::RENDER_TIMEOUT", 0.2)
       command = [

@@ -21,6 +21,34 @@ class Tag < ApplicationRecord
   scope :ordered, -> { order(:name) }
   scope :privacy_zones, -> { where.not(privacy_radius_meters: nil) }
 
+  WORK_ICON = '💼'
+
+  # The user's Work tag, under its name in any locale: a user who switches language keeps one tag.
+  def self.work_tag(user)
+    named_in_any_locale(user, 'places.shortcuts.work_place_name').first
+  end
+
+  # The first live Place carrying a tag the user named Home, with that tag, or nil.
+  # Such a tag does not make the Place a Home; the Trips hint uses it to say so.
+  def self.home_tagged_place(user)
+    named_in_any_locale(user, 'trip_detection.home_place_name').each do |tag|
+      place = tag.places.not_archived.order(:name).first
+      return [tag, place] if place
+    end
+    nil
+  end
+
+  def self.named_in_any_locale(user, key)
+    names = I18n.available_locales.map { |locale| I18n.t(key, locale:).downcase }
+    user.tags.order(:id).where('lower(name) IN (?)', names.uniq)
+  end
+  private_class_method :named_in_any_locale
+
+  def self.work_tag!(user)
+    work_tag(user) ||
+      user.tags.create!(name: I18n.t('places.shortcuts.work_place_name'), icon: WORK_ICON, color: '#33FF57')
+  end
+
   def privacy_zone?
     privacy_radius_meters.present?
   end

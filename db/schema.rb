@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_110937) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -570,6 +570,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_10_120000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.integer "visit_radius", default: 50, null: false
+    t.date "started_on"
+    t.date "ended_on"
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"

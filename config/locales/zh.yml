@@ -4077,6 +4077,9 @@ zh:
       import_flights_job:
         airtrail_sync_failed: AirTrail 同步失败
         your_airtrail_flight_sync_failed_with_error_message_check_your: 您的 AirTrail 航班同步失败：%{message}。请检查 AirTrail 设置后重试。
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "已使用 GPS 噪声过滤器重新检查您的轨迹点。没有任何变化，因此您的轨迹、统计数据和摘要保持不变。"
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: GPS 噪声重新检查已完成

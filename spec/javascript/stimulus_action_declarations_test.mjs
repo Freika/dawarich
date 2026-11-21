@@ -34,7 +34,7 @@ const allSources = await sources()
 for (const [identifier, path] of Object.entries(CONTROLLERS)) {
   test(`every action bound to ${identifier} exists on the controller`, async () => {
     const pattern = new RegExp(
-      `(?<![\\w-])${identifier.replace(/-/g, "\\-")}#([A-Za-z_]\\w*)`,
+      `(?<![\\w-])${identifier.replace(/[.*+?^${}()|[\]\\-]/g, "\\$&")}#([A-Za-z_]\\w*)`,
       "g",
     )
     const bound = new Set()

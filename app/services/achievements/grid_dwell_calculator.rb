@@ -10,6 +10,36 @@ module Achievements
       'countries' => 'iso_a2'
     }.freeze
 
+    # A cell whose centre misses every shape but whose square still touches one
+    # is a coast or border cell: its centre says nothing about the points in it.
+    # Each such shape is clipped to the cell once, and the cell's points are
+    # matched against those small pieces, so no point is tested against a
+    # full-resolution boundary and open-ocean cells cost one index probe.
+    def self.edge_pieces_sql(table, code_column, cells)
+      envelope = "ST_MakeEnvelope(e.gx * #{GRID_DEGREES}, e.gy * #{GRID_DEGREES}, " \
+                 "(e.gx + 1) * #{GRID_DEGREES}, (e.gy + 1) * #{GRID_DEGREES}, 4326)"
+
+      "SELECT e.gx, e.gy, s.#{code_column} AS code, ST_Intersection(s.geom, #{envelope}) AS geom " \
+        "FROM #{cells} e JOIN #{table} s ON ST_Intersects(s.geom, #{envelope}) WHERE e.code IS NULL"
+    end
+
+    # The lowest code of the edge pieces that contain each point, as the centre
+    # lookup's ORDER BY ... LIMIT 1 does.
+    def self.edge_codes_sql(scope_sql)
+      'SELECT p.id, MIN(ep.code) AS code FROM points p JOIN edge_pieces ep ' \
+        "ON ep.gx = FLOOR(ST_X(p.lonlat::geometry) / #{GRID_DEGREES})::int " \
+        "AND ep.gy = FLOOR(ST_Y(p.lonlat::geometry) / #{GRID_DEGREES})::int " \
+        "AND ST_Intersects(ep.geom, p.lonlat::geometry) WHERE #{scope_sql} GROUP BY p.id"
+    end
+
+    SCOPE_SQL = <<~SQL.squish
+      p.user_id = %<user_id>d
+        AND p."timestamp" >= %<since>d
+        AND p."timestamp" <= %<through>d
+        AND p.lonlat IS NOT NULL
+        AND (p.anomaly IS DISTINCT FROM TRUE)
+    SQL
+
     POINTS_SQL = <<~SQL.freeze
       WITH cells AS (
         SELECT DISTINCT FLOOR(ST_X(lonlat::geometry) / %<grid>f)::int AS gx,
@@ -35,19 +65,18 @@ module Achievements
           LIMIT 1
         ) m ON TRUE
       ),
+      edge_pieces AS MATERIALIZED (#{edge_pieces_sql('%<table>s', '%<code_column>s', 'cell_codes')}),
+      edge_codes AS MATERIALIZED (#{edge_codes_sql(SCOPE_SQL)}),
       located AS (
         SELECT p."timestamp" AS ts, p.id, p.country_id,
                CASE WHEN cc.near_disputed AND #{DisputedArea.covering_sql('p.lonlat::geometry')}
-                    THEN NULL ELSE cc.code END AS code
+                    THEN NULL ELSE COALESCE(cc.code, ec.code) END AS code
         FROM points p
         LEFT JOIN cell_codes cc
           ON cc.gx = FLOOR(ST_X(p.lonlat::geometry) / %<grid>f)::int
          AND cc.gy = FLOOR(ST_Y(p.lonlat::geometry) / %<grid>f)::int
-        WHERE p.user_id = %<user_id>d
-          AND p."timestamp" >= %<since>d
-          AND p."timestamp" <= %<through>d
-          AND p.lonlat IS NOT NULL
-          AND (p.anomaly IS DISTINCT FROM TRUE)
+        LEFT JOIN edge_codes ec ON ec.id = p.id
+        WHERE #{SCOPE_SQL}
       ),
       pts AS (
         SELECT ts, country_id, code,

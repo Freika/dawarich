@@ -80,6 +80,9 @@ module Visits
           center_lon: open[:center_lon],
           first_fix: [open[:first].lat, open[:first].lon],
           last_fix: [open[:last].lat, open[:last].lon],
+          # The mobile app's stop anchor: tracking paused here and wakes only
+          # when the device leaves its geofence.
+          paused_at_stop: open[:last].stationary_presence == true,
           count: open[:count]
         }
       end

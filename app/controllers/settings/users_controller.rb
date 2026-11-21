@@ -25,6 +25,12 @@ class Settings::UsersController < ApplicationController
     return redirect_to settings_users_url, alert: last_admin_alert_message if last_admin_protection_needed?
 
     update_params = filtered_user_params
+    # A password set by an admin replaces the one the sign-in and two-factor
+    # lockouts were guarding, as a password reset does; one write clears them all.
+    if update_params.key?('password')
+      update_params.merge!(locked_at: nil, failed_attempts: 0, unlock_token: nil,
+                           otp_locked_at: nil, failed_otp_attempts: 0)
+    end
 
     if @user.update(update_params)
       redirect_to settings_users_url, notice: I18n.t('controllers.settings.users.user_was_successfully_updated')

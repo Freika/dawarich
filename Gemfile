@@ -90,6 +90,7 @@ group :development, :test, :staging do
   gem 'dotenv-rails'
   gem 'factory_bot_rails'
   gem 'ffaker'
+  gem 'parallel_tests'
   gem 'pry-byebug'
   gem 'pry-rails'
   gem 'rspec-rails', '>= 8.0.1'

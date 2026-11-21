@@ -7,8 +7,11 @@ module Achievements
     LEASE = 45.seconds
     Claim = Data.define(:event, :remaining, :batch_end_id)
 
-    def initialize(user)
+    # `events` narrows the deck to the unlocks a client can show; the rest stay
+    # pending for a client that can.
+    def initialize(user, events: UnlockEvent.where(user_id: user.id))
       @user = user
+      @events = events
     end
 
     def claim(resume_token: nil, batch_end_id: nil)
@@ -51,9 +54,7 @@ module Achievements
 
     private
 
-    def events
-      UnlockEvent.where(user_id: @user.id)
-    end
+    attr_reader :events
 
     def pending_through(batch_end_id)
       pending = events.pending
