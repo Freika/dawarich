@@ -34,10 +34,12 @@ class DataMigrations::LinkCountryNamesJob < ApplicationJob
     return if start_id.nil?
 
     end_id = start_id + batch_size - 1
+    # Read before the batch: everything after the tally must not raise into the
+    # rescue below, which retries with data as it was before this batch.
+    max_id = Point.maximum(:id).to_i
     data = tally(start_id, end_id, data) if phase == 'tally'
     link(start_id, end_id, data) if phase == 'link'
 
-    max_id = Point.maximum(:id).to_i
     Rails.logger.info("[LinkCountryNames] #{phase} at id #{end_id} of #{max_id}")
 
     if end_id < max_id

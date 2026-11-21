@@ -144,6 +144,34 @@ RSpec.describe DataMigrations::LinkCountryNamesJob, type: :job do
       have_enqueued_job(described_class).with('tally', start_id, {}, described_class::MIN_BATCH_SIZE)
   end
 
+  it 'leaves geocoder aliases to the name backfill, even when a linked row disagrees' do
+    point_named('United States', country_id: france.id)
+    unlinked = point_named('United States', country_id: nil)
+
+    run_backfill
+
+    expect(unlinked.reload.country_id).to be_nil
+  end
+
+  it 'halves a link batch and retries the same cursor with the same links when it is aborted' do
+    start_id = point_named('Deutschland', country_id: nil).id
+    links = { 'Deutschland' => germany.id }
+    allow(ActiveRecord::Base.connection).to receive(:update).and_raise(ActiveRecord::QueryCanceled)
+
+    expect { described_class.perform_now('link', start_id, links) }.to \
+      have_enqueued_job(described_class).with('link', start_id, links, described_class::BATCH_SIZE / 2)
+  end
+
+  it 'retries a tally batch with the tally from before it when reading the last id is aborted' do
+    point_named('Deutschland', country_id: germany.id)
+    start_id = Point.minimum(:id)
+    allow(Point).to receive(:maximum).and_call_original
+    allow(Point).to receive(:maximum).with(:id).and_raise(ActiveRecord::QueryCanceled)
+
+    expect { described_class.perform_now('tally', start_id, {}) }.to \
+      have_enqueued_job(described_class).with('tally', start_id, {}, described_class::BATCH_SIZE / 2)
+  end
+
   it 'does nothing on an instance with no points' do
     expect { perform_enqueued_jobs { described_class.perform_later } }.not_to raise_error
   end
