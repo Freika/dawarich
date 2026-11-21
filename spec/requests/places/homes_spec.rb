@@ -141,6 +141,17 @@ RSpec.describe 'Homes of a Place', type: :request do
       expect(response).to redirect_to(places_url(q: 'flat'))
       expect(flash[:notice]).to eq(I18n.t('trip_detection.onboarding.home_saved'))
     end
+
+    it 'gives the new Home the dates of a dated Place instead of dropping them' do
+      place.update!(started_on: Date.new(2019, 4, 1), ended_on: Date.new(2023, 9, 30))
+      get places_path
+      form = page.at_css("form[action='#{place_homes_path(place, list: 1)}']")
+      fields = form.css('input[type=hidden]').to_h { |input| [input['name'], input['value'].to_s] }
+
+      post form['action'], params: fields
+
+      expect(place.homes.last).to have_attributes(started_on: Date.new(2019, 4, 1), ended_on: Date.new(2023, 9, 30))
+    end
   end
 
   describe 'the "I live here" checkbox of a new Place' do
