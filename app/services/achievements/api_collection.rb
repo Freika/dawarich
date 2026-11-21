@@ -6,12 +6,21 @@ module Achievements
   class ApiCollection
     PER_PAGE = 12
 
+    # Collectible and thematic unlocks have no mobile card yet: leave them for
+    # the web instead of acknowledging them unseen.
+    def self.unlockable_events(user)
+      thematic_keys = Registry.all.select(&:thematic?).map(&:key)
+      UnlockEvent.where(user_id: user.id).where.not(kind: 'collectible')
+                 .where.not(kind: 'set', key: thematic_keys)
+    end
+
     def initialize(user:, url_helpers:)
       @user = user
       @url_helpers = url_helpers
       @state = Progress.exploration_for(user).state || {}
       @sharing = user.achievement_progresses.where.not(achievement_key: Progress::EXPLORATION_KEY)
                      .index_by(&:achievement_key)
+      @awards = user.user_achievements.pluck(:achievement_key, :earned_at).to_h
     end
 
     def overview
@@ -88,8 +97,8 @@ module Achievements
     private
 
     def card(definition, geometry: false)
-      presenter = SetPresenter.new(definition: definition, state: @state,
-                                   sharing: @sharing[definition.key], timezone: @user.timezone)
+      presenter = SetPresenter.new(definition: definition, state: @state, sharing: @sharing[definition.key],
+                                   timezone: @user.timezone, awards: @awards)
       visited = definition.country && @state.dig('earned', definition.country)
       {
         key: definition.key, name: definition.kind == 'country' ? definition.card['place'] : presenter.name,
@@ -117,6 +126,10 @@ module Achievements
 
     def completion_time(presenter)
       return unless presenter.completed?
+
+      award = @awards[presenter.definition.key]
+      # A set can gain regions after it was completed; the award keeps its date.
+      return award.utc.iso8601 if award && presenter.earned_count < presenter.target
 
       presenter.earned.values.sort_by { |value| timestamp_sort_key(value) }[presenter.target - 1]
     end

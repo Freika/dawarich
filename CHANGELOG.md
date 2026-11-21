@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- The mobile app can browse achievements: lifetime collections with search and filters, public sharing links, and new-unlock celebrations, using the same unlock claims as the web. `GET /api/v1/users/me` advertises the endpoints as `features.achievements_api`, and they answer 404 for users who turned achievements off. Thanks @kpriemchenko! (#3796)
+- The mobile app can browse achievements: lifetime collections with search and filters, new-unlock celebrations, and public links that stay off until you turn one on. Card and theme unlocks still appear on the web. `GET /api/v1/users/me` advertises the endpoints as `features.achievements_api`; they answer 404 for users who turned achievements off. Thanks @kpriemchenko! (#3796)
 
 ### Fixed
 

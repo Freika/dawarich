@@ -41,7 +41,9 @@ class Api::V1::Achievements::UnlocksController < ApiController
   private
 
   def deck
-    @deck ||= ::Achievements::UnlockDeck.new(current_api_user)
+    @deck ||= ::Achievements::UnlockDeck.new(
+      current_api_user, events: ::Achievements::ApiCollection.unlockable_events(current_api_user)
+    )
   end
 
   def invalid_parameters

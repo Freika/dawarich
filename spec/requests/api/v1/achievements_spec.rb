@@ -182,6 +182,49 @@ RSpec.describe 'Mobile achievements API', type: :request do
     expect(response).to have_http_status(:no_content)
   end
 
+  it 'leaves collectible and thematic unlocks pending for the web instead of consuming them' do
+    collectible = Achievements::UnlockEvent.create!(user: user, kind: 'collectible', key: '1:2')
+    thematic_set = Achievements::Registry.all.find(&:thematic?)
+    thematic = Achievements::UnlockEvent.create!(user: user, kind: 'set', key: thematic_set.key)
+    country = Achievements::UnlockEvent.create!(user: user, kind: 'geography', key: 'FR')
+
+    post '/api/v1/achievements/unlocks/next', headers: headers, as: :json
+    body = response.parsed_body
+    expect(body).to include('id' => country.id, 'remaining' => 1)
+    post "/api/v1/achievements/unlocks/#{country.id}/seen",
+         params: { claim_token: body['token'] }, headers: headers, as: :json
+    post '/api/v1/achievements/unlocks/next', headers: headers, as: :json
+    expect(response).to have_http_status(:no_content)
+
+    expect([collectible, thematic].map { |event| event.reload.seen_at }).to all(be_nil)
+    expect(Achievements::UnlockDeck.new(user).claim.event).to eq(collectible)
+  end
+
+  it 'dismisses only the unlocks the API can show' do
+    collectible = Achievements::UnlockEvent.create!(user: user, kind: 'collectible', key: '1:2')
+    country = Achievements::UnlockEvent.create!(user: user, kind: 'geography', key: 'FR')
+
+    post '/api/v1/achievements/unlocks/dismiss', params: { batch_end_id: country.id }, headers: headers, as: :json
+
+    expect(response).to have_http_status(:no_content)
+    expect(country.reload.seen_at).to be_present
+    expect(collectible.reload.seen_at).to be_nil
+  end
+
+  it 'keeps a completed set completed after the set gains regions' do
+    definition = Achievements::Registry.find('country_it')
+    awarded_at = Time.zone.parse('2026-08-01T10:00:00Z')
+    all_but_one = definition.region_codes.first(definition.region_codes.size - 1)
+    exploration.update!(state: { 'earned' => all_but_one.index_with { earned_at } })
+    create(:user_achievement, user: user, achievement_key: definition.key, earned_at: awarded_at)
+
+    get '/api/v1/achievements/continent_europe', params: { q: 'Italy' }, headers: headers
+
+    card = response.parsed_body['cards'].find { |child| child['key'] == definition.key }
+    expect(card).to include('completed' => true)
+    expect(Time.iso8601(card['earned_at'])).to eq(awarded_at)
+  end
+
   it 'distinguishes a country visit unlock from a completed subdivision collection' do
     exploration.update!(state: { 'earned' => { 'DE' => earned_at } })
     Achievements::UnlockEvent.create!(user: user, kind: 'geography', key: 'DE')
