@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
+- A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
 
 ## [1.23.0] - 2026-11-14, Berlin
 
