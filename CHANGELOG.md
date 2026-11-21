@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### ⚠️ Upgrade notes
 
-- After the upgrade a background job re-checks imports that came without speed data. Countries you only flew over disappear from monthly stats, trips and digests once it finishes.
+- On self-hosted instances a background job re-checks imports that came without speed data after the upgrade. Countries you only flew over disappear from monthly stats, trips and digests once it finishes. With `SKIP_POINT_DIMENSION_BACKFILL=1`, or if the upgrade log shows "Could not enqueue BackfillMissingVelocitiesJob", it does not start; start it later from the Rails console with `DataMigrations::BackfillMissingVelocitiesJob.perform_later`.
 - On self-hosted instances a second background job links points stored under a country name in another language, such as "Deutschland", to their country. It reads the points table twice, so it takes a while on a large history. With `SKIP_POINT_DIMENSION_BACKFILL=1` it does not start and those points keep counting as a separate country; start it later from the Rails console with `DataMigrations::LinkCountryNamesJob.perform_later`. Stats catch up gradually over the following days; digests that were already built stay as they are.
 
 ### Added

@@ -5,7 +5,11 @@
 class BackfillFlyoverVelocities < ActiveRecord::Migration[8.1]
   ENQUEUED_KEY = 'flyover_velocities_backfill_enqueued'
 
+  # Same gate as the country backfills: self-hosted only, honouring the opt-out
+  # variable; Dawarich Cloud runs the job by hand.
   def up
+    return unless DataMigrations::AddPointDimensionColumnsJob.backfill_allowed?
+
     connection.transaction do
       connection.execute('SELECT pg_advisory_xact_lock(20261117110937)')
       metadata = connection.pool.internal_metadata
@@ -17,7 +21,10 @@ class BackfillFlyoverVelocities < ActiveRecord::Migration[8.1]
   rescue NameError
     raise
   rescue StandardError => e
-    Rails.logger.warn "[Migration] Could not enqueue BackfillMissingVelocitiesJob: #{e.message}"
+    Rails.logger.warn(
+      "[Migration] Could not enqueue BackfillMissingVelocitiesJob (#{e.class}: #{e.message}). " \
+      'Start it later with: DataMigrations::BackfillMissingVelocitiesJob.perform_later'
+    )
   end
 
   def down

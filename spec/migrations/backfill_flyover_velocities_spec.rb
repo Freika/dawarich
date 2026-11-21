@@ -7,6 +7,8 @@ require Rails.root.join('db/migrate/20261117110937_backfill_flyover_velocities.r
 RSpec.describe BackfillFlyoverVelocities do
   subject(:migration) { described_class.new }
 
+  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
   def queued_backfills
     enqueued_jobs.count { |job| job[:job] == DataMigrations::BackfillMissingVelocitiesJob }
   end
@@ -30,6 +32,29 @@ RSpec.describe BackfillFlyoverVelocities do
     allow(DataMigrations::BackfillMissingVelocitiesJob).to receive(:perform_later).and_call_original
 
     expect { described_class.new.up }.to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'logs how to start the backfill by hand when the job queue is unreachable' do
+    allow(DataMigrations::BackfillMissingVelocitiesJob)
+      .to receive(:perform_later).and_raise(StandardError, 'Connection refused')
+    allow(Rails.logger).to receive(:warn)
+
+    migration.up
+
+    expect(Rails.logger).to have_received(:warn).with(/DataMigrations::BackfillMissingVelocitiesJob\.perform_later/)
+  end
+
+  it 'does not start the backfill on Dawarich Cloud' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+    expect { migration.up }.not_to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'honours the opt-out variable' do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('SKIP_POINT_DIMENSION_BACKFILL').and_return('1')
+
+    expect { migration.up }.not_to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
   end
 
   it 'aborts on a missing constant instead of hiding a broken deploy' do
