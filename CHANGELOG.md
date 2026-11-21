@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### ⚠️ Upgrade notes
 
 - After the upgrade a background job re-checks imports that came without speed data. Countries you only flew over disappear from monthly stats, trips and digests once it finishes.
+- On self-hosted instances a second background job links points stored under a country name in another language, such as "Deutschland", to their country. It reads the points table twice, so it takes a while on a large history. With `SKIP_POINT_DIMENSION_BACKFILL=1` it does not start and those points keep counting as a separate country; start it later from the Rails console with `DataMigrations::LinkCountryNamesJob.perform_later`. Stats catch up gradually over the following days; digests that were already built stay as they are.
 
 ### Added
 
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
+- Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
 - A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
 
 ## [1.23.0] - 2026-11-14, Berlin
