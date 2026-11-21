@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
 
@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The mobile app can browse achievements: lifetime collections with search and filters, new-unlock celebrations, and public links that stay off until you turn one on. Card and theme unlocks still appear on the web. `GET /api/v1/users/me` advertises the endpoints as `features.achievements_api`; they answer 404 for users who turned achievements off. Thanks @kpriemchenko! (#3796)
+- The Places list has "Add home" and "Add work" buttons and marks your Home. While you have no Home it says so and offers an "I live here" button on every Place; the new Place form has the same checkbox. Places can carry optional "From" and "Until" dates, and a Place whose period has ended is dimmed. For a new Home the dates become the time you lived there.
 
 ### Fixed
 
@@ -26,6 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
 - A slow Sidekiq metrics exporter no longer makes `/metrics` outlast Prometheus' scrape timeout: after 3 seconds the endpoint answers with web metrics only.
 - The Trips page no longer just asks you to add a Home when a place carries a tag named Home: it explains that a tag doesn't set your Home and links to the places with that tag, where you can click "I live here".
+- Trip routes load on multi-day trips again: their map tiles no longer time out while PostgreSQL compiles the query. Thanks @A82FF! (#4024)
+- A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
+- Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
+- Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
 
 ## [1.23.0] - 2026-11-14, Berlin
 
