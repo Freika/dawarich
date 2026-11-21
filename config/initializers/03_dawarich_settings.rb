@@ -120,7 +120,10 @@ class DawarichSettings
         # What this server can do, not what the user may do: the apps show family
         # management only on servers that have the endpoints.
         family_management: true,
-        achievements: user.nil? || user.feature_enabled?(:achievements)
+        achievements: user.nil? || user.feature_enabled?(:achievements),
+        # The mobile achievements endpoints exist. `achievements` alone only says
+        # the user has the feature on; servers before this key had no mobile API.
+        achievements_api: true
       }
     end
 

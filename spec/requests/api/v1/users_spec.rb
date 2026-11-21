@@ -63,7 +63,8 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
         json = JSON.parse(response.body, symbolize_names: true)
 
-        expect(json[:features].keys).to match_array(%i[family family_management reverse_geocoding achievements achievements_api])
+        expect(json[:features].keys)
+          .to match_array(%i[family family_management reverse_geocoding achievements achievements_api])
         expect(json[:features][:family_management]).to be true
         expect(json[:features][:achievements_api]).to be true
         expect(json[:subscription]).to be_present

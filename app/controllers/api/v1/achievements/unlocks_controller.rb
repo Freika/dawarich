@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Achievements::UnlocksController < ApiController
+  before_action { head :not_found unless current_api_user.feature_enabled?(:achievements) }
+
   def next
     if (params.key?(:batch_end_id) && !positive_id(params[:batch_end_id])) ||
        (params.key?(:claim_token) && !valid_token?(params[:claim_token]))

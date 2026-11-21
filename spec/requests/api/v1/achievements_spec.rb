@@ -39,9 +39,23 @@ RSpec.describe 'Mobile achievements API', type: :request do
 
   it 'supports existing API-key clients and advertises mobile support' do
     get '/api/v1/users/me', params: { api_key: user.api_key }
-    expect(response.parsed_body['features']['achievements']).to be true
+    expect(response.parsed_body['features']).to include('achievements' => true, 'achievements_api' => true)
     get '/api/v1/achievements', params: { api_key: user.api_key }
     expect(response).to have_http_status(:ok)
+  end
+
+  it 'answers not found for every endpoint when the user turned achievements off' do
+    user.update!(settings: user.settings.merge('achievements_enabled' => false))
+
+    get '/api/v1/achievements', headers: headers
+    expect(response).to have_http_status(:not_found)
+    get '/api/v1/achievements/continent_europe', headers: headers
+    expect(response).to have_http_status(:not_found)
+    patch '/api/v1/achievements/continent_europe/sharing', params: { enabled: true }, headers: headers, as: :json
+    expect(response).to have_http_status(:not_found)
+    post '/api/v1/achievements/unlocks/next', headers: headers
+    expect(response).to have_http_status(:not_found)
+    expect(user.achievement_progresses.where(achievement_key: 'continent_europe')).to be_empty
   end
 
   it 'keeps account data separate and applies the pending-payment API gate' do

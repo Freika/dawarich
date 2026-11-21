@@ -7234,6 +7234,10 @@ paths:
                         type: boolean
                       achievements:
                         type: boolean
+                        description: Achievements are turned on for this user
+                      achievements_api:
+                        type: boolean
+                        description: The server offers the mobile achievements endpoints
         '401':
           description: unauthorized
     delete:

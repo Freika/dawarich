@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::AchievementsController < ApiController
+  before_action { head :not_found unless current_api_user.feature_enabled?(:achievements) }
+
   def index
     render json: collection.overview
   end
