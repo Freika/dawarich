@@ -424,7 +424,9 @@ RSpec.describe Imports::Create do
 
       it 'leaves photo locations without a speed' do
         import = create(:import, user:, source: 'immich_api')
-        photos = fixes.map { |lon, seconds| { latitude: 0.0, longitude: lon, timestamp: 978_296_400 + seconds } }
+        photos = fixes.map do |lon, seconds|
+          { latitude: 0.0, longitude: lon, lonlat: "POINT(#{lon} 0.0)", timestamp: 978_296_400 + seconds }
+        end
         import.file.attach(io: StringIO.new(photos.to_json), filename: 'geodata.json',
                            content_type: 'application/json')
 
