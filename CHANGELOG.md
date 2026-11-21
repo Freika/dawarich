@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - After the upgrade a background job re-checks imports that came without speed data. Countries you only flew over disappear from monthly stats, trips and digests once it finishes.
 
+### Added
+
+- The mobile app can browse achievements: lifetime collections with search and filters, new-unlock celebrations, and public links that stay off until you turn one on. Card and theme unlocks still appear on the web. `GET /api/v1/users/me` advertises the endpoints as `features.achievements_api`; they answer 404 for users who turned achievements off. Thanks @kpriemchenko! (#3796)
+
 ### Fixed
 
 - Re-checking past points against the GPS noise filter now rebuilds tracks, stats and digests only for the years where hidden points changed, and shows a short "nothing changed" notice instead when nothing did.

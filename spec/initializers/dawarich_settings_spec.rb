@@ -106,6 +106,11 @@ RSpec.describe DawarichSettings do
         .to be false
     end
 
+    it 'advertises the mobile achievements API even when the user turned achievements off' do
+      user = create(:user, settings: { 'achievements_enabled' => false })
+      expect(described_class.features_for(user)[:achievements_api]).to be true
+    end
+
     it 'reports reverse geocoding as off when the instance has no provider' do
       expect(described_class.features_for(create(:user))[:reverse_geocoding]).to be false
     end
