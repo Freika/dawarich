@@ -3,7 +3,11 @@
 class BackfillMissingGpxAndGeojsonVelocities < ActiveRecord::Migration[8.1]
   ENQUEUED_KEY = 'missing_velocities_backfill_enqueued'
 
+  # Same gate as BackfillFlyoverVelocities: self-hosted only, honouring the
+  # opt-out variable.
   def up
+    return unless DataMigrations::AddPointDimensionColumnsJob.backfill_allowed?
+
     connection.transaction do
       connection.execute('SELECT pg_advisory_xact_lock(20261026120000)')
       metadata = connection.pool.internal_metadata
