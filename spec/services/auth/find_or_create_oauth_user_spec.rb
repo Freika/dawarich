@@ -111,6 +111,56 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(error.rate_limited).to be(false)
     end
 
+    describe 'when the verification email cannot be queued' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      let(:rate_limit_key) { "#{described_class::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{existing.id}" }
+
+      def collide(sub)
+        build(claims: { sub: sub, email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        e
+      end
+
+      it 'propagates the enqueue error and lets an immediate retry send the email' do
+        attempts = 0
+        allow(Users::MailerSendingJob).to receive(:perform_later).and_wrap_original do |original, *args, **kwargs|
+          attempts += 1
+          raise Redis::CannotConnectError, 'queue down' if attempts == 1
+
+          original.call(*args, **kwargs)
+        end
+
+        expect { collide('apple-2') }.to raise_error(Redis::CannotConnectError)
+
+        retry_error = nil
+        expect { retry_error = collide('apple-3') }.to have_enqueued_job(Users::MailerSendingJob)
+        expect(retry_error.rate_limited).to be(false)
+      end
+
+      it 'releases the rate-limit slot when the link token cannot be issued' do
+        allow_any_instance_of(Auth::IssueAccountLinkToken).to receive(:call).and_raise(JWT::EncodeError)
+
+        expect { collide('apple-2') }.to raise_error(JWT::EncodeError)
+        expect(Rails.cache.read(rate_limit_key)).to be_nil
+      end
+
+      it 'keeps the slot of a newer request that took it while this one was failing' do
+        freeze_time do
+          newer_marker = nil
+          allow(Users::MailerSendingJob).to receive(:perform_later) do
+            Rails.cache.delete(rate_limit_key)
+            described_class.acquire_rate_limit(existing.id)
+            newer_marker = Rails.cache.read(rate_limit_key)
+            raise Redis::CannotConnectError, 'queue down'
+          end
+
+          expect { collide('apple-2') }.to raise_error(Redis::CannotConnectError)
+          expect(Rails.cache.read(rate_limit_key)).to eq(newer_marker)
+        end
+      end
+    end
+
     it 'does not enqueue the Manager creation webhook on the link-verification path' do
       expect do
         build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- When the "link your account" email after a Google or Apple sign-in could not be queued, the next attempt no longer waits an hour as if the email had gone out. Only an email that was actually queued starts the one-hour resend limit. Thanks @fernandezbaptiste! (#4060)
+
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
