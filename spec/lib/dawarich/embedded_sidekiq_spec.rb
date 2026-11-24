@@ -35,6 +35,7 @@ RSpec.describe 'Embedded Sidekiq configuration' do
 
   it 'logs at the configured Rails log level, even when a broadcast logs more' do
     log_level = Rails.configuration.log_level
+    sidekiq_logger = Sidekiq.default_configuration.logger
     Rails.configuration.log_level = 'warn'
     Rails.logger.broadcast_to(Logger.new(File::NULL, level: :info))
 
@@ -44,6 +45,7 @@ RSpec.describe 'Embedded Sidekiq configuration' do
     expect { logger.info('embedded-sidekiq-info') }.not_to output.to_stdout_from_any_process
   ensure
     Rails.configuration.log_level = log_level
+    Sidekiq.default_configuration.logger = sidekiq_logger
   end
 
   it 'honors the background processing concurrency override' do

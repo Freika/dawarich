@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Monthly and yearly digests leave out points flagged as anomalies, as stats and trips already do.
 - A slow Sidekiq metrics exporter no longer makes `/metrics` outlast Prometheus' scrape timeout: after 3 seconds the endpoint answers with web metrics only.
 - The Trips page no longer just asks you to add a Home when a place carries a tag named Home: it explains that a tag doesn't set your Home and links to the places with that tag, where you can click "I live here".
-- Sidekiq logs at the level `RAILS_LOG_LEVEL` sets, standalone and embedded, so `RAILS_LOG_LEVEL=warn` no longer leaves the log full of Sidekiq info and debug lines. Thanks @benc-git! (#4040)
+- Sidekiq logs at the level `RAILS_LOG_LEVEL` sets, standalone and embedded, so `RAILS_LOG_LEVEL=warn` no longer leaves the log full of Sidekiq info and debug lines. At the default `info` Sidekiq stops printing its debug lines. At `warn` failed jobs no longer show up in the log; they are still listed under Retries and Dead in the Sidekiq dashboard. Thanks @benc-git! (#4040)
 - Trip routes load on multi-day trips again: their map tiles no longer time out while PostgreSQL compiles the query. Thanks @A82FF! (#4024)
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
