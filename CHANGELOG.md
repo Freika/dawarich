@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- In the timeline, a visit that starts during the day and lasts 23 hours or more shows its arrival time on the day it starts instead of "All day". Days the visit covers completely still show "All day". Thanks @lomky! (#4044)
+
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
