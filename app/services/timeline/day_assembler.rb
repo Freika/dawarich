@@ -242,7 +242,7 @@ module Timeline
         suggested_count: status_counts.fetch('suggested', 0),
         confirmed_count: status_counts.fetch('confirmed', 0),
         declined_count: status_counts.fetch('declined', 0),
-        mode_distances: mode_distances_for(tracks, track_shares)
+        mode_distances: mode_distances_for(moving_tracks, track_shares)
       }
     end
 

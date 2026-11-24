@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- A day's distance in the timeline no longer counts the distance of "stayed" tracks, the same way its moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
+- A day's distance and its per-mode chips in the timeline, on the web, in the API and in the mobile app, no longer count "stayed" tracks, the same way the day's moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
 
 ## [1.24.0] - 2026-11-21, Berlin
 
