@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Sidekiq logs at the level `RAILS_LOG_LEVEL` sets, standalone and embedded, so `RAILS_LOG_LEVEL=warn` no longer leaves the log full of Sidekiq info and debug lines. At the default `info` Sidekiq stops printing its debug lines. At `warn` failed jobs no longer show up in the log; they are still listed under Retries and Dead in the Sidekiq dashboard. Thanks @benc-git! (#4040)
 - Trip routes load on multi-day trips again: their map tiles no longer time out while PostgreSQL compiles the query. Thanks @A82FF! (#4024)
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
+- In the timeline, a visit that starts during the day and lasts 23 hours or more shows its arrival time on the day it starts instead of "All day". Days the visit covers completely still show "All day". Thanks @lomky! (#4044)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
