@@ -145,6 +145,13 @@ RSpec.describe Auth::FindOrCreateOauthUser do
         expect(Rails.cache.read(rate_limit_key)).to be_nil
       end
 
+      it 'raises and releases the slot when the queue silently refuses the job' do
+        allow(Users::MailerSendingJob).to receive(:perform_later).and_return(false)
+
+        expect { collide('apple-2') }.to raise_error(ActiveJob::EnqueueError)
+        expect(Rails.cache.read(rate_limit_key)).to be_nil
+      end
+
       it 'keeps the slot of a newer request that took it while this one was failing' do
         freeze_time do
           newer_marker = nil
@@ -174,6 +181,18 @@ RSpec.describe Auth::FindOrCreateOauthUser do
     # in PR-B behind the `oauth_auto_link_verified_email` feature flag.
     # Until then, every email-collision flow goes through the email-link
     # verification path covered above.
+  end
+
+  describe '.rate_limit_retry_after' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    it 'reports the time left for a marker written in the earlier bare-timestamp format' do
+      freeze_time do
+        Rails.cache.write("#{described_class::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}42", 10.minutes.ago.to_i)
+
+        expect(described_class.rate_limit_retry_after(42)).to eq(50.minutes.to_i)
+      end
+    end
   end
 
   describe 'concurrent sign-in race (existing row appears between lookup and insert)' do

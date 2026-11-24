@@ -43,15 +43,19 @@ module Auth
       )
     end
 
-    # Runs the block only when this call takes the rate-limit slot. If the
-    # block raises, no email went out, so the slot is released and the error
-    # re-raised. Returns true when the block ran, false when rate-limited.
+    # Runs the block, which must return the enqueued mailer job, only when this
+    # call takes the rate-limit slot. If the block raises or the job was not
+    # queued, no email went out, so the slot is released and the error raised.
+    # Returns true when the job was queued, false when rate-limited.
     def self.with_link_email_rate_limit(user_id)
       marker = acquire_rate_limit(user_id)
       return false unless marker
 
       begin
-        yield
+        job = yield
+        unless job.try(:successfully_enqueued?)
+          raise ActiveJob::EnqueueError, 'OAuth account link email could not be queued'
+        end
       rescue StandardError
         # ponytail: read-compare-delete is not atomic; if the marker expires and
         # a new request takes the slot between the read and the delete, that
