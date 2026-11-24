@@ -33,6 +33,19 @@ RSpec.describe 'Embedded Sidekiq configuration' do
     expect(config[:reloader]).to be_a(Sidekiq::Rails::Reloader)
   end
 
+  it 'logs at the configured Rails log level, even when a broadcast logs more' do
+    log_level = Rails.configuration.log_level
+    Rails.configuration.log_level = 'warn'
+    Rails.logger.broadcast_to(Logger.new(File::NULL, level: :info))
+
+    logger = Dawarich::EmbeddedSidekiq.build.config.logger
+
+    expect(logger.level).to eq(Logger::WARN)
+    expect { logger.info('embedded-sidekiq-info') }.not_to output.to_stdout_from_any_process
+  ensure
+    Rails.configuration.log_level = log_level
+  end
+
   it 'honors the background processing concurrency override' do
     ENV['BACKGROUND_PROCESSING_CONCURRENCY'] = '3'
     expect(Dawarich::EmbeddedSidekiq.build.config.concurrency).to eq(3)
