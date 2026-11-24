@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- A day's distance and its per-mode chips in the timeline, on the web, in the API and in the mobile app, no longer count "stayed" tracks, the same way the day's moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
-
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
@@ -38,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
+- A day's distance and its per-mode chips in the timeline, on the web, in the API and in the mobile app, no longer count "stayed" tracks, the same way the day's moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
 - A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
 
