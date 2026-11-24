@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - In the timeline, a visit that starts during the day and lasts 23 hours or more shows its arrival time on the day it starts instead of "All day". Days the visit covers completely still show "All day". Thanks @lomky! (#4044)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
+- A day's distance and its per-mode chips in the timeline, on the web, in the API and in the mobile app, no longer count "stayed" tracks, the same way the day's moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
 - A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
 

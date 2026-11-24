@@ -986,6 +986,68 @@ privacy_zone_masker: Maps::PrivacyZoneMasker.none)
         summary = subject.first[:summary]
         expect(summary[:time_moving_minutes]).to eq(30)
       end
+
+      it 'excludes stayed tracks from the day distance while keeping their row distance' do
+        day_entry = subject.first
+        stayed_row = day_entry[:entries].find { |e| e[:track_id] == real_stationary_movement_track.id }
+
+        expect(day_entry[:summary][:total_distance]).to eq(3.7)
+        expect(stayed_row[:distance]).to eq(0.2)
+      end
+    end
+
+    context 'with a day of only stayed tracks' do
+      let(:day) { Time.zone.parse('2026-05-12 00:00:00') }
+
+      before do
+        create(:track, user: user, start_at: day + 12.hours, end_at: day + 12.hours + 5.minutes,
+                       distance: 200, duration: 300, dominant_mode: :stationary)
+      end
+
+      it 'reports zero distance' do
+        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601,
+                                           privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+
+        expect(result.first[:summary][:total_distance]).to eq(0.0)
+      end
+    end
+
+    context 'with a stayed track that has a confident walking segment' do
+      let(:day) { Time.zone.parse('2026-05-12 00:00:00') }
+
+      before do
+        stayed = create(:track, user: user, start_at: day + 12.hours, end_at: day + 13.hours,
+                                distance: 700, duration: 3600, dominant_mode: :stationary)
+        create(:track_segment, track: stayed, transportation_mode: :walking,
+                               start_at: day + 12.hours, end_at: day + 12.hours + 10.minutes,
+                               distance: 600, duration: 600, confidence_score: 0.9)
+      end
+
+      it 'gives the stayed track no mode chip' do
+        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601,
+                                           privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+
+        expect(result.first[:summary][:mode_distances]).to eq({})
+      end
+    end
+
+    context 'with a stayed track spanning midnight' do
+      let(:user) { create(:user, settings: { 'timezone' => 'UTC' }) }
+      let(:day) { Time.utc(2026, 5, 12) }
+
+      let!(:stayed) do
+        create(:track, user: user, start_at: day + 23.hours, end_at: day + 25.hours,
+                       distance: 400, duration: 7200, dominant_mode: :stationary)
+      end
+
+      it 'leaves it out of both days while the continuation row keeps its day distance' do
+        days = described_class.new(user, start_at: day.iso8601, end_at: (day + 2.days).iso8601,
+                                         privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+        continuation = days.flat_map { |d| d[:entries] }.find { |e| e[:continuation_of_date].present? }
+
+        expect(days.map { |d| d[:summary][:total_distance] }).to eq([0.0, 0.0])
+        expect(continuation[:day_distance]).to eq(0.2)
+      end
     end
   end
 
