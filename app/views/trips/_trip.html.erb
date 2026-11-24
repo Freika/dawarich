@@ -1,4 +1,4 @@
-<%= link_to trip, class: "block group" do %>
+<%= link_to trip_path(trip, trip_list_state), class: "block group" do %>
   <div class="border border-base-300 rounded-xl overflow-hidden transition-colors duration-150 hover:border-base-content/30"
        data-trip-id="<%= trip.id %>" id="trip-<%= trip.id %>">
 

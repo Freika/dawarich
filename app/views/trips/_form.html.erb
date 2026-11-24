@@ -1,6 +1,9 @@
 <%= render 'shared/trix_scripts' %>
 <% managed_by_trek = trip.persisted? && trip.source_imported? && trip.source_active? %>
 <%= form_with(model: trip, class: "contents") do |form| %>
+  <% trip_list_state.each do |key, value| %>
+    <%= hidden_field_tag key, value, id: nil %>
+  <% end %>
 
   <%# Map on the left, the trip on the right, as on the trip's own page. %>
   <div class="flex flex-col gap-6 lg:flex-row lg:h-[calc(100dvh-9.75rem)]">
@@ -87,7 +90,7 @@
 
       <div class="flex flex-wrap items-center gap-2 pt-1">
         <%= form.submit class: 'btn btn-primary' %>
-        <%= link_to t('.cancel'), (trip.persisted? ? trip_path(trip) : trips_path), class: 'btn btn-ghost' %>
+        <%= link_to t('.cancel'), (trip.persisted? ? trip_path(trip, trip_list_state) : trips_path), class: 'btn btn-ghost' %>
       </div>
     </div>
   </div>
