@@ -35,14 +35,23 @@ RSpec.describe 'Trip list state kept between the list and a trip', type: :reques
       .to eq([{ 'page' => '2', 'family_page' => '3', 'sort' => 'name', 'q' => 'Trip' }])
   end
 
-  it 'sends "Back to trips" to the list state the trip was opened from' do
-    get trip_path(trip, page: 2, sort: 'name', year: '2024', origin: 'manual')
+  it 'leaves blank filters out of the trip card links' do
+    get trips_path(q: '', year: '', month: '', sort: 'newest', page: 2)
 
-    expect(back_link_href).to eq(trips_path(page: 2, sort: 'name', year: '2024', origin: 'manual'))
+    href = html.at_css('[data-trip-id]').ancestors('a').first['href']
+    expect(query_of(href)).to eq('sort' => 'newest', 'page' => '2')
   end
 
-  it 'keeps only the whitelisted list params on the back link' do
-    get trip_path(trip, page: 2, host: 'evil.example', anchor: 'x', evil: '1', 'country' => { 'a' => 'b' })
+  it 'sends "Back to trips" to the list state the trip was opened from' do
+    get trip_path(trip, page: 2, family_page: 3, sort: 'name', year: '2024', origin: 'manual')
+
+    expect(back_link_href)
+      .to eq(trips_path(page: 2, family_page: 3, sort: 'name', year: '2024', origin: 'manual'))
+  end
+
+  it 'keeps only the whitelisted scalar list params on the back link' do
+    get trip_path(trip, page: 2, host: 'evil.example', anchor: 'x', evil: '1',
+                        'country' => { 'a' => 'b' }, 'family_page' => ['3'])
 
     expect(back_link_href).to eq(trips_path(page: 2))
   end
@@ -68,5 +77,21 @@ RSpec.describe 'Trip list state kept between the list and a trip', type: :reques
     patch trip_path(trip), params: { trip: { name: 'Renamed' }, page: '2', sort: 'name' }
 
     expect(response).to redirect_to(trip_path(trip, page: 2, sort: 'name'))
+  end
+
+  it 'keeps the list state in the form when an update fails' do
+    patch trip_path(trip), params: { trip: { name: '' }, page: '2', sort: 'name' }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    hidden = html.css("form[action='#{trip_path(trip)}'] input[type=hidden]").to_h { [_1['name'], _1['value']] }
+    expect(hidden).to include('page' => '2', 'sort' => 'name')
+  end
+
+  it 'renders no list state in the new trip form' do
+    get new_trip_path
+
+    form = html.at_css("form[action='#{trips_path}']")
+    expect(form.css('input[type=hidden]').map { _1['name'] }).not_to include('page', 'sort', 'q')
+    expect(form.css('a').map { _1['href'] }).to include(trips_path)
   end
 end

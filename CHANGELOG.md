@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- "Back to trips" returns to the page of the trips list you opened the trip from, with its filters, sort order and family trips page, also after editing the trip. Thanks @binnichtaktiv! (#4058)
+- "Back to trips" on your own trip returns to the page of the trips list you opened it from, with its search, filters and sort order, also after editing the trip. Thanks @binnichtaktiv! (#4058)
 
 ## [1.24.0] - 2026-11-21, Berlin
 
