@@ -166,7 +166,8 @@ module Imports
 
     def build_import(user, entry, name)
       filename = File.basename(entry[:path])
-      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true)
+      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true,
+                                      archive_import_id: @import.archive_import_id || @import.id)
       new_import.file.attach(
         io: File.open(entry[:path]),
         filename: filename,

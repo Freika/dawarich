@@ -81,6 +81,8 @@ status: :unprocessable_content and return
                   status: :unprocessable_content) and return
     end
 
+    queue_import_started_event
+
     redirect_to imports_url,
                 notice: I18n.t('controllers.imports.size_files_are_queued_to_be_imported_in_background',
                                size: @created_imports.size),
@@ -135,6 +137,15 @@ status: :unprocessable_content and return
       import = create_import_from_signed_id(item)
       @created_imports << import if import.present?
     end
+  end
+
+  # One import_started per accepted upload, sent by the next page's browser so
+  # it lands in the session that goes on to view the map.
+  def queue_import_started_event
+    return if DawarichSettings.self_hosted?
+
+    session[:analytics_events] = Array(session[:analytics_events]) +
+                                 [{ 'name' => 'import_started', 'props' => { 'files' => @created_imports.size } }]
   end
 
   def cleanup_failed_imports

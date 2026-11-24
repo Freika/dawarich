@@ -124,6 +124,8 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
+  post 'analytics/first_map_view', to: 'analytics/first_map_views#create', as: :analytics_first_map_view
+
   resources :imports do
     get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'

@@ -39,6 +39,13 @@ RSpec.describe Imports::ZipExtractor do
         expect(names).to include('data.csv (from test_archive.zip)')
       end
 
+      it 'links every extracted import to the uploaded archive' do
+        archive_id = import.id
+        described_class.new(import, user.id, zip_path).call
+
+        expect(user.imports.pluck(:archive_import_id)).to all(eq(archive_id))
+      end
+
       it 'destroys the original ZIP import' do
         described_class.new(import, user.id, zip_path).call
         expect(Import.exists?(import.id)).to be false
