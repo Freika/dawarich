@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A day's distance in the timeline no longer counts the distance of "stayed" tracks, the same way its moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
+
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes

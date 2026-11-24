@@ -223,11 +223,11 @@ module Timeline
     end
 
     def build_summary(visits, tracks, track_shares, visit_shares)
-      total_distance_m = tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
       # Asymmetry with fetch_tracks is intentional: stationary tracks with >=100m
-      # still surface in the timeline as "🛑 stayed" rows, but their duration must
-      # not contribute to "time_moving_minutes" — "stayed" is not "moving".
+      # still surface in the timeline as "🛑 stayed" rows, but their distance and
+      # duration must not count towards the day's movement — "stayed" is not "moving".
       moving_tracks = tracks.reject { |t| t.dominant_mode == 'stationary' }
+      total_distance_m = moving_tracks.sum { |t| t.distance.to_f * track_shares.fetch(t.id, 1.0) }
       moving_seconds = moving_tracks.sum { |t| t.duration.to_f * track_shares.fetch(t.id, 1.0) }
       # NOTE: visit.duration is stored in MINUTES (see Visits::Creator / Visits::Create).
       stationary_minutes = visits.sum { |v| (v.duration * visit_shares.fetch(v.id, 1.0)).round }

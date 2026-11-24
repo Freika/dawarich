@@ -986,6 +986,30 @@ privacy_zone_masker: Maps::PrivacyZoneMasker.none)
         summary = subject.first[:summary]
         expect(summary[:time_moving_minutes]).to eq(30)
       end
+
+      it 'excludes stayed tracks from the day distance while keeping their row distance' do
+        day_entry = subject.first
+        stayed_row = day_entry[:entries].find { |e| e[:track_id] == real_stationary_movement_track.id }
+
+        expect(day_entry[:summary][:total_distance]).to eq(3.7)
+        expect(stayed_row[:distance]).to eq(0.2)
+      end
+    end
+
+    context 'with a day of only stayed tracks' do
+      let(:day) { Time.zone.parse('2026-05-12 00:00:00') }
+
+      before do
+        create(:track, user: user, start_at: day + 12.hours, end_at: day + 12.hours + 5.minutes,
+                       distance: 200, duration: 300, dominant_mode: :stationary)
+      end
+
+      it 'reports zero distance' do
+        result = described_class.new(user, start_at: day.iso8601, end_at: (day + 1.day).iso8601,
+                                           privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
+
+        expect(result.first[:summary][:total_distance]).to eq(0.0)
+      end
     end
   end
 
