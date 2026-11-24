@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- "Back to trips" on your own trip returns to the page of the trips list you opened it from, with its search, filters and sort order, also after editing the trip. Thanks @binnichtaktiv! (#4058)
-
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
@@ -40,6 +34,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
 - A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
+- "Back to trips" on your own trip returns to the page of the trips list you opened it from, with its search, filters and sort order, also after editing the trip. Thanks @binnichtaktiv! (#4058)
 
 ## [1.23.0] - 2026-11-14, Berlin
 
