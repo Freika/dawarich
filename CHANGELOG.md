@@ -4,12 +4,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- In the timeline, a visit that starts during the day and lasts 23 hours or more shows its arrival time on the day it starts instead of "All day". Days the visit covers completely still show "All day". Thanks @lomky! (#4044)
-
 ## [1.24.0] - 2026-11-21, Berlin
 
 ### ⚠️ Upgrade notes
@@ -36,6 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Trips page no longer just asks you to add a Home when a place carries a tag named Home: it explains that a tag doesn't set your Home and links to the places with that tag, where you can click "I live here".
 - Trip routes load on multi-day trips again: their map tiles no longer time out while PostgreSQL compiles the query. Thanks @A82FF! (#4024)
 - A selected track that crosses the 180° meridian is drawn the short way instead of around the globe, and so are its transport-mode highlights. Thanks @peterbess! (#4022)
+- In the timeline, a visit that starts during the day and lasts 23 hours or more shows its arrival time on the day it starts instead of "All day". Days the visit covers completely still show "All day". Thanks @lomky! (#4044)
 - Setting a password for a user in Settings → Users now unlocks an account that was locked after too many failed sign-ins. Thanks @sim642! (#4013)
 - Achievements count countries you visited on a small island or near a coast, where the centre of the map cell lies in the sea. Thanks @TheRealNox! (#4012)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
