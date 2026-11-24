@@ -121,7 +121,7 @@
                     <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'video', class: 'w-4 h-4' %>
             </button>
-            <%= link_to edit_trip_path(@trip),
+            <%= link_to edit_trip_path(@trip, trip_list_state),
                 class: "btn btn-sm btn-ghost",
                 title: t('.edit_trip') do %>
               <%= icon 'square-pen', class: 'w-4 h-4' %>
@@ -299,7 +299,7 @@
 
       <%# Back link %>
       <div class="mb-6">
-        <%= link_to trips_path, class: "btn btn-sm btn-ghost gap-1" do %>
+        <%= link_to trips_path(trip_list_state), class: "btn btn-sm btn-ghost gap-1" do %>
           <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('.back_to_trips') %>
         <% end %>
       </div>

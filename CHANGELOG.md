@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A day's distance and its per-mode chips in the timeline, on the web, in the API and in the mobile app, no longer count "stayed" tracks, the same way the day's moving time already leaves them out. The "stayed" row still shows its own distance. Thanks @lomky! (#4057)
 - Points stored under a country name in another language, for example "Deutschland", are linked to their country, so they no longer count as a separate country. A name is linked only when the points that already have a country agree on it.
 - A printed poster ordered from the Poster Studio gets the 4 mm bleed the print service requires, so a 30 × 40 cm order is no longer rejected. Downloaded PDFs are unchanged.
+- "Back to trips" on your own trip returns to the page of the trips list you opened it from, with its search, filters and sort order, also after editing the trip. Thanks @binnichtaktiv! (#4058)
 
 ## [1.23.0] - 2026-11-14, Berlin
 
