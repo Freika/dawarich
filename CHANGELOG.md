@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- When the "link your account" email after a Google or Apple sign-in could not be queued, the next attempt no longer waits an hour as if the email had gone out. Only an email that was actually queued starts the one-hour resend limit. Thanks @fernandezbaptiste! (#4060)
+- When the "link your account" email after a sign-in with Google, Apple, GitHub or OpenID Connect could not be queued, the next attempt no longer waits an hour as if the email had gone out. Only an email that was actually queued starts the one-hour resend limit. Thanks @fernandezbaptiste! (#4060)
 
 ## [1.24.0] - 2026-11-21, Berlin
 
