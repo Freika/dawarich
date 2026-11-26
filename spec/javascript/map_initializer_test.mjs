@@ -199,6 +199,16 @@ test("never sends the api key to another origin", async (t) => {
   }
 })
 
+test("leaves a pmtiles request for another host as MapLibre wrote it", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const transformRequest = await transformRequestWithApiKey("secret-key")
+  const url = "pmtiles://https://tiles.example/planet.pmtiles/3/1/2"
+
+  assert.deepEqual(transformRequest(url), { url })
+})
+
 test("falls back from an unavailable initial custom style URL", async () => {
   const state = await initializeWithCustomStyle({
     emitOnConstruct: (map) =>

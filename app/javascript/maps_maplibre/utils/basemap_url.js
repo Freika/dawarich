@@ -1,9 +1,14 @@
 const TILE_FILE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".mvt", ".pbf"]
+const PMTILES_EXTENSION = ".pmtiles"
+
+export function pmtilesTilesUrl(url) {
+  return `pmtiles://${url.trim()}/{z}/{x}/{y}`
+}
 
 /**
  * Classify a custom basemap URL into the kind of MapLibre source it describes.
  * @param {string} url - Trimmed or untrimmed basemap URL
- * @returns {'style'|'raster'|'vector'|null} Classification, or null when unusable
+ * @returns {'style'|'raster'|'vector'|'pmtiles'|null} Classification, or null when unusable
  */
 export function classifyBasemapUrl(url) {
   if (typeof url !== "string") return null
@@ -25,7 +30,9 @@ export function classifyBasemapUrl(url) {
       return null
     }
 
-    return isStyleDocumentLocation(trimmed) ? "style" : null
+    if (!isStyleDocumentLocation(trimmed)) return null
+
+    return path.endsWith(PMTILES_EXTENSION) ? "pmtiles" : "style"
   }
 
   if (

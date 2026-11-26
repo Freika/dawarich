@@ -1090,7 +1090,7 @@ en:
         kilometers: Kilometers
         miles: Miles
         custom_basemap_url: Custom Basemap URL
-        serve_the_base_map_from_your_own_source_accepts_protomaps: Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), or a full MapLibre style URL. Leave empty for the built-in tiles.
+        serve_the_base_map_from_your_own_source_accepts_protomaps: Serve the base map from your own source. Accepts Protomaps-schema vector tiles or raster XYZ tiles (both must include {z}, {x}, and {y}), a Protomaps-schema PMTiles archive (.pmtiles), or a full MapLibre style URL. Leave empty for the built-in tiles.
         fill_gaps_with_the_default_basemap: Fill gaps with the default basemap
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: For a tileset that covers only part of the world. Areas it doesn't cover are drawn from Dawarich's default tile server, so turning this on sends tile requests there.
         base_map_layers: Base Map Layers

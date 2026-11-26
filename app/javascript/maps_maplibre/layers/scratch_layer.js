@@ -1,15 +1,5 @@
-import * as maplibregl from "maplibre-gl"
-import { Protocol } from "pmtiles"
+import { registerPmtilesProtocol } from "maps_maplibre/utils/pmtiles_protocol"
 import { VectorTileLayer } from "./base_layer"
-
-let protocolRegistered = false
-
-function registerPmtilesProtocol() {
-  if (protocolRegistered) return
-  const protocol = new Protocol()
-  maplibregl.addProtocol("pmtiles", protocol.tile)
-  protocolRegistered = true
-}
 
 export function visitedCountryFilter(isoA3 = []) {
   return ["in", ["get", "iso_a3"], ["literal", isoA3]]
