@@ -60,6 +60,15 @@ RSpec.describe 'POST /analytics/first_map_view', type: :request do
     expect(post_view).to eq('no_imported_data')
   end
 
+  it 'does not count imported points a Lite user cannot see' do
+    lite = create(:user, :lite_plan)
+    old_import = create(:import, user: lite, status: :completed)
+    create(:point, user: lite, import: old_import, timestamp: 2.years.ago.to_i)
+    sign_in lite
+
+    expect(post_view(start_at: 3.years.ago.iso8601, end_at: Time.current.iso8601)).to eq('no_imported_data')
+  end
+
   it 'rejects a request without a valid period' do
     post analytics_first_map_view_path, params: { start_at: 'nope' }, as: :json
 

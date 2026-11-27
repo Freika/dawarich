@@ -38,10 +38,13 @@ module Analytics
 
     private
 
+    # Driven by (user_id, timestamp): an IN over the user's imports could walk
+    # index_points_on_import_id through a large import instead.
     def imported_points_in_period?
       @user.scoped_points
-           .where(import_id: @user.imports.where(demo: false).select(:id))
            .where(timestamp: @period)
+           .where.not(import_id: nil)
+           .where.not(import_id: @user.imports.where(demo: true).ids)
            .exists?
     end
   end
