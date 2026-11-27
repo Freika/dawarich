@@ -39,13 +39,16 @@ module Imports
         entries = collect_supported_files(extracted_dir)
         known_entries = detect_google_takeout(entries) + detect_google_photos(entries) + detect_swarm(entries)
 
-        if known_entries.any?
-          create_imports_from_entries(known_entries)
-        else
-          create_imports_from_entries(entries)
-        end
+        new_imports = create_imports_from_entries(known_entries.any? ? known_entries : entries)
 
-        @import.destroy!
+        # Destroyed before its files are enqueued: an archive uploaded with
+        # other files shares their archive_import_id, and import_succeeded
+        # waits while any import of the upload is still processing.
+        begin
+          @import.destroy!
+        ensure
+          enqueue_processing(new_imports)
+        end
       rescue StandardError => e
         @import.update(status: :failed, error_message: e.message) unless @import.destroyed?
         raise
@@ -155,9 +158,11 @@ module Imports
           seen_names << name
           new_imports << build_import(user, entry, name)
         end
-      ensure
+      rescue StandardError
         enqueue_processing(new_imports)
+        raise
       end
+      new_imports
     end
 
     def import_name_for(entry)

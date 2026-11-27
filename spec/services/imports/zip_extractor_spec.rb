@@ -46,6 +46,19 @@ RSpec.describe Imports::ZipExtractor do
         expect(user.imports.pluck(:archive_import_id)).to all(eq(archive_id))
       end
 
+      it 'counts an archive uploaded with other files once its files finish' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        sibling = create(:import, user:, status: :completed, archive_import_id: import.id)
+        create(:point, user:, import: sibling)
+        import.update!(status: :processing, archive_import_id: import.id)
+
+        perform_enqueued_jobs(only: Import::ProcessJob) do
+          described_class.new(import, user.id, zip_path).call
+        end
+
+        expect(AnalyticsEvent.event_import_succeeded.sole.properties).to include('files' => 3)
+      end
+
       it 'destroys the original ZIP import' do
         described_class.new(import, user.id, zip_path).call
         expect(Import.exists?(import.id)).to be false

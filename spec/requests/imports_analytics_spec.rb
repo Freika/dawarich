@@ -31,6 +31,23 @@ RSpec.describe 'Import analytics events', type: :request do
     expect(import_started_signals).to be_empty
   end
 
+  it 'counts an upload of several files as one import_succeeded' do
+    second_blob = ActiveStorage::Blob.create_and_upload!(
+      io: File.open(Rails.root.join('spec/fixtures/files/owntracks/2023-02_old.rec')),
+      filename: '2023-02_old.rec', content_type: 'text/plain'
+    )
+    post imports_path, params: { import: { source: 'owntracks', files: [signed_id, second_blob.signed_id] } }
+
+    first, second = user.imports.order(:id).to_a
+    [first, second].each do |import|
+      import.update!(status: :completed)
+      create(:point, user:, import:)
+      Analytics::ImportSucceeded.new(import).call
+    end
+
+    expect(AnalyticsEvent.event_import_succeeded.sole.properties).to eq('result' => 'complete', 'files' => 2)
+  end
+
   it 'sends no signal when no file was accepted' do
     post imports_path, params: { import: { source: 'owntracks', files: ['not-a-signed-id'] } }
     get imports_path
