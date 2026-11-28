@@ -41,6 +41,17 @@ RSpec.describe Immich::ConnectionTester do
     expect(thumbnail).to have_been_requested
   end
 
+  it 'verifies the connection when hidden assets have no thumbnails' do
+    stub_metadata(body: lambda { |request|
+      asset_id = JSON.parse(request.body)['visibility'] == 'timeline' ? 'timeline-asset' : 'hidden-video'
+      { assets: { items: [{ id: asset_id }] } }.to_json
+    })
+    stub_thumbnail('hidden-video', status: 404, body: { message: 'Asset media not found' }.to_json)
+    stub_thumbnail('timeline-asset')
+
+    expect(result).to eq(success: true, message: 'Immich connection verified')
+  end
+
   it 'asks for one asset from today' do
     stub_thumbnail
     expected = { 'size' => 1, 'page' => 1, 'order' => 'asc', 'withExif' => true }
