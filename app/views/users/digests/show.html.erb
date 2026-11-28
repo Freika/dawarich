@@ -224,7 +224,7 @@
         <p class="text-gray-600 mb-4">
           <%= t('.upgrade_to_pro_to_see_your_full_year_in_review') %>
         </p>
-        <a href="<%= upgrade_url(utm_medium: 'digest', utm_content: 'year_in_review') %>"
+        <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'digest', utm_content: 'year_in_review') %>"
            class="btn btn-primary">
           <%= t('.upgrade_to_pro') %>
         </a>

@@ -40,6 +40,14 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.status).to eq('completed')
         end
+
+        it 'records import_succeeded for Dawarich Cloud with the import' do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+          expect { service.call }.to have_enqueued_job(Analytics::DeliverEventJob)
+          expect(AnalyticsEvent.sole).to have_attributes(event: 'import_succeeded',
+                                                         dedup_key: "import_succeeded:#{import.id}")
+        end
       end
 
       context 'when the file holds no points at all' do

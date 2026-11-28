@@ -1,3 +1,8 @@
 <% content_for :title, t('.map') %>
 
 <%= render 'map/maplibre/map', start_at: @start_at, end_at: @end_at %>
+<% if Analytics::FirstMapView.pending?(current_user) %>
+  <div hidden data-controller="first-map-view"
+       data-first-map-view-url-value="<%= analytics_first_map_view_path %>"
+       data-action="maps--maplibre:period-loaded@document->first-map-view#check"></div>
+<% end %>

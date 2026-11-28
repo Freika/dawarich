@@ -16,13 +16,13 @@
             <%= t('.your_subscription_will_be_valid_for_the_next') %> <span class="text-accent"><%= days_left(current_user.active_until) %></span>.
           </p>
 
-          <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to t('.manage_subscription'), trial_upgrade_path, data: { turbo: false }, class: 'btn btn-primary my-4' %>
         <% else %>
           <p class="py-6">
             <%= t('.you_are_currently_not_subscribed_to_dawarich_how_about_we') %>
           </p>
 
-          <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary my-4' %>
+          <%= link_to t('.manage_subscription'), trial_upgrade_path, data: { turbo: false }, class: 'btn btn-primary my-4' %>
         <% end %>
       </div>
     </div>

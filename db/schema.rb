@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_17_110937) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_25_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -150,6 +150,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_110937) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "analytics_events", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.integer "event", null: false
+    t.string "dedup_key", null: false
+    t.jsonb "properties", default: {}, null: false
+    t.datetime "delivered_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["dedup_key"], name: "index_analytics_events_on_dedup_key", unique: true
+    t.index ["user_id"], name: "index_analytics_events_on_user_id"
   end
 
   create_table "areas", force: :cascade do |t|
@@ -471,7 +483,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_110937) do
     t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.bigint "archive_import_id"
     t.index ["additional_data_extraction_status"], name: "index_imports_on_additional_data_extraction_status"
+    t.index ["archive_import_id"], name: "index_imports_on_archive_import_id", where: "(archive_import_id IS NOT NULL)"
     t.index ["source"], name: "index_imports_on_source"
     t.index ["status"], name: "index_imports_on_status"
     t.index ["user_id"], name: "index_imports_on_user_id"
@@ -1156,6 +1170,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_17_110937) do
   add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "analytics_events", "users", on_delete: :cascade
   add_foreign_key "areas", "users"
   add_foreign_key "digests", "users"
   add_foreign_key "exploration_cell_coverages", "exploration_cells", column: "cell_id"

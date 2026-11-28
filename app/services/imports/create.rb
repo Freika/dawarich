@@ -53,6 +53,8 @@ class Imports::Create
       import.update!(status: :completed)
       broadcast_status_update
     end
+
+    Analytics::ImportSucceeded.new(import).call unless import.destroyed? || import.user_data_archive?
   end
 
   private

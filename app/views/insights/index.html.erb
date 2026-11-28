@@ -4,6 +4,8 @@
 <% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit, Current.date_time_preferences.cache_key] %>
 
 <div class="w-full my-5">
+  <%# A year switch reloads this page with ?year=, which is not another opening. %>
+  <%= analytics_event_tag('insights_viewed', state: @viewed_state) if params[:year].blank? %>
   <%= render 'header' %>
   <%= render 'shared/plan_data_window_alert', utm_content: 'insights' %>
 
