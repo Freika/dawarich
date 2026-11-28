@@ -10,10 +10,15 @@ RSpec.describe AirTrail::ImportFlights do
     end
   end
 
-  def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00')
+  before { stub_request(:get, %r{\Ahttps://a\.example/api/v1/flights}).to_return(status: 404) }
+
+  def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00',
+                      dep_scheduled: nil, arr_scheduled: nil, date: '2026-04-20')
     {
-      'id' => id, 'date' => '2026-04-20', 'datePrecision' => 'day',
-      'departure' => dep, 'arrival' => arr, 'flightNumber' => 'AF1235',
+      'id' => id, 'date' => date, 'datePrecision' => 'day',
+      'departure' => dep, 'arrival' => arr,
+      'departureScheduled' => dep_scheduled, 'arrivalScheduled' => arr_scheduled,
+      'flightNumber' => 'AF1235',
       'aircraftReg' => 'F-GKXA', 'note' => nil, 'duration' => 7200,
       'from' => { 'icao' => 'EDDB', 'iata' => 'BER', 'lat' => 52.351, 'lon' => 13.493, 'name' => 'Berlin' },
       'to' => { 'icao' => 'LFPG', 'iata' => 'CDG', 'lat' => 49.009, 'lon' => 2.547, 'name' => 'Paris' },
@@ -37,6 +42,20 @@ RSpec.describe AirTrail::ImportFlights do
     expect(flight.seat_class).to eq('economy')
     expect(flight.distance_km).to be_within(10).of(855)
     expect(result[:created]).to eq(1)
+  end
+
+  it 'places a flight that only carries scheduled times in time' do
+    allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return(
+      [airtrail_flight(id: 8, dep: nil, arr: nil,
+                       dep_scheduled: '2026-04-20T10:00:00.000+00:00',
+                       arr_scheduled: '2026-04-20T12:00:00.000+00:00')]
+    )
+
+    described_class.new(user).call
+
+    flight = user.flights.first
+    expect(flight.departure_time).to eq(Time.utc(2026, 4, 20, 10, 0))
+    expect(flight.arrival_time).to eq(Time.utc(2026, 4, 20, 12, 0))
   end
 
   it 'updates an existing flight by external_id' do
@@ -99,6 +118,48 @@ RSpec.describe AirTrail::ImportFlights do
     expect(user.reload.settings['other_key']).to eq('x')
     expect(user.settings['airtrail_last_synced_at']).to be_present
   end
+
+  describe 'flight tracks' do
+    let(:track) { [[13.493, 52.351], [9.0, 51.5], [2.547, 49.009]] }
+
+    it 'stores the AirTrail track of a synced flight' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+      stub_request(:get, 'https://a.example/api/v1/flights?limit=100')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: [{ id: 1, track: { updatedAt: '2026-10-20T08:00:00.000Z' } }],
+                           page: { nextCursor: nil } }.to_json)
+      stub_request(:get, 'https://a.example/api/v1/flights/1/track')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: { flightId: 1, coordinates: track } }.to_json)
+
+      described_class.new(user).call
+
+      expect(user.flights.first.track_coordinates).to eq(track)
+    end
+
+    it 'keeps a stored track when the flight list is synced again' do
+      create(:flight, user: user, external_id: 1, track_coordinates: track,
+                      track_updated_at: Time.utc(2026, 10, 20, 8))
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      described_class.new(user).call
+
+      flight = user.flights.first
+      expect(flight.flight_number).to eq('AF1235')
+      expect(flight.track_coordinates).to eq(track)
+      expect(flight.track_updated_at).to eq(Time.utc(2026, 10, 20, 8))
+    end
+
+    it 'finishes the sync when AirTrail has no track API' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      result = described_class.new(user).call
+
+      expect(result).to include(created: 1)
+      expect(user.reload.settings['airtrail_last_synced_at']).to be_present
+    end
+  end
+
   describe 'stats recalculation' do
     it 'enqueues a stats recalculation for the month a synced flight falls in' do
       allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
@@ -108,11 +169,21 @@ RSpec.describe AirTrail::ImportFlights do
     end
 
     it 'enqueues a recalculation for the month of a flight that the sync removed' do
-      create(:flight, user: user, external_id: 99, flight_date: Date.new(2025, 11, 3))
+      create(:flight, user: user, external_id: 99, flight_date: Date.new(2025, 11, 3), departure_time: nil)
       allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
 
       expect { described_class.new(user).call }
         .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2025, 11)
+    end
+
+    it 'also recalculates the arrival month of an overnight flight' do
+      overnight = airtrail_flight(id: 1, date: '2026-03-31', dep: '2026-03-31T22:00:00.000+00:00',
+                                  arr: '2026-04-01T02:00:00.000+00:00')
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([overnight])
+
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+        .and have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 4)
     end
 
     it 'enqueues each affected month once' do

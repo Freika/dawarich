@@ -1,7 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
+import { HtmlLabelManager } from "maps_maplibre/utils/html_label_manager"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -25,6 +31,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.labels?.clear()
     if (this._initTimer) {
       clearTimeout(this._initTimer)
       this._initTimer = null
@@ -51,6 +58,7 @@ export default class extends Controller {
       }
 
       const theme = getCurrentTheme()
+      startMapLoading(container)
       const style = await getMapStyle(theme)
 
       this.map = new maplibregl.Map({
@@ -60,8 +68,10 @@ export default class extends Controller {
         zoom: 2,
         attributionControl: false,
       })
+      finishMapLoadingOn(this.map)
 
       this.map.addControl(new maplibregl.NavigationControl(), "top-right")
+      this.map.addControl(collapsedAttributionControl())
       this.map.on("load", () => this.addMembers())
     } catch (error) {
       console.error("Family map init failed:", error)
@@ -71,8 +81,6 @@ export default class extends Controller {
   addMembers() {
     const locations = this.locationsValue
     if (!locations.length) return
-    const theme = getCurrentTheme()
-
     const features = locations.map((loc, i) => ({
       type: "Feature",
       geometry: {
@@ -81,7 +89,7 @@ export default class extends Controller {
       },
       properties: {
         id: loc.user_id,
-        name: loc.email || translate("common.unknown"),
+        name: loc.name || loc.email || translate("common.unknown"),
         color: MEMBER_COLORS[i % MEMBER_COLORS.length],
         lastUpdate: loc.timestamp,
       },
@@ -117,24 +125,12 @@ export default class extends Controller {
       },
     })
 
-    // Email labels
-    this.map.addLayer({
-      id: "family-labels",
-      type: "symbol",
-      source: "family-members",
-      layout: {
-        "text-field": ["get", "name"],
-        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-        "text-size": 12,
-        "text-offset": [0, 1.5],
-        "text-anchor": "top",
-      },
-      paint: {
-        "text-color": theme === "dark" ? "#e5e7eb" : "#111827",
-        "text-halo-color": theme === "dark" ? "#1f2937" : "#ffffff",
-        "text-halo-width": 2,
-      },
+    this.labels = new HtmlLabelManager(this.map, {
+      className: "map-html-label map-html-label--family",
+      anchor: "top",
+      offset: [0, 14],
     })
+    this.labels.sync(features)
 
     // Click to show popup
     this.map.on("click", "family-circles", (e) => {

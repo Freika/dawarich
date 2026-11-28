@@ -9,6 +9,20 @@ RSpec.describe '/api/v1/areas', type: :request do
     it 'renders a successful response' do
       get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
       expect(response).to be_successful
+      expect(response.headers['Deprecation']).to eq('true')
+      expect(response.headers['Link']).to eq(%(<#{api_v1_places_url}>; rel="successor-version"))
+    end
+
+    it 'serves a legacy Area whose stored radius is not positive' do
+      area = create(:area, user:)
+      area.update_column(:radius, 0)
+
+      get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response).to be_successful
+      expect(response.parsed_body).to contain_exactly(
+        include('id' => area.id, 'radius' => Place.column_defaults['visit_radius'])
+      )
     end
   end
 
@@ -23,6 +37,19 @@ RSpec.describe '/api/v1/areas', type: :request do
           post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
                                  params: { area: valid_attributes }
         end.to change(Area, :count).by(1)
+      end
+
+      it 'creates and returns a canonical Place behind the legacy Area ID' do
+        expect do
+          post api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" },
+                                 params: { area: valid_attributes }
+        end.to change(Place, :count).by(1)
+
+        area = Area.last
+        place = LegacyAreaPlaceMapping.find_by!(area:).place
+        expect(place).to have_attributes(name: area.name, visit_radius: area.radius)
+        expect(response.parsed_body).to include('id' => area.id, 'radius' => place.visit_radius)
+        expect(response.headers['Deprecation']).to eq('true')
       end
 
       it 'redirects to the created api_v1_area' do
@@ -66,6 +93,7 @@ RSpec.describe '/api/v1/areas', type: :request do
         area.reload
 
         expect(area.reload.name).to eq('New Name')
+        expect(LegacyAreaPlaceMapping.find_by!(area:).place.name).to eq('New Name')
       end
 
       it 'redirects to the api_v1_area' do
@@ -99,10 +127,43 @@ RSpec.describe '/api/v1/areas', type: :request do
       end.to change(Area, :count).by(-1)
     end
 
+    it 'preserves Visits when deleting through the compatibility adapter' do
+      place = Places::LegacyAreaAdapter.new(user:).resolve(area)
+      visit = create(:visit, user:, area:, place:, status: :confirmed)
+
+      delete api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(visit.reload).to have_attributes(area_id: nil, place_id: nil)
+    end
+
     it 'redirects to the api_v1_areas list' do
       delete api_v1_area_url(area), headers: { 'Authorization' => "Bearer #{user.api_key}" }
 
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  context "with another user's Area" do
+    let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
+    let!(:other_area) { create(:area, user: create(:user), name: 'Theirs') }
+
+    it 'does not show it' do
+      get api_v1_area_url(other_area), headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'does not update it' do
+      patch api_v1_area_url(other_area), headers: headers, params: { area: { name: 'Mine' } }
+
+      expect(response).to have_http_status(:not_found)
+      expect(other_area.reload.name).to eq('Theirs')
+    end
+
+    it 'does not delete it' do
+      expect { delete api_v1_area_url(other_area), headers: headers }.not_to change(Area, :count)
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

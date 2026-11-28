@@ -9,6 +9,10 @@ RSpec.describe Overland::PointsCreator do
   let(:file_path) { 'spec/fixtures/files/overland/geodata.json' }
   let(:payload_hash) { JSON.parse(File.read(file_path)) }
 
+  # Debounce keys are per user id and outlive the test database, so a key left by an
+  # earlier run for the same id would silently suppress the jobs asserted below.
+  before { Visits::RealtimeDebouncer.new(user.id).clear }
+
   context 'with a hash payload' do
     let(:payload) { payload_hash }
 
@@ -55,7 +59,18 @@ RSpec.describe Overland::PointsCreator do
         .with(hash_including(user_id: user.id))
     end
 
-    it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+    it 'enqueues VisitSuggestingJob when reverse geocoding is disabled and visit suggestions are enabled' do
+      user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'true'))
+      expect(Geocoding::Config.for(user).enabled?).to be(false)
+
+      expect { call_service }.to have_enqueued_job(VisitSuggestingJob)
+        .with(hash_including(user_id: user.id))
+    end
+
+    it 'does not enqueue VisitSuggestingJob when the user has opted out of visit suggestions' do
+      configure_instance_geocoding
+      user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+
       expect { call_service }.not_to have_enqueued_job(VisitSuggestingJob)
     end
   end

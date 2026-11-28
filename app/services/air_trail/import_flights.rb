@@ -12,24 +12,21 @@ module AirTrail
       api_key = @settings.airtrail_api_key
       return { skipped: true } if url.blank? || api_key.blank?
 
-      payload = AirTrail::Client.new(
-        url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification
-      ).flights
+      client = AirTrail::Client.new(url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification)
+      payload = client.flights
 
       months_before_sync = affected_months
       counts = upsert(payload)
       record_synced_at
       recalculate_stats(months_before_sync | affected_months)
+      AirTrail::SyncTracks.new(@user, client).call
       counts
     end
 
     private
 
     def affected_months
-      @user.flights.pluck(:flight_date, :departure_time).filter_map do |flight_date, departure_time|
-        local_date = flight_date || departure_time&.in_time_zone(@user.timezone_iana)&.to_date
-        [local_date.year, local_date.month] if local_date
-      end.uniq
+      @user.flights.stat_months(@user.timezone_iana)
     end
 
     def recalculate_stats(months)

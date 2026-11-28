@@ -6,7 +6,7 @@
   <div id="exports" class="min-w-full">
     <% if @exports.empty? %>
       <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
-        <h3 class="text-xl font-bold mb-3"><%= t('.no_exports_yet') %></h3>
+        <h3 class="text-xl font-medium mb-3"><%= t('.no_exports_yet') %></h3>
         <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
           <%= t('.exports_are_created_from_the') %> <%= link_to t('.points'), points_url, class: 'link link-primary' %> <%= t('.page_select_a_date_range_and_export_to_geojson_or') %>
         </p>
@@ -22,11 +22,11 @@
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[40%]"><%= sortable_column t('.name'), :name, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'File size', :byte_size, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[15%]"><%= sortable_column t('.status'), :status, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[20%]"><%= sortable_column t('.created'), :created_at, :exports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[13%]"><%= t('.actions') %></th>
+              <th class="px-4 py-3 text-xs font-medium text-base-content/60 w-[40%]"><%= sortable_column t('.name'), :name, :exports_path %></th>
+              <th class="px-4 py-3 text-xs font-medium text-base-content/60 w-[12%]"><%= sortable_column 'File size', :byte_size, :exports_path %></th>
+              <th class="px-4 py-3 text-xs font-medium text-base-content/60 w-[15%]"><%= sortable_column t('.status'), :status, :exports_path %></th>
+              <th class="px-4 py-3 text-xs font-medium text-base-content/60 w-[20%]"><%= sortable_column t('.created'), :created_at, :exports_path %></th>
+              <th class="px-4 py-3 text-xs font-medium text-base-content/60 text-right w-[13%]"><%= t('.actions') %></th>
             </tr>
           </thead>
           <tbody>

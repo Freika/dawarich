@@ -4,11 +4,585 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.15.2] - Unreleased
+## [1.24.1] - Unreleased
 
 ### Fixed
 
-- GPX imports now skip track points with invalid timestamps instead of failing the entire import.
+- GPX imports skip track points with an unreadable time instead of failing the whole import.
+
+## [1.24.0] - 2026-11-28, Berlin
+
+### ⚠️ Upgrade notes
+
+- Self-hosted: a background job re-checks imports without speed data, so countries you only flew over drop out of stats, trips and digests. It doesn't start with `SKIP_POINT_DIMENSION_BACKFILL=1` or if the upgrade log shows "Could not enqueue BackfillMissingVelocitiesJob"; start it later with `DataMigrations::BackfillMissingVelocitiesJob.perform_later`.
+- Self-hosted: a second job links points stored under a country name in another language, such as "Deutschland", to their country. It reads the points table twice, so it is slow on a large history. `SKIP_POINT_DIMENSION_BACKFILL=1` skips it; start it later with `DataMigrations::LinkCountryNamesJob.perform_later`. Stats catch up over a few days; digests already built stay as they are.
+
+### Added
+
+- Achievements in the mobile app: collections with search and filters, unlock celebrations, and public links that are off until you turn one on. `GET /api/v1/users/me` advertises them as `features.achievements_api`; they answer 404 when achievements are off. Thanks @kpriemchenko! (#3796)
+- Places: "Add home" and "Add work" buttons, an "I live here" button while you have no Home, and optional "From" and "Until" dates. A Place whose period has ended is dimmed; a new Home's dates become the time you lived there.
+
+### Fixed
+
+- A GPS noise re-check rebuilds tracks, stats and digests only for the years that changed, and says so when nothing did.
+- Trip routes are drawn like map tracks: no break at midnight or at a pause on a single-device trip, and a preview whose only segment crosses midnight is no longer empty. Thanks @binnichtaktiv! (#4026, #4027)
+- The nightly stats cache no longer scans every point of a user to count geocoded points. Thanks @sylvainmetayer! (#4028)
+- Small bars stay visible next to large ones in the Daily Activity and year-digest distance charts; a day or month without movement has no bar. Thanks @binnichtaktiv! (#4029)
+- Two short stops next to each other no longer become overlapping visits. Thanks @Mason10198! (#4023)
+- A stop during which Android smart tracking turned GPS off becomes one visit instead of a gap (Android app 2.9.155 or newer). Thanks @Toastie! (#3989)
+- The "link your account" email after an OAuth sign-in starts its one-hour resend limit only once it was actually queued. Thanks @fernandezbaptiste! (#4060)
+- Countries only flown over no longer count as visited for imports without speed data: KML (including Flightradar24), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps. Only flight speeds are derived now.
+- Digests leave out points flagged as anomalies, as stats and trips already do.
+- `/metrics` answers with web metrics only when the Sidekiq exporter takes longer than 3 seconds, instead of outlasting Prometheus' scrape timeout.
+- Trips explains that a tag named Home doesn't set your Home and links to the places with that tag.
+- Sidekiq logs at the level `RAILS_LOG_LEVEL` sets. At `warn`, failed jobs appear only under Retries and Dead in the Sidekiq dashboard. Thanks @benc-git! (#4040)
+- Trip route tiles on multi-day trips no longer time out. Thanks @A82FF! (#4024)
+- A selected track that crosses the 180° meridian is drawn the short way. Thanks @peterbess! (#4022)
+- The timeline shows the arrival time on the first day of a visit lasting 23 hours or more, instead of "All day". Thanks @lomky! (#4044)
+- Setting a user's password in Settings → Users unlocks an account locked after failed sign-ins. Thanks @sim642! (#4013)
+- Achievements count countries visited on a small island or near a coast. Thanks @TheRealNox! (#4012)
+- A day's distance and its per-mode chips no longer count "stayed" tracks. Thanks @lomky! (#4057)
+- Points stored under a country name in another language are linked to their country when the points that already have a country agree on it, so they no longer count as a separate country.
+- Printed posters get the 4 mm bleed the print service requires; downloaded PDFs are unchanged.
+- "Back to trips" returns to the trips list page, search, filters and sort order you came from. Thanks @binnichtaktiv! (#4058)
+
+## [1.23.0] - 2026-11-14, Berlin
+
+### ⚠️ Upgrade notes
+
+- Immich, Photoprism, AirTrail, TeslaMate and TREK no longer follow redirects. If an integration URL redirects, for example from `http://` to `https://`, save the final URL in Settings → Integrations. The connection test and a notification from the background import say where the redirect points.
+- The Docker image no longer contains `curl`, `git` or `npm`. A healthcheck or script of your own that calls `curl` inside the container fails after the upgrade: use `wget -qO -`, as the bundled compose files do.
+- `GET /api/v1/settings` no longer returns integration API keys, and restoring an account archive no longer restores integration connections. Details are under Security below. Account archives exported before this version still contain those keys and the TeslaMate password: delete old archives you no longer need, and change the keys if an archive was ever shared.
+- A Place you tagged "home" becomes your Home during the upgrade, so Dawarich starts finding trips around it after the first nightly run and notifies you about them. To keep that from happening, turn off "Find trips automatically" in Settings → General → Features before or right after upgrading.
+
+### Security
+
+Fixes for issues found in a security audit. Operators should upgrade.
+
+- Signing in on the web with Google, GitHub, Apple or OIDC now asks for the 2FA code on accounts that have 2FA turned on, instead of signing straight in. Resetting a password no longer signs these accounts in either: they go back to the sign-in page.
+- `POST /api/v1/auth/google` and `POST /api/v1/auth/apple` can now ask for the 2FA code too: a client that sends `X-Dawarich-Client-Capabilities: otp_challenge` gets the same `202` with a challenge token as `POST /api/v1/auth/login`. Clients that don't send it sign in as before, so current app versions keep working.
+- Replacing a 2FA setup that is already on now requires the current password.
+- Failed logins through the API now count toward account lockout, the same as on the web.
+- Opening a sign-up link with an import ticket while signed in no longer adds that import to your account.
+- Importing an account archive now ignores record IDs inside the archive, so a crafted archive cannot point its points at someone else's imports, visits or tracks. Account exports no longer include details of an import or visit that belongs to another user.
+- Account archives are now parsed as plain JSON, so a crafted line can no longer create Ruby objects during import.
+- Family location sharing now hides points inside each member's Privacy Zones, both for the latest location and for history.
+- Removing a family member, or regenerating a live-share link's phrase, now stops delivering locations to an already-open connection immediately, instead of only blocking new ones.
+- The Immich photo-matching panel now escapes photo filenames, closing a cross-site scripting hole a malicious or compromised Immich server could trigger through a crafted filename.
+- Immich, Photoprism, AirTrail and TeslaMate URLs now go through the same address checks however the settings are saved, and the IPv6 address `::` is now always blocked. Photo thumbnails no longer follow redirects.
+- Requests to Immich, Photoprism, AirTrail, TeslaMate and TREK now check the server address again on every request and connect to the address that was checked (unless a proxy is configured), so a DNS answer cannot change in between. They also no longer follow redirects: if your integration URL redirects (for example from `http://` to `https://`), save the final URL in Settings → Integrations. Photo thumbnails now time out after 10 seconds instead of up to 60.
+- A "skip SSL verification" setting saved by a very old version as text (`0`, `false` or an empty value) no longer turns certificate checks off for Immich and Photoprism. Only a setting that is actually switched on does.
+- TREK requests now use `HTTP_PROXY` and `NO_PROXY` like the other integrations.
+- **Breaking for API clients:** `GET /api/v1/settings` no longer returns `immich_api_key`, `photoprism_api_key` or `airtrail_api_key`, so an API key cannot be used to read third-party credentials back. It returns `immich_configured`, `photoprism_configured` and `airtrail_configured` (true when both the URL and the key are stored) instead, and integration URLs are returned without any `user:password@` part, here and in `GET /api/v1/users/me`. Saving the keys through `PATCH /api/v1/settings` works as before, with one change: a request that changes an integration URL without sending its key forgets the stored key, so a key cannot be redirected to another server.
+- Account archives no longer contain integration credentials (Immich, Photoprism and AirTrail API keys, the TeslaMate password and token, and any `user:password@` part of an integration URL). Restoring an archive no longer changes the account's integration connections at all, so an archive cannot point a stored key at another server. After moving to a new instance, reconnect integrations in Settings → Integrations.
+- Restoring an account archive no longer writes the imported settings to the log.
+- `/metrics` now refuses requests with empty credentials while `METRICS_USERNAME` or `METRICS_PASSWORD` is unset.
+- API rate limits now also count an `api_key` sent in a JSON body.
+- ZIP and KMZ imports now stop as soon as the extracted data passes `ZIP_MAX_EXTRACTED_SIZE`, instead of reading a whole oversized entry first.
+- KML imports are parsed as a stream instead of building a whole-file document, and oversized imports are refused before they are read into memory: KML above 64 MB (also the KML inside a KMZ, measured unpacked) and JSON/TCX above 512 MB by default. An admin can change both limits in Settings → Instance → Imports. A small compressed upload can no longer expand to gigabytes and exhaust the import worker's memory.
+
+### Added
+
+- Dawarich finds your trips on its own once you tell it where you live, in the new "Add your home" step at the end of onboarding or under "I live / lived here" when you edit a Place. Any time away from home that includes a night counts, even a single one. A notification tells you when new trips are found. Once you rename, edit, annotate or share a found trip, Dawarich leaves it alone, and a trip you delete is not found again.
+- Homes have dates, so a move or a second home is handled: the time you lived somewhere else does not become one long trip.
+- The Trips page can show all trips, only the ones created by you, or only the ones found automatically. To stop Dawarich from finding trips, turn off "Find trips automatically" in Settings → General → Features; the trips already found stay. Found trips restored from a Dawarich archive count as yours and are left alone, since the archive does not include Homes.
+- Map notes: choose Add note in the map's Tools and click a spot to write a note about a moment there. Notes show as a map layer, in the Timeline at their time, and under today as "On this day" for the same date in earlier years. A note inside a Privacy Zone keeps its text but not its position.
+- A Timeline period longer than a day reads like a diary: every day (up to the latest 32), newest first, with where the day went and its notes; opening a day selects it on the map and in replay. Press Enter in the Timeline search to look through all your notes. The Diary menu item opens the month of your latest note.
+- Replay covers a period of up to 14 days on one scale, with a tab per day and the time under the pointer; the points and distance summary opens and closes it.
+- The API's `GET /api/v1/notes` takes `start_at`, `end_at`, a bounding box and optional pagination, and `date` on a note without a trip is now your local day. The user data export and import now carry notes.
+- Timeline and track share links can show the text and time of your notes about the shared period, never their position. It is off by default.
+- Insights shows where a year's time went in three rings: the days (at home, out and about, on a trip, untracked), the hours (at home, at other places, moving, no data) and how you moved by transport mode. Days and hours come from your visits, tracks, trips and Homes.
+- Settings → Data processing can rebuild only tracks, or only stats and digests, for one year or all of them, and has a "Find trips in my history" button that runs trip detection now instead of overnight.
+
+### Changed
+
+- A date range with no location data now says so on the map and offers a jump to the day of your latest data. Layer buttons explain what each layer is, with a short preview of it when you hover or focus them.
+- The notification bell shows what happened and when, and a click opens the page the notification is about: exports, imports, trips, the family page or a location request, achievements, statistics, or the integration, geofencing and visit settings. An error opens its own notification first, with the full message, what to do about it and a button to that page. "Mark all as read" in the bell no longer takes you away from the page you are on.
+- Fewer notifications. An identical error or warning is not repeated while the first one is unread. You are no longer notified about a family you just created or left, an invitation you just accepted on the family page or by signing in on the web, or a member you just removed: the page already confirms those.
+- Error notifications no longer include a stack trace. It is written to the application log instead.
+- Read notifications are deleted 30 days after you read them, as the notifications page now says. Unread notifications are kept.
+- The date bar above the map is replaced by a period button on the map: the first click in its calendar sets the start, the second the end, and exact times sit under the calendar. Share moved into the map's button column, and the Timeline panel is narrower.
+- The Notes page is replaced by the Diary in the Timeline, and `/notes` redirects there. Trip day notes are listed only on their trips.
+- Track splitting, GPS noise filtering, city statistics and transportation mode detection moved from the map's settings panel to a new Settings → Data processing page, together with the buttons that rebuild existing data. The map panel keeps only what changes how the map looks, plus a link to the new page. Visit detection settings and the full-history re-detection moved there too, and `/settings/visits` leads to them. The page shows its sections side by side, with one Save button that stays in reach.
+- Press ? on the map for a list of its keyboard shortcuts. The Help menu now links to the documentation and, on the map, opens the same list.
+- A failed import in the imports list explains what went wrong in plain words and links to the import page, instead of showing the raw error in a tooltip. Its action buttons now have names for screen readers.
+- The new import page has a drop zone for files and, beside it, where to get each kind of data with links to the export guides.
+- Place pages, and the forms to add or edit a Place or a trip, show the map on the left and the details on the right, like a trip's page. A Place's spot is picked on the map and shown as coordinates; its tags show their icons. A Place shows its tags, note and collection first; its name, tags and note are edited under "Edit details", on the page and in the map's panel.
+- Possible duplicates shows each group as a card with a small map of the places' visit circles. Pick the place to keep on its card; untick a place to leave it out of the merge.
+- The Timeline keeps the date, the day's visits and where the day went at the top while you scroll, with buttons beside the date to select visits or write a note. Today's "On this day" notes sit in that header, two at a time.
+- The globe view turns on and off without reloading the map. Map attribution starts folded on every map, and the family map now shows it. Maps show a spinner until they have loaded.
+- Map messages appear quietly at the top of the map, under the loading badge, in the colours of your theme; loading family members no longer shows one. The note that a period has no location data sits above the period totals.
+- The Docker image is built in two stages: compilers, `-dev` headers, git, curl and npm stay in the build stage and are not in the image you run. The poster renderer's dependencies were updated to patched releases. Thanks @Holzhaus! (#3993)
+
+### Fixed
+
+- Clicking a track on the map keeps it selected and its Timeline entry open; moving off it also clears the highlighted segment row.
+- Hovering over a notification no longer marks it as read.
+- A failed export is now written to the log with its stack trace and reported; before, the error only reached the notification.
+- Opening a location request that no longer exists takes you to the family page instead of an error page.
+- A notification that arrives while a page is open is shown in your language, not in the language of the person whose action caused it.
+- Importing your account data no longer lets the import file set internal fields of a notification.
+- One country no longer splits across residency, stats, digests and trips, and country names now follow the standard list, for example "United States of America". Thanks @whallil! (#3879)
+- Live share links let you choose how long viewers keep seeing your last known location after your device stops reporting: 15 minutes (the default, and what every existing link keeps), 1 hour, 6 hours or 24 hours. The page says "Last known" instead of "Live" once the location is older than 15 minutes, and Privacy Zones still hide it. Thanks @lracicot! (#3450)
+- When a geocoding provider refuses lookups for being over its limit, Dawarich pauses them, shows the pause on the admin settings page and picks the backlog up afterwards, instead of sending every remaining point into the same refusal. Thanks @Strazdonis! (#4004)
+- Replay playback follows the timezone from Settings instead of the browser's. Thanks @joshuanianji! (#3811)
+- Navbar menus open one at a time and close on an outside click or Escape. Thanks @Strazdonis! (#4005)
+- Replay shows speed in mph when your distance unit is miles, on the map and on trip pages. Thanks @mja00!
+- Reverse geocoding no longer reads full country borders from the database, which cuts its database traffic.
+- Route videos of long, dense tracks no longer show frames of an older route under the moving marker: each frame now waits for the map to finish drawing, so these exports can take longer and need the tab to stay visible. Exports in Firefox no longer lose frames when its encoder reorders them. (#4007)
+- Points of a fast flight that stay on the route are no longer hidden as anomalies when the plane flies faster than 1,000 km/h over the ground, for example with a strong tailwind. Fixes that jump off the route or move faster than 2,500 km/h are still flagged. Points flagged earlier come back after you press Re-evaluate past data in the map settings. (#3988)
+- PostgreSQL no longer logs a duplicate key error on `achievement_collection_states` every five minutes. #4006, #4002
+- Visit detection retries up to three times when it deadlocks with an import running for the same user, so a single deadlock no longer drops a day of visit suggestions or a month of full-history re-detection. #4002
+- Maps on place pages and in the place and note forms no longer ask for a map style that does not exist before falling back to the default one.
+
+## [1.22.0] - 2026-11-07, Berlin
+
+### ⚠️ Upgrade notes
+
+- With `ARCHIVE_RAW_DATA=true`, set `ARCHIVE_ENCRYPTION_KEY` before upgrading: without it, production stops archiving raw data and only logs an error. On an instance that already has archives, use the current `SECRET_KEY_BASE` value; otherwise generate a key with `bin/rails secret`. Keep the key safe, because cleared raw data cannot be recovered without it.
+
+### Added
+
+- Split Tracks at midnight in your timezone with a new option in the map's Track generation settings, so a night at home with your phone still reporting no longer joins several days into one Track. It is off by default; press Recalculate tracks & stats to apply it to existing Tracks. (#3306)
+- The Timeline also shows the local time of a visit, or of a journey's start, when the place is in a different time zone than your account, for example "19:30 local" next to a Kansas visit for an account in Berlin. Days are still split by your account's time zone. The API and the MCP `get_timeline` tool return the place's time zone as `local_timezone`. Time zone boundaries come from timezone-boundary-builder (© OpenStreetMap contributors, ODbL) and load during the database migration; without them, times stay in the account's time zone as before. (#3886)
+
+### Changed
+
+- Bumped Rails to 8.1.4.1 to close the security advisories fixed in that release, including GHSA-f3w6-w445-fwh9 (arbitrary file read and write in Active Storage image analysis). Self-hosters get the fixes by upgrading.
+- A stop long enough to count as a visit (5 minutes by default, never less) now ends a Track, even when it is shorter than the time gap between Tracks. The Timeline shows separate journeys before and after such a visit instead of one journey across it, and position noise during a stay no longer cuts it into short Tracks. Press Recalculate tracks & stats to apply it to existing Tracks. (#3454)
+- The interface is restyled with quieter colours and sentence-case labels across the app.
+
+### Fixed
+
+- Points recorded shortly after a route ended are attached to that route again instead of failing while tracks were generated in parallel. Merging a route that has a shared link or corrected segments no longer fails the same way.
+- GPS filtering now hides a single imprecise network point that jumps to a distant cell tower and back while the phone stays put, such as an Android phone idle at home that reports one fix across a bay. To check your existing history, press "Re-evaluate past data" in the map settings under GPS Noise Filtering. (#3892)
+- Stationary presence reported by the mobile tracker remains available for visits and raw history without adding zigzags or distance to routes, trips, or recalculated statistics.
+- Countries you only flew over no longer count when the flight comes from a GPX or GeoJSON file without speed data either, including files imported earlier: speed is worked out from the time and distance between points. In a GeoJSON file without a speed field, points no longer get a speed of 0. (#3900)
+- Keep public timeline links and filtered exports limited to their selected import, including queued exports and restored backups. Shared links show their source, time range and expiry and let owners edit access settings.
+- Preserve the selected timezone when saving settings and loading Poster Studio dates. Poster controls and downloads now fit narrow screens, and closed map dialogs no longer receive keyboard focus.
+- Show digest generation progress and retries without marking completed reports as failed when email delivery cannot be queued. Make MP4 downloads, integration save/test outcomes and timeline filter counts easier to follow.
+- Improve import recovery, family sharing feedback, first-use guidance, mobile navigation, point lists, Places forms and empty analytics.
+- Raw data archival no longer clears points whose archive file has gone missing, and account exports now include raw data that was already archived and cleared from the database.
+- A failed import shows its error on the import page again on self-hosted instances, and a Year-End Digest whose generation was interrupted can be requested again after six hours.
+
+## [1.21.0] - 2026-11-03, Berlin
+
+### ⚠️ Upgrade notes
+
+- If a long transaction keeps the `points` table locked, the upgrade now stops with an error instead of starting without the `points.source_id` or `points.altitude_decimal` column. Stop Sidekiq or wait for running imports to finish, then restart; the migrations are safe to re-run. The error message also shows the `ALTER TABLE` to run by hand.
+- A stored Fog of War mode is dropped on upgrade, so every account uses the default (hexagons). The mode has not been selectable in the map settings since 1.20.0.
+
+### Added
+
+- AirTrail sync now imports a flight's recorded track, such as one uploaded to AirTrail from a CSV file, and the map draws the real flight path instead of the great-circle arc. A track is downloaded again only when it changes in AirTrail. This needs AirTrail 3.13.0 or later and an API key with the `tracks.read` scope; flights without a track, older AirTrail versions and keys without that access keep the arc. Tracks are cut at your privacy zones on the map like other routes, and flight distances in stats are unchanged. (#3785)
+- Create Visit on the map fills the location and times from selected points or nearby history, using the latest stay when several are found. Create and edit forms now let you choose a Place, with a nearby previously visited Place selected when creating a visit.
+- Mark a point the GPS noise filter hid as correct. Turn on the Anomalies layer, click the orange point and press "Mark as correct". The point returns to the map and your stats, rejoins a nearby track of the same device when there is one, and stays visible when you re-evaluate past data. The API is `PATCH /api/v1/points/:id/mark_valid` (#3722).
+
+### Changed
+
+- Bumped rack (3.2.8), nokogiri (1.19.7), loofah (2.25.3), rails-html-sanitizer (1.7.2) and addressable (2.9.2) to close known advisories. Self-hosters get the fixes by upgrading.
+- On Lite, Pro-only map settings (custom tiles, theme, colours, Hexagons and other gated layers) are kept but not applied until you upgrade.
+- Reset in the map settings now restores only appearance settings, matching a fresh account. The API is `DELETE /api/v1/settings/appearance`; `keys[]` limits it to some settings.
+- Creating or editing a visit, including through `POST` and `PATCH /api/v1/visits`, with the same name as the existing Place it is attached to (or, when changing Place, the previous Place) no longer saves a separate visit name, so the visit shows the Place's current name and follows later renames.
+- The Place search API (`GET /api/v1/places/search`) also returns your Places that have visits but are hidden from the map, and marks each result with `has_visits`; declined and deleted visits are not counted.
+
+### Fixed
+
+- On the globe, photos taken close to the North or South Pole are placed at their real position instead of being pulled down to about 85° latitude. The flat map keeps showing them at its top or bottom edge (#3262).
+- Poster Studio explains that buildings and railways only appear once the map is zoomed in to city level, instead of silently showing nothing for them on wider posters (#3974).
+- Uploading points from the mobile apps or Overland no longer returns HTTP 500 on instances whose `points` table never got the `altitude_decimal` or `source_id` column: the upgrade now adds the missing columns. `altitude_decimal` was missing on instances first set up from the 1.5.0–1.6.x schema, `source_id` on ones that were busy while upgrading past 1.13.1. Where `source_id` is added, self-hosted instances then fill it in a background job (#3969, #3972).
+- Instances missing those columns also built no new tracks since 1.17.0. Once the upgrade adds the columns, track generation catches up right away instead of on the next 12-hour run (#3915).
+- If a long transaction keeps `points` locked, startup now stops with an error and retries on the next start, instead of carrying on without it (#3972).
+- Trip previews, day routes and poster routes that cross the date line draw as one continuous line instead of a seam with a jump near the poles (#3261).
+- Searching for a place in the visit editor against a self-hosted Photon server that only supports reverse geocoding now explains that text search can't find new places there, instead of showing an empty list. Saved places still match by name. `GET /api/v1/places/search` reports this as `forward_search_unavailable: true` (#3590).
+- Achievement checks no longer hang for hours on accounts with stale `points` statistics: each map grid cell's region is looked up once whatever query plan PostgreSQL picks, the query stops after 10 minutes, and a cancelled check is dropped instead of retried, keeping its pending work for the next run (#3933).
+- Containers started with `PUID`/`PGID` no longer log that `/` is not writable on every start: when that user has no home directory, the app and Sidekiq use their `tmp` directory as `HOME` (#3917).
+- The German year-vs-year distance comparison in Insights now reads "2.745 km mehr" and "715 km weniger" instead of "Vorne um" and "Zurück um" (#3978).
+
+## [1.20.1] - 2026-11-01, Berlin
+
+### Fixed
+
+- Anomaly recalculation no longer fails for users who have a point without coordinates (#3936).
+- Transportation-mode detection and track recalculation work on instances without the `altitude_decimal` column (#3951).
+- Numbers in visit, place and family labels on the map render in the text font instead of as emoji (#3946).
+- FIT imports assign each file its own tracker, so points from different FIT files are no longer grouped into one track (#3950).
+- Polarsteps `locations.json` files larger than 8 KB are detected and imported (#3954).
+- Trip pages no longer return an error when the trip notes contain an image with a relative URL (#3939).
+- GeoJSON and GPX exports on the Points page use the dates currently set in the filter, even without pressing Search (#3952).
+- Future AirTrail flights no longer create statistics for months that have not happened yet, and flights are counted in the month of their local departure date (#3935).
+- Poster Studio no longer loads every point of the selected period, and Video Studio draws the route only from the selected time range (#3937, #3948).
+
+## [1.20.0] - 2026-10-30, Berlin
+
+### ⚠️ Upgrade notes
+
+- Migrations that install database triggers on points wait at most 5 seconds for a table lock. If one stops with a lock timeout, stop the workers or wait for running imports to finish, then restart the application; the migrations are safe to re-run.
+- The initial geographic calculation runs in the background and can take longer while local boundary data is installed. The initial city and national-park catalog covers Berlin, Hamburg, Dresden, Harz, Saxon Switzerland and Eifel; it is not a worldwide catalog.
+
+### Added
+
+- Add personal achievement cards for city exploration, returning to places, collecting all seasons, national parks and geographic milestones. Cards include evidence, level history and opt-in public sharing with privacy-aware HTML, embeds and images.
+- Shared achievement cards open on a dark page tinted by the card's rarity. Visitors see what the card is for, the City Explorer level ladder with the next level, a call to try Dawarich, and buttons to copy the link or download the share image. Level steps are announced to screen readers. Embedded badges are unchanged.
+- Share one all-history resolution-9 H3 ledger between city cards and map fog. Date ranges highlight first discoveries; pilot boundaries cover Berlin, Hamburg, Dresden and three German national parks. The first calculation starts when you open the fog or select a city, and future-dated points never open cells or count toward city levels. Cards and fog reflect new or deleted points and edited places or visits within an hour; selection, boundary and privacy-zone changes apply immediately.
+- Collect Benelux, Baltics and Scandinavia achievement sets by visiting their three member countries. Each set shows visited countries, dates and the countries still to explore, with public sharing available when enabled. Existing location history counts automatically.
+- Test a geocoding provider with your own coordinates in Instance settings, including providers with regional coverage. Leave both fields blank to use the existing default coordinates. (#3714)
+- Click a photo cluster on the map to browse its photos without zooming. The gallery shows 24 thumbnails per page, supports phones and keyboard navigation, and keeps photos with identical coordinates accessible at high zoom. (#3652)
+- The map keeps the point count and distance for the selected period visible, including custom times and empty ranges. Distance follows your km/mi setting. (#3257)
+- Dismiss a batch of flash messages with Close all notifications. Compact responsive messages keep individual dismissal, visible errors and keyboard controls. (#3765)
+- Add a trip stats line to posters made from a trip: switch on Trip stats in the poster studio's Text section to show the trip's total distance under the subtitle. It is off by default, follows your km/mi setting, and appears the same in the preview, PNG and PDF downloads, printed orders and posters saved to the gallery. (#3327)
+
+### Changed
+
+- Show geographic milestone cards as globes with continents, graticules and highlighted hemispheres, quarters or polar caps, including public previews.
+- Fog of War now follows the shared exploration cells. The per-point mode and the fog radius and threshold settings were removed.
+
+### Fixed
+
+- Full-history visit redetection now completes when legacy visits contain points without coordinates, preserving confirmed visits that have no usable observations (#3931).
+- Live visit detection keeps an ongoing visit and its points in place as new points arrive, instead of rewriting every point of the visit each time. Suggested visits keep their ID between detection runs. This greatly reduces database writes and index growth on busy instances.
+- Enrich photos places a video where its recording started. Video timestamps mark the end of the recording, so the scan now subtracts the video's duration before looking up your location history. (#3293)
+- Monthly and yearly digest emails no longer enter repeated delivery retries when SMTP is not configured (#3932).
+- Legacy areas with names longer than 255 characters now migrate to places without repeatedly failing, keeping their notes and visits (#3930).
+- Recalculating statistics no longer scans the whole cache to refresh the insights digest, which could exhaust cache connections on busy instances.
+- Tracks left with fewer than two points are now removed reliably when another job updated or deleted them at the same time.
+
+## [1.19.0] - 2026-10-27, Berlin
+
+### ⚠️ Upgrade notes
+
+- Back up your database before upgrading. The migration that keeps geofence events after their place is deleted cannot be rolled back. After the upgrade, background jobs recheck cell-tower points from the Android app and recount countries for past months.
+
+### Added
+
+- Archive and unarchive places from their editor or in bulk. Filter the Places list by Archived, and use Show archived places on the map to display them muted. Archiving keeps visit history and privacy masking while pausing new visits and geofencing.
+- Places can be archived and restored through the API. Archived places keep their visit history and privacy zones, stop receiving new suggested visits, and pause geofence notifications. They are hidden from the map by default and available with the archived places API filter.
+- Tag edit pages list the places with that tag, with links and visit counts.
+- Search and filter Places by name, tags and confirmation status, and sort them by name, last visit or active visit count. The list shows tags, visit history, sources, geofences and privacy zones, with a shortcut to create a place on the map.
+- Select places to add or remove tags, delete them with a summary of the consequences, or merge them into a chosen place. Possible duplicates groups places with overlapping visit radii for review; untick any place you want to keep before merging the rest.
+- Create tags with a name and emoji directly in the place editor or creation modal. Place details explain which tags hide the place and their Privacy Radius.
+- Set geofencing while creating a place, see its last ten enter and leave events in the editor, and open its filtered event log. Geofence boundaries are highlighted on the map.
+- Move places and resize their Visit Radius on the map by dragging the pin and radius handle.
+
+### Changed
+
+- Place deletion confirmations now explain that geofence events are kept with the place name.
+- Deleting a privacy-zone tag now shows how many places it protects and warns that data becomes visible again on the map, in trips, in stats and on active shared links. Place counts on the Tags page now link to the filtered Places list.
+- Geofence events stay in the log and API after their place is deleted, showing its last name.
+- Places now have one editor on the map and on their own page for names, tags, notes, and geofencing. Delete confirmation lists affected visits, privacy tags, webhooks, and geofence events.
+- Creating or joining a family turns on the Family Members layer on the map, so the family shows up without looking for the toggle. Leaving the family turns the layer off again.
+- Place editing, selection and tag controls have clearer sections, visit and event dates in your language with the year, tag chips that stay readable with long names, and quieter delete buttons in light and dark themes.
+- Place details and editing now use the left map panel, with Back returning to the previous tab. On phones, map editing keeps the pin and radius handle beside a compact left panel.
+
+### Fixed
+
+- Saving a place updates its map marker without reloading the entire places list, while keeping places inside privacy zones hidden.
+- Saving a place inside a privacy zone no longer reveals its marker on the map when the zone itself has not changed.
+- Creating a place no longer leaves the creation form disabled when you open it again.
+- Unchecking every tag when editing a place on the map now removes all its tags.
+- Places on the map now offer Open and Delete alongside Edit. Deleting a place removes it from the map immediately and refreshes privacy zones.
+- Place details on the map now show every tag, with its icon and colour.
+- Signing in after opening a family invitation now joins the family right away, with any sign-in option: password, two-factor, Google, OpenID Connect or Apple. Before, the invitation was lost when you signed in through the regular login link or with Apple, and even the sign-in link on the invitation page only brought you back to the invitation, where you had to press Accept again.
+- Pressing Search in the date bar while Search, Layers, Tools, Settings or Timeline was open used to centre the map across the whole screen. The map now stays beside the open sidebar, centred in the visible area. (#3919)
+- Visits without a place now show on the map and in the timeline editor using the location of their points. #3384
+- GPS noise filtering can hide inaccurate points again. Since 1.11.0 points with an accuracy of a few hundred metres stayed on the map, and phone tracking showed them as zig-zag lines across the route. Turn on "Hide inaccurate points" in the map settings under GPS Noise Filtering, choose a threshold between 50 and 1000 m, then press "Apply Settings" and after that "Re-evaluate past data" to hide such points in your history too. It is off by default, including for accounts that saved a threshold before 1.11.0, because Google Timeline imports report 1–4 km for points that still sit on the road. (#3300)
+- The day arrows in the Timeline panel work as soon as you open it, without picking a day in its calendar first, and so do the left and right arrow keys while the Timeline is open and the map itself is not focused. When the map shows several days, they start from the last one. After you change the day in the Timeline, the day arrows next to the date fields move one day from the day you are on, not from the day the page was opened with, and their hints show the right date. The hints on the start and end date fields are no longer hidden behind the open Timeline. (#3858)
+- Countries now count on Insights, Stats and yearly digests when reverse geocoding finds a country but no city for your points, for example in the countryside or at sea. Past months are updated gradually in the background after the upgrade. (#3598)
+- Enrich photos in the map's Tools panel opens with the dates the map shows, also right after a hard reload of the page (Ctrl+F5) or after you pick another day on the timeline. Dates you typed but have not scanned yet stay until you press Search, Today or the day arrows on the map. Before, both date fields could stay empty until you pressed Search. (#3920)
+- Tracks that cross the 180° meridian, such as trans-Pacific flights, are drawn across the date line again instead of as a line around the whole world. This applies to the Tracks layer, its speed colouring and trip routes. (#3921)
+- On iPhone and iPad, GPX, KML, KMZ, TCX, FIT and OwnTracks .rec files can be picked on the Imports page again, in Safari and in the installed web app. The file picker greyed them out. It now lists every file, and a file of an unsupported type is still rejected with a message after you pick it. (#3617)
+- Visit suggestions now run on instances without a configured geocoder. Visits without location details or a matching place display as "Unknown Location". (#3637)
+- Visit suggestions now also cover points that a phone uploads hours or days after recording them, for example after being offline. Points recorded up to 30 days ago are checked shortly after they arrive. (#3637)
+- Visit suggestions are no longer switched off when the setting was saved as a JSON boolean through the API or a settings import. Settings > Background Jobs now shows whether visit suggestions are on, and explains that they run shortly after new points arrive and again every night. (#3637)
+- Repeated cell-tower positions from the Android app no longer draw spikes on the map or inflate daily and monthly distance. Data recorded earlier is rechecked in the background after the upgrade. (#3417)
+- Location history that keeps reporting while you stay in one place, such as a Google Timeline export, no longer joins several days into one route when the reported position drifts around that place. The drift also no longer turns a stay at home into dozens of short zigzag routes. A stay is recognized within your visit radius (Settings → Visits), but never less than 100 m, so raise the visit radius if your readings at home scatter further. Choose Recalculate tracks & stats in the map settings to apply this to history imported earlier. (#3117)
+- Place statistics now stay in one row on phones, total time at a place shows as hours and minutes, and bulk actions appear only after you select places.
+- The Place details panel now has a single close button, and Back is no longer selected when it opens. While you move a place or resize its Visit Radius, its old outline is hidden until you press Save or Cancel.
+- Opening a place from a link now centres the map on its Visit Radius. The selected place stays highlighted with its boundary even when the Places layer is off, without changing saved layer settings.
+- Opening a place on the map closes the point or track details shown before, and a place hidden by a privacy zone is neither highlighted nor centred, also after you add a privacy tag to it.
+
+### For developers
+
+- `GET /api/v1/places` leaves out archived places unless `filter` is `all` or `archived`, including the `manual`, `confirmed` and `tagged` filters. Places carry an `archived` flag, which `PATCH /api/v1/places/:id` accepts.
+- Geofence events of a deleted place keep their `place_name` and return `place_id: null`.
+- `GET /api/v1/visits` returns a `center` with the average position of the visit's points for visits without a place.
+
+## [1.18.1] - 2026-10-26, Berlin
+
+### Added
+
+- The Select data on map tool can now look across all your data. Turn on "Select data from all time" in the Tools panel before drawing the rectangle to get every point and visit in that area, whatever dates the map shows. When an area holds more than 10,000 points, only the most recent 10,000 are shown and a notice says so. On the Lite plan, "all time" covers the last 12 months. (#3873)
+
+### Changed
+
+- The map runs on MapLibre GL JS 6.16.0. MapLibre now draws Arabic and Hebrew labels itself, so the separate right-to-left text plugin is no longer loaded.
+
+### Fixed
+
+- Searching for a place in the visit edit panel finds nearby places again when you type the name, for example the Burger King next to the visit. Before, typing word by word with a geocoding provider limited to one request per second, such as the public Photon server, often skipped the final search, so only saved places with that name somewhere else in the world showed up. The search now tries once more a second later. (#3590)
+- Reverse geocoding through ChibiGeo uses HTTPS even when `PHOTON_API_USE_HTTPS` is not set. Before, a host written with a path, such as `app.chibigeo.com/v1/photon`, was not recognised as HTTPS-only, so Dawarich sent its requests over plain HTTP and they failed. (#3108)
+- The country list next to the Activity Overview calendar on the Insights page is the same height as the calendar again and scrolls when it has more countries than fit. The calendar view switch moved to the card header, and the notes about counted days moved to the bottom of the card. (#3866)
+- Points that arrive late inside an existing route, for example through the API or an import, now join that route instead of staying a separate line, also when they come from a device without a name. A route that gains points keeps its shared links and corrected transport modes. (#3036)
+- Countries you only flew over no longer count when the flight comes from a KML file without speed data, such as a Flightradar24 export. Speed is now worked out from the time and distance between points. KML files imported earlier are updated in the background after the upgrade, and their monthly statistics, digests and trip countries are recalculated. (#3900)
+- Signing in with two-factor authentication works again when the sign-in page is shown in a language other than English. Before, the code prompt appeared in English and was immediately replaced by an empty sign-in form. On installations with OIDC-only sign-in, the message that password sign-in is disabled now uses that language too. (#3908)
+- Poster Studio and Video Studio load the basemap from your custom vector tiles URL when the tiles fallback is off, like the main map, instead of always using the default tile server (#3876)
+- Flights synced from AirTrail 3.12 and later keep their seat and seat class again. AirTrail now lists them under passengers.
+- Traccar Client 10 no longer gets stuck when its heartbeat is on and the phone has no GPS fix. Dawarich used to reject the heartbeat, and the app kept resending it instead of the points that came after.
+- Immich photo searches that start on a date without a time, such as Enrich Photos, now start at midnight in your time zone (Settings, or `TIME_ZONE` if unset). Before, when the server's own clock ran in UTC, photos from the first hours of that day could be missed east of UTC, and photos from the previous evening could show up west of it. (#3335)
+- Opening the Timeline, including by selecting a route on the map or with a `?panel=timeline` link, no longer turns on the Visits layer when you have switched it off. Turn it on under Layers to see visits on the map. (#3847)
+- A visit that runs past midnight now shows up in the Timeline and its calendar on every day it covers, not only on the day it started. On the later days its row shows the time from midnight and only that day's part of the stay. (#3624)
+- The map no longer turns grey for good on iPad and iPhone after you switch days a few times or come back to the tab after iOS freed memory. (#3777)
+- When your browser can't start the map, the map page shows the "WebGL is not available" message instead of an empty map.
+- The Prometheus `/metrics` endpoint works again on 1.18.0. Every scrape used to fail with a server error since the upgrade to Ruby 4.0. (#3910)
+- Points recorded at the same location can again be selected, moved and deleted one by one on the map at maximum zoom. (#3846)
+- Photos from a PhotoPrism server running in a time zone east of UTC (for example `TZ=Europe/Berlin`) show up on the map again when you pick a single day. Before, they only appeared once the range ended a day later. (#3651)
+- The map loads again on Docker and Podman setups that start the app container without `web-entrypoint.sh`. Before, the persistent `public` volume kept the files of the previous version, the MapLibre files added in 1.15.1 were missing, and the browser blocked them with a "disallowed MIME type" error. Static files missing from the volume are now served from the copy inside the image. Files that already exist in the volume are still served from it, so keep `entrypoint: web-entrypoint.sh` to get updated versions of those. (#3872)
+- Scheduled jobs added in a new release no longer fail in Sidekiq with `undefined method 'jid='` when a Sidekiq process from an older Dawarich version still uses the same Redis. If you see these errors, stop the outdated Sidekiq process and delete the dead jobs that are already there. (#3715)
+- Points deleted with Select data on map, including anomaly points, now disappear from the map right away. Before, they stayed visible until you zoomed far in or out or reloaded the page, and came back at the original zoom. (#3771)
+
+### For developers
+
+- The MCP `get_timeline` tool marks the later days of a visit that runs past midnight with `continuation_of_date`, as it already did for journeys, and `duration_minutes` on those days counts only that day's part of the stay.
+
+## [1.18.0] - 2026-10-25, Berlin
+
+### ⚠️ Upgrade notes
+
+- Back up your database before upgrading. After the upgrade, background jobs turn Areas into Places and tidy up visit names, repair tracks from the last 12 months, recalculate months with flights and update your existing digests, recheck the Italy achievement, and detect visits again across your whole history. Rolling back does not undo this. Keep Sidekiq (or embedded jobs) running until they finish; on a small self-hosted server you can skip the visit detection by setting `SKIP_VISITS_FLEET_REDETECT=1` and start it later from Visits → Re-run detection on full history.
+
+### Added
+
+- Geofencing. Turn on "Notify on enter and leave" for a Place, and Dawarich records when you arrive and when you leave, using the points your phone or tracking app sends. Places that used to be Areas keep notifying. You'll find the events in Settings → Geofencing. #2515
+- Geofencing webhooks. Send every arrival and departure to Home Assistant, Node-RED, n8n or your own service. Each webhook can follow some places or all of them, shows its recent deliveries and can send a test event. Events that reach Dawarich more than 15 minutes late are logged but not sent. A webhook that fails five times in a row is switched off, and you get a notification. On Dawarich Cloud, webhooks need a Pro or Family plan and an https address, and send up to 60 events an hour. Self-hosted instances have no such limits. #2515
+- Privacy zones now also hide your data on your own map, trip pages, route replay and posters, not only on shared links. A track that crosses a zone is cut at its edge. The hidden area is a little larger than the radius you set and shifted off-centre, so the place itself can't be pinpointed. Exports and statistics keep your full data. #2848
+- Shared monthly stats pages respect privacy zones too. #2848
+- The Places page can show only unconfirmed places, and each place has its own page where you can merge a duplicate into it, together with its visits, tags and notes.
+- Turn off Family or Achievements in Settings → General if you don't use them.
+- Choose how dates and times look in Settings → General: the date format, a 12- or 24-hour clock, and whether weeks start on Monday or Sunday. Your choice applies in the app, in emails and on the map.
+- TREK sources can skip SSL certificate checks, so a TREK server with a self-signed or private certificate can connect. (#3902)
+- Self-hosted Photon servers without English data can be used now: choose the language under Admin → Instance settings → Photon, or set `PHOTON_API_LANGUAGE`. (#3898)
+- The onboarding import step lists every supported format and links to step-by-step export guides.
+
+### Changed
+
+- Areas are now Places with a Visit Radius (up to 50 km) and keep their notes and visits. The Create Area tool is gone: create a Place with a Visit Radius on the map or from a visit instead.
+- Exports still include Areas, so older Dawarich versions can read them, and importing an older backup turns its Areas into Places.
+- English dates now use the 24-hour clock unless you pick the 12-hour clock in Settings → General.
+- On the Lite plan, the 12-month window now moves once a day, at midnight UTC.
+- The default `docker/docker-compose.yml` uses Redis 8. It reads data saved by Redis 7.4, so there is nothing to migrate, and Valkey works too. #3882
+- Ruby updated to 4.0.9.
+
+### Fixed
+
+- Flights synced from AirTrail now count toward your distance everywhere: Insights, the stats pages, each month's daily breakdown, digests and the API. Before, a flight only showed up on its own month's card. A month's page and each year card show how much of the total was flown, and points tracked during a flight no longer count on top of it. Months with flights, and the digests you already have, are recalculated in the background after the update. Thanks @darioackermann! (#3659)
+- Map points for a single day load again in places where you have years of history, such as home. The map used to show "Could not load map tiles". (#3830)
+- Tracks no longer have gaps or straight lines where points arrived late, for example from an import or a sync with another app. The last 12 months are repaired in the background after the update; for older gaps, use Recalculate tracks & stats. (#3794)
+- The "What's New" card fits on phone screens again.
+- The trip page no longer scrolls sideways on phones, and its download menu stays on screen.
+- The map shows your current position again as a red dot, with or without live mode. The dot stays hidden while you are inside a privacy zone. (#3904)
+- A visit is suggested again when tracking pauses and resumes at the same place, for example a shortcut that pauses tracking at the gym. Past stays are fixed in the background after the update. (#3203)
+- Imports uploaded before 1.14.4 no longer show `.zip` at the end of their names, unless you renamed them yourself. (#3062)
+- Downloading an import returns the original file instead of a ZIP, also when its name has accented letters such as `ü` or characters such as `:`. (#3062)
+- Renaming a place updates the name shown on its visits. Visits you named yourself keep their names. (#3353)
+- A track from a second device, such as an imported watch GPX, is no longer bridged by a straight line from another track, and its distance is no longer counted twice. Tracks from the last 12 months are fixed in the background after the update. (#3424)
+- Flights are drawn along the shortest path over the globe, including routes over the North Pole. (#3261)
+- The achievement cards for Valparaíso, Colima and Chile show the mainland at full size instead of a dot. (#3731)
+- With Edit points on, clicking another point selects it, and a slight mouse movement during a click no longer moves the point. Before, Delete could remove the wrong point. (#3772)
+- Aosta Valley now counts toward Italy's achievement, which has all 20 regions. If you already completed Italy, you keep it. (#3789)
+- Background Jobs dashboard actions (Delete, Retry, Kill, Clear) no longer fail with "Forbidden" when Dawarich is opened over plain HTTP on a local network. (#3907)
+
+### For developers
+
+- New endpoints: `POST /api/v1/points/transitions` accepts enter and leave events detected on the phone, for the upcoming geofencing in the mobile app; `/api/v1/webhooks` and `/api/v1/geofence_events` manage webhooks and read the event log. Webhook requests are signed with `X-Dawarich-Signature: sha256=<HMAC of the body>`.
+- Breaking: a Visit's `place` is `null` when the visit has no Place or Area. Visits add `display_name`, `custom_name` (the stored name, if any) and `location_label`; `name` still holds the name to show. Sending both `place_id` and `area_id` returns 422.
+- Deprecated: `/api/v1/areas` and the Visit `area_id` field. Use `/api/v1/places` and `place_id`; `/api/v1/places` accepts `visit_radius`, `geofence` and `filter=unconfirmed`.
+- Add `mask_privacy_zones=true` to a read request to get results with privacy zones applied. Map tiles and fog of war are always masked.
+- `/api/v1/settings` reads and changes the date and time preferences and the Family and Achievements switches, and `/api/v1/users/me` lists both features under `features`. With Family off, the family endpoints answer 403 `feature_disabled`.
+- The MCP `get_timeline` and `search_visits` tools include each Place's `visit_radius`, and `search_visits` names visits the way the timeline does.
+
+## [1.17.0] - 2026-10-23, Berlin
+
+Dawarich gets lighter and faster in this release. On a test account with a million points over three years, compared with 1.16.0:
+
+- It needs about half the memory at idle: 230 MiB instead of 480 MiB.
+- Long trips open in a fraction of the time. A 300-day trip no longer downloads every recorded point: the page and its map need about 1 MB instead of 11 MB of page and 190 MB of point data, and the trips list opens in 0.1 s instead of 2 s.
+- Paging through the points page and the points API is up to four times faster, and repeat visits are answered almost instantly.
+- While new points keep arriving, map tiles for other months are no longer downloaded again.
+- A 200,000-point Google Records import finishes in 132 s instead of 175 s, and big imports no longer need memory in proportion to the file size.
+
+### Upgrading a self-hosted instance
+
+Background jobs now run inside the `dawarich_app` container, in the same process as the web server, so the separate `dawarich_sidekiq` container is no longer needed. Jobs waiting in Redis are kept and picked up after the upgrade.
+
+1. With your old `docker-compose.yml` still in place, stop and remove the worker so it can finish or return its running jobs:
+
+   ```bash
+   docker compose stop -t 60 dawarich_sidekiq
+   docker compose rm -f dawarich_sidekiq
+   ```
+
+2. Update the Compose file in one of two ways:
+   - Replace it with the [new `docker-compose.yml`](https://github.com/Freika/dawarich/blob/master/docker/docker-compose.yml), keeping your own environment values, volumes, Redis and database settings.
+   - Or edit your own file: delete the `dawarich_sidekiq` service, add `stop_grace_period: 60s` to `dawarich_app`, and under its existing `environment:` replace `WEB_CONCURRENCY` and add two variables:
+
+     ```yaml
+     SIDEKIQ_EMBEDDED: 'true'
+     WEB_CONCURRENCY: '0'
+     BACKGROUND_PROCESSING_CONCURRENCY: 2
+     ```
+
+     `WEB_CONCURRENCY` must be `0`: every extra web process would start its own set of job threads.
+3. Move any setting you had only on `dawarich_sidekiq`, such as SMTP, OIDC or reverse geocoding, to `dawarich_app`. If your `.env` sets `BACKGROUND_PROCESSING_CONCURRENCY=10` from the old `.env.example`, remove it or set it to `2`, and remove `RAILS_MAX_THREADS` if it is set. If it sets `APP_CPU_LIMIT=0.50` from the old `.env.example`, raise it to `1.00`.
+4. Start the stack and check that three containers are running: `dawarich_db`, `dawarich_redis` and `dawarich_app`.
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   docker compose ps
+   ```
+
+Don't start the old worker again next to the new setup. Larger instances, or ones with frequent big imports, can keep jobs in a separate container instead; see [Background jobs](https://dawarich.app/docs/self-hosting/configuration/background-jobs).
+
+### Added
+
+- Import your check-in history from a Foursquare Swarm data export. Upload the whole export archive or its `checkins*.json` files: every check-in becomes a point, and every check-in at a venue becomes a visit at a place named after that venue. A visit lasts until your next check-in, at most two hours. The other files in the archive (tips, photos, ratings) are skipped.
+
+### Changed
+
+- The app container in the default `docker/docker-compose.yml` is limited to one CPU core instead of half a core, since it also runs background jobs. Set `APP_CPU_LIMIT` to change it.
+- The Docker image now ships Node.js 22 LTS from the official Node.js build instead of Debian's Node.js 20 package, which no longer receives upstream security fixes. Node.js runs the server-side poster renderer. #3888
+- The points page and the points API page through large accounts much faster.
+- Reverse geocoding gets through a backlog faster: it uses as many background threads as your provider's rate limit allows and keeps its connection to the provider open. If you use Geoapify, LocationIQ or the public Nominatim, set a requests-per-second limit in the geocoding settings or `REVERSE_GEOCODING_RPS`, since Dawarich does not limit those providers on its own.
+- Visit detection and track generation need less memory and fewer database queries, and the place-name refresh skips months where nothing changed.
+
+### Fixed
+
+- Polish counts use the right plural form, for example "3 kraje" and "5 krajów" instead of "3 krajów" and "5 kraju". This also fixes relative times such as "około 3 godziny" and labels on the map.
+- Trips with long recordings open quickly: the trips list, trip page, trip form and shared trip page draw routes from map tiles instead of sending every recorded coordinate, and the trip page loads points only when you open Replay, the poster or the video studio (#3867, #3783)
+- Overnight stays where the phone goes quiet, for example arriving home in the evening and leaving in the morning, are now suggested as one visit across the silence instead of a few minutes after arrival. Choose Re-run detection on full history on the Visits page to fix past stays.
+- Points synced from TeslaMate now get suggested visits; choose Re-run detection on full history to cover earlier drives. On Dawarich Cloud, trial accounts are now included in the nightly visit run.
+- Re-running detection on full history no longer skips months with more than 100,000 points.
+- Opening a calculated trip whose countries could not be determined, for example without a reverse geocoder, no longer recalculates its path, distance and countries on every view; TREK sync no longer does either. If your points get countries later, press Recalculate on the trip page (#3868)
+- "Where you spent" on Insights counts days and year boundaries in your timezone, so a stay across New Year no longer shows the first days of the year at the end of the ribbon (#3869)
+- Countries you only flew over no longer count toward trips, monthly and yearly digests, or days per country on Insights. (#2711)
+- Track elevation gain and loss ignore small GPS altitude fluctuations. (#3458)
+- Photo markers on a public shared trip are spread across the whole trip, so later days still appear within the 100-marker limit. (#3653)
+- When a tracker's motion data is marked authoritative, the transportation mode it reports is kept during stops. (#3668)
+- Tracks are colored by speed again, and the speed color scale can be edited in the map settings. (#3681)
+- The heatmap is weighted by time spent at a place instead of how often points were recorded there. (#3597)
+- `POST /api/v1/visits/batch` accepts the same optional `address` as `POST /api/v1/visits`, and a visit sent with an address that has no street or city still gets its place address looked up.
+- A visit whose `address` is not an object is created without an address instead of failing.
+- The year digest counts time by country and travel patterns in your timezone, so a day around New Year is no longer added to the wrong year or split across two days. Choose Recalculate tracks & stats to refresh digests of past years.
+- Drives reported with a speed of 0 (OwnTracks, background Android) are no longer classified as stationary. Choose Recalculate tracks & stats to reclassify existing tracks (#3887)
+- Real-time tracks now split only on the time gap, like imported history and the map, so sparsely sampled driving points are no longer left without a track. Choose Recalculate tracks & stats to fill gaps recorded before this release (#3638)
+- End tracks when a device stays within 100 m for longer than the minutes-between-routes setting, even if it keeps reporting locations, so overnight stops can be suggested as visits again; regenerate existing tracks to apply the fix (#3356)
+- Continent achievements count the same countries as their explored regions, including time spent at points without a country tag; stored progress is recalculated and may unlock countries (#3784)
+- Photo clusters and their counts stay visible above tracks, heatmaps and points on the map (#3770)
+- The trip map refreshes after the live connection reconnects, even when the path was calculated before it connected (#3736)
+- GeoJSON and account-archive imports keep very precise coordinates near zero; such a longitude, for example `-0.12345678901234567`, was stored as `-128`.
+- Import archives with many photos or other unsupported files no longer fail with "Archive too large" or "Too many files".
+- Imports for accounts being deleted are skipped instead of failing, and account deletion waits for running imports to finish.
+- Raw geocoding responses, which contain addresses and coordinates, are no longer written to the log.
+- The visits API answers with a bad-request error (`Invalid time range`, previously `Invalid date format`) for malformed or reversed date ranges, and for area queries that send only one of `start_at` and `end_at`. Creating a visit rejects impossible dates such as 30 February instead of moving them into March.
+
+## [1.16.0] - 2026-10-17, Berlin
+
+### Added
+
+- Self-hosted users with an active Pro purchase in the Dawarich mobile app now get the supporter badge. The app reports the purchase to your instance automatically; Dawarich Cloud ignores it.
+- `POST /api/v1/visits` accepts an optional `address` (street, house number, postcode, city, country). A newly created place stores it, and visit responses include the place's formatted `address`, so apps can keep a visit's name and address separately.
+- A visit created without an address (for example from the map's visit form) gets its place address and city looked up in the background when reverse geocoding is enabled; the name you gave is kept.
+- Visit cards in the map's visit list show the place address under the visit name.
+- Insights show route maps on the year cards. Pro and self-hosted instances also get a year calendar coloured by country, a country timeline and a race against the previous year's distance; Cloud Lite shows a plain activity calendar and a preview of the race.
+- Search trips by name, description, places and notes; sort them and filter by year, month and country.
+- A Family tab on the map (`F`) holds the family layer, the member list with each member's last known address, and a link to the family page.
+
+### Changed
+
+- Achievements no longer credit any country or region for time spent in territories claimed by more than one state (Natural Earth disputed areas), and achievement cards leave those areas out; statistics, the scratch map and country attribution are unchanged. Regions lying almost entirely in such territories are no longer part of their country's set. Existing progress is recalculated in the background without notifications, and achievements already earned are kept. The upgrade loads the disputed-area boundaries and recalculates achievements once in the background; on large instances this can take a while.
+- Stats and Insights are now one page at /insights; /stats and /stats/:year redirect there.
+- Visitors opening `/` go to the sign-in page; the landing page is removed. Sign-in and sign-up pages are redesigned. Uptime checks that probe `/` now get a redirect; point them at `/api/v1/health`.
+- The map Layers tab shows layers as tiles, with options for enabled layers below them. Anomalies show only while Points are on, and the Create button is now Tools.
+- Buttons are raised and form fields recessed across the app.
+
+### Fixed
+
+- Stop the onboarding and other closed modals from flashing on page load in Firefox.
+- Changing the theme with a missing or unknown value now returns an error instead of crashing or saving an invalid theme.
+- Merge duplicate legacy points before coordinate backfill so upgrades complete without unique constraint errors (#3200). On large instances still carrying legacy coordinates this step can take several minutes; let it finish.
+- Keep MapLibre toast notifications within narrow viewports and allow map controls beneath messages to remain clickable.
+- Bundled country boundaries now match their ISO 3166-2 subdivisions: achievement cards, the scratch map and country attribution follow, and affected existing points are reassigned in the background.
+- Count briefly visited countries consistently in Insights, statistics, the stats API and digests even when no city meets the minimum stay threshold. (#3290)
+- Refresh import statuses after the live stream subscribes or reconnects, recovering updates missed before connection (#3174).
+- Emoji in place, area, visit and family member names now render correctly on the map instead of a placeholder glyph (#2365).
+- Update both mobile and desktop family-sharing indicators after changing location-sharing settings.
+- Keep signed storage capabilities and private filenames out of request path logs.
+- Prevent legacy or restored export URLs from deleting unrelated files; retain unproven legacy files after export removal or migration.
+- Refuse location-sharing consent when family access expires while waiting for the request lock.
+- Keep saved ZIP member imports processing when a later archive member fails validation.
+- Keep notification badges, read states and deleted items current in other open tabs.
+- Use safe defaults for missing user settings and refuse unsupported settings writes without replacing malformed data.
+- Shared tracks hide their map and route coordinates when the owner disables route sharing, while enabled statistics remain visible.
+- Only administrators can request test email, and queued test messages are discarded after the recipient loses administrator access.
+- Calendar activity and status counts refresh after demo visit edits and deletion, including restored visits removed by null-island cleanup.
+- Achievement sharing returns only to same-host HTTP(S) or safe relative pages and falls back for non-HTTP return URLs.
+- Concurrent Cloud family invitations can no longer reserve the same final available seat; self-hosted families remain unlimited.
+- Public-share unlock phrases are filtered from request parameters and query-string logs.
+- Keep tied transportation modes, visit and country rankings, location-search coordinates, and Immich GPS matches deterministic.
+- Clear pending two-factor challenges after successful authentication, preventing a stale challenge from switching accounts.
+- Reserve transportation reclassification while its worker is queued, preventing duplicate runs from repeated requests and allowing retry after enqueue failure.
+- Import progress no longer moves backwards when an older Google Takeout continuation finishes late or publishes a stale status.
+- Public monthly statistics and yearly digest links show an unavailable-share message after their owner is deleted.
+- Area creation and editing reject unsupported response formats before saving changes or scheduling visit relabeling.
+- Account deletion confirmation can be requested again immediately if token generation or email enqueueing fails.
+- Partnero signup failure diagnostics and Immich enrichment errors exclude provider-supplied credentials and customer details.
+- Propagate failed monthly statistics calculations so background jobs can retry, without repeating an unread failure notification on every retry of statistics or data recalculation; digest jobs report a failed month with a single digest failure notice.
+- Achievement backfills now restore historical visit dates, including previously earned regions and countries (#3728).
+- Timeline calendar activity and status counts refresh after confirming or declining visits in bulk.
+- Shared photo thumbnails lose their old authorization immediately when the trip dates or shared resource change.
+- Protect the acting and last active administrator from deletion, and serialize administrator deletion and role changes to retain administration access.
+- Prometheus metrics from web and Sidekiq no longer produce duplicate series when label order differs (#3769).
+- KMZ imports no longer repeatedly re-import their own archive and fill the import queue and storage (#3766).
+
+## [1.15.3] - 2026-09-30, Berlin
+
+### Added
+
+- Trips can be shared privately with family members, who see them in their trip list and a read-only map. Access follows family membership, sharing settings and privacy zones. (#3751)
+- Account settings allow editing first and last names. Family maps use these names when available and fall back to email. (#3748)
+- Trip pages link to the full map for the exact trip interval, preserving seconds in the date filters. (#3756)
+- Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
+
+### Changed
+
+- Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
+
+### Fixed
+
+- Geocoding jobs keep their duplicate-work guard through long queues and retries, and nightly scheduling no longer queues the same pending points again. (#3754)
+- GPX exports work when an older database lacks the decimal-altitude column, while retaining decimal precision when it is available. (#3752)
+- Test email is queued through the same worker as system mail, and the notice reports enqueueing rather than confirmed delivery. (#3746)
+- Archived Immich photos are excluded from map and trip results, including results previously cached before the fix. (#3740)
+- The Family Members map layer shows only other members, avoiding duplicate routes and markers for the current user.
+- Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
+- Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
+- Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
+- `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
+
+## [1.15.2] - 2026-09-22, Berlin
+
+### Added
+
+- Add an experimental read-only MCP endpoint at `/api/v1/mcp` for Pro and Family plans (and every self-hosted user), authenticated with the existing API key as a bearer token. MCP clients can read a timeline of up to 7 days, the latest location, and search visits by place, city, country or area name. See the [MCP documentation](https://dawarich.app/docs/features/mcp).
+- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
+
+### Fixed
+
+- Updating a point's coordinates through `PUT /api/v1/points/:id` refreshes its country and looks its address up again, as moving it on the map already does, instead of keeping the old city. (#3121)
+- Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
+- Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
+- SMTP delivery and other outgoing connections now use a host's IPv4 address when it has one, so they work on servers where IPv6 is configured but not routable. Integration URLs are checked against every address their host resolves to, and integration URLs with a bracketed IPv6 address such as `http://[fd00::5]:2283` are accepted (#3591).
+- Map v2 route-gap settings now accept custom distances and durations above the former 5,000m and 180-minute slider limits. Trip maps and shared trip links split day routes by your saved time gap instead of a fixed 60 minutes. (#3381)
 
 ## [1.15.1] - 2026-09-21, Berlin
 

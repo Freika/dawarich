@@ -7,7 +7,7 @@ module Geocoding
     PROVIDER_KEYS = { photon: :photon_api_host, geoapify: :geoapify_api_key,
                       nominatim: :nominatim_api_host, locationiq: :locationiq_api_key }.freeze
 
-    attr_reader :source, :provider, :host, :api_key, :use_https, :rps
+    attr_reader :source, :provider, :host, :api_key, :use_https, :rps, :language
 
     # Geocoding is an Instance setting: one provider serves everyone on a
     # deployment, so the user no longer changes the answer.
@@ -43,7 +43,8 @@ module Geocoding
       case provider
       when :photon
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:photon_api_key),
-          use_https: resolved_photon_use_https(primary_value) }
+          use_https: resolved_photon_use_https(primary_value),
+          language: resolved_photon_language }
       when :nominatim
         { host: primary_value, api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
           use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https) }
@@ -60,6 +61,24 @@ module Geocoding
       InstanceSettings::Resolver.value(:photon_api_use_https)
     end
 
+    # A pinned value never passes the admin form, so a typo such as en-US would
+    # make Photon reject every lookup; fall back to English instead.
+    def self.resolved_photon_language
+      language = InstanceSettings::Resolver.value(:photon_api_language).downcase
+      return language if language.match?(InstanceSettings::GeocodingInput::LANGUAGE_FORMAT)
+
+      warn_invalid_photon_language(language)
+      'en'
+    end
+
+    # Logged once per value, not on every lookup that resolves the config.
+    def self.warn_invalid_photon_language(language)
+      return if @warned_photon_language == language
+
+      @warned_photon_language = language
+      Rails.logger.warn("[Geocoding] Ignoring invalid Photon language #{language.inspect}; using en")
+    end
+
     # Stands in for the geocoder gem's own default lookup, which serves the
     # no-provider-configured fallback. That default is public Nominatim, whose
     # usage policy is one request a second.
@@ -74,14 +93,16 @@ module Geocoding
     end
 
     private_class_method :disabled_config, :resolved_provider_attributes, :resolved_photon_use_https,
-                         :provider_candidates, :resolved_attributes_for
+                         :provider_candidates, :resolved_attributes_for, :resolved_photon_language,
+                         :warn_invalid_photon_language
 
-    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil)
+    def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil, language: nil)
       @source = source
       @provider = provider
       @host = host
       @api_key = api_key
       @use_https = use_https
+      @language = language
       # Normalized here rather than trusted from the caller so a pinned value
       # obeys the same komoot pin and ChibiGeo clamp as a stored one.
       @rps = provider ? RateLimits.for(provider, host).normalize(rps) : nil
@@ -109,7 +130,7 @@ module Geocoding
     end
 
     def cache_digest
-      Digest::SHA256.hexdigest([source, provider, host, use_https, api_key].join('|'))
+      Digest::SHA256.hexdigest([source, provider, host, use_https, api_key, language].join('|'))
     end
 
     def provider_display_name

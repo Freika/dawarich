@@ -52,15 +52,15 @@
   top: 16px;
   left: 50%;
   padding: 8px 16px;
-  background: white;
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.15);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: oklch(var(--bc) / 0.75);
   z-index: 20;
   white-space: nowrap;
   opacity: 0;
@@ -79,34 +79,84 @@
 
 /* Shift the loading badge so it stays centered over the VISIBLE map area
    when the side panel is open. The badge is a sibling of the map container
-   inside #maps-maplibre-container; the container gets `panel-open` /
-   `panel-timeline-expanded` and takes width = 100% - <panel width>. The
-   offset below nudges the badge by half the panel width. */
+   inside #maps-maplibre-container; the container gets `panel-open` and
+   takes width = 100% - <panel width>. The offset below nudges the badge by
+   half the panel width. */
 .maps-maplibre-container.panel-open ~ .map-progress-badge {
   left: calc(50% + 240px);
 }
 
-.maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-  left: calc(50% + 360px);
-}
-
 @media (max-width: 1280px) {
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 310px);
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
+    left: calc(50% + 210px);
   }
 }
 
 @media (max-width: 1024px) {
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
-    left: calc(50% + 260px);
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
+    left: calc(50% + 190px);
   }
 }
 
 @media (max-width: 768px) {
   /* Panel overlays the map on mobile; keep the badge centered. */
-  .maps-maplibre-container.panel-open ~ .map-progress-badge,
-  .maps-maplibre-container.panel-timeline-expanded ~ .map-progress-badge {
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
     left: 50%;
+  }
+}
+
+/* Map messages (Toast): under the loading badge, centred on the map in view
+   the same way the badge is. */
+.map-toast-stack {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  z-index: 21;
+  width: max-content;
+  max-width: min(420px, calc(100% - 24px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.maps-maplibre-container.panel-open ~ .map-toast-stack {
+  left: calc(50% + 240px);
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .map-toast-stack {
+    left: calc(50% + 210px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .map-toast-stack {
+    left: calc(50% + 190px);
+  }
+}
+
+/* On phones the period button and the button column fill the top-left
+   corner: the badge and the messages go below the period button, between the
+   button column and the zoom controls. */
+@media (max-width: 768px) {
+  .map-progress-badge,
+  .map-progress-badge.visible,
+  .maps-maplibre-container.panel-open ~ .map-progress-badge {
+    top: 60px;
+    left: 72px;
+    right: 56px;
+    width: fit-content;
+    margin-inline: auto;
+    transform: none;
+  }
+
+  .map-toast-stack,
+  .maps-maplibre-container.panel-open ~ .map-toast-stack {
+    top: 104px;
+    left: 72px;
+    right: 56px;
+    width: auto;
+    max-width: none;
+    transform: none;
   }
 }
 
@@ -152,14 +202,6 @@
 }
 
 /* Dark theme support for progress badge */
-html[data-theme="dark"] .map-progress-badge,
-html[data-theme="dawarich-dark"] .map-progress-badge,
-html.dark .map-progress-badge {
-  background: rgba(31, 41, 55, 0.95);
-  color: #d1d5db;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
 html[data-theme="dark"] .map-progress-badge-dot,
 html[data-theme="dawarich-dark"] .map-progress-badge-dot,
 html.dark .map-progress-badge-dot {
@@ -222,51 +264,40 @@ html.dark .map-progress-badge-dot {
   background-color: rgba(0, 0, 0, 0.08);
 }
 
-/* Light theme (default) */
+/* Colours come from the theme, like every panel on the map. */
 .maplibregl-popup-content {
-  background-color: #ffffff;
-  color: #111827;
+  background-color: oklch(var(--b1));
+  color: oklch(var(--bc));
+  border: 1px solid oklch(var(--bc) / 0.15);
 }
 
 .maplibregl-popup-close-button {
-  color: #6b7280;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .maplibregl-popup-close-button:hover {
-  background-color: #f3f4f6;
-  color: #111827;
+  background-color: oklch(var(--bc) / 0.1);
+  color: oklch(var(--bc));
 }
 
-.maplibregl-popup-tip {
-  border-top-color: #ffffff;
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: oklch(var(--b1));
 }
 
-/* Dark theme */
-html[data-theme="dark"] .maplibregl-popup-content,
-html[data-theme="dawarich-dark"] .maplibregl-popup-content,
-html.dark .maplibregl-popup-content {
-  background-color: #1f2937;
-  color: #f9fafb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: oklch(var(--b1));
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button,
-html[data-theme="dawarich-dark"] .maplibregl-popup-close-button,
-html.dark .maplibregl-popup-close-button {
-  color: #d1d5db;
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: oklch(var(--b1));
 }
 
-html[data-theme="dark"] .maplibregl-popup-close-button:hover,
-html[data-theme="dawarich-dark"] .maplibregl-popup-close-button:hover,
-html.dark .maplibregl-popup-close-button:hover {
-  background-color: #374151;
-  color: #f9fafb;
-}
-
-html[data-theme="dark"] .maplibregl-popup-tip,
-html[data-theme="dawarich-dark"] .maplibregl-popup-tip,
-html.dark .maplibregl-popup-tip {
-  border-top-color: #1f2937;
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: oklch(var(--b1));
 }
 
 @keyframes pulse {
@@ -293,7 +324,6 @@ html.dark .maplibregl-popup-tip {
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   font-size: 13px;
   font-weight: 500;
   color: #1e40af;
@@ -347,4 +377,357 @@ html[data-theme="dark"] .map-upgrade-banner-dismiss,
 html[data-theme="dawarich-dark"] .map-upgrade-banner-dismiss,
 html.dark .map-upgrade-banner-dismiss {
   color: #e2e8f0;
+}
+
+.map-html-label {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  font-weight: 700;
+  font-size: 11px;
+  color: #111827;
+  text-shadow:
+    -1px -1px 0 #ffffff,
+    1px -1px 0 #ffffff,
+    -1px 1px 0 #ffffff,
+    1px 1px 0 #ffffff,
+    0 -2px 0 #ffffff,
+    0 2px 0 #ffffff,
+    -2px 0 0 #ffffff,
+    2px 0 0 #ffffff;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.map-html-label--places {
+  font-size: 11px;
+}
+
+.map-html-label--areas {
+  font-size: 14px;
+}
+
+.map-html-label--visits {
+  font-size: 11px;
+}
+
+.map-html-label--family {
+  font-size: 12px;
+}
+
+html[data-theme="dark"] .map-html-label,
+html[data-theme="dawarich-dark"] .map-html-label,
+html.dark .map-html-label {
+  color: #f3f4f6;
+  text-shadow:
+    -1px -1px 0 #111827,
+    1px -1px 0 #111827,
+    -1px 1px 0 #111827,
+    1px 1px 0 #111827,
+    0 -2px 0 #111827,
+    0 2px 0 #111827,
+    -2px 0 0 #111827,
+    2px 0 0 #111827;
+}
+
+/* Photo clusters use one bounded page, including on small map viewports. */
+.photo-cluster-gallery {
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  padding: 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 16px;
+  background: #fff;
+  color: #111827;
+  font:
+    14px system-ui,
+    sans-serif;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.photo-cluster-gallery::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+.photo-cluster-gallery header,
+.photo-cluster-gallery footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.photo-cluster-gallery h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.photo-cluster-gallery [role="status"] {
+  margin: 12px 0;
+}
+
+.photo-cluster-gallery button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  background: inherit;
+}
+
+.photo-cluster-gallery button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.photo-cluster-gallery button:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.photo-cluster-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-cluster-gallery .photo-cluster-gallery__thumbnail {
+  padding: 0;
+  aspect-ratio: 1;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.photo-cluster-gallery__thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-cluster-gallery footer {
+  margin-top: 16px;
+}
+
+.photo-cluster-gallery footer[hidden] {
+  display: none;
+}
+
+.photo-cluster-gallery__preview {
+  margin: 12px auto;
+  overflow-wrap: anywhere;
+}
+
+.photo-cluster-gallery__preview .photo-popup {
+  max-width: none;
+}
+
+.photo-cluster-gallery__preview .photo-preview img {
+  max-height: 50dvh;
+  object-fit: contain;
+}
+
+[data-theme="dark"] .photo-cluster-gallery,
+[data-theme="dawarich-dark"] .photo-cluster-gallery {
+  background: #1f2937;
+  color: #f9fafb;
+  border-color: #6b7280;
+}
+
+[data-theme="dark"] .photo-cluster-gallery .photo-info > div,
+[data-theme="dawarich-dark"] .photo-cluster-gallery .photo-info > div {
+  color: #e5e7eb;
+}
+
+@media (max-width: 480px) {
+  .photo-cluster-gallery {
+    padding: 12px;
+  }
+
+  .photo-cluster-gallery__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+.photo-cluster-gallery__content {
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+@media (min-width: 720px) {
+  .photo-cluster-gallery__grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Explains an empty period; toggled by the range statistics result. It sits
+   in the replay dock above the period totals and reads like a toast: one quiet
+   line in the theme's colours, centred on the part of the map in view. */
+@keyframes map-empty-state-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.map-empty-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px 8px;
+  max-width: 100%;
+  min-height: 36px;
+  margin-bottom: 8px;
+  padding: 8px 14px;
+  border: 1px solid oklch(var(--bc) / 0.12);
+  border-radius: 10px;
+  background: oklch(var(--b1) / 0.97);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  color: oklch(var(--bc));
+  font-size: 13px;
+  text-align: center;
+  animation: map-empty-state-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-empty-state {
+    animation: none;
+  }
+}
+
+.map-empty-state.hidden {
+  display: none;
+}
+
+.map-empty-state-action {
+  color: oklch(var(--p));
+  font-weight: 600;
+}
+
+/* Replay dock: sits above MapLibre's attribution and scale, inside the part
+   of the map the side panel leaves visible. The period totals are its pull
+   tab; the replay panel opens under the tab. */
+.replay-dock {
+  --replay-dock-panel: 0px;
+  position: absolute;
+  /* Centred on the part of the map the side panel leaves visible, and no
+     wider than a scale is comfortable to read. */
+  left: calc(var(--replay-dock-panel) + 12px);
+  right: 12px;
+  /* Closed, the tab rests at the foot of the map. */
+  bottom: 12px;
+  z-index: 460;
+  width: min(900px, calc(100% - var(--replay-dock-panel) - 24px));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* Open, the panel stays above MapLibre's attribution. */
+.replay-dock:has(.replay-panel:not(.hidden)) {
+  bottom: 40px;
+}
+
+/* The demo data notice sits at the bottom of the page; stay clear of it. */
+body:has(#demo-data-banner) .replay-dock {
+  bottom: 60px;
+}
+
+.replay-dock > * {
+  pointer-events: auto;
+}
+
+.maps-maplibre-container.panel-open ~ .replay-dock {
+  --replay-dock-panel: 480px;
+}
+
+@media (max-width: 1280px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock {
+    --replay-dock-panel: 420px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock {
+    --replay-dock-panel: 380px;
+  }
+}
+
+/* On mobile the side panel overlays the map. */
+@media (max-width: 768px) {
+  .maps-maplibre-container.panel-open ~ .replay-dock,
+  .maps-maplibre-container.panel-timeline-expanded ~ .replay-dock {
+    --replay-dock-panel: 0px;
+  }
+}
+
+.map-range-statistics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+  background: oklch(var(--b1));
+  color: oklch(var(--bc));
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.replay-tab__icon,
+.replay-tab__chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  transition: transform 0.15s;
+}
+
+.replay-tab__icon {
+  color: oklch(var(--p));
+}
+
+/* Open: the tab fuses with the panel and the chevron points down. */
+.replay-dock:has(.replay-panel:not(.hidden)) .map-range-statistics {
+  margin-bottom: -1px;
+  border-bottom-color: oklch(var(--b1));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.replay-dock:has(.replay-panel:not(.hidden)) .replay-tab__chevron {
+  transform: rotate(180deg);
+}
+
+.replay-dock .replay-panel {
+  position: static;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+/* The tab closes the dock. */
+.replay-dock .replay-close {
+  display: none;
+}
+
+.replay-dock .replay-controls-row {
+  padding-right: 0;
 }

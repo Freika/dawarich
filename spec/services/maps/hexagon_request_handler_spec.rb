@@ -10,7 +10,7 @@ RSpec.describe Maps::HexagonRequestHandler do
         user: user,
         stat: stat,
         start_date: start_date,
-        end_date: end_date
+        end_date: end_date, privacy_zone_masker: Maps::PrivacyZoneMasker.none
       ).call
     end
 

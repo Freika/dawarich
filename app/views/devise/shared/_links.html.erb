@@ -1,5 +1,5 @@
 <div class="mt-5 space-y-2 text-sm">
-  <% if !signed_in? %>
+  <% if !signed_in? && controller_name != 'sessions' %>
     <div>
       <%= link_to t('.log_in'), new_session_path(resource_name), class: 'link link-hover text-base-content/70' %>
     </div>
@@ -17,13 +17,8 @@
     </div>
   <% end %>
 
-  <% if devise_mapping.confirmable? && controller_name != 'confirmations' %>
-    <div>
-      <%= link_to t('.didn_t_receive_confirmation_instructions'), new_confirmation_path(resource_name), class: 'link link-hover text-base-content/70' %>
-    </div>
-  <% end %>
 
-  <% if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && controller_name != 'unlocks' %>
+  <% if devise_mapping.lockable? && resource_class.unlock_strategy_enabled?(:email) && !%w[unlocks registrations].include?(controller_name) %>
     <div>
       <%= link_to t('.didn_t_receive_unlock_instructions'), new_unlock_path(resource_name), class: 'link link-hover text-base-content/70' %>
     </div>

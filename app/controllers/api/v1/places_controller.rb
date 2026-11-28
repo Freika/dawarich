@@ -5,6 +5,8 @@ module Api
     class PlacesController < ApiController
       CO_LOCATED_THRESHOLD_METERS = 50
 
+      wrap_parameters :place, include: %i[name latitude longitude source note visit_radius geofence archived tag_ids]
+
       before_action :set_place, only: %i[show update destroy]
 
       def index
@@ -35,11 +37,15 @@ module Api
         @places =
           case params[:filter]
           when 'all'       then @places
-          when 'manual'    then @places.manual
-          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
-          when 'tagged'    then @places.tagged
-          else                  @places.map_visible(current_api_user)
+          when 'archived'  then @places.archived
+          when 'manual'    then @places.manual.not_archived
+          when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user).not_archived
+          when 'unconfirmed' then @places.unconfirmed_for(current_api_user)
+          when 'tagged' then @places.tagged.not_archived
+          else @places.map_visible(current_api_user)
           end
+
+        @places = map_read_masker.mask_places(@places)
 
         # Support pagination (defaults to page 1 with all results if no page param)
         page = params[:page].presence || 1
@@ -51,9 +57,7 @@ module Api
         # Always set pagination headers for consistency
         if @places.respond_to?(:current_page)
           # Paginated collection
-          response.set_header('X-Current-Page', @places.current_page.to_s)
-          response.set_header('X-Total-Pages', @places.total_pages.to_s)
-          response.set_header('X-Total-Count', @places.total_count.to_s)
+          set_pagination_headers(@places, with_total: true)
         else
           # Non-paginated collection - treat as single page with all results
           total = @places.count
@@ -72,6 +76,7 @@ module Api
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
         @place.user_named = true
+        @place.reattribute_suggested_visits_on_create = true
 
         if @place.save
           add_tags if tag_ids.present?
@@ -95,7 +100,7 @@ module Api
       end
 
       def destroy
-        @place.destroy!
+        Places::Destroy.new(user: current_api_user, place: @place).call
 
         head :no_content
       end
@@ -133,14 +138,15 @@ module Api
         limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
-        external_places =
+        external_search =
           if query.length >= 2
             Places::Search.new(user: current_api_user, query: query, latitude: lat, longitude: lon,
-                               radius: radius, limit: limit).call
+                               radius: radius, limit: limit)
           else
             Places::NearbySearch.new(user: current_api_user, latitude: lat, longitude: lon,
-                                     radius: radius, limit: limit, cache: true).call
+                                     radius: radius, limit: limit, cache: true)
           end
+        external_places = external_search.call
 
         user_places = Places::UserSearch.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
@@ -157,7 +163,11 @@ module Api
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
         ).call
 
-        render json: { places: places, areas: areas }
+        forward_search_unavailable = external_search.is_a?(Places::Search) &&
+                                     external_search.forward_search_unavailable?
+
+        render json: { places: places, areas: areas, throttled: external_search.throttled?,
+                       forward_search_unavailable: forward_search_unavailable }
       end
 
       private
@@ -196,7 +206,9 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, tag_ids: [])
+        params.require(:place).permit(
+          :name, :latitude, :longitude, :source, :note, :visit_radius, :geofence, :archived, tag_ids: []
+        )
       end
 
       def tag_ids
@@ -205,15 +217,12 @@ module Api
       end
 
       def add_tags
-        return if tag_ids.empty?
-
         tags = current_api_user.tags.where(id: tag_ids)
         @place.tags << tags
       end
 
       def set_tags
-        tag_ids_param = Array(params.dig(:place, :tag_ids)).compact
-        tags = current_api_user.tags.where(id: tag_ids_param)
+        tags = current_api_user.tags.where(id: tag_ids)
         @place.tags = tags
       end
 
@@ -225,10 +234,13 @@ module Api
           longitude: place.lon,
           source: place.source,
           note: place.note,
+          visit_radius: place.visit_radius,
+          geofence: place.geofence,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.active_visits.size,
           name_locked: place.name_locked?,
+          archived: place.archived?,
           created_at: place.created_at,
           tags: place.tags.map do |tag|
             {

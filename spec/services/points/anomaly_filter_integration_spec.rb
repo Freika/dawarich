@@ -35,7 +35,7 @@ RSpec.describe 'GPS Noise Filtering Integration' do
 
     it 'excludes anomalies from track segmentation' do
       segments = Track.segment_points_in_sql(
-        user.id, base_time, base_time + 600, 30, 500
+        user.id, base_time, base_time + 600, 30
       )
       all_ids = segments.flat_map { |s| s[:point_ids] }
       anomaly_ids = user.points.anomaly.pluck(:id)

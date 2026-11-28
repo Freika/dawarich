@@ -2,7 +2,8 @@
 
 module TransportationModes
   # Converts a point's motion_data hint into per-mode log-likelihood boosts.
-  # Hints are fused into emission scores — never a hard gate. OwnTracks' `m`
+  # Ordinary hints are fused into emission scores; explicitly authoritative
+  # tracker motion constrains the window's mode instead. OwnTracks' `m`
   # field is deliberately ignored: it is the monitoring-mode flag (significant
   # vs move), not a motion state.
   class HintScorer
@@ -58,6 +59,13 @@ module TransportationModes
       hints = google_hints(motion_data)
       hints = overland_hints(motion_data) if hints.empty?
       hints
+    end
+
+    def self.authoritative_mode(motion_data)
+      return nil unless motion_data.is_a?(Hash) && motion_data['motion_authoritative'] == true
+      return nil unless motion_data['motion'].is_a?(Array)
+
+      motion_data['motion'].filter_map { |entry| OVERLAND_MODE_MAP[entry.to_s.downcase] }.first
     end
 
     def self.google_hints(data)

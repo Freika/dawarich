@@ -53,6 +53,8 @@ class Imports::Create
       import.update!(status: :completed)
       broadcast_status_update
     end
+
+    Analytics::ImportSucceeded.new(import).call unless import.destroyed? || import.user_data_archive?
   end
 
   private
@@ -65,9 +67,11 @@ class Imports::Create
   def post_import_processing
     run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }
     run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
+    run_post_import_step('fill_missing_velocities') { fill_missing_velocities }
     run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
     run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
     run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
+    run_post_import_step('schedule_trip_detection') { Trips::DetectJob.schedule(user.id) }
     run_post_import_step('update_points_count') { update_import_points_count(import) }
     run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
   end
@@ -90,7 +94,8 @@ class Imports::Create
         kind: :warning,
         title: I18n.t('services.imports.create.import_post_processing_incomplete'),
         content: I18n.t('services.imports.create.your_import_name_finished_and_all_points_were_saved_but',
-                        name: import.name, step: step.tr('_', ' '))
+                        name: import.name, step: step.tr('_', ' ')),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   rescue StandardError => e
@@ -121,6 +126,7 @@ class Imports::Create
     when 'tcx'                          then Tcx::Importer
     when 'fit'                          then Fit::Importer
     when 'polarsteps'                   then Polarsteps::Importer
+    when 'swarm'                        then Swarm::Importer
     when 'zip'
       raise ArgumentError, I18n.t('services.imports.create.zip_unclassified')
     else
@@ -138,22 +144,24 @@ class Imports::Create
 
     if import.doubles.to_i.positive?
       I18n.with_locale(import.user.locale) do
-        Notification.create!(
-          user_id: import.user_id,
+        Notifications::Create.new(
+          user: import.user,
+          kind: :info,
           title: I18n.t('services.imports.create.import_completed_with_no_new_points'),
           content: I18n.t('services.imports.create.your_file_name_contained_raw_points_points_all_of_which',
                           name: import.name, raw_points: import.raw_points),
-          kind: :info
-        )
+          action_path: Notifications.paths.imports_path
+        ).call
       end
     else
       I18n.with_locale(import.user.locale) do
-        Notification.create!(
-          user_id: import.user_id,
+        Notifications::Create.new(
+          user: import.user,
+          kind: :warning,
           title: I18n.t('services.imports.create.import_completed_with_no_points'),
           content: zero_points_content(import),
-          kind: :warning
-        )
+          action_path: Notifications.paths.imports_path
+        ).call
       end
     end
   end
@@ -191,10 +199,28 @@ class Imports::Create
     Points::AnomalyFilter.new(user.id, min_ts, max_ts).call
   end
 
+  # Before stats: without a speed every fix counts as time on the ground.
+  # After the anomaly filter, so flagged position jumps cannot fake a flight.
+  def fill_missing_velocities
+    return unless Points::VelocityFiller::TRACK_SOURCES.include?(import.source)
+
+    return unless import.points.where(velocity: nil).exists?
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    filled = Points::VelocityFiller.new(import.id).call
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(1)
+    Rails.logger.info(
+      "[Imports::Create] import_id=#{import.id} flight_speeds_derived=#{filled.updated} seconds=#{elapsed}"
+    )
+    Points::TileEpoch.bump_range(user.id, filled.first_timestamp, filled.last_timestamp) if filled.updated.positive?
+  end
+
   def schedule_stats_creating(user_id)
     import.years_and_months_tracked.each do |year, month|
       Stats::CalculatingJob.perform_later(user_id, year, month)
     end
+
+    Achievements::CheckJob.schedule(user_id, oldest_timestamp: import.points.minimum(:timestamp))
   end
 
   def schedule_visit_suggesting(user_id, import)
@@ -241,7 +267,8 @@ class Imports::Create
         user:,
         kind: :error,
         title: I18n.t('services.imports.create.import_failed'),
-        content: import_failed_message(import, error)
+        content: import_failed_message(import, error),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end
@@ -252,16 +279,10 @@ class Imports::Create
     detector.detect_source!
   end
 
-  def import_failed_message(import, error)
-    if DawarichSettings.self_hosted?
-      I18n.t(
-        'services.imports.create.import_failed_self_hosted',
-        name: import.name,
-        message: error.message,
-        backtrace: error.backtrace.join("\n")
-      )
-    else
-      I18n.t('services.imports.create.import_failed_cloud', name: import.name)
-    end
+  def import_failed_message(import, _error)
+    helpers = ActionController::Base.helpers
+    link = helpers.link_to(I18n.t('ux_p2.import.open'), Rails.application.routes.url_helpers.import_path(import))
+    I18n.t('ux_p2.import.notification_html', name: ERB::Util.html_escape(import.name),
+           reason: ERB::Util.html_escape(import.failure_summary), link: link)
   end
 end

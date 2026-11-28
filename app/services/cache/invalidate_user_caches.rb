@@ -15,37 +15,29 @@ class Cache::InvalidateUserCaches
     invalidate_countries_visited
     invalidate_cities_visited
     invalidate_points_geocoded_stats
-    invalidate_total_distance
     invalidate_insights_digest
   end
 
   def invalidate_countries_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_countries_visited")
+    Rails.cache.delete(Cache::UserKeys.countries_visited(user_id))
   end
 
   def invalidate_cities_visited
-    Rails.cache.delete("dawarich/user_#{user_id}_cities_visited")
+    Rails.cache.delete(Cache::UserKeys.cities_visited(user_id))
   end
 
   def invalidate_points_geocoded_stats
-    Rails.cache.delete("dawarich/user_#{user_id}_points_geocoded_stats")
+    Rails.cache.delete(Cache::UserKeys.points_geocoded_stats(user_id))
   end
 
-  def invalidate_total_distance
-    Rails.cache.delete("dawarich/user_#{user_id}_total_distance")
-  end
-
+  # Deletes the exact versioned keys instead of delete_matched, which scans the
+  # whole Redis keyspace while holding a pooled connection. Entries under an
+  # older updated_at are already unreachable and expire on their own.
   def invalidate_insights_digest
-    # Clear insights digest cache for specified year or all years
-    # Note: delete_matched is supported by Redis cache store
-    # The cache also auto-invalidates via timestamp-based keys when digests are updated
-    return unless Rails.cache.respond_to?(:delete_matched)
-
-    if year
-      Rails.cache.delete_matched("insights/yearly_digest/#{user_id}/#{year}/*")
-    else
-      Rails.cache.delete_matched("insights/yearly_digest/#{user_id}/*")
-    end
+    digests = Users::Digest.yearly.where(user_id: user_id)
+    digests = digests.where(year: year) if year
+    keys = digests.map(&:insights_cache_key)
+    Rails.cache.delete_multi(keys) if keys.any?
   end
 
   private

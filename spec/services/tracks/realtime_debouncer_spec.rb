@@ -69,6 +69,8 @@ RSpec.describe Tracks::RealtimeDebouncer do
       let(:other_user) { create(:user) }
       let(:other_debouncer) { described_class.new(other_user.id) }
 
+      before { other_debouncer.clear }
+
       it 'schedules separate jobs for each user' do
         debouncer.trigger
         other_debouncer.trigger

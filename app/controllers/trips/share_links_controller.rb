@@ -40,14 +40,24 @@ module Trips
         resource_id:   @trip.id,
         name:          create_params[:name].presence || I18n.t('controllers.trips.share_links.default_name',
                                                                trip: @trip.name),
-        magic_phrase:  create_params[:magic_phrase].presence,
+        magic_phrase:  (create_params[:magic_phrase].presence unless family_share?),
         expires_at:    expiry_from(create_params[:expires_at]),
-        settings:      SharedLink.default_settings_for(:trip).merge(extracted_settings)
+        settings:      SharedLink.default_settings_for(:trip).merge(extracted_settings).merge(audience_settings)
       }
     end
 
     def create_params
-      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :expires_at)
+      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :expires_at, :audience)
+    end
+
+    def family_share?
+      create_params[:audience] == 'family'
+    end
+
+    def audience_settings
+      return {} unless family_share?
+
+      { 'audience' => 'family', 'family_id' => current_user.family&.id }
     end
   end
 end

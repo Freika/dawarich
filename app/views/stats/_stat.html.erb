@@ -1,32 +1,18 @@
-<%= link_to t('.year_month', year: stat.year, month: stat.month),
-    class: "group block p-6 bg-base-100 hover:bg-base-200/50 rounded-xl border border-base-300 hover:border-primary/40 hover:shadow-lg transition-all duration-200 hover:scale-[1.02]" do %>
-
-  <!-- Month and Year -->
-  <div class="flex items-center justify-between mb-4">
-    <h3 class="text-lg font-medium text-base-content group-hover:text-primary transition-colors flex items-center gap-2" style="color: <%= month_color(stat) %>;">
-      <%= icon month_icon(stat) %> <%= l(Date.new(stat.year, stat.month, 1), format: :month_year) %>
-    </h3>
-    <div class="opacity-0 group-hover:opacity-100 transition-opacity">
-      <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-      </svg>
-    </div>
+<%= link_to month_stats_path(year: stat.year, month: stat.month),
+            class: 'group block min-w-0 rounded-lg border border-base-300 bg-base-100 px-3 py-2.5 transition-colors hover:border-primary/40' do %>
+  <div class="flex items-center gap-1.5 text-sm font-medium" style="color: <%= month_color(stat) %>;">
+    <%= icon month_icon(stat), class: 'w-4 h-4 shrink-0' %>
+    <span class="truncate"><%= l(Date.new(stat.year, stat.month, 1), format: :month_name) %></span>
   </div>
-
-  <!-- Main Stats -->
-  <div class="space-y-3">
-    <!-- Distance -->
-    <div>
-      <div class="text-2xl font-semibold text-base-content" style="color: <%= month_color(stat) %>;">
-        <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
-        <span class="text-sm font-normal text-base-content/60 ml-1"><%= current_user.safe_settings.distance_unit %></span>
-      </div>
-      <div class="text-sm text-base-content/60"><%= t('.total_distance') %></div>
-    </div>
-
-    <!-- Location Summary -->
-    <div class="text-sm text-gray-600">
-      <%= countries_and_cities_stat_for_month(stat) %>
-    </div>
+  <div class="mt-1 text-lg font-semibold tabular-nums text-base-content">
+    <%= number_with_delimiter stat.distance_in_unit(current_user.safe_settings.distance_unit).round %>
+    <span class="text-xs font-normal text-base-content/60"><%= current_user.safe_settings.distance_unit %></span>
   </div>
+  <% location = countries_and_cities_stat_for_month(stat) %>
+  <div class="truncate text-xs text-base-content/60" title="<%= location %>"><%= location %></div>
+  <% if local_assigns[:share] %>
+    <div class="mt-2 h-1 overflow-hidden rounded-full bg-base-300" aria-hidden="true">
+      <div class="h-full rounded-full" style="width: <%= (share * 100).clamp(3, 100).round(1) %>%; background-color: <%= month_color(stat) %>;"></div>
+    </div>
+  <% end %>
 <% end %>

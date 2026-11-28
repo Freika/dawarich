@@ -70,6 +70,25 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports notifications without action_path' do
+        create(:notification, user:, title: 'Export finished', action_path: '/exports')
+        temp_dir = Rails.root.join('tmp/test_extract_notifications')
+        FileUtils.mkdir_p(temp_dir)
+
+        begin
+          temp_zip = temp_dir.join('test.zip')
+          File.binwrite(temp_zip, service.export.file.download)
+
+          lines = Zip::File.open(temp_zip) { |zip| zip.read('notifications.jsonl') }.lines.map { |l| JSON.parse(l) }
+          exported = lines.find { |line| line['title'] == 'Export finished' }
+
+          expect(exported).to be_present
+          expect(exported).not_to have_key('action_path')
+        ensure
+          FileUtils.rm_rf(temp_dir)
+        end
+      end
+
       it 'creates JSONL files in the archive' do
         result = service.export
 
@@ -99,7 +118,7 @@ RSpec.describe Users::ExportData, type: :service do
       end
 
       it 'exports a portable TREK snapshot without its database source ID' do
-        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        stub_host_addresses('trek.example.test', '93.184.216.34')
         source = create(:trip_source, user:)
         snapshot = { 'days' => [{ 'date' => '2024-11-27', 'day_number' => 1, 'notes' => 'Arrival' }] }
         create(:trip, user:, trip_source: source, source_identifier: '12', source_status: :active,
@@ -114,6 +133,77 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports mapped Areas with the current canonical Place attributes' do
+        area = create(:area, user: user, name: 'Stale name', radius: 50)
+        place = create(:place, user: user, name: 'Current name', latitude: 52.5, longitude: 13.4,
+                               visit_radius: 125)
+        LegacyAreaPlaceMapping.create!(area: area, place: place)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          payload = JSON.parse(zip_file.find_entry('areas.jsonl').get_input_stream.read.lines.first)
+          expect(payload).to include(
+            'name' => 'Current name', 'latitude' => place.lat, 'longitude' => place.lon, 'radius' => 125
+          )
+        end
+      end
+
+      it 'leaves integration secrets out of the exported settings and keeps the URLs' do
+        user.update!(settings: {
+                       'immich_url' => 'https://immich.example.test', 'immich_api_key' => 'immich-secret',
+                       'photoprism_url' => 'https://photoprism.example.test', 'photoprism_api_key' => 'prism-secret',
+                       'airtrail_url' => 'https://airtrail.example.test', 'airtrail_api_key' => 'airtrail-secret',
+                       'teslamate_url' => 'https://teslamate.example.test', 'teslamate_username' => 'proxy',
+                       'teslamate_password' => 'tesla-secret', 'teslamate_api_token' => 'tesla-token',
+                       'teslamate_last_synced_url' => 'https://basic:url-secret@teslamate.example.test'
+                     })
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          raw = zip_file.read('settings.jsonl')
+          exported = JSON.parse(raw)
+
+          expect(exported.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key',
+                                               'teslamate_password', 'teslamate_api_token')
+          expect(exported['teslamate_last_synced_url']).to eq('https://teslamate.example.test')
+          %w[immich-secret prism-secret airtrail-secret tesla-secret tesla-token url-secret].each do |secret|
+            expect(raw).not_to include(secret)
+          end
+          expect(exported).to include('immich_url' => 'https://immich.example.test',
+                                      'photoprism_url' => 'https://photoprism.example.test',
+                                      'airtrail_url' => 'https://airtrail.example.test',
+                                      'teslamate_url' => 'https://teslamate.example.test',
+                                      'teslamate_username' => 'proxy')
+        end
+      end
+
+      it 'exports the stored Pro-only settings of a Lite user' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :lite, settings: {
+                       'route_color' => '#123456',
+                       'maps_maplibre_tiles_url' => 'https://tiles.example.test/{z}/{x}/{y}.png',
+                       'globe_projection' => true,
+                       'enabled_map_layers' => %w[Tracks Heatmap Hexagons],
+                       'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => %w[poi] }
+                     })
+        expect(user.plan_restricted?).to be(true)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          exported = JSON.parse(zip_file.read('settings.jsonl'))
+          expect(exported).to include(
+            'route_color' => '#123456',
+            'maps_maplibre_tiles_url' => 'https://tiles.example.test/{z}/{x}/{y}.png',
+            'globe_projection' => true,
+            'enabled_map_layers' => %w[Tracks Heatmap Hexagons],
+            'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => %w[poi] }
+          )
+        end
+      end
+
       it 'marks the export as completed' do
         result = service.export
 
@@ -125,7 +215,27 @@ RSpec.describe Users::ExportData, type: :service do
           user: user,
           title: 'Export completed',
           content: /Your data export has been processed successfully/,
-          kind: :info
+          kind: :info,
+          action_path: '/exports'
+        ).and_return(double(call: true))
+
+        service.export
+      end
+
+      it 'leaves a notification that leads to the export list' do
+        allow(Notifications::Create).to receive(:new).and_call_original
+
+        service.export
+
+        expect(user.notifications.last).to have_attributes(title: 'Export completed', action_path: '/exports')
+      end
+
+      it 'does not expose legacy Area compatibility records in the notification' do
+        create(:area, user: user)
+        create(:place, user: user)
+
+        expect(Notifications::Create).to receive(:new).with(
+          hash_including(content: satisfy { |content| content.include?('1 places') && !content.include?('areas') })
         ).and_return(double(call: true))
 
         service.export
@@ -294,6 +404,7 @@ RSpec.describe Users::ExportData, type: :service do
       it 'returns correct counts for all entity types' do
         # Create some test data
         create_list(:area, 2, user: user)
+        create_list(:place, 2, user: user)
         create(:import, user: user)
         create(:trip, user: user)
         create(:stat, user: user)
@@ -303,6 +414,7 @@ RSpec.describe Users::ExportData, type: :service do
         counts = service.send(:calculate_entity_counts)
 
         expect(counts[:areas]).to eq(2)
+        expect(counts[:places]).to eq(2)
         expect(counts[:imports]).to eq(1)
         expect(counts[:trips]).to eq(1)
         expect(counts[:stats]).to eq(1)

@@ -1,3 +1,4 @@
+import { formatDateTime } from "i18n"
 import { calculateDistance } from "./geometry"
 
 export const SIMPLIFIED_POINTS_DISTANCE_METERS = 50
@@ -86,44 +87,7 @@ export function formatTimestamp(timestamp, timezone = "UTC") {
     date = new Date(timestamp)
   }
 
-  return date.toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  })
-}
-
-/**
- * Format timestamp as time only (HH:MM)
- * @param {number|string} timestamp - Unix timestamp (seconds) or ISO 8601 string
- * @param {string} timezone - IANA timezone string (e.g., 'Europe/Berlin')
- * @returns {string} Formatted time (e.g., "14:30")
- */
-export function formatTimeOnly(timestamp, timezone = "UTC") {
-  if (!timestamp) return "--:--"
-
-  let date
-  if (typeof timestamp === "string") {
-    date = new Date(timestamp)
-  } else if (timestamp < 10000000000) {
-    // Unix timestamp in seconds
-    date = new Date(timestamp * 1000)
-  } else {
-    // Unix timestamp in milliseconds
-    date = new Date(timestamp)
-  }
-
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  })
+  return formatDateTime(date, { seconds: true, timeZone: timezone })
 }
 
 /**

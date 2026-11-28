@@ -33,7 +33,7 @@ RSpec.describe Families::UpdateLocationSharing do
           expect(result.payload[:duration]).to eq('1h')
           expect(result.payload[:message]).to eq('Location sharing enabled for 1 hour')
           expect(result.payload[:expires_at]).to eq(1.hour.from_now.iso8601)
-          expect(result.payload[:expires_at_formatted]).to eq(1.hour.from_now.strftime('%b %d at %I:%M %p'))
+          expect(result.payload[:expires_at_formatted]).to eq(1.hour.from_now.strftime('%b %d at %H:%M'))
         end
       end
 

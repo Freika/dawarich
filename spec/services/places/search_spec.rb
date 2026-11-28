@@ -165,8 +165,18 @@ RSpec.describe Places::Search do
 
     it 'returns an empty list when the rate limiter skips the lookup' do
       allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
+      search = described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0)
 
-      expect(described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
+      expect(search.call).to eq([])
+      expect(search).to be_throttled
+    end
+
+    it 'is not throttled when the provider answers with no results' do
+      allow(Geocoder).to receive(:search).and_return([])
+      search = described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0)
+
+      expect(search.call).to eq([])
+      expect(search).not_to be_throttled
     end
 
     it 'handles invalid provider requests without reporting an application exception' do

@@ -5,9 +5,7 @@ class Places::BulkNameFetchingJob < ApplicationJob
 
   def perform
     Place.where(name: Place::DEFAULT_NAME).in_batches do |batch|
-      batch.pluck(:id).each do |place_id|
-        Places::NameFetchingJob.perform_later(place_id)
-      end
+      ActiveJob.perform_all_later(batch.pluck(:id).map { |place_id| Places::NameFetchingJob.new(place_id) })
     end
   end
 end

@@ -30,7 +30,7 @@ RSpec.describe 'Map Select Area returns visits attached only to an Area' do
   end
 
   let!(:place_only_visit) do
-    create(:visit, user: user, area: nil, place: place_inside,
+    create(:visit, user: user, place: place_inside,
                    started_at: 4.hours.ago, ended_at: 3.hours.ago)
   end
 
@@ -39,7 +39,7 @@ RSpec.describe 'Map Select Area returns visits attached only to an Area' do
                    started_at: 6.hours.ago, ended_at: 5.hours.ago)
   end
 
-  subject(:result) { Visits::FindWithinBoundingBox.new(user, envelope_params).call }
+  subject(:result) { Visits::FindWithinBoundingBox.new(user, envelope_params, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
 
   it 'includes visits whose Area centroid falls inside the envelope' do
     expect(result).to include(area_only_visit)

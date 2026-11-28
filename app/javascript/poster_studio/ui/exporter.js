@@ -19,6 +19,7 @@ export async function exportPoster({
   font,
   cssSize,
   signal,
+  bleedMm = 0,
 }) {
   const geometry = resolveLayoutGeometry(layout, dpi)
   const canvas = await captureBounds({
@@ -36,7 +37,7 @@ export async function exportPoster({
     const [widthMm, heightMm] = layout.landscape
       ? [paper.hmm, paper.wmm]
       : [paper.wmm, paper.hmm]
-    const bytes = await encodePdf(canvas, { widthMm, heightMm })
+    const bytes = await encodePdf(canvas, { widthMm, heightMm, bleedMm })
     return { blob: pdfBlob(bytes), extension: "pdf", geometry }
   }
 

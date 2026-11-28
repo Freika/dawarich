@@ -26,10 +26,20 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       expect(legitimate_anomaly.reload.anomaly).to be true
     end
 
-    it 'enqueues a tracks/stats/digests recalculation afterwards' do
+    it 'enqueues a tracks/stats/digests recalculation of the changed year afterwards' do
+      changed_year = Time.zone.at(wrongly_flagged.timestamp).year
+
       expect do
         described_class.new.perform(user.id, reset: true)
-      end.to have_enqueued_job(Users::RecalculateDataJob).with(user.id, notify: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [changed_year], anomaly_rebuild: true)
+    end
+
+    it 'rebuilds achievements after anomaly flags are cleared and re-evaluated' do
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Achievements::CheckJob)
+        .with(user.id, notify: true, oldest_timestamp: user.points.minimum(:timestamp))
     end
 
     it 'notifies the user by default' do
@@ -90,6 +100,171 @@ RSpec.describe Points::AnomalyBackfillUserJob, type: :job do
       perform_enqueued_jobs(only: Users::RecalculateDataJob)
 
       expect(user.notifications.where(title: 'Data recalculation completed')).not_to exist
+    end
+  end
+
+  describe '#perform with reset: true when the flags come out the same' do
+    let!(:unchanged_anomaly) do
+      create(:point, user: user, accuracy: 50_000, anomaly: true,
+             timestamp: Time.utc(2024, 6, 15).to_i, lonlat: 'POINT(13.405 52.52)')
+    end
+    let!(:wrongly_flagged) do
+      create(:point, user: user, accuracy: 60, anomaly: true,
+             timestamp: Time.utc(2025, 6, 15).to_i, lonlat: 'POINT(13.4051 52.5201)')
+    end
+
+    it 'rebuilds only the years whose anomalies changed' do
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2025], anomaly_rebuild: true)
+    end
+
+    it 'skips the rebuild and achievements when no year changed' do
+      wrongly_flagged.destroy!
+
+      expect do
+        expect(described_class.new.perform(user.id, reset: true)).to be true
+      end.not_to have_enqueued_job(Users::RecalculateDataJob)
+
+      expect(Achievements::CheckJob).not_to have_been_enqueued
+      expect(unchanged_anomaly.reload.anomaly).to be true
+    end
+
+    it 'does not rebuild inline when no year changed' do
+      wrongly_flagged.destroy!
+
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(Tracks::TimeChunkProcessorJob).not_to have_been_enqueued
+    end
+
+    it 'tells the user the re-check found nothing to change' do
+      wrongly_flagged.destroy!
+
+      described_class.new.perform(user.id, reset: true)
+
+      expect(user.notifications.where(title: 'GPS noise re-check finished')).to exist
+    end
+
+    it 'stays silent when nothing changed and notify is false' do
+      wrongly_flagged.destroy!
+
+      described_class.new.perform(user.id, reset: true, notify: false)
+
+      expect(user.notifications).to be_empty
+    end
+
+    it 'still rebuilds the changed year when a run is retried after its rebuild failed' do
+      lock_calls = 0
+      allow(Tracks::PerUserLock).to receive(:with_user_lock).and_wrap_original do |original, *args, **kwargs, &block|
+        lock_calls += 1
+        raise Tracks::PerUserLock::AcquisitionTimeout, 'held' if lock_calls == 1
+
+        original.call(*args, **kwargs, &block)
+      end
+
+      expect do
+        described_class.new.perform(user.id, reset: true, rebuild: :inline)
+      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2025], anomaly_rebuild: true)
+    end
+
+    it 'rebuilds a year whose flagged point still sat on a track' do
+      wrongly_flagged.destroy!
+      unchanged_anomaly.update_columns(track_id: create(:track, user: user).id)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024], anomaly_rebuild: true)
+    end
+
+    it 'also rebuilds the neighbouring year when a track crosses into it' do
+      create(:track, user: user, start_at: Time.utc(2024, 12, 31, 23), end_at: Time.utc(2025, 1, 1, 1))
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024, 2025], anomaly_rebuild: true)
+    end
+
+    it 'refreshes the yearly digests of the years it does not rebuild' do
+      create(:users_digest, user: user, year: 2023)
+      create(:users_digest, user: user, year: 2025)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2025], digest_years: [2023], anomaly_rebuild: true)
+    end
+
+    it 'forgets the fingerprint once an inline rebuild is done' do
+      described_class.new.perform(user.id, reset: true, rebuild: :inline)
+
+      expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+    end
+
+    it 'keeps the fingerprint until the queued rebuild has run' do
+      described_class.new.perform(user.id, reset: true)
+
+      expect(user.reload.settings).to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+
+      perform_enqueued_jobs(only: Users::RecalculateDataJob)
+
+      expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+    end
+
+    it 'forgets the fingerprint when nothing changed' do
+      wrongly_flagged.destroy!
+
+      described_class.new.perform(user.id, reset: true)
+
+      expect(user.reload.settings).not_to have_key(Points::AnomalyRebuildScope::SETTINGS_KEY)
+    end
+
+    it 'rebuilds a track that picked up a point while its flag was cleared' do
+      wrongly_flagged.destroy!
+      track = create(:track, user: user)
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+        Point.where(id: unchanged_anomaly.id).update_all(track_id: track.id)
+        original.call(*args, **kwargs)
+      end
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Tracks::RecalculateJob).with(track.id).on_queue('low_priority')
+
+      expect(Users::RecalculateDataJob).not_to have_been_enqueued
+      expect(user.notifications.where(title: 'GPS noise re-check finished')).not_to exist
+    end
+
+    it 'takes the year in the user timezone' do
+      user.update!(settings: user.settings.merge('timezone' => 'Asia/Tokyo'))
+      wrongly_flagged.update_columns(timestamp: Time.utc(2025, 12, 31, 20).to_i)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2026], anomaly_rebuild: true)
+    end
+  end
+
+  describe '#perform with reset: true after an older fingerprint was left behind' do
+    it 'rebuilds a year the live filter flagged in the meantime' do
+      released = create(:point, user: user, accuracy: 60, anomaly: false,
+                                timestamp: Time.utc(2024, 6, 15).to_i, lonlat: 'POINT(13.405 52.52)')
+      Points::AnomalyRebuildScope.new(user).remember
+      released.update_columns(anomaly: true)
+
+      expect do
+        described_class.new.perform(user.id, reset: true)
+      end.to have_enqueued_job(Users::RecalculateDataJob)
+        .with(user.id, notify: true, year: [2024], anomaly_rebuild: true)
     end
   end
 

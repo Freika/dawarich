@@ -144,12 +144,23 @@ RSpec.describe Users::Digests::CalculateMonth do
 
         expect(nz['minutes']).to eq(1_440)
       end
+
+      it 'leaves out the country of a fix flagged as an anomaly' do
+        noon = Time.zone.parse('2024-05-20 00:00:00 UTC').to_i
+        create(:point, user: user, country_name: 'New Zealand', timestamp: noon, latitude: -36.85, longitude: 174.76)
+        create(:point, user: user, country_name: 'Australia', timestamp: noon + 600, anomaly: true,
+                       latitude: -33.87, longitude: 151.21)
+
+        countries = described_class.new(user.id, 2024, 5).call.time_spent_by_location['countries']
+
+        expect(countries.map { |country| country['name'] }).to eq(['New Zealand'])
+      end
     end
 
     context 'when the stat carries flight distance' do
       let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 12_345, flight_distance: 633_400) }
 
-      it 'copies it onto the digest without folding it into the tracked distance' do
+      it 'copies both figures from the stat as-is' do
         digest = calculate_digest
 
         expect(digest.flight_distance).to eq(633_400)

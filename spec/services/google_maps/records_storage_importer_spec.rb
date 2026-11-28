@@ -155,7 +155,10 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
 
         # The SecureFileDownloader handles all the retries internally
         # From the perspective of the importer, it just gets the file content
-        expect(downloader).to receive(:download_with_verification).once.and_return(file_content)
+        temp = Tempfile.create(['records', '.json'])
+        temp.write(file_content)
+        temp.close
+        expect(downloader).to receive(:download_to_temp_file).once.and_return(temp.path)
 
         # Run the method
         subject.call
@@ -171,7 +174,7 @@ RSpec.describe GoogleMaps::RecordsStorageImporter do
 
         # This should be called once, and the internal retries should have been attempted
         # After the max retries, it will still raise the Timeout::Error that bubbles up
-        expect(downloader).to receive(:download_with_verification).once.and_raise(Timeout::Error)
+        expect(downloader).to receive(:download_to_temp_file).once.and_raise(Timeout::Error)
 
         # We expect the error to bubble up to the caller
         expect { subject.call }.to raise_error(Timeout::Error)

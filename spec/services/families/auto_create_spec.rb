@@ -66,6 +66,12 @@ RSpec.describe Families::AutoCreate do
       expect { service.call }.to change(user.notifications, :count).by(1)
     end
 
+    it 'leads the owner to the family page' do
+      service.call
+
+      expect(user.notifications.last.action_path).to eq('/family')
+    end
+
     it 'tells the owner the plan is ready rather than that they created it' do
       service.call
 

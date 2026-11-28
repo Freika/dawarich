@@ -11,9 +11,16 @@ const read = (name) =>
     "utf8",
   )
 
-const sources = await Promise.all(
-  ["geo", "color_util", "hud_format", "route_clock", "hud_overlay"].map(read),
+const i18nSource = await readFile(
+  new URL("../../app/javascript/i18n.js", import.meta.url),
+  "utf8",
 )
+const sources = [
+  i18nSource,
+  ...(await Promise.all(
+    ["geo", "color_util", "hud_format", "route_clock", "hud_overlay"].map(read),
+  )),
+]
 const bundle = sources
   .join("\n")
   .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")

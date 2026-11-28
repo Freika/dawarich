@@ -21,8 +21,8 @@ RSpec.describe 'Insights and statistics report the same countries visited' do
     user.countries_visited_uncached
   end
 
-  it 'excludes countries without qualifying cities from the insights count' do
-    expect(insights_countries).to eq(['Germany'])
+  it 'includes countries without qualifying cities in the insights count' do
+    expect(insights_countries).to eq(%w[Austria France Germany])
   end
 
   it 'agrees with statistics on the set of countries visited' do

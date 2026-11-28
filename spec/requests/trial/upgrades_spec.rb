@@ -20,6 +20,20 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       end
     end
 
+    # The navbar Expired button now goes through this action, so a lapsed
+    # account must still reach checkout instead of a gate.
+    [[:trial, { active_until: 1.day.ago }], [:inactive, {}]].each do |trait, attrs|
+      context "when signed in as a #{trait} user #{attrs.any? ? 'whose trial expired' : ''}".strip do
+        it 'redirects to Manager checkout with a token' do
+          sign_in create(:user, trait, **attrs)
+
+          get '/trial/upgrade'
+
+          expect(response).to redirect_to(%r{\Ahttps://manager\.example\.test/auth/dawarich\?token=})
+        end
+      end
+    end
+
     context 'when signed in' do
       before { sign_in(user) }
 
@@ -28,7 +42,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
 
         expect(response).to redirect_to(%r{\Ahttps://manager\.example\.test/auth/dawarich\?token=})
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('pro')
@@ -39,7 +53,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'sanitizes unknown plan values to nil' do
         get '/trial/upgrade', params: { plan: 'enterprise', interval: 'annual' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload).not_to have_key('plan')
@@ -49,7 +63,7 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'sanitizes unknown interval values to nil' do
         get '/trial/upgrade', params: { plan: 'pro', interval: 'weekly' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('pro')
@@ -59,11 +73,29 @@ RSpec.describe 'Trial::Upgrades', type: :request do
       it 'accepts lite and monthly as valid' do
         get '/trial/upgrade', params: { plan: 'lite', interval: 'monthly' }
 
-        token = CGI.parse(URI(response.location).query)['token'].first
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
         payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
 
         expect(payload['plan']).to eq('lite')
         expect(payload['interval']).to eq('monthly')
+      end
+
+      it 'accepts the family plan' do
+        get '/trial/upgrade', params: { plan: 'family', interval: 'annual' }
+
+        token = Rack::Utils.parse_query(URI(response.location).query)['token']
+        payload = JWT.decode(token, ENV.fetch('JWT_SECRET_KEY', 'test_secret'), true, { algorithm: 'HS256' }).first
+
+        expect(payload['plan']).to eq('family')
+      end
+
+      it 'forwards UTM parameters to Manager and drops anything else' do
+        get '/trial/upgrade', params: { utm_source: 'app', utm_medium: 'badge', utm_campaign: 'lite_upgrade',
+                                        utm_content: 'pro_badge', evil: 'x' }
+
+        query = Rack::Utils.parse_query(URI(response.location).query)
+        expect(query.keys).to contain_exactly('token', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content')
+        expect(query['utm_content']).to eq('pro_badge')
       end
 
       describe 'analytics telemetry' do

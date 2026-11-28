@@ -1,0 +1,26 @@
+<fieldset class="form-control min-w-0">
+  <legend class="label"><%= t('shared.place_creation_modal.tags') %></legend>
+  <div id="<%= surface %>-place-tags" class="place-tag-options flex flex-wrap gap-2">
+    <%= hidden_field_tag 'place[tag_ids][]', '' %>
+    <% current_user.tags.ordered.each do |tag| %>
+      <%= render 'shared/place_tag', tag: tag, checked: selected_tags.include?(tag), surface: surface %>
+    <% end %>
+  </div>
+  <details class="mt-2" data-inline-tag-target="details">
+    <summary class="cursor-pointer text-sm"><%= t('places.inline_tags.new_tag') %></summary>
+    <div class="flex flex-wrap items-end gap-2 mt-2">
+      <div class="w-full min-w-0 sm:flex-1 sm:w-auto">
+        <%= label_tag "#{surface}-tag-name", t('places.inline_tags.name'), class: 'label' %>
+        <%= text_field_tag 'tag[name]', nil, id: "#{surface}-tag-name", form: "#{surface}-inline-tag-form",
+                           required: true, class: 'input input-bordered input-sm w-full', data: { inline_tag_target: 'name' } %>
+      </div>
+      <div>
+        <%= label_tag "#{surface}-tag-icon", t('places.inline_tags.emoji'), class: 'label' %>
+        <%= text_field_tag 'tag[icon]', nil, id: "#{surface}-tag-icon", form: "#{surface}-inline-tag-form",
+                           maxlength: 10, class: 'input input-bordered input-sm w-20', data: { inline_tag_target: 'icon' } %>
+      </div>
+      <button type="button" class="btn btn-sm" data-action="inline-tag#create"><%= t('places.inline_tags.create') %></button>
+    </div>
+    <p id="<%= surface %>-tag-errors" role="alert" class="text-error text-sm mt-2"></p>
+  </details>
+</fieldset>

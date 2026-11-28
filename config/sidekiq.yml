@@ -5,6 +5,7 @@
   - data_migrations
   - points
   - default
+  - webhooks
   - mailers
   - families
   - imports
@@ -21,5 +22,7 @@
   - cache
   - archival
   - digests
+  - achievements
   - route_videos
+  - analytics
   - low_priority

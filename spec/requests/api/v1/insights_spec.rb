@@ -104,6 +104,18 @@ RSpec.describe 'Api::V1::Insights', type: :request do
       expect(json['travelPatterns']['topVisitedLocations']).to be_an(Array)
     end
 
+    it 'groups unnamed confirmed visits under their displayed Place name' do
+      place = create(:place, user: user, name: 'Coffee Shop')
+      create(:visit, user: user, place: place, name: nil, location_label: 'Old address', status: :confirmed,
+                     started_at: Time.zone.parse('2024-05-01 10:00:00'),
+                     ended_at: Time.zone.parse('2024-05-01 11:00:00'))
+
+      get details_api_v1_insights_url, headers: headers, params: { year: 2024 }
+
+      locations = response.parsed_body.dig('travelPatterns', 'topVisitedLocations')
+      expect(locations).to include(hash_including('name' => 'Coffee Shop', 'visitCount' => 1))
+    end
+
     it 'returns nil comparison when no previous year data exists' do
       get details_api_v1_insights_url, headers: headers, params: { year: 2023 }
 

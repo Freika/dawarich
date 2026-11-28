@@ -1,0 +1,136 @@
+---
+en:
+  achievements:
+    collections:
+      title: Personal collections
+      intro: Explore cities, revisit favourite places, collect seasons, national parks
+        and geographic milestones from your recorded history.
+      places: Places for your collection
+      search_places: Search your places
+      add: Add to collection
+      remove: Remove from collection
+      no_places: No places match. Create or save a place to start a personal collection.
+      filter_series: Filter collections
+      all_series: All collections
+      open_map: Open exploration map
+      fog_rules: All recorded history opens fixed H3 cells shared with city cards.
+        One valid ground observation opens a cell; flights are excluded. Changing
+        the date range highlights first discoveries and keeps older cells open.
+      cities: City exploration
+      city_catalog_note: The initial boundary catalog covers Berlin, Hamburg and Dresden.
+        Cities use administrative land boundaries, including forests and outskirts.
+        More cities can be added through a versioned catalog update; unsupported cities
+        are never replaced with a circle.
+      catalog_preparing: The city and park boundary catalog is being prepared in the
+        background.
+      city_progress: "%{percent}% · %{area} km² opened"
+      city_public_level: City exploration · %{percent}% level
+      city_next: 'Next level: %{target}% · %{remaining} percentage points left.'
+      source_boundary: View the source boundary
+      share_mosaic: Include my exploration mosaic in the public card
+      mosaic_privacy_note: Public cards normally show a generic city silhouette and
+        achieved level. A shared mosaic hides every cell touching a privacy zone and
+        recalculates its public progress, which may be lower than your private total.
+      calculating: Calculating your recorded history. Cards will appear when the background
+        calculation finishes.
+      updating: Updating your collection. The last consistent result is shown until
+        the calculation finishes.
+      calculation_failed: The calculation could not finish. Your previous collection
+        is kept and will be retried.
+      timezone_required: We could not determine a single timezone for this place.
+        Choose its local IANA timezone below.
+      timezone: 'Place timezone: %{zone}'
+      choose_timezone: Choose the timezone of this place
+      private_place: This place is covered by a privacy zone. Its personal card cannot
+        be published.
+      notification_title: "%{name} unlocked!"
+      notification_content: Your recorded history unlocked a new card in your personal
+        collection.
+      national_parks: National parks
+      park_progress: "%{minutes}/30 observed minutes in one local day"
+      parks_progress: 'National parks: %{count} · next level %{target}'
+      regions_progress: "%{count}/%{target} regions"
+      observed_time: "%{minutes} observed minutes"
+      nature_catalog_note: This pilot catalog includes Harz, Saxon Switzerland and
+        Eifel national parks. It is a curated regional selection, not a complete list.
+        Further parks require a versioned catalog update.
+      public_privacy_note: Public progress excludes observations inside privacy zones
+        and can be lower than your private progress. Public pages and images are paused while boundary, timezone or privacy-zone changes are applied.
+      milestones:
+        north_south: Both sides of the equator
+        east_west: East and West
+        four_quarters: Four quarters of the world
+        arctic: Beyond the Arctic Circle
+        antarctic: Beyond the Antarctic Circle
+      regions:
+        north: Northern hemisphere
+        south: Southern hemisphere
+        east: Eastern hemisphere
+        west: Western hemisphere
+        ne: Northeast quarter
+        nw: Northwest quarter
+        se: Southeast quarter
+        sw: Southwest quarter
+        arctic: Arctic region
+        antarctic: Antarctic region
+      recorded_visit: Recorded visit
+      last_visit: 'Last recorded visit: %{date}'
+      return_waiting: A new visit completes a return
+      return_years:
+        one: Return after at least 1 year
+        other: Return after at least %{count} years
+      seasons_progress: "%{count}/4 seasons"
+      series:
+        return: Return
+        seasons: All seasons
+        year_round: Year round
+        city: City Explorer
+        park: National Park
+        parks: Nature
+        milestone: Geographic milestone
+      description:
+        return: Return to a place after a long gap in your recorded visits.
+        seasons: Return to the same place at different times of year.
+        city: Open the city's land, one recorded H3 cell at a time.
+        park: Spend time inside a national park.
+        parks: Collect visits to different national parks.
+        milestone: Record time in different parts of the world.
+      rules:
+        return: A visit lasting at least 20 minutes after a gap of 1, 3 or 5 calendar
+          years since the previous qualifying visit earns a level. Gaps describe your
+          saved history; missing recordings cannot prove that you were away.
+        seasons: Collect four separate visits lasting at least 20 minutes, one in
+          each calendar season. Visits may be from different years and must start
+          at least seven days apart. In the tropics the four parts are labelled by
+          months. Seasons use the timezone of the place.
+        city: Levels unlock at 1%, 5%, 10% and 25% of the city's administrative land
+          area. A recorded non-anomalous point opens a resolution-9 H3 cell, except
+          during a recognized flight. Water is excluded. This percentage measures
+          opened cell area, not streets walked; no 100% goal is required. The map
+          and card use the same published exploration snapshot.
+        park: Record 30 observed minutes inside the park boundary in one local day.
+          Consecutive points must be at most 10 minutes apart; the time between them counts. Overlapping devices count once. Movement is allowed;
+          flights and anomalies are excluded.
+        parks: Levels unlock after 1, 5 and 15 different qualifying national parks
+          from the catalog. Each park requires 30 observed minutes in one local day.
+          The regional catalog is incomplete and versioned; each park keeps a stable
+          identity.
+        milestone: Record at least 10 observed minutes per required region in one
+          local day. Point pairs must be at most 10 minutes apart, and the time between them counts; overlapping devices count once. Flights and anomalies
+          are excluded. A 10 km margin excludes the equator, meridians 0° and 180°,
+          and the polar parallel at the fixed game latitude 66.56°. This records presence
+          on each side, not a proven crossing.
+      seasons:
+        winter: Winter
+        spring: Spring
+        summer: Summer
+        autumn: Autumn
+      periods:
+        '0': December–February
+        '1': March–May
+        '2': June–August
+        '3': September–November
+      level_history: Level history
+      history_earned: Unlocked
+      history_revoked: Revoked
+      detected_on: detected %{date}

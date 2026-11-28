@@ -22,6 +22,11 @@ class Family::LocationSharingController < ApplicationController
         current_user.reload
         streams = [
           turbo_stream.replace(
+            "family-member-#{current_user.id}",
+            partial: 'families/member_row',
+            locals: { member: current_user, location: nil, pending_requests: {} }
+          ),
+          turbo_stream.replace(
             "location-sharing-#{current_user.id}",
             partial: 'families/location_sharing_toggle',
             locals: { member: current_user }
@@ -30,6 +35,11 @@ class Family::LocationSharingController < ApplicationController
             'family-navbar-indicator',
             partial: 'families/navbar_indicator',
             locals: { user: current_user }
+          ),
+          turbo_stream.replace(
+            'family-navbar-indicator-mobile',
+            partial: 'families/navbar_indicator',
+            locals: { user: current_user, frame_id: 'family-navbar-indicator-mobile' }
           ),
           turbo_stream.replace(
             'family-getting-started-slot',

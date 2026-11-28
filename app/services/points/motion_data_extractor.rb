@@ -20,10 +20,12 @@ module Points
         activity  = properties[:activity]  || properties['activity']
         action    = properties[:action]    || properties['action']
         departure = properties[:departure_date] || properties['departure_date']
+        authoritative = properties[:motion_authoritative] || properties['motion_authoritative']
         data['motion']   = motion   if motion
         data['activity'] = activity if activity
         data['action']   = action   if action
         data['departure_date'] = departure if departure
+        data['motion_authoritative'] = true if [true, 'true'].include?(authoritative)
         data
       end
 

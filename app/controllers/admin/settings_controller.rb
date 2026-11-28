@@ -8,12 +8,13 @@ module Admin
     include FlashStreamable
 
     SECTIONS = {
-      'photon' => %i[photon_api_host photon_api_key photon_api_use_https],
+      'photon' => %i[photon_api_host photon_api_key photon_api_use_https photon_api_language],
       'geoapify' => %i[geoapify_api_key],
       'nominatim' => %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
       'locationiq' => %i[locationiq_api_key],
       'rate_limit' => %i[reverse_geocoding_rps],
-      'points' => %i[store_geodata]
+      'points' => %i[store_geodata],
+      'imports' => %i[import_max_file_size_mb kml_max_file_size_mb]
     }.freeze
 
     before_action :authenticate_user!
@@ -43,7 +44,7 @@ module Admin
     end
 
     def test_geocoding
-      type, message = Geocoding::ProviderTest.call
+      type, message = Geocoding::ProviderTest.call(latitude: params[:latitude], longitude: params[:longitude])
 
       respond_to do |format|
         format.turbo_stream { render turbo_stream: stream_flash(type == :notice ? :notice : :error, message) }

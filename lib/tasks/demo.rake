@@ -165,8 +165,9 @@ namespace :demo do
       puts "\n   Lite User: #{lite_user.email}"
       puts "   Lite Points: #{Point.where(user_id: lite_user.id).count}"
       lite_points = Point.where(user_id: lite_user.id)
-      puts "   Lite Recent Points: #{lite_points.where('timestamp >= ?', 12.months.ago.to_i).count}"
-      puts "   Lite Old Points: #{lite_points.where('timestamp < ?', 12.months.ago.to_i).count}"
+      window_start = DawarichSettings.lite_data_window_start.to_i
+      puts "   Lite Recent Points: #{lite_points.where('timestamp >= ?', window_start).count}"
+      puts "   Lite Old Points: #{lite_points.where('timestamp < ?', window_start).count}"
       puts "   Lite Visits: #{lite_user.visits.count}"
       puts "   Lite Areas: #{lite_user.areas.count}"
     end

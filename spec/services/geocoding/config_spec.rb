@@ -6,7 +6,7 @@ RSpec.describe Geocoding::Config do
   let!(:user) { create(:user) }
 
   around do |example|
-    variables = InstanceSettings::Registry::DEFINITIONS.values.map(&:env_var)
+    variables = InstanceSettings::Registry.env_vars
     saved = variables.index_with { |name| ENV.fetch(name, nil) }
     variables.each { |name| ENV[name] = nil }
     InstanceSettings::Resolver.reset!
@@ -75,6 +75,13 @@ RSpec.describe Geocoding::Config do
       rotated = described_class.new(source: :stored, provider: :photon, host: 'photon.example.com', api_key: 'new')
 
       expect(base.cache_digest).not_to eq(rotated.cache_digest)
+    end
+
+    it 'changes when the Photon language changes' do
+      english = described_class.new(source: :stored, provider: :photon, host: 'photon.example.com', language: 'en')
+      dutch = described_class.new(source: :stored, provider: :photon, host: 'photon.example.com', language: 'nl')
+
+      expect(english.cache_digest).not_to eq(dutch.cache_digest)
     end
 
     it 'does not contain the raw api key' do

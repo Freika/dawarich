@@ -1,8 +1,6 @@
-import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
-import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
@@ -18,6 +16,7 @@ import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { layerEvents } from "./layer_events"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
 
@@ -44,7 +43,6 @@ export class LayerManager {
   async addAllLayers(
     visitsGeoJSON,
     photosGeoJSON,
-    areasGeoJSON,
     placesGeoJSON,
     flightsGeoJSON,
     isCurrent = () => true,
@@ -55,7 +53,6 @@ export class LayerManager {
     // above contextual overlays, and transient/replay markers at the top.
 
     this._addHexagonLayer()
-    this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(EMPTY_GEOJSON)
     this._addFlightsLayer(flightsGeoJSON)
     this._addVisitsLayer(visitsGeoJSON)
@@ -73,142 +70,16 @@ export class LayerManager {
     this._addTracksMvtLayer()
     this._addAnomaliesLayer()
     this._addPointsMvtLayer()
+    // Photos load before tile layers, so raise their clusters above them.
+    this.layers.photosLayer?.raiseAbove("points-mvt")
     this._addRecentPointLayer()
     this._addReplayMarkerLayer()
-    this._addFogLayer(EMPTY_GEOJSON)
+    this._addFogLayer()
     // Membership may scan a large history. The blank-filter Scratch source
     // attaches below the overlays when ready, without holding up tile layers.
     void this._addScratchLayer()
 
     performanceMonitor.measure("add-layers")
-  }
-
-  /**
-   * Setup event handlers for layer interactions
-   * Only sets up handlers once to prevent duplicates
-   */
-  setupLayerEventHandlers(handlers) {
-    if (this.eventHandlersSetup) {
-      return
-    }
-
-    const subscribe = (...args) => {
-      const subscription = this.map.on(...args)
-      this.eventHandlerCleanups.push(() => {
-        if (subscription?.unsubscribe) subscription.unsubscribe()
-        else this.map.off(...args)
-      })
-    }
-
-    // Click handlers
-    subscribe("click", "points-mvt", handlers.handlePointClick)
-    subscribe("click", "visits", handlers.handleVisitClick)
-    subscribe("click", "photos", handlers.handlePhotoClick)
-    subscribe("click", "places", handlers.handlePlaceClick)
-    // Areas have multiple layers (fill, outline, labels)
-    subscribe("click", "areas-fill", handlers.handleAreaClick)
-    subscribe("click", "areas-outline", handlers.handleAreaClick)
-    subscribe("click", "areas-labels", handlers.handleAreaClick)
-
-    // Anomalies click handler
-    subscribe("click", "anomalies", handlers.handleAnomalyClick)
-
-    // MVT track fragments carry the same id property; the click flow fetches
-    // the full geometry by id, so a clipped fragment is a valid entry point.
-    subscribe("click", "tracks-mvt", handlers.handleTrackClick)
-    subscribe("mouseenter", "tracks-mvt", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "tracks-mvt", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-
-    // Cursor change on hover
-    // Merged cells carry no point to open, so they must not promise a click.
-    // mousemove, not mouseenter: clickable and merged features sit side by side
-    // in this layer, and mouseenter fires only on entering the layer as a whole.
-    subscribe("mousemove", "points-mvt", (e) => {
-      const properties = e.features?.[0]?.properties
-      let cursor = ""
-      if (shouldShowPointPopup(properties))
-        cursor = handlers.canDragPoint?.(properties) ? "grab" : "pointer"
-      this.map.getCanvas().style.cursor = cursor
-    })
-    subscribe("mouseleave", "points-mvt", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    subscribe("mouseenter", "visits", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "visits", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    subscribe("mouseenter", "photos", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "photos", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    subscribe("mouseenter", "places", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "places", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    // Anomalies cursor handlers
-    subscribe("mouseenter", "anomalies", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    subscribe("mouseleave", "anomalies", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
-    // Areas hover handlers for all sub-layers
-    const areaLayers = ["areas-fill", "areas-outline", "areas-labels"]
-    areaLayers.forEach((layerId) => {
-      // Only add handlers if layer exists
-      if (this.map.getLayer(layerId)) {
-        subscribe("mouseenter", layerId, () => {
-          this.map.getCanvas().style.cursor = "pointer"
-        })
-        subscribe("mouseleave", layerId, () => {
-          this.map.getCanvas().style.cursor = ""
-        })
-      }
-    })
-
-    // Map-level click clears the focused track selection.
-    subscribe("click", (e) => {
-      // Track points are part of a selected track — clicking them should not clear the selection
-      const trackPointFeatures = this.map.getLayer("track-points")
-        ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })
-        : []
-      // Tiled tracks select via their own click handler — without them here a
-      // tiled-track click would deselect first and stay deselected whenever
-      // the async detail fetch fails.
-      const tiledTrackFeatures = this.map.getLayer("tracks-mvt")
-        ? this.map.queryRenderedFeatures(e.point, { layers: ["tracks-mvt"] })
-        : []
-      if (tiledTrackFeatures.length === 0 && trackPointFeatures.length === 0) {
-        handlers.clearTrackSelection()
-        const tilePointFeatures = this.map.getLayer("points-mvt")
-          ? this.map.queryRenderedFeatures(e.point, { layers: ["points-mvt"] })
-          : []
-        if (tilePointFeatures.length === 0) handlers.clearPointSelection()
-      }
-    })
-
-    this.eventHandlersSetup = true
-  }
-
-  /**
-   * Toggle layer visibility
-   */
-  toggleLayer(layerName) {
-    const layer = this.getLayer(layerName)
-    if (!layer) return null
-
-    layer.toggle()
-    return layer.visible
   }
 
   /**
@@ -237,6 +108,20 @@ export class LayerManager {
       const layer = this.getLayer(layerName)
       if (layer) layer.update(this.pointTileRange)
     }
+  }
+
+  // An empty period already explains itself on the map; the toast is for
+  // points that have no tracks yet.
+  async announceEmptyTracks() {
+    const statistics = this.controller?.rangeStatistics
+    // A newer range load replaces `pending`; wait for the latest one.
+    let pending
+    while (statistics && pending !== statistics.pending) {
+      pending = statistics.pending
+      await pending?.catch(() => {})
+    }
+    if (statistics?.data?.points === 0) return
+    Toast.info(translate("messages.tracks_pending"))
   }
 
   /**
@@ -278,6 +163,20 @@ export class LayerManager {
   }
 
   // Private methods for individual layer management
+
+  /** Build the layer on first use, otherwise hand it the new data. */
+  _addOrUpdate(key, create, data) {
+    if (this.layers[key]) return this.layers[key].update(data)
+    this.layers[key] = create()
+    return this.layers[key].add(data)
+  }
+
+  /** Build a layer that starts empty and is filled by its own owner. */
+  _addOnce(key, create) {
+    if (this.layers[key]) return
+    this.layers[key] = create()
+    this.layers[key].add({ type: "FeatureCollection", features: [] })
+  }
 
   async _addScratchLayer() {
     const styleGeneration = this._styleGeneration
@@ -332,101 +231,94 @@ export class LayerManager {
     this.layers.hexagonsLayer = new HexagonLayer(this.map, {
       visible: this.settings.hexagonsEnabled || false,
       api: this.api,
-      controller: this.controller,
+      loadingBadge: this.controller?.loadingBadge,
     })
     this.layers.hexagonsLayer.add({ type: "FeatureCollection", features: [] })
     return this.layers.hexagonsLayer
   }
 
-  _addAreasLayer(areasGeoJSON) {
-    if (!this.layers.areasLayer) {
-      this.layers.areasLayer = new AreasLayer(this.map, {
-        visible: this.settings.areasEnabled || false,
-      })
-      this.layers.areasLayer.add(areasGeoJSON)
-    } else {
-      this.layers.areasLayer.update(areasGeoJSON)
-    }
-  }
-
   _addTracksLayer(tracksGeoJSON) {
-    if (!this.layers.tracksLayer) {
-      this.layers.tracksLayer = new TracksLayer(this.map, {
-        visible: this.settings.tracksEnabled || false,
-      })
-      this.layers.tracksLayer.add(tracksGeoJSON)
-    } else {
-      this.layers.tracksLayer.update(tracksGeoJSON)
-    }
+    this._addOrUpdate(
+      "tracksLayer",
+      () =>
+        new TracksLayer(this.map, {
+          visible: this.settings.tracksEnabled || false,
+        }),
+      tracksGeoJSON,
+    )
   }
 
   _addFlightsLayer(flightsGeoJSON) {
-    if (!this.layers.flightsLayer) {
-      this.layers.flightsLayer = new FlightsLayer(this.map, {
-        visible: this.settings.flightsEnabled || false,
-        style: this.settings.mapStyle || "light",
-      })
-      this.layers.flightsLayer.add(flightsGeoJSON)
-    } else {
-      this.layers.flightsLayer.update(flightsGeoJSON)
-    }
+    this._addOrUpdate(
+      "flightsLayer",
+      () =>
+        new FlightsLayer(this.map, {
+          visible: this.settings.flightsEnabled || false,
+          style: this.settings.mapStyle || "light",
+        }),
+      flightsGeoJSON,
+    )
   }
 
   _addVisitsLayer(visitsGeoJSON) {
-    if (!this.layers.visitsLayer) {
-      this.layers.visitsLayer = new VisitsLayer(this.map, {
-        visible: this.settings.visitsEnabled || false,
-      })
-      this.layers.visitsLayer.add(visitsGeoJSON)
-    } else {
-      this.layers.visitsLayer.update(visitsGeoJSON)
-    }
+    this._addOrUpdate(
+      "visitsLayer",
+      () =>
+        new VisitsLayer(this.map, {
+          visible: this.settings.visitsEnabled || false,
+        }),
+      visitsGeoJSON,
+    )
   }
 
   _addPlacesLayer(placesGeoJSON) {
     if (!this.layers.placesLayer) {
       this.layers.placesLayer = new PlacesLayer(this.map, {
         visible: this.settings.placesEnabled || false,
+        boundariesVisible: this.settings.placeBoundariesEnabled || false,
       })
       this.layers.placesLayer.add(placesGeoJSON)
+      if (this.map.getLayer("visits")) {
+        this.map.moveLayer("places-radius-fill", "visits")
+        this.map.moveLayer("places-radius-outline", "visits")
+      }
     } else {
       this.layers.placesLayer.update(placesGeoJSON)
     }
   }
 
   async _addPhotosLayer(photosGeoJSON) {
-    if (!this.layers.photosLayer) {
-      this.layers.photosLayer = new PhotosLayer(this.map, {
-        visible: this.settings.photosEnabled || false,
-        timezone: this.settings.timezone,
-      })
-      await this.layers.photosLayer.add(photosGeoJSON)
-    } else {
-      await this.layers.photosLayer.update(photosGeoJSON)
-    }
+    await this._addOrUpdate(
+      "photosLayer",
+      () =>
+        new PhotosLayer(this.map, {
+          visible: this.settings.photosEnabled || false,
+          timezone: this.settings.timezone,
+        }),
+      photosGeoJSON,
+    )
   }
 
   _addFamilyLayer() {
-    if (!this.layers.familyLayer) {
-      this.layers.familyLayer = new FamilyLayer(this.map, {
-        visible: this.settings.familyEnabled || false,
-      })
-      this.layers.familyLayer.add({ type: "FeatureCollection", features: [] })
-    }
+    this._addOnce(
+      "familyLayer",
+      () =>
+        new FamilyLayer(this.map, {
+          visible: this.settings.familyEnabled || false,
+        }),
+    )
   }
 
   _addAnomaliesLayer() {
-    if (!this.layers.anomaliesLayer) {
-      this.layers.anomaliesLayer = new AnomaliesLayer(this.map, {
-        visible: false,
-        apiClient: this.api,
-        timezone: this.settings.timezone,
-      })
-      this.layers.anomaliesLayer.add({
-        type: "FeatureCollection",
-        features: [],
-      })
-    }
+    this._addOnce(
+      "anomaliesLayer",
+      () =>
+        new AnomaliesLayer(this.map, {
+          visible: false,
+          apiClient: this.api,
+          timezone: this.settings.timezone,
+        }),
+    )
   }
 
   // Tile-backed canonical Tracks layer; added below points so circles stay on
@@ -436,6 +328,9 @@ export class LayerManager {
       this.layers.tracksMvtLayer = new TracksMvtLayer(this.map, {
         tracksEnabled: this.settings.tracksEnabled === true,
         trackColor: SettingsManager.getSetting("trackColor"),
+        speedColoring:
+          SettingsManager.getSetting("speedColoredRoutes") === true,
+        speedColorScale: SettingsManager.getSetting("speedColorScale"),
         apiKey: this.apiKey,
         importId: this.controller?.importIdValue || null,
         onTileError: () =>
@@ -447,7 +342,7 @@ export class LayerManager {
               this.layers.mapEditorLayer?.reapplyTileFilters()
             },
           ),
-        onEmptyTracks: () => Toast.info(translate("messages.tracks_pending")),
+        onEmptyTracks: () => this.announceEmptyTracks(),
         ...this.pointTileRange,
       })
       this.layers.tracksMvtLayer.add(this.pointTileRange)
@@ -484,47 +379,49 @@ export class LayerManager {
   _addRecentPointLayer() {
     if (!this.layers.recentPointLayer) {
       this.layers.recentPointLayer = new RecentPointLayer(this.map, {
-        visible: false, // Initially hidden, shown only when live mode is enabled
+        hoverTitle: translate("live_map.your_position"),
       })
       this.layers.recentPointLayer.add({
         type: "FeatureCollection",
         features: [],
       })
+      if (this.controller?.hasCurrentPositionValue) {
+        const position = this.controller.currentPositionValue
+        this.layers.recentPointLayer.updateRecentPoint(
+          position.longitude,
+          position.latitude,
+          { timestamp: position.timestamp },
+        )
+      }
     }
   }
 
   _addReplayMarkerLayer() {
-    if (!this.layers.replayMarkerLayer) {
-      this.layers.replayMarkerLayer = new ReplayMarkerLayer(this.map, {
-        visible: false, // Initially hidden, shown when replay is active
-      })
-      this.layers.replayMarkerLayer.add({
-        type: "FeatureCollection",
-        features: [],
-      })
-    }
+    // Hidden until a replay starts.
+    this._addOnce(
+      "replayMarkerLayer",
+      () => new ReplayMarkerLayer(this.map, { visible: false }),
+    )
   }
 
-  _addFogLayer(pointsGeoJSON) {
-    const tiledFog = (this.settings.fogOfWarMode || "points") !== "hexagons"
+  _addFogLayer() {
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
-        clearRadius: this.settings.fogOfWarRadius || 1000,
         visible: this.settings.fogEnabled || false,
-        mode: this.settings.fogOfWarMode || "points",
         api: this.api,
-        controller: this.controller,
-        tiledSource: tiledFog,
+        dateRange: () => ({
+          startAt: this.controller.startDateValue,
+          endAt: this.controller.endDateValue,
+        }),
+        snapshotId: this.controller.explorationSnapshotValue,
+        statusMessages: this.controller.explorationMessagesValue,
       })
-      this.layers.fogLayer.add(pointsGeoJSON)
+      this.layers.fogLayer.add()
     } else {
-      this.layers.fogLayer.update(pointsGeoJSON)
-    }
-    // Tiled fog reads the points MVT source — keep it loading even when the
-    // Points toggle is off (paint-based hiding, see PointsMvtLayer).
-    if (tiledFog && this.settings.fogEnabled) {
-      this.layers.pointsMvtLayer?.setSourceKeepAlive(true)
+      this.layers.fogLayer.update()
     }
   }
 }
+
+Object.assign(LayerManager.prototype, layerEvents)

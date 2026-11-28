@@ -15,6 +15,7 @@ require 'oj'
 # ├── imports.jsonl              # One import record per line
 # ├── exports.jsonl              # One export record per line
 # ├── trips.jsonl                # One trip per line
+# ├── notes.jsonl                # One note per line
 # ├── notifications.jsonl        # One notification per line
 # ├── places.jsonl               # One place per line
 # ├── raw_data_archives.jsonl    # One archive record per line
@@ -51,8 +52,8 @@ class Users::ImportData::V2Handler
 
     # Import in dependency order
     import_settings
-    import_areas
     import_places
+    import_areas
     import_tags
     import_taggings
     import_imports
@@ -62,6 +63,7 @@ class Users::ImportData::V2Handler
     import_digests_from_files
     import_notifications
     import_visits_from_files
+    import_notes
     import_tracks_from_files
     import_points_from_files
     import_raw_data_archives
@@ -98,7 +100,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      settings_data = Oj.load(line)
+      settings_data = Oj.load(line, mode: :strict)
       Users::ImportData::Settings.new(user, settings_data).call
       import_stats[:settings_updated] = true
       break # Only one line expected
@@ -109,7 +111,10 @@ class Users::ImportData::V2Handler
 
   def import_areas
     import_jsonl_file('areas.jsonl') do |areas_data|
-      areas_created = Users::ImportData::Areas.new(user, areas_data).call.to_i
+      importer = Users::ImportData::Areas.new(user, areas_data)
+      areas_created = importer.call.to_i
+      @legacy_area_place_references = importer.place_references_by_id
+      @legacy_area_places_by_name = importer.place_references_by_name
       import_stats[:areas_created] += areas_created
     end
   end
@@ -123,7 +128,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      batch << Oj.load(line)
+      batch << Oj.load(line, mode: :strict)
       if batch.size >= BATCH_SIZE
         places_created = Users::ImportData::Places.new(user, batch).call.to_i
         import_stats[:places_created] += places_created
@@ -177,6 +182,13 @@ class Users::ImportData::V2Handler
     import_jsonl_file('trips.jsonl') do |trips_data|
       trips_created = Users::ImportData::Trips.new(user, trips_data).call.to_i
       import_stats[:trips_created] += trips_created
+    end
+  end
+
+  # After trips, places and visits: a note is re-attached to an imported record.
+  def import_notes
+    import_jsonl_file('notes.jsonl') do |notes_data|
+      import_stats[:notes_created] += Users::ImportData::Notes.new(user, notes_data).call.to_i
     end
   end
 
@@ -299,7 +311,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      batch << Oj.load(line)
+      batch << Oj.load(line, mode: :strict)
       if batch.size >= BATCH_SIZE
         import_visits_batch(batch)
         batch = []
@@ -311,7 +323,12 @@ class Users::ImportData::V2Handler
   end
 
   def import_visits_batch(batch)
-    visits_created = Users::ImportData::Visits.new(user, batch).call.to_i
+    visits_created = Users::ImportData::Visits.new(
+      user,
+      batch,
+      legacy_area_place_references: @legacy_area_place_references || {},
+      legacy_area_places_by_name: @legacy_area_places_by_name || {}
+    ).call.to_i
     import_stats[:visits_created] += visits_created
   end
 
@@ -327,7 +344,7 @@ class Users::ImportData::V2Handler
           line = line.strip
           next if line.blank?
 
-          importer.add(Oj.load(line))
+          importer.add(Oj.load(line, mode: :strict))
         end
         import_stats[:points_created] = importer.finalize.to_i
       end
@@ -345,7 +362,7 @@ class Users::ImportData::V2Handler
         line = line.strip
         next if line.blank?
 
-        importer.add(Oj.load(line))
+        importer.add(Oj.load(line, mode: :strict))
       end
 
       Rails.logger.debug "Processed points from #{relative_path}"
@@ -369,7 +386,7 @@ class Users::ImportData::V2Handler
       line = line.strip
       next if line.blank?
 
-      data << Oj.load(line)
+      data << Oj.load(line, mode: :strict)
     end
     data
   end

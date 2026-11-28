@@ -11,7 +11,7 @@ module Api
         type: 'Feature',
         geometry: {
           type: 'LineString',
-          coordinates: [[@flight.from_lon, @flight.from_lat], [@flight.to_lon, @flight.to_lat]]
+          coordinates: coordinates
         },
         properties: {
           id: @flight.id,
@@ -23,6 +23,13 @@ module Api
           seat_class: @flight.seat_class, distance_km: @flight.distance_km
         }
       }
+    end
+
+    private
+
+    def coordinates
+      @flight.track_coordinates.presence ||
+        [[@flight.from_lon, @flight.from_lat], [@flight.to_lon, @flight.to_lat]]
     end
   end
 end

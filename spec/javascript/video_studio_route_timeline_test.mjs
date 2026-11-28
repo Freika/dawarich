@@ -67,10 +67,6 @@ test("orders the routes feed by its unix-second startTime", () => {
 })
 
 test("keeps the given order when a feature carries no start time", () => {
-  // The trip page's pathData fallback builds a bare LineString with no
-  // properties. A partially timed feed must not be reshuffled around the
-  // features it cannot place — treating a missing time as 0 would drag them
-  // to the front of the video.
   const { entries } = buildRouteTimeline(
     collection([
       lineString(MORNING, { start_at: "2026-08-20T08:00:00Z" }),

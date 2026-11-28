@@ -69,6 +69,34 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
       end
     end
 
+    context 'when the linked account has 2FA turned on' do
+      let!(:existing_user) do
+        create(:user, email: email, provider: provider.to_s, uid: '123545', password: 'secret123456',
+                      otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+      end
+
+      before { allow(DawarichSettings).to receive(:two_factor_available?).and_return(true) }
+
+      it 'asks for the code instead of signing in' do
+        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
+        get "/users/auth/#{provider}/callback"
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(session[:otp_user_id]).to eq(existing_user.id)
+        expect(controller.current_user).to be_nil
+      end
+
+      it 'drops a remember-me choice left by an abandoned password sign-in' do
+        post user_session_path, params: { user: { email: email, password: 'secret123456', remember_me: '1' } }
+        expect(session[:otp_remember_me]).to be(true)
+
+        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[provider]
+        get "/users/auth/#{provider}/callback"
+
+        expect(session[:otp_remember_me]).to be_nil
+      end
+    end
+
     context 'when a local-password account exists with the same email (audit C-1)' do
       let!(:existing_user) { create(:user, email: email, provider: nil, uid: nil) }
 

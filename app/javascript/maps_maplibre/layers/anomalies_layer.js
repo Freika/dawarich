@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatDateTime, translate } from "i18n"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
@@ -64,6 +64,7 @@ export class AnomaliesLayer extends BaseLayer {
         per_page: "1000",
         slim: "true",
         order: "asc",
+        mask_privacy_zones: "true",
       })
 
       const response = await fetch(
@@ -116,16 +117,7 @@ export class AnomaliesLayer extends BaseLayer {
       date = new Date(timestamp)
     }
 
-    return date.toLocaleString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-      timeZone: timezone,
-    })
+    return formatDateTime(date, { seconds: true, timeZone: timezone })
   }
 
   /**

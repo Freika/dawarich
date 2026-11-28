@@ -3,7 +3,7 @@
 <div class="container mx-auto px-4 py-8">
   <div class="max-w-2xl mx-auto">
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-bold text-base-content mb-4">
+      <h1 class="text-3xl font-medium text-base-content mb-4 tracking-tight">
         <%= t('families.new.title') %>
       </h1>
       <p class="text-base-content opacity-60">
@@ -13,7 +13,7 @@
 
     <% if @can_create_family == false %>
       <div class="bg-base-200 rounded-lg p-6 text-center">
-        <h2 class="text-xl font-bold mb-2">
+        <h2 class="text-xl font-medium mb-2">
           <%= t('families.new.upgrade_title') %>
         </h2>
         <p class="text-base-content opacity-60 mb-6">

@@ -15,6 +15,11 @@ export default class extends Controller {
     this.loadColorStops()
   }
 
+  open() {
+    this.loadColorStops()
+    this.modalTarget.showModal()
+  }
+
   loadColorStops() {
     const stopsString =
       this.colorStopsValue ||
@@ -25,10 +30,30 @@ export default class extends Controller {
   }
 
   parseColorStops(stopsString) {
-    return stopsString.split("|").map((segment) => {
-      const [speed, color] = segment.split(":")
-      return { speed: Number(speed), color }
-    })
+    const stops = new Map()
+    for (const segment of stopsString.split("|")) {
+      const [speed, color, extra] = segment.split(":")
+      const value = Number(speed)
+      if (
+        !speed?.trim() ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        !/^#[0-9a-f]{6}$/i.test(color) ||
+        extra !== undefined
+      ) {
+        return this.parseColorStops(
+          "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
+        )
+      }
+      stops.set(value, color)
+    }
+    if (stops.size < 2)
+      return this.parseColorStops(
+        "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
+      )
+    return [...stops]
+      .sort(([a], [b]) => a - b)
+      .map(([speed, color]) => ({ speed, color }))
   }
 
   serializeColorStops() {
@@ -171,6 +196,7 @@ export default class extends Controller {
 
   save() {
     const serialized = this.serializeColorStops()
+    this.colorStopsValue = serialized
 
     // Dispatch event with the new color stops
     this.dispatch("save", {
@@ -181,17 +207,14 @@ export default class extends Controller {
   }
 
   close() {
-    if (this.hasModalTarget) {
-      const checkbox = this.modalTarget.querySelector(".modal-toggle")
-      if (checkbox) {
-        checkbox.checked = false
-      }
-    }
+    if (this.hasModalTarget) this.modalTarget.close()
   }
 
   resetToDefault() {
-    this.colorStopsValue =
-      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-    this.loadColorStops()
+    this.stops = this.parseColorStops(
+      "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
+    )
+    this.renderStops()
+    this.updatePreview()
   }
 }

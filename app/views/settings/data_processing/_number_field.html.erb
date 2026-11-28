@@ -1,0 +1,9 @@
+<%# locals: (form:, key:, value:, label:, unit: nil, hint: nil, min: 1, max: nil) %>
+<div class="form-control min-w-0">
+  <%= form.label key, label, class: 'label label-text font-medium pb-1' %>
+  <div class="input input-bordered flex items-center gap-2 w-full">
+    <%= form.number_field key, value: value, min: min, max: max, step: 1, required: true, class: 'grow min-w-0 border-0 bg-transparent p-0 focus:outline-none focus:ring-0' %>
+    <% if unit %><span class="text-sm text-base-content/60"><%= unit %></span><% end %>
+  </div>
+  <% if hint %><p class="text-xs text-base-content/60 mt-1"><%= hint %></p><% end %>
+</div>

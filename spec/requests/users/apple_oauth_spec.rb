@@ -114,6 +114,20 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       expect(response).to redirect_to(root_path)
     end
 
+    it 'asks a 2FA account for its code instead of signing it in' do
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+      create(:user, provider: 'apple', uid: '000777.web.apple', email: 'web-user@example.com',
+                    otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+      state = perform_request_phase
+
+      post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.body).to include('otp_attempt')
+      get root_path
+      expect(response).to redirect_to(new_user_session_path)
+    end
+
     it 'shows deletion guidance when Apple omits email for an identity pending deletion' do
       existing = create(:user, provider: 'apple', uid: '000777.web.apple', email: 'web-user@example.com')
       existing.mark_as_deleted!

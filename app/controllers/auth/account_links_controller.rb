@@ -47,9 +47,9 @@ class Auth::AccountLinksController < ApplicationController
     else
       sign_in(user)
       claim_pending_import_for(user)
-      redirect_to root_path,
-                  notice: I18n.t('controllers.auth.account_links.provider_is_now_linked_to_your_account',
-                                 provider: provider_label(result.provider))
+      flash[:notice] = I18n.t('controllers.auth.account_links.provider_is_now_linked_to_your_account',
+                              provider: provider_label(result.provider))
+      redirect_to pending_invitation_path_for(user) || root_path
     end
   end
 
@@ -111,9 +111,9 @@ class Auth::AccountLinksController < ApplicationController
     else
       sign_in(user)
       claim_pending_import_for(user)
-      redirect_to root_path,
-                  notice: I18n.t('controllers.auth.account_links.pending_is_now_linked_to_your_account',
-                                 pending: label_for(pending))
+      flash[:notice] = I18n.t('controllers.auth.account_links.pending_is_now_linked_to_your_account',
+                              pending: label_for(pending))
+      redirect_to pending_invitation_path_for(user) || root_path
     end
   end
 
@@ -130,15 +130,7 @@ class Auth::AccountLinksController < ApplicationController
                          alert: I18n.t('controllers.auth.account_links.account_no_longer_exists'))
     end
 
-    if Auth::FindOrCreateOauthUser.acquire_rate_limit(user.id)
-      token = Auth::IssueAccountLinkToken.new(user, provider: pending['provider'], uid: pending['uid']).call
-      link_url = auth_account_link_url(token: token)
-      Users::MailerSendingJob.perform_later(
-        user.id,
-        'oauth_account_link',
-        provider_label: label_for(pending),
-        link_url: link_url
-      )
+    if Auth::FindOrCreateOauthUser.with_link_email_rate_limit(user.id) { enqueue_link_email(user, pending) }
       redirect_to new_user_session_path,
                   notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
     else
@@ -148,6 +140,16 @@ class Auth::AccountLinksController < ApplicationController
   end
 
   private
+
+  def enqueue_link_email(user, pending)
+    token = Auth::IssueAccountLinkToken.new(user, provider: pending['provider'], uid: pending['uid']).call
+    Users::MailerSendingJob.perform_later(
+      user.id,
+      'oauth_account_link',
+      provider_label: label_for(pending),
+      link_url: auth_account_link_url(token: token)
+    )
+  end
 
   def pending_oauth_link
     pending = session[:pending_oauth_link]

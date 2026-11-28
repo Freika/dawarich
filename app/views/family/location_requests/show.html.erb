@@ -1,5 +1,5 @@
 <div class="container mx-auto max-w-lg py-8 px-4">
-  <div class="card bg-base-100 shadow-xl">
+  <div class="card bg-base-100">
     <div class="card-body">
       <h2 class="card-title text-2xl mb-4"><%= t('.location_request') %></h2>
 
@@ -40,7 +40,7 @@
           <% end %>
 
           <%= button_to t('.decline'), decline_family_location_request_path(@request),
-              method: :patch, class: "btn btn-outline btn-warning w-full mt-2" %>
+              method: :patch, class: "btn btn-outline w-full mt-2" %>
         <% else %>
           <div class="mt-4">
             <% if @request.expired? || @request.expires_at <= Time.current %>

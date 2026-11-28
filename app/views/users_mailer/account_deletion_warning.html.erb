@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 10px 0; }
+    .notice { background: #fee2e2; border: 1px solid #dc2626; padding: 15px; border-radius: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><%= t('.title') %></h1>
+    </div>
+    <div class="content">
+      <p><%= t('.greeting', email: @user.email) %></p>
+
+      <div class="notice">
+        <p><strong><%= t('.deletion_notice', date: @deletion_date) %></strong></p>
+      </div>
+
+      <p><%= t('.reason') %></p>
+
+      <p><%= t('.keep_account', date: @deletion_date) %></p>
+      <a href="<%= @resubscribe_url %>" class="cta"><%= t('.resubscribe') %></a>
+
+      <p><%= t('.keep_copy') %></p>
+      <a href="<%= @exports_url %>" class="cta"><%= t('.export') %></a>
+
+      <p><%= t('.nothing_to_do') %></p>
+
+      <p><%= t('.policy') %> <a href="https://dawarich.app/privacy-policy">https://dawarich.app/privacy-policy</a></p>
+
+      <p><%= t('.questions') %></p>
+
+      <p><%= t('.signoff') %></p>
+    </div>
+  </div>
+</body>
+</html>

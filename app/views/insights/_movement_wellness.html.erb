@@ -1,8 +1,8 @@
 <!-- Full Width Movement & Wellness Section -->
 <div class="card bg-base-200 mb-6">
   <div class="card-body p-5">
-    <h2 class="card-title text-lg flex items-center gap-2 mb-4">
-      <%= icon 'heart', class: 'w-5 h-5 text-error' %>
+    <h2 class="card-title text-lg font-medium flex items-center gap-2 mb-4">
+      <%= icon 'heart', class: 'w-4 h-4 text-base-content/60' %>
       <%= t('.movement_wellness') %>
     </h2>
 
@@ -82,7 +82,7 @@
               <% end %>
 
               <% if stats[:active].positive? %>
-                <div class="flex justify-between text-success">
+                <div class="flex justify-between font-medium">
                   <span><%= t('.active_movement') %></span>
                   <span><%= format_activity_hours(stats[:active]) %></span>
                 </div>

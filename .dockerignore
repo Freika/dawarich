@@ -18,6 +18,7 @@ screenshots/
 # Compiled assets and the sprockets manifest are regenerated inside the image;
 # never bake host-side leftovers into it
 /public/assets/
+/public_dist/
 /config/sprockets-manifest.json
 
 # Node deps are installed inside the image (npm ci), never from the host

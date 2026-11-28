@@ -5,9 +5,10 @@ module Api
     module Shared
       class PointsController < BaseController
         MAX_POINTS = 10_000
-        LIVE_FRESHNESS_SECONDS = 15 * 60
 
         def index
+          return render(json: []) if route_hidden?
+
           if link.resource_type.to_sym == :live
             render json: live_points
           else
@@ -23,6 +24,10 @@ module Api
 
         private
 
+        def route_hidden?
+          !ctx.show_route? && !link.live?
+        end
+
         def route_points
           return [] unless link.resource_type.to_sym == :live
           return [] unless ActiveModel::Type::Boolean.new.cast(link.settings['show_route'])
@@ -33,9 +38,9 @@ module Api
           outside_privacy_zones(points)
         end
 
-        # Current-position-only: the user's latest fresh point, privacy-masked.
-        # Returns [] when there is no point, it is stale (user offline), or it
-        # falls inside a privacy zone.
+        # Current-position-only: the user's latest point, privacy-masked.
+        # Returns [] when there is no point, it is older than the window chosen
+        # for this link, or it falls inside a privacy zone.
         def live_points
           row = link.user.points.not_anomaly.order(timestamp: :desc).limit(1).pick(
             Arel.sql('ST_X(lonlat::geometry)'),
@@ -45,7 +50,7 @@ module Api
           return [] if row.nil?
 
           lon, lat, ts = row
-          return [] if Time.current.to_i - ts.to_i > LIVE_FRESHNESS_SECONDS
+          return [] if Time.current.to_i - ts.to_i > link.live_freshness_seconds
 
           point = SharedLinks::LivePoint.new(link.user, lat: lat, lon: lon, timestamp: ts).call
           return [] if point[:masked]
@@ -59,7 +64,7 @@ module Api
             trip = link.resource
             return [] if trip.nil?
 
-            outside_privacy_zones(trip.points.order(:timestamp))
+            outside_privacy_zones(trip.plan_scoped_route_points.order(:timestamp))
           when :track
             track = link.resource
             return [] if track.nil?
@@ -69,7 +74,14 @@ module Api
             range = timeline_epoch_range
             return [] if range.nil?
 
-            outside_privacy_zones(link.user.points.not_anomaly.where(timestamp: range).order(:timestamp))
+            points = link.user.points.not_anomaly.where(timestamp: range)
+            if link.timeline_import_scoped?
+              import = link.timeline_import
+              return [] unless import
+
+              points = points.where(import_id: import.id)
+            end
+            outside_privacy_zones(points.order(:timestamp))
           else
             []
           end
@@ -79,20 +91,14 @@ module Api
           zones = privacy_zones
           return points if zones.empty?
 
-          condition = zones.map { 'ST_DWithin(lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
+          condition = zones.map { 'ST_DWithin(points.lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)' }
                            .join(' OR ')
           points.where.not(condition, *zones.flat_map { |z| [z[:lon], z[:lat], z[:radius]] })
         end
 
         def timeline_epoch_range
-          zone = Time.find_zone(link.user.timezone_iana) || Time.find_zone('UTC')
-          start_parsed = zone.parse(link.settings['start_date'].to_s)
-          end_parsed   = zone.parse(link.settings['end_date'].to_s)
-          return nil if start_parsed.nil? || end_parsed.nil?
-
-          start_parsed.beginning_of_day.to_i..end_parsed.end_of_day.to_i
-        rescue ArgumentError, TypeError
-          nil
+          first_instant, last_instant = link.timeline_window
+          first_instant.to_i..last_instant.to_i if first_instant
         end
 
         def serialize(points)

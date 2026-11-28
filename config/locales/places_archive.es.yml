@@ -1,0 +1,8 @@
+es:
+  places:
+    archive:
+      badge: "Archivado"
+      archive: "Archivar"
+      unarchive: "Desarchivar"
+      hint: "Se conservan las visitas confirmadas y la protección de privacidad; mientras está archivado, no se atribuyen nuevas visitas y se pausa la geocerca."
+      show_on_map: "Mostrar lugares archivados"

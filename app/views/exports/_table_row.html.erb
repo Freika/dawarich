@@ -6,6 +6,7 @@
       </div>
       <div>
         <div class="font-medium"><%= export.name %></div>
+        <% if export.import_scoped? %><p class="text-xs text-base-content/60"><%= t('ux_p2.exports.source', name: export.import_scope_unavailable? ? t('ux_p2.exports.unavailable_source') : (export.import&.name || t('ux_p2.exports.removed_import'))) %></p><% end %>
         <div class="text-xs text-base-content/50"><%= export.file_format&.upcase %> <%= t('.middot') %> <%= t("enums.export.file_type.#{export.file_type}") %></div>
       </div>
     </div>
@@ -20,13 +21,13 @@
       <% if export.completed? %>
         <% if export.file.present? %>
           <div class="tooltip" data-tip="<%= t('.download_file') %>">
-            <%= link_to rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: export.name do %>
+            <%= link_to rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", aria: { label: t('.download_file') }, download: export.name do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>
         <% elsif export.url.present? %>
           <div class="tooltip" data-tip="<%= t('.download_file') %>">
-            <%= link_to export.url, class: "btn btn-ghost btn-xs", download: export.name do %>
+            <%= link_to export.url, class: "btn btn-ghost btn-xs", aria: { label: t('.download_file') }, download: export.name do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>

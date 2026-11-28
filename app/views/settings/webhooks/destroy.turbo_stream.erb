@@ -1,0 +1,2 @@
+<%= turbo_stream.remove dom_id(@webhook) %>
+<%= turbo_stream.append('flash-messages', partial: 'shared/flash_message', locals: { type: :notice, message: t('settings.webhooks.destroy.deleted') }) %>

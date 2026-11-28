@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Area, type: :model do
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
-    it { is_expected.to have_many(:visits).dependent(:destroy) }
+    it { is_expected.to have_many(:visits).dependent(:nullify) }
   end
 
   describe 'validations' do
@@ -23,6 +23,16 @@ RSpec.describe Area, type: :model do
     it do
       is_expected.to validate_numericality_of(:longitude)
         .is_greater_than_or_equal_to(-180).is_less_than_or_equal_to(180)
+    end
+  end
+
+  describe '#visit_radius' do
+    it 'caps a legacy radius at the maximum Visit Radius' do
+      expect(build(:area, radius: Place::MAX_VISIT_RADIUS * 2).visit_radius).to eq(Place::MAX_VISIT_RADIUS)
+    end
+
+    it 'falls back to the default Visit Radius for a non-positive radius' do
+      expect(build(:area, radius: 0).visit_radius).to eq(Place.column_defaults['visit_radius'])
     end
   end
 

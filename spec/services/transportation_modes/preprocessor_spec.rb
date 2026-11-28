@@ -15,6 +15,28 @@ RSpec.describe TransportationModes::Preprocessor do
     expect(out[1][:speed_valid]).to be true
   end
 
+  it 'derives speed when stored zero velocity is contradicted by displacement beyond GPS drift' do
+    rows = [row(ts: 0, velocity: 0.0), row(ts: 30, velocity: 0.0, dt: 30, dist_m: 350.0)]
+    out = described_class.call(rows)
+    expect(out[1][:speed_mps]).to be_within(0.01).of(350.0 / 30)
+    expect(out[1][:speed_valid]).to be true
+  end
+
+  it 'checks acceleration on speeds derived in place of a stored zero' do
+    rows = [row(ts: 0, velocity: 0.0), row(ts: 2, velocity: 0.0, dt: 2, dist_m: 400.0)]
+    expect(described_class.call(rows)[1][:speed_valid]).to be false
+  end
+
+  it 'keeps stored zero velocity when displacement stays within the reported accuracy' do
+    rows = [row(ts: 0, velocity: 0.0), row(ts: 10, velocity: 0.0, dt: 10, dist_m: 70.0, accuracy: 80.0)]
+    expect(described_class.call(rows)[1][:speed_mps]).to eq(0.0)
+  end
+
+  it 'keeps stored zero velocity across a tracking gap' do
+    rows = [row(ts: 0, velocity: 0.0), row(ts: 900, velocity: 0.0, dt: 900, dist_m: 5_000.0)]
+    expect(described_class.call(rows)[1][:speed_mps]).to eq(0.0)
+  end
+
   it 'derives speed from distance and time when velocity is absent' do
     rows = [row(ts: 0), row(ts: 10, dt: 10, dist_m: 40.0)]
     out = described_class.call(rows)

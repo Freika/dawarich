@@ -9,10 +9,20 @@ RSpec.describe Api::UserSerializer do
     let(:user) { create(:user) }
 
     it 'returns JSON with correct user attributes' do
+      expect(serializer[:user][:id]).to eq(user.id)
       expect(serializer[:user][:email]).to eq(user.email)
       expect(serializer[:user][:theme]).to eq(user.theme)
       expect(serializer[:user][:created_at]).to eq(user.created_at)
       expect(serializer[:user][:updated_at]).to eq(user.updated_at)
+    end
+
+    it 'leaves credentials embedded in an integration URL out of the response' do
+      user.update!(settings: user.settings.merge('immich_url' => 'http://proxyuser:proxypass@immich.lan',
+                                                 'photoprism_url' => 'http://proxyuser:proxypass@prism.lan'))
+
+      settings = described_class.new(user.reload).call[:user][:settings]
+
+      expect(settings).to include(immich_url: 'http://immich.lan', photoprism_url: 'http://prism.lan')
     end
 
     it 'returns settings with expected keys and types' do
@@ -35,6 +45,14 @@ RSpec.describe Api::UserSerializer do
         :speed_color_scale,
         :fog_of_war_threshold
       )
+    end
+
+    it 'serializes native boolean opt-ins as their actual boolean state' do
+      [false, true].each do |enabled|
+        user.update!(settings: { 'visits_suggestions_enabled' => enabled })
+
+        expect(described_class.new(user.reload).call[:user][:settings][:visits_suggestions_enabled]).to be(enabled)
+      end
     end
 
     context 'with custom settings' do

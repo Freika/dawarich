@@ -1,9 +1,9 @@
 <% if DawarichSettings.self_hosted? %>
   <!-- Supporter Section (separate card with its own form) -->
-  <div class="card bg-base-200 shadow-xl">
-    <div class="card-body">
-      <h2 class="text-2xl font-bold mb-4 flex items-center">
-        <%= icon 'heart', class: 'mr-2 text-pink-500' %> <%= t('.supporter_status') %>
+  <div class="card bg-base-200">
+    <div class="card-body p-4 sm:p-8">
+      <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+        <%= icon 'heart', class: 'w-4 h-4 text-base-content/60' %> <%= t('.supporter_status') %>
       </h2>
       <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
         <% if current_user.supporter? %>
@@ -36,7 +36,7 @@
                 autocorrect: 'off' %>
           </div>
 
-          <%= vf.submit t('.verify'), class: 'btn btn-primary mt-3' %>
+          <%= vf.submit t('.verify'), class: 'btn mt-3' %>
         <% end %>
 
         <% if (current_user.safe_settings.supporter_email.present? || current_user.safe_settings.supporter_github_username.present?) && !current_user.supporter? %>
@@ -48,8 +48,8 @@
 
         <!-- Info panel -->
         <div class="bg-base-200 p-4 rounded-lg space-y-3">
-          <h3 class="font-semibold flex items-center gap-2">
-            <%= icon 'info', class: 'w-4 h-4 text-primary' %> <%= t('.how_to_support_dawarich') %>
+          <h3 class="font-medium flex items-center gap-2">
+            <%= icon 'info', class: 'w-4 h-4 text-base-content/60' %> <%= t('.how_to_support_dawarich') %>
           </h3>
           <p class="text-sm text-base-content/70">
             <%= t('.dawarich_is_a_free_and_open_source_project_your_support') %>
@@ -66,7 +66,7 @@
             </a>
           </div>
 
-          <h3 class="font-semibold mt-3"><%= t('.supporter_benefits') %></h3>
+          <h3 class="font-medium mt-3"><%= t('.supporter_benefits') %></h3>
           <ul class="text-sm text-base-content/70 list-disc list-inside space-y-1">
             <li><%= t('.access_to_reverse_geocoding_api_see_patreon_tier') %></li>
             <li><%= t('.mention_in_github_releases') %></li>

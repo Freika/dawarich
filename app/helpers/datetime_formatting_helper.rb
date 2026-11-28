@@ -65,7 +65,36 @@ module DatetimeFormattingHelper
     I18n.t('units.minutes_compact', value: minutes)
   end
 
+  def date_format_options
+    sample = Date.current
+
+    Users::DateTimePreferences::DATE_FORMATS.map do |format|
+      example = with_example_preferences(date_format: format) { I18n.l(sample, format: :medium) }
+      [format == 'auto' ? I18n.t('settings.general.index.format_auto', example:) : example, format]
+    end
+  end
+
+  def time_format_options
+    sample = Time.current.change(hour: 14, min: 5)
+    labels = { 'auto' => 'format_auto', '12h' => 'time_format_12h', '24h' => 'time_format_24h' }
+
+    Users::DateTimePreferences::TIME_FORMATS.map do |format|
+      example = with_example_preferences(time_format: format) { I18n.l(sample, format: :hour_minute) }
+      [I18n.t("settings.general.index.#{labels.fetch(format)}", example:), format]
+    end
+  end
+
+  def first_day_of_week_options
+    day_names = I18n.t('date.day_names')
+
+    [[day_names[1].upcase_first, 'monday'], [day_names[0].upcase_first, 'sunday']]
+  end
+
   private
+
+  def with_example_preferences(**preferences, &)
+    Users::DateTimePreferences.with(Users::DateTimePreferences.new(**preferences), &)
+  end
 
   def coerce_to_zone(datetime, timezone)
     return datetime if timezone.blank?

@@ -9,7 +9,7 @@
       </span>
     </div>
     <div class="flex items-center gap-2 flex-shrink-0">
-      <a href="<%= upgrade_url(utm_medium: 'data_window', utm_content: local_assigns[:utm_content] || 'general') %>"
+      <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'data_window', utm_content: local_assigns[:utm_content] || 'general') %>"
          class="btn btn-sm btn-primary" target="_blank" rel="noopener">
         <%= t('.upgrade_to_pro') %>
       </a>

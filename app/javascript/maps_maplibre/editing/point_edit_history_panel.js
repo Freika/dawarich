@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatTime, translate } from "i18n"
 import { formatDistance } from "../utils/format_helpers"
 
 const EARTH_RADIUS_KM = 6371
@@ -132,11 +132,7 @@ export class PointEditHistoryPanel {
     const time = document.createElement("time")
     time.className = "map-edit-history__time"
     time.dateTime = new Date(item.entry.at).toISOString()
-    time.textContent = new Date(item.entry.at).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    })
+    time.textContent = formatTime(item.entry.at, { seconds: true })
 
     button.append(distance, point, time)
     row.append(button)

@@ -1,0 +1,10 @@
+zh:
+  admin:
+    settings:
+      show:
+        geocoding:
+          test_latitude: "纬度"
+          test_longitude: "经度"
+          test_coordinates_hint: "使用已保存的设置进行一次查询。请输入两个坐标，或将两个字段留空以使用 51.3402, 12.3712。坐标不会被保存。"
+      test_geocoding:
+        invalid_coordinates: "请输入有效的纬度（−90 至 90）和经度（−180 至 180），或将两个字段留空以使用默认坐标。"

@@ -5,23 +5,33 @@ module SafeTimestampParser
 
   private
 
-  def safe_timestamp(date_string)
-    return Time.zone.now.to_i if date_string.blank?
+  def safe_timestamp(value)
+    strict_timestamp(value) || Time.zone.now.to_i
+  end
 
-    min_timestamp = Time.zone.parse('1970-01-01').to_i
-    max_timestamp = Time.zone.parse('2100-01-01').to_i
+  # Nil for anything blank or unparseable, so a caller can tell a bad value from
+  # a real one. Numeric strings are Unix timestamps.
+  def strict_timestamp(value)
+    return nil if value.blank?
+    return clamp_timestamp(value.to_i) if value.match?(/\A\d+\z/)
 
-    # Treat purely numeric strings as Unix timestamps
-    return date_string.to_i.clamp(min_timestamp, max_timestamp) if date_string.match?(/\A\d+\z/)
+    parsed = Time.zone.parse(value)
+    return nil if parsed.nil?
+    # Time.zone.parse yields year-2000 epoch for unparseable strings
+    return nil if parsed.year == 2000 && !value.include?('2000')
 
-    parsed_time = Time.zone.parse(date_string)
-
-    # Time.zone.parse returns epoch time (2000-01-01) for unparseable strings
-    # Check if it's a valid parse by seeing if year is suspiciously at epoch
-    return Time.zone.now.to_i if parsed_time.nil? || (parsed_time.year == 2000 && !date_string.include?('2000'))
-
-    parsed_time.to_i.clamp(min_timestamp, max_timestamp)
+    clamp_timestamp(parsed.to_i)
   rescue ArgumentError, TypeError
-    Time.zone.now.to_i
+    nil
+  end
+
+  def parse_time_param(value)
+    Time.zone.parse(value.to_s) if value.present?
+  rescue ArgumentError
+    nil
+  end
+
+  def clamp_timestamp(value)
+    value.clamp(Time.zone.parse('1970-01-01').to_i, Time.zone.parse('2100-01-01').to_i)
   end
 end

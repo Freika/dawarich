@@ -32,7 +32,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
   context 'with an instance geocoding provider' do
     before { configure_instance_geocoding }
 
-    it 'with a query, returns forward matches within radius and merges nearby areas' do
+    it 'with a query, returns canonical Places and the legacy Areas compatibility field' do
       create(:area, user: user, name: 'Home', latitude: lat, longitude: lon, radius: 100)
       near = photon(name: 'Café Bravo', plat: lat, plon: lon)
       far  = photon(name: 'Far Café', plat: 53.5, plon: 14.5)
@@ -43,7 +43,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json['places'].map { |p| p['name'] }).to eq(['Café Bravo'])
-      expect(json['areas'].map { |a| a['name'] }).to eq(['Home'])
+      expect(json['areas'].map { |area| area['name'] }).to eq(['Home'])
     end
 
     it 'with a blank query, returns nearby reverse suggestions' do
@@ -72,6 +72,77 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(JSON.parse(response.body)['places']).not_to be_empty
+    end
+
+    it 'does not flag a lookup that reached the provider as throttled' do
+      allow(Geocoder).to receive(:search).and_return([])
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(false)
+    end
+
+    it 'flags a typed lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { q: 'burger king', lat: lat, lon: lon }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(JSON.parse(response.body)['throttled']).to be(true)
+    end
+
+    it 'flags a nearby lookup the rate limiter skipped so the client can retry' do
+      allow(Geocoding::Search).to receive(:call).and_return(nil)
+
+      get '/api/v1/places/search', params: { lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['throttled']).to be(true)
+    end
+  end
+
+  context 'with a reverse-only Photon server' do
+    let(:not_found_body) { { title: 'Endpoint GET /api not found', status: 404 }.to_json }
+
+    before do
+      configure_instance_geocoding(photon_api_host: 'photon.test')
+      use_real_geocoding_lookups
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+      create(:place, user: user, name: 'Corner Bakery', latitude: lat, longitude: lon)
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_return(status: 404, body: not_found_body)
+      stub_request(:get, %r{\Ahttp://photon\.test/reverse})
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json)
+    end
+
+    it 'flags the missing forward search and still returns matching saved places' do
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      json = JSON.parse(response.body)
+      expect(json['forward_search_unavailable']).to be(true)
+      expect(json['places'].map { |p| p['name'] }).to eq(['Corner Bakery'])
+    end
+
+    it 'does not flag a nearby lookup' do
+      get '/api/v1/places/search', params: { lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
+
+    it 'does not flag an unreachable provider' do
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_raise(Errno::ECONNREFUSED)
+
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
+    end
+
+    # A wrong path prefix also returns 404, but from the proxy, not Photon.
+    it 'does not flag a 404 that does not come from Photon' do
+      stub_request(:get, %r{\Ahttp://photon\.test/api}).to_return(status: 404, body: '<h1>404 Not Found</h1>')
+
+      get '/api/v1/places/search', params: { q: 'bakery', lat: lat, lon: lon }, headers: headers
+
+      expect(JSON.parse(response.body)['forward_search_unavailable']).to be(false)
     end
   end
 

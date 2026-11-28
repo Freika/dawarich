@@ -27,6 +27,23 @@ module Tracks
       Rails.cache.read(cache_key) || { 'status' => 'idle' }
     end
 
+    def enqueue
+      User.with_advisory_lock("transportation_recalculation:#{user_id}") do
+        return false if in_progress?
+
+        begin
+          raise IOError, 'Reclassification status could not be reserved' unless start(total_tracks: 0)
+
+          job = yield
+          raise ActiveJob::EnqueueError, 'Reclassification could not be queued' unless job.try(:successfully_enqueued?)
+        rescue StandardError => e
+          fail(e.message)
+          raise
+        end
+        true
+      end
+    end
+
     def start(total_tracks:)
       reset_counter
       Rails.cache.write(
@@ -49,10 +66,12 @@ module Tracks
       # hash would resurrect the short-lived 'completed' entry with CACHE_TTL.
       return data['processed_tracks'].to_i if current_status == 'completed'
 
-      count = Rails.cache.increment(counter_key, 1, expires_in: CACHE_TTL) || 1
       total = data['total_tracks']
+      return data['processed_tracks'].to_i if total&.zero?
+
+      count = Rails.cache.increment(counter_key, 1, expires_in: CACHE_TTL) || 1
       update_progress(processed_tracks: count, total_tracks: total)
-      complete if total && count >= total
+      complete if total&.positive? && count >= total
       count
     end
 

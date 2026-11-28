@@ -23,6 +23,8 @@ namespace :e2e do
     family.member3@dawarich.app
   ].freeze
 
+  E2E_CHANGELOG_PROMPT_EMAIL = 'changelog-prompt@dawarich.app'
+
   # The base time the demo data is shifted to land at. Specs hardcode
   # 2025-10-15 in URL params (see e2e-dawarich-playwright/v2/map/...);
   # keep this aligned.
@@ -181,6 +183,25 @@ namespace :e2e do
         settings: (user.settings || {}).merge('onboarding_completed' => true)
       )
     end
+
+    Rake::Task['e2e:seed_changelog_prompt_user'].invoke
+  end
+
+  desc 'Create or reset a user that has not answered the changelog prompt (idempotent).'
+  task seed_changelog_prompt_user: :environment do
+    assert_safe_environment!
+
+    user = User.find_or_initialize_by(email: E2E_CHANGELOG_PROMPT_EMAIL)
+    if user.new_record?
+      user.assign_attributes(password: 'safepassword', password_confirmation: 'safepassword',
+                             status: :active, active_until: 100.years.from_now)
+      user.save!
+    end
+
+    user.update_columns(
+      changelog_consent: nil,
+      settings: (user.settings || {}).except('locale').merge('onboarding_completed' => true)
+    )
   end
 
   desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'

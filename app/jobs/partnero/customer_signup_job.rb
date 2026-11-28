@@ -39,10 +39,15 @@ class Partnero::CustomerSignupJob < ApplicationJob
 
     return if response.success? || response.code == ALREADY_REGISTERED
 
-    raise AttributionFailed, "Partnero rejected the signup (HTTP #{response.code}): #{response.body}"
+    raise AttributionFailed, "Partnero rejected the signup (HTTP #{response.code})"
   rescue StandardError => e
-    ExceptionReporter.call(e, "Partnero signup attribution failed (user_id=#{user_id})")
-    raise
+    message = e.is_a?(AttributionFailed) ? e.message : "Partnero signup attribution failed (#{e.class.name})"
+    reported_error = StandardError.new(message)
+    reported_error.set_backtrace(e.backtrace)
+    ExceptionReporter.call(reported_error, 'Partnero signup attribution failed')
+    error = e.is_a?(Net::ReadTimeout) ? e.class.new.exception(message) : e.exception(message)
+    error.set_backtrace(e.backtrace)
+    raise error, cause: nil
   end
 
   private

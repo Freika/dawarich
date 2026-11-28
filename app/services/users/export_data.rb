@@ -10,12 +10,13 @@ require 'zip'
 # ├── manifest.json                 # Format version, counts, file listing
 # ├── files/                        # Attached files (imports, exports, raw data archives)
 # ├── settings.jsonl                # Single line (user settings)
-# ├── areas.jsonl                   # One area per line
+# ├── areas.jsonl                   # Legacy Area compatibility records
 # ├── tags.jsonl                    # One tag per line
 # ├── taggings.jsonl                # One tagging per line (with references)
 # ├── imports.jsonl                 # One import record per line
 # ├── exports.jsonl                 # One export record per line
 # ├── trips.jsonl                   # One trip per line
+# ├── notes.jsonl                   # One note per line (with attachable references)
 # ├── notifications.jsonl           # One notification per line
 # ├── places.jsonl                  # One place per line
 # ├── raw_data_archives.jsonl       # One archive record per line
@@ -125,6 +126,7 @@ class Users::ExportData
     export_imports
     export_exports
     export_trips
+    export_notes
     export_notifications
 
     # Export monthly-split entities
@@ -141,17 +143,31 @@ class Users::ExportData
   def export_settings
     settings_path = export_directory.join('settings.jsonl')
     File.open(settings_path, 'w') do |file|
-      file.puts(user.safe_settings.settings.to_json)
+      # Unmasked: the export must carry the stored Pro-only settings of a Lite user.
+      # Integration secrets stay out of the archive; the URLs still record what was connected.
+      file.puts(Users::IntegrationSettingKeys.redact(Users::SafeSettings.new(user.settings).settings).to_json)
     end
     Rails.logger.info 'Exported settings'
   end
 
   def export_areas
     areas_path = export_directory.join('areas.jsonl')
+    mappings = LegacyAreaPlaceMapping.includes(:place)
+                                     .where(area_id: user.areas.select(:id))
+                                     .index_by(&:area_id)
     count = 0
     File.open(areas_path, 'w') do |file|
       user.areas.find_each do |area|
-        file.puts(area.as_json(except: %w[user_id id]).to_json)
+        payload = area.as_json(except: %w[user_id id])
+        if (place = mappings[area.id]&.place)
+          payload.merge!(
+            'name' => place.name,
+            'latitude' => place.lat,
+            'longitude' => place.lon,
+            'radius' => place.visit_radius
+          )
+        end
+        file.puts(payload.to_json)
         count += 1
       end
     end
@@ -206,12 +222,23 @@ class Users::ExportData
     Rails.logger.info "Exported #{count} trips"
   end
 
+  def export_notes
+    count = 0
+    File.open(export_directory.join('notes.jsonl'), 'w') do |file|
+      Users::ExportData::Notes.new(user).call.each do |note_hash|
+        file.puts(note_hash.to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} notes"
+  end
+
   def export_notifications
     notifications_path = export_directory.join('notifications.jsonl')
     count = 0
     File.open(notifications_path, 'w') do |file|
       user.notifications.find_each do |notification|
-        file.puts(notification.as_json(except: %w[user_id id]).to_json)
+        file.puts(notification.as_json(except: Notification::EXPORT_EXCLUDED).to_json)
         count += 1
       end
     end
@@ -385,11 +412,12 @@ class Users::ExportData
       imports: user.imports.count,
       exports: user.exports.count,
       trips: user.trips.count,
+      notes: user.notes.count,
       stats: user.stats.count,
       notifications: user.notifications.count,
       points: user.points_count.to_i,
       visits: user.visits.count,
-      places: user.visited_places.count,
+      places: user.places.count,
       tags: user.tags.count,
       tracks: user.tracks.count,
       digests: user.digests.count,
@@ -434,7 +462,6 @@ class Users::ExportData
       "#{counts[:visits]} visits, " \
       "#{counts[:places]} places, " \
       "#{counts[:trips]} trips, " \
-      "#{counts[:areas]} areas, " \
       "#{counts[:imports]} imports, " \
       "#{counts[:exports]} exports, " \
       "#{counts[:stats]} stats, " \
@@ -449,7 +476,8 @@ class Users::ExportData
         title: I18n.t('services.users.export_data.export_completed'),
         content: I18n.t('services.users.export_data.your_data_export_has_been_processed_successfully_summary_you_can',
                         summary: summary),
-        kind: :info
+        kind: :info,
+        action_path: ::Notifications.paths.exports_path
       ).call
     end
   end

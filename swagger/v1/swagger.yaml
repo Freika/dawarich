@@ -6,12 +6,241 @@ info:
   description: API for Dawarich, your favorite alternative to Google Timeline. Provides
     endpoints for managing location data, tracks, visits, statistics, and more.
 paths:
+  "/api/v1/achievements":
+    get:
+      summary: Read lifetime achievement collections
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Lifetime overview; does not claim or celebrate unlocks
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementOverview"
+        '401':
+          description: Invalid API key
+  "/api/v1/achievements/{key}":
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Browse a continent or country collection
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - all
+          - unlocked
+          - in_progress
+          - locked
+          default: all
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      responses:
+        '200':
+          description: Filtered page with visible SVG silhouettes
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementCollection"
+        '404':
+          description: Unknown or hidden collection
+        '422':
+          description: Invalid page or filter
+  "/api/v1/achievements/{key}/sharing":
+    parameters:
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    patch:
+      summary: Set sharing explicitly and idempotently
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Updated public sharing state
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementSharingResult"
+        '422':
+          description: Enabled must be a JSON boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - enabled
+              properties:
+                enabled:
+                  type: boolean
+  "/api/v1/achievements/unlocks/next":
+    post:
+      summary: Claim or resume the next unlock with a shared web and mobile lease
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Structured collectible card and batch boundary
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/AchievementUnlock"
+        '204':
+          description: No pending unlocks
+        '409':
+          description: Another client holds the lease; retry after 2 seconds
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  retry_after:
+                    type: integer
+                    example: 2
+        '422':
+          description: Invalid token or batch ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                claim_token:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+                batch_end_id:
+                  type: integer
+                  minimum: 1
+  "/api/v1/achievements/unlocks/{id}/seen":
+    parameters:
+    - name: id
+      in: path
+      schema:
+        type: integer
+        minimum: 1
+      required: true
+    post:
+      summary: Acknowledge an unlock for the authenticated account
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Acknowledged (including repeated acknowledgement)
+        '409':
+          description: Wrong token or account
+        '422':
+          description: Invalid ID or missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - claim_token
+              properties:
+                claim_token:
+                  type: string
+                  pattern: "^[0-9a-f]{32}$"
+  "/api/v1/achievements/unlocks/dismiss":
+    post:
+      summary: Dismiss pending unlocks through the batch boundary
+      tags:
+      - Achievements
+      security:
+      - bearer_auth: []
+      - api_key: []
+      parameters:
+      - name: Authorization
+        in: header
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Batch dismissed; later unlocks remain pending
+        '422':
+          description: Invalid batch ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - batch_end_id
+              properties:
+                batch_end_id:
+                  type: integer
+                  minimum: 1
   "/api/v1/areas":
     post:
       summary: Creates an area
       tags:
       - Areas
-      description: Creates a new geographic area for the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter. Creates a canonical Place; use
+        POST /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -102,7 +331,9 @@ paths:
       summary: Retrieves all areas
       tags:
       - Areas
-      description: Returns all areas belonging to the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter backed by canonical Places; use
+        GET /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -164,6 +395,7 @@ paths:
       summary: Retrieves a specific area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -206,6 +438,7 @@ paths:
       summary: Updates an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -269,6 +502,7 @@ paths:
       summary: Deletes an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -296,10 +530,19 @@ paths:
       summary: Sign in with Apple
       tags:
       - Auth
-      description: Exchanges an Apple `id_token` for a Dawarich API key. Creates a
-        new account on first use (returns 201) or returns the existing account (returns
-        200).
-      parameters: []
+      description: 'Exchanges an Apple `id_token` for a Dawarich API key. Creates
+        a new account on first use (returns 201) or returns the existing account (returns
+        200). A client that sends `X-Dawarich-Client-Capabilities: otp_challenge`
+        gets a `202` with a challenge token for an account with 2FA, as from `POST
+        /api/v1/auth/login`; it then calls `POST /api/v1/auth/otp_challenge`.'
+      parameters:
+      - name: X-Dawarich-Client-Capabilities
+        in: header
+        required: false
+        description: Comma-separated client capabilities; `otp_challenge` asks for
+          the 2FA challenge
+        schema:
+          type: string
       responses:
         '201':
           description: new user created
@@ -326,6 +569,24 @@ paths:
                     type: string
                     format: date-time
                     nullable: true
+        '202':
+          description: two-factor authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  two_factor_required:
+                    type: boolean
+                  challenge_token:
+                    type: string
+                  ttl:
+                    type: integer
+                    description: Seconds the challenge token stays valid
+                required:
+                - two_factor_required
+                - challenge_token
+                - ttl
         '401':
           description: apple token verification failed
           content:
@@ -385,10 +646,19 @@ paths:
       summary: Sign in with Google
       tags:
       - Auth
-      description: Exchanges a Google `id_token` for a Dawarich API key. Creates a
-        new account on first use (returns 201) or returns the existing account (returns
-        200).
-      parameters: []
+      description: 'Exchanges a Google `id_token` for a Dawarich API key. Creates
+        a new account on first use (returns 201) or returns the existing account (returns
+        200). A client that sends `X-Dawarich-Client-Capabilities: otp_challenge`
+        gets a `202` with a challenge token for an account with 2FA, as from `POST
+        /api/v1/auth/login`; it then calls `POST /api/v1/auth/otp_challenge`.'
+      parameters:
+      - name: X-Dawarich-Client-Capabilities
+        in: header
+        required: false
+        description: Comma-separated client capabilities; `otp_challenge` asks for
+          the 2FA challenge
+        schema:
+          type: string
       responses:
         '201':
           description: new user created
@@ -415,6 +685,24 @@ paths:
                     type: string
                     format: date-time
                     nullable: true
+        '202':
+          description: two-factor authentication required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  two_factor_required:
+                    type: boolean
+                  challenge_token:
+                    type: string
+                  ttl:
+                    type: integer
+                    description: Seconds the challenge token stays valid
+                required:
+                - two_factor_required
+                - challenge_token
+                - ttl
         '401':
           description: google token verification failed
           content:
@@ -1225,6 +1513,234 @@ paths:
           description: digest not found
         '401':
           description: unauthorized
+  "/api/v1/families/invitations":
+    post:
+      summary: Invites someone to the current user's family by email
+      tags:
+      - Families
+      description: 'Owner only; the caller must be entitled to the family feature.
+        Sends the invitation email. Refusals carry `error` (a code) and `message`
+        (English): `owner_required` (403), `invalid_email`, `family_full`, `user_already_in_family`,
+        `invitation_already_sent` (422), `rate_limited` (429, on Dawarich Cloud after
+        10 invitations an hour); a caller in no family gets `not_in_family` (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: invitation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      expires_at:
+                        type: string
+                        format: date-time
+                      url:
+                        type: string
+                        description: Public invitation page, built from the request
+                          host
+                    required:
+                    - id
+                    - email
+                    - created_at
+                    - expires_at
+                    - url
+                required:
+                - invitation
+        '422':
+          description: invitation refused
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required:
+              - email
+  "/api/v1/families/invitations/{id}":
+    delete:
+      summary: Revokes a pending invitation
+      tags:
+      - Families
+      description: 'Owner only. Reachable while the family plan has lapsed. Refusals:
+        `owner_required` (403), `invitation_not_found` (404, also for another family''s
+        invitation).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: invitation revoked
+        '404':
+          description: invitation not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+  "/api/v1/families/invitations/preview":
+    post:
+      summary: Describes an invitation to the person holding its token
+      tags:
+      - Families
+      description: 'The token travels in the body. Open to callers in no family and
+        in `pending_payment`. Refusals: `feature_disabled` (403), `invitation_not_found`
+        (404), `invitation_invalid` (422, expired or no longer pending).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: invitation preview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    type: object
+                    properties:
+                      family_name:
+                        type: string
+                      invited_by_email:
+                        type: string
+                      email:
+                        type: string
+                      expires_at:
+                        type: string
+                        format: date-time
+                      plan_active:
+                        type: boolean
+                      email_matches:
+                        type: boolean
+                    required:
+                    - family_name
+                    - invited_by_email
+                    - email
+                    - expires_at
+                    - plan_active
+                    - email_matches
+                required:
+                - invitation
+        '404':
+          description: unknown token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+              - token
+  "/api/v1/families/invitations/accept":
+    post:
+      summary: Accepts an invitation and joins its family
+      tags:
+      - Families
+      description: 'The token travels in the body. Answers with the same body as GET
+        /api/v1/families/mine. Open to callers in `pending_payment`, who become active
+        on joining a Cloud family. Refusals: `feature_disabled`, `email_mismatch`
+        (403), `invitation_not_found` (404), `invitation_invalid`, `already_in_family`,
+        `plan_inactive`, `family_full` (422).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: joined the family
+        '403':
+          description: invitation is for another email
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+              - token
   "/api/v1/families/location_requests":
     post:
       summary: Creates a location sharing request for a family member
@@ -1548,6 +2064,60 @@ paths:
                     description: URL to upgrade to the Family plan
         '401':
           description: unauthorized
+  "/api/v1/families/members/{user_id}":
+    delete:
+      summary: Leaves the family, or removes a member from it
+      tags:
+      - Families
+      description: 'With the caller''s own id, the caller leaves the family. With
+        another member''s id, the owner removes that member. Reachable while the family
+        plan has lapsed. Refusals carry `error` (a code) and `message` (English):
+        `owner_required` (403), `member_not_found` (404, also for a user of another
+        family), `owner_cannot_leave` (422); a caller in no family gets `not_in_family`
+        (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: member left or was removed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+        '422':
+          description: the owner cannot leave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/mine":
     get:
       summary: Retrieves the current user's family overview
@@ -1557,8 +2127,10 @@ paths:
         user''s sharing settings, and active location requests. Requires family membership.
         A member whose entitlement has lapsed still gets 200, with `lapsed: true`
         and a reduced payload carrying only the family name and the user''s role —
-        `members` and `location_requests` are omitted. A user who is neither entitled
-        nor in a family gets 403.'
+        `members` and `location_requests` are omitted; a lapsed owner also gets the
+        other members (`user_id`, `email`, `email_initial`, `owner`) and `invitations`,
+        so they can still dissolve the family. `invitations` is sent to the owner
+        only. A user who is neither entitled nor in a family gets 403.'
       parameters:
       - name: Authorization
         in: header
@@ -1607,6 +2179,10 @@ paths:
                           history_window:
                             type: string
                             nullable: true
+                      inherits_plan:
+                        type: boolean
+                        description: 'Cloud only: the plan comes from the family,
+                          so leaving downgrades the account'
                   members:
                     type: array
                     items:
@@ -1659,10 +2235,161 @@ paths:
                               type: integer
                             created_at:
                               type: string
+                  seats:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        nullable: true
+                        description: null on self-hosted
+                      members:
+                        type: integer
+                      pending:
+                        type: integer
+                  can_invite:
+                    type: boolean
+                    description: The caller is the owner and a seat is free
+                  invitations:
+                    type: array
+                    description: Pending invitations; present for the owner only (also
+                      while lapsed)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        email:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                        url:
+                          type: string
         '404':
           description: user not in a family
         '403':
           description: user is neither entitled nor in a family
+    post:
+      summary: Creates a family with the current user as owner
+      tags:
+      - Families
+      description: 'Creates a family. The caller must be entitled to the family feature
+        and in no family. Answers with the same body as GET. Refusals carry `error`
+        (a code) and `message` (English): `feature_disabled` and `family_plan_required`
+        (403, the latter with `upgrade_url`), `already_in_family`, `family_already_created`,
+        `invalid_name` (422).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '201':
+          description: family created
+        '422':
+          description: invalid name
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    patch:
+      summary: Renames the current user's family
+      tags:
+      - Families
+      description: 'Renames the family. Owner only. Answers with the same body as
+        GET. Refusals: `owner_required` (403), `invalid_name` (422); a caller in no
+        family gets `not_in_family` (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '200':
+          description: family renamed
+        '403':
+          description: caller is not the owner
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+              required:
+              - name
+    delete:
+      summary: Deletes the current user's family
+      tags:
+      - Families
+      description: 'Deletes the family. Owner only, and only when the owner is its
+        last member. Reachable while the family plan has lapsed. Refusals: `owner_required`
+        (403), `family_has_members` (422); a caller in no family gets `not_in_family`
+        (404).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer <API Key>
+        schema:
+          type: string
+      responses:
+        '204':
+          description: family deleted
+        '422':
+          description: other members are still in the family
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                - error
+                - message
   "/api/v1/families/sharing":
     patch:
       summary: Updates the current user's family location sharing
@@ -1742,6 +2469,85 @@ paths:
                   description: How far back shared history goes
               required:
               - enabled
+  "/api/v1/geofence_events":
+    get:
+      summary: Lists geofence enter/leave events
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: place_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: start_at
+        in: query
+        format: date
+        required: false
+        description: First day, in the user timezone
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date
+        required: false
+        description: Last day, in the user timezone
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: events, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    place_id:
+                      type: integer
+                      nullable: true
+                    place_name:
+                      type: string
+                    event_type:
+                      type: string
+                      enum:
+                      - enter
+                      - leave
+                    source:
+                      type: string
+                      enum:
+                      - native_app
+                      - server_inferred
+                      - owntracks_native
+                    occurred_at:
+                      type: string
+                      format: date-time
+                    latitude:
+                      type: number
+                    longitude:
+                      type: number
+                    accuracy_m:
+                      type: integer
+                      nullable: true
   "/api/v1/health":
     get:
       summary: Retrieves application status
@@ -2272,11 +3078,13 @@ paths:
   "/api/v1/locations":
     get:
       summary: Searches for location history near coordinates
-      tags:
-      - Locations
-      description: Searches for tracked location points near the specified coordinates,
-        optionally filtered by date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -2321,6 +3129,10 @@ paths:
         description: Custom search radius in meters
         schema:
           type: integer
+      tags:
+      - Locations
+      description: Searches for tracked location points near the specified coordinates,
+        optionally filtered by date range
       responses:
         '200':
           description: locations found
@@ -2433,11 +3245,13 @@ paths:
   "/api/v1/maps/hexagons":
     get:
       summary: Retrieves hexagon grid data for the map
-      tags:
-      - Maps
-      description: Returns hexagonal grid data for map visualization. Supports both
-        authenticated access and public sharing via UUID.
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: false
@@ -2474,6 +3288,10 @@ paths:
         description: Month filter (1-12)
         schema:
           type: integer
+      tags:
+      - Maps
+      description: Returns hexagonal grid data for map visualization. Supports both
+        authenticated access and public sharing via UUID.
       responses:
         '200':
           description: hexagons found
@@ -2519,11 +3337,13 @@ paths:
   "/api/v1/maps/hexagons/bounds":
     get:
       summary: Retrieves geographic bounds for hexagon data
-      tags:
-      - Maps
-      description: Returns the geographic bounding box for the user's location data
-        within the specified date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: false
@@ -2548,6 +3368,10 @@ paths:
         description: End date (ISO 8601 format)
         schema:
           type: string
+      tags:
+      - Maps
+      description: Returns the geographic bounding box for the user's location data
+        within the specified date range
       responses:
         '200':
           description: bounds found
@@ -2633,6 +3457,62 @@ paths:
           description: missing or invalid dates
         '401':
           description: unauthorized
+  "/api/v1/maps/statistics":
+    get:
+      summary: Returns point count and GPS distance for an exact map period
+      tags:
+      - Maps
+      description: Own non-anomalous points within the plan window, with privacy zones
+        masked. Inclusive timestamps; offsetless times use the account timezone. Distance
+        is in meters, split by tracker, recorded track boundaries and the route time
+        threshold. Family history and manually added flights are excluded.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: true
+        description: ISO 8601 time or Unix seconds
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        required: true
+        description: ISO 8601 time or Unix seconds
+        schema:
+          type: string
+      - name: import_id
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - points
+                - distance_meters
+                properties:
+                  points:
+                    type: integer
+                    minimum: 0
+                  distance_meters:
+                    type: number
+                    minimum: 0
+        '400':
+          description: invalid or missing range
+        '401':
+          description: unauthorized
+        '503':
+          description: query timeout; retry with a shorter period
   "/api/v1/notes":
     get:
       summary: List notes
@@ -2663,6 +3543,64 @@ paths:
         description: Set to "true" to return only standalone notes
         schema:
           type: string
+      - name: start_at
+        in: query
+        format: date-time
+        required: false
+        description: Return notes describing a moment at or after this time
+        schema:
+          type: string
+      - name: end_at
+        in: query
+        format: date-time
+        required: false
+        description: Return notes describing a moment at or before this time
+        schema:
+          type: string
+      - name: min_lon
+        in: query
+        required: false
+        description: Bounding box west edge. All four bounds are required for the
+          box to apply
+        schema:
+          type: number
+      - name: min_lat
+        in: query
+        required: false
+        description: Bounding box south edge
+        schema:
+          type: number
+      - name: max_lon
+        in: query
+        required: false
+        description: Bounding box east edge
+        schema:
+          type: number
+      - name: max_lat
+        in: query
+        required: false
+        description: Bounding box north edge
+        schema:
+          type: number
+      - name: page
+        in: query
+        required: false
+        description: Page number. Without it the whole list is returned. With it the
+          response carries X-Current-Page and X-Total-Pages headers
+        schema:
+          type: integer
+      - name: per_page
+        in: query
+        required: false
+        description: Notes per page, 100 by default, 500 at most
+        schema:
+          type: integer
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out notes located inside a privacy zone
+        schema:
+          type: boolean
       responses:
         '200':
           description: notes found
@@ -2977,6 +3915,8 @@ paths:
       responses:
         '201':
           description: Batch of points created
+        '422':
+          description: Invalid timestamp
         '401':
           description: Unauthorized
       requestBody:
@@ -3010,9 +3950,11 @@ paths:
                         type: object
                         properties:
                           timestamp:
-                            type: string
+                            oneOf:
+                            - type: string
+                            - type: integer
                             example: '2021-06-01T12:00:00Z'
-                            description: Timestamp in ISO 8601 format
+                            description: Timestamp in ISO 8601 format or Unix seconds
                           altitude:
                             type: number
                             example: 0
@@ -3284,11 +4226,13 @@ paths:
   "/api/v1/photos":
     get:
       summary: Lists photos
-      tags:
-      - Photos
-      description: Returns photos from connected photo services (Immich, PhotoPrism)
-        within a date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -3307,6 +4251,10 @@ paths:
         description: End date in ISO8601 format, e.g. 2024-01-02
         schema:
           type: string
+      tags:
+      - Photos
+      description: Returns photos from connected photo services (Immich, PhotoPrism)
+        within a date range
       responses:
         '200':
           description: photos found
@@ -3422,9 +4370,13 @@ paths:
   "/api/v1/places":
     get:
       summary: Retrieves all places for the authenticated user
-      tags:
-      - Places
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -3446,12 +4398,17 @@ paths:
         - all
         - manual
         - confirmed
+        - unconfirmed
         - tagged
-        description: "Visibility filter. Defaults to manual + confirmed-visit + tagged
-          places. Use \"all\" for every place (including suggested-only), or \"manual\"/\"confirmed\"/\"tagged\".:\n
-          * `all` \n * `manual` \n * `confirmed` \n * `tagged` \n "
+        - archived
+        description: "Visibility filter. Defaults to non-archived user-owned/confirmed
+          Places. Use \"all\" for every Place, \"archived\" for retired Places, or
+          \"unconfirmed\" for machine-owned suggestions.:\n * `all` \n * `manual`
+          \n * `confirmed` \n * `unconfirmed` \n * `tagged` \n * `archived` \n "
         schema:
           type: string
+      tags:
+      - Places
       responses:
         '200':
           description: places found
@@ -3474,6 +4431,16 @@ paths:
                       format: float
                     source:
                       type: string
+                    visit_radius:
+                      type: integer
+                      minimum: 1
+                      default: 50
+                    archived:
+                      type: boolean
+                      description: Retired from attribution and geofence monitoring
+                    geofence:
+                      type: boolean
+                      description: Report enter and leave events for this place
                     icon:
                       type: string
                       nullable: true
@@ -3503,6 +4470,7 @@ paths:
                   - name
                   - latitude
                   - longitude
+                  - archived
         '401':
           description: unauthorized
     post:
@@ -3536,6 +4504,16 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
+                  archived:
+                    type: boolean
+                    description: Retired from attribution and geofence monitoring
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3569,6 +4547,16 @@ paths:
                   format: float
                 source:
                   type: string
+                visit_radius:
+                  type: integer
+                  minimum: 1
+                  default: 50
+                archived:
+                  type: boolean
+                  description: Retired from attribution and geofence monitoring
+                geofence:
+                  type: boolean
+                  description: Report enter and leave events for this place
                 tag_ids:
                   type: array
                   items:
@@ -3683,6 +4671,16 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
+                  archived:
+                    type: boolean
+                    description: Retired from attribution and geofence monitoring
+                  geofence:
+                    type: boolean
+                    description: Report enter and leave events for this place
                   icon:
                     type: string
                     nullable: true
@@ -3729,6 +4727,11 @@ paths:
                   longitude:
                     type: number
                     format: float
+                  archived:
+                    type: boolean
+                  visit_radius:
+                    type: integer
+                    minimum: 1
                   tags:
                     type: array
         '404':
@@ -3751,6 +4754,11 @@ paths:
                 longitude:
                   type: number
                   format: float
+                archived:
+                  type: boolean
+                visit_radius:
+                  type: integer
+                  minimum: 1
                 tag_ids:
                   type: array
                   items:
@@ -3996,14 +5004,78 @@ paths:
                   - Dec
         '401':
           description: unauthorized
+  "/api/v1/points/transitions":
+    post:
+      summary: Reports a geofence enter or leave detected on the device
+      tags:
+      - Geofencing
+      description: Records an enter or leave of a notifying place reported by the
+        mobile app and delivers it to the user's webhooks. Transitions older than
+        24 hours or more than 5 minutes in the future are rejected.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: transition recorded
+        '204':
+          description: place does not belong to the user or does not notify
+        '422':
+          description: invalid transition
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - place_id
+              - event_type
+              - occurred_at
+              - lonlat
+              properties:
+                place_id:
+                  type: integer
+                event_type:
+                  type: string
+                  enum:
+                  - enter
+                  - leave
+                occurred_at:
+                  type: string
+                  format: date-time
+                lonlat:
+                  type: array
+                  items:
+                    type: number
+                  minItems: 2
+                  maxItems: 2
+                  description: "[longitude, latitude]"
+                accuracy_m:
+                  type: integer
+                  nullable: true
+                device_id:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                metadata:
+                  type: object
+                  description: Flat object of up to 20 scalar values
   "/api/v1/points":
     get:
       summary: Retrieves all points
-      tags:
-      - Points
-      description: Returns paginated location points for the authenticated user, optionally
-        filtered by date range
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -4038,6 +5110,10 @@ paths:
         description: Order of points, valid values are `asc` or `desc`
         schema:
           type: string
+      tags:
+      - Points
+      description: Returns paginated location points for the authenticated user, optionally
+        filtered by date range
       responses:
         '200':
           description: points found
@@ -4190,6 +5266,8 @@ paths:
       responses:
         '200':
           description: Batch of points being processed
+        '422':
+          description: Invalid timestamp
         '401':
           description: Unauthorized
       requestBody:
@@ -4225,9 +5303,11 @@ paths:
                         type: object
                         properties:
                           timestamp:
-                            type: string
+                            oneOf:
+                            - type: string
+                            - type: integer
                             example: '2025-01-17T21:03:01Z'
-                            description: the timestamp of the point
+                            description: Timestamp in ISO 8601 format or Unix seconds
                           horizontal_accuracy:
                             type: number
                             example: 5
@@ -4399,6 +5479,43 @@ paths:
                   description: Array of point IDs to delete
               required:
               - point_ids
+  "/api/v1/points/{id}/mark_valid":
+    patch:
+      summary: Marks a point flagged as an anomaly as correct
+      tags:
+      - Points
+      description: Clears the anomaly flag and keeps the anomaly filter from flagging
+        the point again, including after re-evaluating past data. The point rejoins
+        a neighbouring track when one is close.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Point ID
+        schema:
+          type: integer
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point marked as correct
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  anomaly:
+                    type: boolean
+        '404':
+          description: point not found
+        '401':
+          description: unauthorized
   "/api/v1/points/reapply_anomaly_filter":
     post:
       summary: Re-evaluates anomaly flags for all of the user's points
@@ -4886,6 +6003,33 @@ paths:
                   type: number
                   example: 100
                   description: Fog of war threshold value
+                date_format:
+                  type: string
+                  enum:
+                  - auto
+                  - dd.mm.yyyy
+                  - dd/mm/yyyy
+                  - mm/dd/yyyy
+                  - yyyy-mm-dd
+                  example: dd.mm.yyyy
+                  description: How full dates are displayed; auto follows the interface
+                    language
+                time_format:
+                  type: string
+                  enum:
+                  - auto
+                  - 12h
+                  - 24h
+                  example: 24h
+                  description: How times are displayed; auto follows the interface
+                    language
+                first_day_of_week:
+                  type: string
+                  enum:
+                  - monday
+                  - sunday
+                  example: monday
+                  description: First day of the week in calendars and weekday charts
                 maps:
                   type: object
                   properties:
@@ -4917,6 +6061,9 @@ paths:
                     photoprism_api_key: your-photoprism-api-key
                     speed_color_scale: viridis
                     fog_of_war_threshold: 100
+                    date_format: dd.mm.yyyy
+                    time_format: 24h
+                    first_day_of_week: monday
                     maps:
                       distance_unit: km
     get:
@@ -4976,25 +6123,37 @@ paths:
                         - type: string
                         - type: 'null'
                         example: https://immich.example.com
-                        description: Immich server URL for photo integration
-                      immich_api_key:
-                        oneOf:
-                        - type: string
-                        - type: 'null'
-                        example: your-immich-api-key
-                        description: API key for Immich photo service
+                        description: Immich server URL, returned without any user:password@
+                          part
+                      immich_configured:
+                        type: boolean
+                        example: true
+                        description: Whether an Immich URL and API key are both stored.
+                          The key is never returned.
                       photoprism_url:
                         oneOf:
                         - type: string
                         - type: 'null'
                         example: https://photoprism.example.com
-                        description: PhotoPrism server URL for photo integration
-                      photoprism_api_key:
+                        description: PhotoPrism server URL, returned without any user:password@
+                          part
+                      photoprism_configured:
+                        type: boolean
+                        example: false
+                        description: Whether a PhotoPrism URL and API key are both
+                          stored. The key is never returned.
+                      airtrail_url:
                         oneOf:
                         - type: string
                         - type: 'null'
-                        example: your-photoprism-api-key
-                        description: API key for PhotoPrism photo service
+                        example: https://airtrail.example.com
+                        description: AirTrail server URL, returned without any user:password@
+                          part
+                      airtrail_configured:
+                        type: boolean
+                        example: false
+                        description: Whether an AirTrail URL and API key are both
+                          stored. The key is never returned.
                       fog_of_war_threshold:
                         oneOf:
                         - type: number
@@ -5002,6 +6161,34 @@ paths:
                         - type: 'null'
                         example: 100
                         description: Fog of war threshold value
+                      date_format:
+                        type: string
+                        enum:
+                        - auto
+                        - dd.mm.yyyy
+                        - dd/mm/yyyy
+                        - mm/dd/yyyy
+                        - yyyy-mm-dd
+                        example: auto
+                        description: How full dates are displayed; auto follows the
+                          interface language
+                      time_format:
+                        type: string
+                        enum:
+                        - auto
+                        - 12h
+                        - 24h
+                        example: auto
+                        description: How times are displayed; auto follows the interface
+                          language
+                      first_day_of_week:
+                        type: string
+                        enum:
+                        - monday
+                        - sunday
+                        example: monday
+                        description: First day of the week in calendars and weekday
+                          charts
         '401':
           description: unauthorized
   "/api/v1/settings/transportation_recalculation_status":
@@ -5050,6 +6237,47 @@ paths:
                     type: string
                     nullable: true
                     description: Error message if recalculation failed
+        '401':
+          description: unauthorized
+  "/api/v1/settings/appearance":
+    delete:
+      summary: Resets map appearance settings to their defaults
+      tags:
+      - Settings
+      description: Deletes the stored map look settings (style, tiles, colours, layers,
+        globe, fog drawing, POI filters) so they fall back to the defaults of a fresh
+        account. Pass keys[] to reset only some of them. Data rules such as transportation
+        modes are not touched.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: keys[]
+        in: query
+        items:
+          type: string
+        required: false
+        description: Appearance settings to reset; defaults to all of them
+        schema:
+          type: array
+      responses:
+        '200':
+          description: appearance reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: object
+                    description: Effective settings after the reset
+                  status:
+                    type: string
+        '422':
+          description: unknown appearance setting
         '401':
           description: unauthorized
   "/api/v1/stats":
@@ -5250,16 +6478,41 @@ paths:
                           longitude:
                             type: number
                             description: Longitude coordinate
+                          masked_area:
+                            type: object
+                            nullable: true
+                            description: Circle the map hides around this place. It
+                              is larger than the radius and shifted off the place,
+                              so the place cannot be found from where the map stops,
+                              and it always covers the full radius around the place.
+                            properties:
+                              latitude:
+                                type: number
+                              longitude:
+                                type: number
+                              radius_meters:
+                                type: integer
+                            required:
+                            - latitude
+                            - longitude
+                            - radius_meters
+                        required:
+                        - id
+                        - latitude
+                        - longitude
+                        - masked_area
         '401':
           description: unauthorized
   "/api/v1/timeline":
     get:
       summary: Retrieves timeline data for a date range
-      tags:
-      - Timeline
-      description: Returns day-by-day timeline data including visits, tracks, and
-        photos for the authenticated user. Maximum date range is 31 days.
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5284,6 +6537,13 @@ paths:
         description: 'Distance unit: km or mi (defaults to user setting)'
         schema:
           type: string
+      tags:
+      - Timeline
+      description: 'Returns day-by-day timeline data including visits, tracks, and
+        photos for the authenticated user. Maximum date range is 31 days. Each visit
+        and journey entry carries local_timezone: the IANA time zone of the visit
+        location or of the journey start (null when unknown), for showing its times
+        as local time there.'
       responses:
         '200':
           description: timeline data found
@@ -5418,11 +6678,13 @@ paths:
         type: integer
     get:
       summary: Retrieves points for a track
-      tags:
-      - Tracks
-      description: Returns location points belonging to a specific track, ordered
-        by timestamp ascending
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5441,6 +6703,10 @@ paths:
         description: Items per page (max 1000)
         schema:
           type: integer
+      tags:
+      - Tracks
+      description: Returns location points belonging to a specific track, ordered
+        by timestamp ascending
       responses:
         '200':
           description: points found
@@ -5480,11 +6746,13 @@ paths:
   "/api/v1/tracks":
     get:
       summary: Retrieves tracks as GeoJSON
-      tags:
-      - Tracks
-      description: Returns paginated tracks as a GeoJSON FeatureCollection with LineString
-        geometries
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
@@ -5515,6 +6783,10 @@ paths:
         description: Items per page
         schema:
           type: integer
+      tags:
+      - Tracks
+      description: Returns paginated tracks as a GeoJSON FeatureCollection with LineString
+        geometries
       responses:
         '200':
           description: tracks found
@@ -5594,17 +6866,23 @@ paths:
         type: integer
     get:
       summary: Retrieves a single track as GeoJSON
-      tags:
-      - Tracks
-      description: Returns a single track as a GeoJSON FeatureCollection, including
-        track segment details
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: api_key
         in: query
         required: true
         description: API Key
         schema:
           type: string
+      tags:
+      - Tracks
+      description: Returns a single track as a GeoJSON FeatureCollection, including
+        track segment details
       responses:
         '200':
           description: track found
@@ -5949,8 +7227,17 @@ paths:
                     properties:
                       family:
                         type: boolean
+                      family_management:
+                        type: boolean
+                        description: The server offers the family management endpoints
                       reverse_geocoding:
                         type: boolean
+                      achievements:
+                        type: boolean
+                        description: Achievements are turned on for this user
+                      achievements_api:
+                        type: boolean
+                        description: The server offers the mobile achievements endpoints
         '401':
           description: unauthorized
     delete:
@@ -6005,9 +7292,13 @@ paths:
   "/api/v1/visits":
     get:
       summary: List visits
-      tags:
-      - Visits
       parameters:
+      - name: mask_privacy_zones
+        in: query
+        required: false
+        description: Leave out data inside the user's privacy zones
+        schema:
+          type: boolean
       - name: Authorization
         in: header
         required: true
@@ -6017,13 +7308,15 @@ paths:
       - name: start_at
         in: query
         required: false
-        description: Start date (ISO 8601)
+        description: ISO 8601; pair with end_at; must not be later than end_at; optional
+          only for complete bounding-box selections
         schema:
           type: string
       - name: end_at
         in: query
         required: false
-        description: End date (ISO 8601)
+        description: ISO 8601; pair with start_at; must not be earlier than start_at;
+          optional only for complete bounding-box selections
         schema:
           type: string
       - name: selection
@@ -6056,6 +7349,8 @@ paths:
         description: Northeast longitude for area search
         schema:
           type: number
+      tags:
+      - Visits
       responses:
         '200':
           description: visits found
@@ -6070,6 +7365,25 @@ paths:
                       type: integer
                     name:
                       type: string
+                      description: 'Displayed name: the custom Visit Name, Place name,
+                        or Location Label'
+                    custom_name:
+                      type: string
+                      nullable: true
+                      description: User-defined Visit Name
+                    display_name:
+                      type: string
+                      description: Visit Name, Place name, or Location Label
+                    location_label:
+                      type: string
+                      nullable: true
+                    place_id:
+                      type: integer
+                      nullable: true
+                    area_id:
+                      type: integer
+                      nullable: true
+                      deprecated: true
                     status:
                       type: string
                       enum:
@@ -6085,28 +7399,54 @@ paths:
                     duration:
                       type: integer
                       description: Duration in minutes
+                    center:
+                      type: object
+                      nullable: true
+                      description: Point-derived fallback when Place/Area are absent;
+                        null without visible coordinates
+                      properties:
+                        latitude:
+                          type: number
+                        longitude:
+                          type: number
+                      required:
+                      - latitude
+                      - longitude
                     place:
                       type: object
+                      nullable: true
                       properties:
                         id:
                           type: integer
+                          nullable: true
                         name:
                           type: string
                         latitude:
                           type: number
                         longitude:
                           type: number
-                        city:
-                          type: string
-                        country:
-                          type: string
+                        visit_radius:
+                          type: integer
                   required:
                   - id
                   - name
+                  - display_name
                   - status
                   - started_at
                   - ended_at
                   - duration
+                  - center
+        '400':
+          description: invalid or missing time range
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                - error
         '401':
           description: unauthorized
     post:
@@ -6127,6 +7467,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6142,6 +7484,19 @@ paths:
                     format: datetime
                   duration:
                     type: integer
+                  center:
+                    type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
                   place:
                     type: object
                     properties:
@@ -6153,6 +7508,9 @@ paths:
                         type: number
                       longitude:
                         type: number
+                      address:
+                        type: string
+                        nullable: true
         '422':
           description: invalid request
         '401':
@@ -6178,6 +7536,21 @@ paths:
                     ended_at:
                       type: string
                       format: datetime
+                    address:
+                      type: object
+                      description: Optional address stored on a newly created place;
+                        ignored when the visit reuses a place within 100 m
+                      properties:
+                        street:
+                          type: string
+                        house_number:
+                          type: string
+                        postcode:
+                          type: string
+                        city:
+                          type: string
+                        country:
+                          type: string
                   required:
                   - name
                   - latitude
@@ -6209,6 +7582,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6224,8 +7599,23 @@ paths:
                     format: datetime
                   duration:
                     type: integer
-                  place:
+                  center:
                     type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
+                  place:
+                    type:
+                    - object
+                    - 'null'
         '404':
           description: visit not found
         '401':
@@ -6246,6 +7636,9 @@ paths:
                     area_id:
                       type: integer
                       nullable: true
+                      deprecated: true
+                      description: Legacy Area ID. It is translated to place_id; do
+                        not send both fields.
                     status:
                       type: string
                       enum:
@@ -6366,6 +7759,8 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                - center
                 properties:
                   id:
                     type: integer
@@ -6381,8 +7776,23 @@ paths:
                     format: datetime
                   duration:
                     type: integer
-                  place:
+                  center:
                     type: object
+                    nullable: true
+                    description: Point-derived fallback when Place/Area are absent;
+                      null without visible coordinates
+                    properties:
+                      latitude:
+                        type: number
+                      longitude:
+                        type: number
+                    required:
+                    - latitude
+                    - longitude
+                  place:
+                    type:
+                    - object
+                    - 'null'
         '422':
           description: invalid request
         '401':
@@ -6485,6 +7895,22 @@ paths:
                           - failed
                         visit:
                           type: object
+                          properties:
+                            center:
+                              type: object
+                              nullable: true
+                              description: Point-derived fallback when Place/Area
+                                are absent; null without visible coordinates
+                              properties:
+                                latitude:
+                                  type: number
+                                longitude:
+                                  type: number
+                              required:
+                              - latitude
+                              - longitude
+                          required:
+                          - center
                         error:
                           type: string
                   created_count:
@@ -6535,12 +7961,436 @@ paths:
                     - ended_at
               required:
               - visits
+  "/api/v1/webhooks":
+    get:
+      summary: Lists geofence webhooks
+      tags:
+      - Geofencing
+      description: Webhooks receive signed geofence enter/leave events. Pro or Family
+        plan on Dawarich Cloud.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhooks
+        '403':
+          description: 'pro_plan_required: the user is on the Lite plan of Dawarich
+            Cloud'
+    post:
+      summary: Creates a geofence webhook
+      tags:
+      - Geofencing
+      description: 'Returns the signing secret once. Requests carry X-Dawarich-Signature:
+        sha256=<HMAC of the body>.'
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '201':
+          description: webhook created, secret included
+        '422':
+          description: invalid webhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook:
+                  type: object
+                  required:
+                  - name
+                  - url
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    event_types:
+                      type: array
+                      items:
+                        type: integer
+                    place_ids:
+                      type: array
+                      items:
+                        type: integer
+                    active:
+                      type: boolean
+  "/api/v1/webhooks/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Retrieves a geofence webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhook, without its secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  event_types:
+                    type: array
+                    items:
+                      type: integer
+                    description: 0 = enter, 1 = leave
+                  place_ids:
+                    type: array
+                    items:
+                      type: integer
+                    description: Empty = every place
+                  active:
+                    type: boolean
+                  consecutive_failures:
+                    type: integer
+                  last_delivery_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  last_success_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '404':
+          description: webhook not found
+    patch:
+      summary: Updates a geofence webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: webhook updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  url:
+                    type: string
+                  event_types:
+                    type: array
+                    items:
+                      type: integer
+                    description: 0 = enter, 1 = leave
+                  place_ids:
+                    type: array
+                    items:
+                      type: integer
+                    description: Empty = every place
+                  active:
+                    type: boolean
+                  consecutive_failures:
+                    type: integer
+                  last_delivery_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  last_success_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '422':
+          description: invalid webhook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    url:
+                      type: string
+                    event_types:
+                      type: array
+                      items:
+                        type: integer
+                    place_ids:
+                      type: array
+                      items:
+                        type: integer
+                    active:
+                      type: boolean
+    delete:
+      summary: Deletes a geofence webhook
+      tags:
+      - Geofencing
+      description: Also allowed on the Lite plan, so webhooks can be removed after
+        a downgrade.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '204':
+          description: webhook deleted
+  "/api/v1/webhooks/{id}/regenerate_secret":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Replaces the signing secret of a geofence webhook
+      tags:
+      - Geofencing
+      description: The previous secret stops working immediately.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: the new secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret:
+                    type: string
+                required:
+                - secret
+  "/api/v1/webhooks/{id}/test":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Sends a test event to a webhook
+      tags:
+      - Geofencing
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '202':
+          description: test delivery queued
+        '429':
+          description: more than five test sends a minute for this webhook (Dawarich
+            Cloud only)
 servers:
 - url: http://{defaultHost}
   variables:
     defaultHost:
       default: localhost:3000
 components:
+  schemas:
+    AchievementCard:
+      type: object
+      required:
+      - key
+      - name
+      - kind
+      - code
+      - parent_key
+      - browse_key
+      - share_key
+      - description
+      - rarity
+      - percent
+      - earned_count
+      - target
+      - completed
+      - locked
+      - earned_at
+      - geography_key
+      - silhouette
+      - sharing
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - continent
+          - country
+          - subdivision
+        code:
+          type: string
+          nullable: true
+        parent_key:
+          type: string
+          nullable: true
+        browse_key:
+          type: string
+          nullable: true
+          description: Null for leaves; otherwise the collection key to browse
+        share_key:
+          type: string
+          nullable: true
+          description: Null for subdivisions
+        description:
+          type: string
+          nullable: true
+        rarity:
+          type: string
+        percent:
+          type: integer
+        earned_count:
+          type: integer
+        target:
+          type: integer
+        completed:
+          type: boolean
+        locked:
+          type: boolean
+        earned_at:
+          type: string
+          format: date-time
+          nullable: true
+        geography_key:
+          type: string
+        silhouette:
+          type: object
+          nullable: true
+          properties:
+            path:
+              type: string
+            viewbox:
+              type: string
+        sharing:
+          "$ref": "#/components/schemas/AchievementSharing"
+    AchievementSharing:
+      type: object
+      required:
+      - enabled
+      - url
+      properties:
+        enabled:
+          type: boolean
+        url:
+          type: string
+          nullable: true
+    AchievementSharingResult:
+      allOf:
+      - "$ref": "#/components/schemas/AchievementSharing"
+      - type: object
+        properties:
+          uuid:
+            type: string
+            nullable: true
+    AchievementOverview:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            earned_countries:
+              type: integer
+            total_countries:
+              type: integer
+            earned_subdivisions:
+              type: integer
+            total_subdivisions:
+              type: integer
+            percent:
+              type: integer
+        collections:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AchievementCard"
+        threshold_minutes:
+          type: number
+    AchievementCollection:
+      type: object
+      properties:
+        collection:
+          "$ref": "#/components/schemas/AchievementCard"
+        cards:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AchievementCard"
+        pagination:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            per_page:
+              type: integer
+              example: 12
+        threshold_minutes:
+          type: number
+    AchievementUnlock:
+      type: object
+      required:
+      - id
+      - token
+      - batch_end_id
+      - remaining
+      - card
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+        batch_end_id:
+          type: integer
+        remaining:
+          type: integer
+        card:
+          "$ref": "#/components/schemas/AchievementCard"
   securitySchemes:
     api_key:
       type: apiKey

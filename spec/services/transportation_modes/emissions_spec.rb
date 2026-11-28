@@ -22,6 +22,19 @@ RSpec.describe TransportationModes::Emissions do
     expect(ll.max_by { |_, v| v }.first).to eq(:walking)
   end
 
+  it 'restricts a stopped window to its authoritative driving mode' do
+    w = window(speed_p50: 0.0, speed_p95: 0.0, stop_fraction: 1.0, authoritative_mode: :driving)
+
+    expect(described_class.log_likelihoods(w, enabled: described_class::INFERRED_MODES).keys).to eq([:driving])
+  end
+
+  it 'falls back to inference when the authoritative mode is disabled' do
+    w = window(authoritative_mode: :driving)
+
+    expect(described_class.log_likelihoods(w, enabled: %i[walking cycling]))
+      .to eq(described_class.log_likelihoods(w.except(:authoritative_mode), enabled: %i[walking cycling]))
+  end
+
   it 'separates train from driving via smoothness at overlapping speed' do
     smooth = window(speed_p50: 95.0, speed_p95: 120.0, heading_change_rate: 0.2,
                     motion_variance: 4.0, stop_fraction: 0.02)

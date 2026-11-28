@@ -42,8 +42,8 @@ RSpec.describe 'I18n date and time format parity' do
       hour_minute: '%H:%M',
       human: '%e %b %Y, %H:%M',
       human_with_seconds: '%e %b %Y, %H:%M:%S',
-      long_with_time: '%B %d, %Y at %I:%M %p',
-      short_with_time: '%b %d at %I:%M %p'
+      long_with_time: '%B %d, %Y at %H:%M',
+      short_with_time: '%b %d at %H:%M'
     }.each do |format, pattern|
       it "renders :#{format} as #{pattern}" do
         expect(I18n.l(time, format:)).to eq(time.strftime(pattern))

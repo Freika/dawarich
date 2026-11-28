@@ -20,7 +20,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       expect(json.keys).to match_array(%i[user features])
       expect(json[:user].keys).to match_array(
-        %i[email theme created_at updated_at settings]
+        %i[id email theme created_at updated_at settings]
       )
       expect(json[:user][:settings].keys).to match_array(
         %i[
@@ -63,7 +63,10 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
         json = JSON.parse(response.body, symbolize_names: true)
 
-        expect(json[:features].keys).to match_array(%i[family reverse_geocoding])
+        expect(json[:features].keys)
+          .to match_array(%i[family family_management reverse_geocoding achievements achievements_api])
+        expect(json[:features][:family_management]).to be true
+        expect(json[:features][:achievements_api]).to be true
         expect(json[:subscription]).to be_present
         expect(json[:subscription].keys).not_to include(:features)
       end

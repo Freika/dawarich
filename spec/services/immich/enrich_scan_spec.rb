@@ -221,6 +221,42 @@ RSpec.describe Immich::EnrichScan do
       end
     end
 
+    context 'when a video timestamp marks the end of the recording' do
+      let(:video_without_geodata) do
+        {
+          'id' => 'asset-video',
+          'type' => 'VIDEO',
+          'duration' => '0:10:00.000000',
+          'originalFileName' => '20240115_102300.mp4',
+          'fileCreatedAt' => '2024-01-15T10:33:00.000Z',
+          'exifInfo' => { 'latitude' => nil, 'longitude' => nil }
+        }
+      end
+
+      let(:immich_response_body) do
+        { 'assets' => { 'total' => 1, 'count' => 1, 'items' => [video_without_geodata] } }.to_json
+      end
+
+      before do
+        create(:point, user:,
+               latitude: 52.50, longitude: 13.40,
+               lonlat: 'POINT(13.40 52.50)',
+               timestamp: Time.utc(2024, 1, 15, 10, 23).to_i)
+        create(:point, user:,
+               latitude: 52.60, longitude: 13.50,
+               lonlat: 'POINT(13.50 52.60)',
+               timestamp: Time.utc(2024, 1, 15, 10, 33).to_i)
+      end
+
+      it 'matches the location where the recording started' do
+        match = service.call[:matches].first
+
+        expect(match[:photo_timestamp]).to eq('2024-01-15T10:23:00Z')
+        expect(match[:latitude]).to be_within(0.001).of(52.50)
+        expect(match[:longitude]).to be_within(0.001).of(13.40)
+      end
+    end
+
     context 'when no Dawarich points exist in the time range' do
       it 'returns zero matches' do
         result = service.call

@@ -14,7 +14,9 @@
     <label for="<%= field_id %>" class="block text-sm font-medium">
       <%= t("admin.settings.show.fields.#{setting.key}") %>
     </label>
-    <code class="mt-0.5 block text-xs text-base-content/70 [overflow-wrap:anywhere]"><%= definition.env_var %></code>
+    <% if definition.env_var %>
+      <code class="mt-0.5 block text-xs text-base-content/70 [overflow-wrap:anywhere]"><%= definition.env_var %></code>
+    <% end %>
   </div>
 
   <div class="min-w-0 space-y-2">
@@ -42,6 +44,7 @@
              value="<%= displayed %>"
              autocomplete="off"
              <%= 'step=any min=0 inputmode=decimal' if definition.kind == :float %>
+             <%= "min=#{definition.minimum} step=1 inputmode=numeric" if definition.kind == :integer && definition.minimum %>
              class="input input-bordered w-full disabled:border-base-content/10 disabled:bg-base-100 <%= 'tabular-nums' if definition.kind.in?(%i[integer float]) %>"
              placeholder="<%= instance_setting_placeholder(setting) %>"
              <%= 'disabled' if setting.pinned? %>

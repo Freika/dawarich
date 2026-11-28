@@ -197,6 +197,47 @@ RSpec.describe TeslaMate::Sync do
     expect(Visits::RealtimeDebouncer).not_to have_received(:new)
   end
 
+  it 'suggests visits over the newly imported range' do
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_request(:get, %r{#{base_url}/api/v1/cars/1/drives\?})
+      .to_return(status: 200, body: {
+        data: { drives: [{ drive_id: 11 }, { drive_id: 12 }], units: { unit_of_length: 'km' } }
+      }.to_json)
+    stub_drive(car_id: 1, drive_id: 11, unit: 'km', detail: {
+                 detail_id: 111, date: '2026-09-01T10:00:00Z',
+                 latitude: 52.52, longitude: 13.405, speed: 10
+               })
+    stub_drive(car_id: 1, drive_id: 12, unit: 'km', detail: {
+                 detail_id: 112, date: '2026-09-03T11:00:00Z',
+                 latitude: 52.53, longitude: 13.415, speed: 20
+               })
+
+    travel_to(Time.zone.parse('2026-09-04 12:00:00 UTC')) do
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(VisitSuggestingJob)
+        .with(user_id: user.id,
+              start_at: Time.zone.at(Time.iso8601('2026-09-01T10:00:00Z').to_i),
+              end_at: Time.zone.at(Time.iso8601('2026-09-03T11:00:00Z').to_i))
+        .exactly(:once)
+
+      expect { described_class.new(user).call }.not_to have_enqueued_job(VisitSuggestingJob)
+    end
+  end
+
+  it 'does not suggest visits when the user has visit suggestions disabled' do
+    user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+    stub_request(:get, "#{base_url}/api/v1/cars")
+      .to_return(status: 200, body: { data: { cars: [{ car_id: 1 }] } }.to_json)
+    stub_drives(car_id: 1, drive_id: 11, unit: 'km')
+    stub_drive(car_id: 1, drive_id: 11, unit: 'km', detail: {
+                 detail_id: 111, date: '2026-09-01T10:00:00Z',
+                 latitude: 52.52, longitude: 13.405, speed: 10
+               })
+
+    expect { described_class.new(user).call }.not_to have_enqueued_job(VisitSuggestingJob)
+  end
+
   it 'replays historical processing after an interruption that follows point persistence' do
     timestamp = Time.iso8601('2026-09-01T10:00:00Z').to_i
     stub_request(:get, "#{base_url}/api/v1/cars")

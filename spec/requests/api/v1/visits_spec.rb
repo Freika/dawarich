@@ -44,7 +44,23 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
+      end
+
+      it 'returns a bad request when the time range is missing' do
+        get '/api/v1/visits', headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
+      end
+
+      it 'returns a bad request when the time range is reversed' do
+        get '/api/v1/visits',
+            params: { start_at: Time.zone.now.iso8601, end_at: 1.day.ago.iso8601 },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
     end
 
@@ -77,7 +93,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
             headers: auth_headers
 
         expect(response).to have_http_status(:bad_request)
-        expect(response.parsed_body).to eq('error' => 'Invalid date format')
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
 
       it 'returns area visits unfiltered when no date range is given' do
@@ -85,6 +101,15 @@ RSpec.describe 'Api::V1::Visits', type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(response.parsed_body.pluck('id')).to include(visit_inside.id)
+      end
+
+      it 'returns a bad request for a partial time range' do
+        get '/api/v1/visits',
+            params: params.merge(start_at: 1.day.ago.iso8601),
+            headers: auth_headers
+
+        expect(response).to have_http_status(:bad_request)
+        expect(response.parsed_body).to eq('error' => 'Invalid time range')
       end
     end
   end
@@ -136,6 +161,60 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(created_place.source).to eq('manual')
       end
 
+      context 'with an address' do
+        let(:params_with_address) do
+          valid_create_params.deep_merge(
+            visit: {
+              name: 'Lunch with Anna',
+              address: {
+                street: 'Karl-Liebknecht-Straße',
+                house_number: '34',
+                postcode: '04275',
+                city: 'Leipzig',
+                country: 'Germany'
+              }
+            }
+          )
+        end
+
+        it 'keeps the visit name and stores the address on the new place' do
+          post '/api/v1/visits', params: params_with_address, headers: auth_headers
+
+          place = Place.last
+          expect(Visit.last.name).to eq('Lunch with Anna')
+          expect(place.city).to eq('Leipzig')
+          expect(place.country).to eq('Germany')
+          expect(place.geodata['properties']).to include(
+            'street' => 'Karl-Liebknecht-Straße',
+            'housenumber' => '34',
+            'postcode' => '04275',
+            'city' => 'Leipzig',
+            'country' => 'Germany'
+          )
+        end
+
+        it 'returns the formatted address of the place' do
+          post '/api/v1/visits', params: params_with_address, headers: auth_headers
+
+          json_response = JSON.parse(response.body)
+          expect(json_response['place']['address']).to eq('Karl-Liebknecht-Straße 34, 04275 Leipzig')
+        end
+
+        it 'drops address keys outside the supported set' do
+          params = params_with_address.deep_merge(visit: { address: { osm_id: '123' } })
+
+          post '/api/v1/visits', params: params, headers: auth_headers
+
+          expect(Place.last.geodata['properties']).not_to have_key('osm_id')
+        end
+      end
+
+      it 'returns no address when none was given' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        expect(JSON.parse(response.body)['place']['address']).to be_nil
+      end
+
       it 'reuses existing place when coordinates are exactly the same' do
         create(:visit, user: user, place: existing_place)
 
@@ -146,9 +225,33 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['place']['id']).to eq(existing_place.id)
       end
+
+      it 'uses the canonical Place resolved from a legacy area_id' do
+        area = create(:area, user: user, latitude: 52.52, longitude: 13.405, radius: 500)
+        params = valid_create_params.deep_merge(
+          visit: { area_id: area.id, latitude: 52.522, longitude: 13.405 }
+        )
+
+        post '/api/v1/visits', params: params, headers: auth_headers
+
+        mapped_place = LegacyAreaPlaceMapping.find_by!(area: area).place
+        expect(response).to have_http_status(:ok)
+        expect(user.visits.last).to have_attributes(place_id: mapped_place.id, area_id: nil)
+      end
     end
 
     context 'with invalid parameters' do
+      it 'returns validation feedback for a malformed time without reporting it' do
+        expect(ExceptionReporter).not_to receive(:call)
+
+        post '/api/v1/visits',
+             params: valid_create_params.deep_merge(visit: { started_at: 'not-a-date' }),
+             headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body.fetch('error')).to include('invalid timestamps')
+      end
+
       context 'when required fields are missing' do
         let(:missing_name_params) do
           valid_create_params.deep_merge(visit: { name: '' })
@@ -187,6 +290,96 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     end
   end
 
+  describe 'name compatibility for API v1 clients' do
+    let(:cafe) { create(:place, user:, name: 'Coffee Shop') }
+
+    it 'returns the displayed name as name for a visit without a custom name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['name']).to eq('Coffee Shop')
+      expect(json_response['custom_name']).to be_nil
+    end
+
+    it 'returns the location label as name for a visit without a place' do
+      visit = create(:visit, user:, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      expect(JSON.parse(response.body)['name']).to eq('Main Street 5')
+    end
+
+    it 'returns the custom name as both name and custom_name' do
+      visit = create(:visit, user:, place: cafe, name: 'Morning coffee', status: :confirmed)
+
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      json_response = JSON.parse(response.body)
+      expect(json_response['name']).to eq('Morning coffee')
+      expect(json_response['custom_name']).to eq('Morning coffee')
+    end
+
+    it 'does not store an echoed displayed name as a custom name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Coffee Shop', status: 'confirmed' } },
+                                        headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      expect(visit.status).to eq('confirmed')
+    end
+
+    it 'keeps showing the new place name after an echoed update and a place rename' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Coffee Shop' } }, headers: auth_headers
+      cafe.update!(name: 'Roastery')
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+
+      expect(JSON.parse(response.body)['name']).to eq('Roastery')
+    end
+
+    it 'does not store the new place name as a custom name when switching places' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+      roastery = create(:place, user:, name: 'Roastery')
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { place_id: roastery.id, name: 'Roastery' } },
+                                        headers: auth_headers
+
+      expect(visit.reload.place).to eq(roastery)
+      expect(visit.name).to be_nil
+    end
+
+    it 'does not store an echoed location label as a custom name' do
+      visit = create(:visit, user:, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Main Street 5' } }, headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      expect(visit.location_label).to eq('Main Street 5')
+    end
+
+    it 'clears a custom name when the name is sent empty' do
+      visit = create(:visit, user:, place: cafe, name: 'Morning coffee', status: :confirmed)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: '' } }, headers: auth_headers
+
+      expect(visit.reload.name).to be_nil
+      get "/api/v1/visits/#{visit.id}", headers: auth_headers
+      expect(JSON.parse(response.body)['name']).to eq('Coffee Shop')
+    end
+
+    it 'stores a name that differs from the displayed name' do
+      visit = create(:visit, user:, place: cafe, name: nil, status: :suggested)
+
+      put "/api/v1/visits/#{visit.id}", params: { visit: { name: 'Morning coffee' } }, headers: auth_headers
+
+      expect(visit.reload.name).to eq('Morning coffee')
+    end
+  end
+
   describe 'PUT /api/v1/visits/:id' do
     let(:visit) { create(:visit, user:) }
 
@@ -201,7 +394,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let(:invalid_attributes) do
       {
         visit: {
-          name: nil
+          ended_at: visit.started_at
         }
       }
     end
@@ -254,22 +447,78 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(visit.place_id).to eq(new_place.id)
       end
 
-      it 'falls back to the place name when the user clears the name field' do
+      it 'clears the custom name and stores the Place label when the user clears the name field' do
         put "/api/v1/visits/#{visit.id}",
             params: { visit: { name: '', place_id: new_place.id } },
             headers: auth_headers
 
-        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.reload.name).to be_nil
+        expect(visit.location_label).to eq('Coffee Shop')
         expect(visit.place_id).to eq(new_place.id)
       end
 
-      it 'sets the visit name from the place when no name is provided' do
+      it 'stores the Place label without overwriting the custom Visit name' do
         put "/api/v1/visits/#{visit.id}",
             params: { visit: { place_id: new_place.id } },
             headers: auth_headers
 
-        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.reload.name).to eq('Visit')
+        expect(visit.location_label).to eq('Coffee Shop')
         expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'drops a Visit name that only repeated the previous Place' do
+        old_place = create(:place, name: 'Old Cafe', user:)
+        visit.update!(place: old_place, name: 'Old Cafe', location_label: 'Old Cafe')
+
+        put "/api/v1/visits/#{visit.id}", params: { visit: { place_id: new_place.id } }, headers: auth_headers
+
+        expect(visit.reload.name).to be_nil
+        expect(visit.display_name).to eq('Coffee Shop')
+      end
+
+      it 'drops a submitted name that only repeats the previous Place' do
+        old_place = create(:place, name: 'Old Cafe', user:)
+        visit.update!(place: old_place, name: 'Old Cafe', location_label: 'Old Cafe')
+
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { name: 'Old Cafe', place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.name).to be_nil
+        expect(visit.display_name).to eq('Coffee Shop')
+      end
+
+      it 'keeps the Place and name when only the times change' do
+        old_place = create(:place, name: 'Old Cafe', user:)
+        visit.update!(place: old_place, name: nil, location_label: 'Old Cafe')
+
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { name: '', started_at: visit.started_at + 5.minutes, ended_at: visit.ended_at } },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(visit.reload).to have_attributes(place_id: old_place.id, name: nil)
+        expect(visit.display_name).to eq('Old Cafe')
+      end
+
+      it 'clears the legacy Area association when a Place is selected' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.area_id).to be_nil
+        expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'rejects conflicting Place and Area selections' do
+        area = create(:area, user:)
+
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: new_place.id, area_id: area.id } },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end
@@ -287,16 +536,11 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'merges the specified visits' do
-        # Mock the service to avoid dealing with complex merging logic in the test
-        merge_service = instance_double(Visits::MergeService)
-        merged_visit = create(:visit, user: user)
-
-        expect(Visits::MergeService).to receive(:new).with(kind_of(ActiveRecord::Relation)).and_return(merge_service)
-        expect(merge_service).to receive(:call).and_return(merged_visit)
-
         post '/api/v1/visits/merge', params: valid_merge_params, headers: auth_headers
 
         expect(response).to have_http_status(:ok)
+        expect(Visit.exists?(visit1.id)).to be(false)
+        expect(visit2.reload.ended_at).to eq(visit1.ended_at)
       end
     end
 
@@ -326,11 +570,8 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'returns an error when the merge fails' do
-        merge_service = instance_double(Visits::MergeService)
-
-        expect(Visits::MergeService).to receive(:new).with(kind_of(ActiveRecord::Relation)).and_return(merge_service)
-        expect(merge_service).to receive(:call).and_return(nil)
-        expect(merge_service).to receive(:errors).and_return(['Failed to merge visits'])
+        merge_service = instance_double(Visits::MergeService, call: nil, errors: ['Failed to merge visits'])
+        allow(Visits::MergeService).to receive(:new).and_return(merge_service)
 
         post '/api/v1/visits/merge', params: { visit_ids: [visit1.id, visit2.id] }, headers: auth_headers
 
@@ -345,7 +586,6 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let!(:visit1) { create(:visit, user: user, status: 'suggested') }
     let!(:visit2) { create(:visit, user: user, status: 'suggested') }
     let!(:other_user_visit) { create(:visit, user: other_user, status: 'suggested') }
-    let(:bulk_update_service) { instance_double(Visits::BulkUpdate) }
 
     context 'with valid parameters' do
       let(:valid_update_params) do
@@ -356,16 +596,13 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'updates the status of specified visits' do
-        expect(Visits::BulkUpdate).to receive(:new)
-          .with(user, kind_of(Array), 'confirmed')
-          .and_return(bulk_update_service)
-        expect(bulk_update_service).to receive(:call).and_return({ count: 2 })
-
         post '/api/v1/visits/bulk_update', params: valid_update_params, headers: auth_headers
 
         expect(response).to have_http_status(:ok)
         json_response = JSON.parse(response.body)
         expect(json_response['updated_count']).to eq(2)
+        expect([visit1.reload.status, visit2.reload.status]).to all(eq('confirmed'))
+        expect(other_user_visit.reload.status).to eq('suggested')
       end
     end
 
@@ -378,17 +615,11 @@ RSpec.describe 'Api::V1::Visits', type: :request do
       end
 
       it 'returns an error when the update fails' do
-        expect(Visits::BulkUpdate).to receive(:new)
-          .with(user, kind_of(Array), 'invalid_status')
-          .and_return(bulk_update_service)
-        expect(bulk_update_service).to receive(:call).and_return(nil)
-        expect(bulk_update_service).to receive(:errors).and_return(['Invalid status'])
-
         post '/api/v1/visits/bulk_update', params: invalid_update_params, headers: auth_headers
 
         expect(response).to have_http_status(:unprocessable_content)
         json_response = JSON.parse(response.body)
-        expect(json_response['error']).to include('Invalid status')
+        expect(json_response['error']).to eq(I18n.t('services.visits.bulk_update.invalid_status'))
       end
     end
   end
@@ -540,6 +771,18 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['created_count']).to eq(0)
         expect(json_response['duplicate_count']).to eq(2)
+      end
+    end
+
+    context 'when a batched visit carries an address' do
+      it 'stores the address on the new place' do
+        payload = visit_payload(0, name: 'Lunch', status: 'confirmed')
+                  .merge(address: { street: 'Poststraße', house_number: '23', city: 'Leipzig' })
+
+        post '/api/v1/visits/batch', params: { visits: [payload] }, headers: auth_headers, as: :json
+
+        expect(JSON.parse(response.body)['results'].first.dig('visit', 'place', 'address'))
+          .to eq('Poststraße 23, Leipzig')
       end
     end
 

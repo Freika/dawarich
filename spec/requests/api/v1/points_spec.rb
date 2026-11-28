@@ -321,6 +321,29 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(Points::TileEpoch.etag_component(user.id, *range)).not_to eq(before_component)
     end
 
+    it 'refreshes country attribution and achievement dwell after a coordinate edit' do
+      old_country = create(:country, name: 'Old country', iso_a2: 'OC', iso_a3: 'OLD',
+                                     geom: 'MULTIPOLYGON (((10 10, 11 10, 11 11, 10 11, 10 10)))')
+      new_country = create(:country, name: 'New country', iso_a2: 'NC', iso_a3: 'NEW',
+                                     geom: 'MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)))')
+      point = create(:point, user: user, longitude: 10.5, latitude: 10.5, country_id: old_country.id,
+                             city: 'Old city', country_name: old_country.name,
+                             reverse_geocoded_at: Time.current)
+      clear_achievement_checks(user.id)
+
+      expect do
+        put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.5, longitude: 1.5 } }
+      end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+
+      point.reload
+      expect(point.country_id).to eq(new_country.id)
+      expect(point.country_name).to eq(new_country.name)
+      expect(point.city).to be_nil
+      expect(point.reverse_geocoded_at).to be_nil
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)
@@ -839,6 +862,48 @@ RSpec.describe 'Api::V1::Points', type: :request do
     end
   end
 
+  describe 'PATCH /mark_valid' do
+    let(:flagged) { create(:point, user:, anomaly: true) }
+
+    it 'clears the anomaly flag and keeps the filter from setting it again' do
+      patch "/api/v1/points/#{flagged.id}/mark_valid?api_key=#{user.api_key}"
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)['id']).to eq(flagged.id)
+      expect(flagged.reload).to have_attributes(anomaly: false, anomaly_override: true)
+    end
+
+    it "returns 404 for another user's point" do
+      other = create(:point, anomaly: true)
+
+      patch "/api/v1/points/#{other.id}/mark_valid?api_key=#{user.api_key}"
+
+      expect(response).to have_http_status(:not_found)
+      expect(other.reload.anomaly).to be true
+    end
+
+    it 'requires authentication' do
+      patch "/api/v1/points/#{flagged.id}/mark_valid"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on lite plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_column(:plan, User.plans[:lite])
+      end
+
+      it 'returns 403 and keeps the point flagged' do
+        patch "/api/v1/points/#{flagged.id}/mark_valid?api_key=#{user.api_key}"
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['error']).to eq('write_api_restricted')
+        expect(flagged.reload).to have_attributes(anomaly: true, anomaly_override: false)
+      end
+    end
+  end
+
   describe 'GET /index bbox validation' do
     it 'rejects an inverted bbox with 400' do
       get "/api/v1/points?api_key=#{user.api_key}&" \
@@ -897,6 +962,20 @@ RSpec.describe 'Api::V1::Points', type: :request do
 
       expect(returned_ids).to include(inside_point.id)
       expect(returned_ids).to include(boundary_point.id)
+      expect(returned_ids).not_to include(outside_point.id)
+    end
+
+    it 'returns points from any date when no time range is given' do
+      old_point = create(:point, user:, timestamp: 5.years.ago.to_i,
+                                 latitude: 52.5, longitude: 13.5,
+                                 lonlat: 'POINT(13.5 52.5)')
+
+      get "/api/v1/points?api_key=#{user.api_key}&" \
+          'min_longitude=13.0&max_longitude=14.0&min_latitude=52.0&max_latitude=53.0&include_anomalies=true'
+
+      returned_ids = JSON.parse(response.body).map { |p| p['id'] }
+
+      expect(returned_ids).to include(old_point.id, inside_point.id)
       expect(returned_ids).not_to include(outside_point.id)
     end
   end

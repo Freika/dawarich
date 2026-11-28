@@ -14,6 +14,12 @@ class PointsController < ApplicationController
               .page(params[:page])
               .per(50)
 
+    @points = @points.extending(Points::ReadSummary::Pagination)
+    @points.cached_total_count = Points::ReadSummary.new(@points.except(:limit, :offset),
+                                                         user_id: current_user.id).call.first
+
+    @points.load
+
     @start_at = Time.zone.at(start_at)
     @end_at = Time.zone.at(end_at)
 
@@ -61,21 +67,9 @@ class PointsController < ApplicationController
   end
 
   def points
-    params[:import_id].present? ? import_points : user_points
-  end
+    source = params[:import_id].present? ? current_user.imports.find(params[:import_id]).points : current_user.points
 
-  def import_points
-    apply_plan_window(current_user.imports.find(params[:import_id]).points)
-  end
-
-  def user_points
-    current_user.scoped_points
-  end
-
-  def apply_plan_window(relation)
-    return relation unless current_user.plan_restricted?
-
-    relation.where('timestamp >= ?', current_user.data_window_start.to_i)
+    Points::ReadSummary.plan_scope(source, current_user)
   end
 
   def order_by

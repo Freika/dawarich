@@ -29,6 +29,7 @@ class Users::ExportData::Imports
     Rails.logger.info "Processing import #{import.name}"
 
     import_hash = import.as_json(except: %w[user_id raw_data id])
+    import_hash['created_at'] = import.backup_reference.fetch('created_at')
 
     if import.file.attached?
       add_file_data_to_import(import, import_hash)

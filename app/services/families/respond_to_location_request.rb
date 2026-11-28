@@ -15,6 +15,7 @@ class Families::RespondToLocationRequest
 
     request.with_lock do
       return not_actionable_error unless actionable?
+      return not_authorized_error unless admitted?
 
       decision == :accept ? accept! : decline!
     end
@@ -29,6 +30,12 @@ class Families::RespondToLocationRequest
   private
 
   attr_reader :request, :responder, :decision, :duration
+
+  def admitted?
+    responder.reload
+    responder.family_membership&.family_id == request.family_id &&
+      DawarichSettings.family_feature_available_for?(responder)
+  end
 
   def actionable?
     request.pending? && request.expires_at > Time.current

@@ -1,8 +1,9 @@
 <% pinning_variable = geocoding_pinning_variable(geocoding) %>
+<% paused_seconds = Geocoding::Cooldown.remaining(geocoding) if geocoding.enabled? %>
 <div class="flex flex-col gap-4 rounded-box border border-base-content/10 bg-base-200 p-5 sm:flex-row sm:items-center sm:justify-between"
      data-testid="instance-settings-geocoding-status">
   <div class="min-w-0">
-    <p class="text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/70">
+    <p class="text-xs font-medium text-base-content/70">
       <%= geocoding.enabled? ? t('admin.settings.show.geocoding.in_use') : t('admin.settings.show.geocoding.off') %>
     </p>
 
@@ -21,6 +22,17 @@
           <span><%= t('admin.settings.show.geocoding.stored') %></span>
         <% end %>
       </p>
+      <% if paused_seconds %>
+        <div role="status" class="mt-2 flex items-start gap-2 text-sm" data-testid="instance-settings-geocoding-paused">
+          <%= icon 'triangle-alert', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+          <div class="min-w-0">
+            <p class="[text-wrap:pretty]"><%= t('admin.settings.show.geocoding.paused', minutes: (paused_seconds / 60.0).ceil) %></p>
+            <% if geocoding.komoot? %>
+              <p class="mt-1 text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.komoot_warning') %></p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% else %>
       <p class="mt-1 text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.none') %></p>
       <% if legacy_user_geocoding %>
@@ -33,12 +45,27 @@
   </div>
 
   <% if geocoding.enabled? %>
-    <div class="shrink-0 sm:text-right">
-      <%= button_to t('admin.settings.show.geocoding.test'), test_geocoding_admin_settings_path,
-                    class: 'btn btn-sm btn-outline',
-                    form: { class: 'inline-block' },
-                    data: { turbo_submits_with: t('admin.settings.show.geocoding.testing') } %>
-      <p class="mt-1.5 text-xs text-base-content/70"><%= t('admin.settings.show.geocoding.test_hint') %></p>
-    </div>
+    <%= form_with url: test_geocoding_admin_settings_path, method: :post,
+                  class: 'w-full sm:max-w-sm sm:shrink-0', data: { testid: 'geocoding-test-form' } do |form| %>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <%= form.label :latitude, t('admin.settings.show.geocoding.test_latitude'), class: 'label text-sm', for: 'geocoding-test-latitude' %>
+          <%= form.number_field :latitude, id: 'geocoding-test-latitude', min: -90, max: 90, step: :any,
+                                placeholder: Geocoding::ProviderTest::TEST_COORDINATES.first.to_s,
+                                class: 'input input-bordered w-full placeholder:text-base-content/70 sm:input-sm', inputmode: 'decimal',
+                                aria: { describedby: 'geocoding-test-hint' } %>
+        </div>
+        <div>
+          <%= form.label :longitude, t('admin.settings.show.geocoding.test_longitude'), class: 'label text-sm', for: 'geocoding-test-longitude' %>
+          <%= form.number_field :longitude, id: 'geocoding-test-longitude', min: -180, max: 180, step: :any,
+                                placeholder: Geocoding::ProviderTest::TEST_COORDINATES.last.to_s,
+                                class: 'input input-bordered w-full placeholder:text-base-content/70 sm:input-sm', inputmode: 'decimal',
+                                aria: { describedby: 'geocoding-test-hint' } %>
+        </div>
+      </div>
+      <p id="geocoding-test-hint" class="mt-1.5 text-xs text-base-content/70"><%= t('admin.settings.show.geocoding.test_coordinates_hint') %></p>
+      <%= form.button t('admin.settings.show.geocoding.test'), class: 'btn btn-outline mt-3 sm:btn-sm',
+                      data: { turbo_submits_with: t('admin.settings.show.geocoding.testing') } %>
+    <% end %>
   <% end %>
 </div>

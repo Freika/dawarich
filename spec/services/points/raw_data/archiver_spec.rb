@@ -120,6 +120,12 @@ RSpec.describe Points::RawData::Archiver do
       expect(ordered.drop(2).map { |point| point.reload.raw_data_archived }).to all(be true)
     end
 
+    it 'discards the archive when the post-upload check fails unexpectedly' do
+      allow(ActiveStorage::Blob.service).to receive(:download).and_raise(Timeout::Error, 'storage timeout')
+
+      expect { archiver.archive_user(user.id) }.not_to change(Points::RawDataArchive, :count)
+    end
+
     it 'reports a failure when a zero-link archive cannot be cleaned up' do
       allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
         Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })

@@ -33,6 +33,19 @@ RSpec.describe InstanceSettings::Notifier do
       described_class.handle_message({ 'key' => 'store_geodata' }.to_json)
     end
 
+    it 're-reads the reverse geocoding limit in a Sidekiq worker' do
+      queue = Sidekiq::Queue['reverse_geocoding']
+      queue.limit = nil
+      allow(Sidekiq).to receive(:server?).and_return(true)
+      InstanceSetting.create!(key: 'photon_api_host', value: 'photon.komoot.io')
+
+      described_class.handle_message({ 'key' => 'photon_api_host' }.to_json)
+
+      expect(queue.limit).to eq(1)
+    ensure
+      queue.limit = nil
+    end
+
     it 'ignores a malformed payload rather than killing the subscriber thread' do
       expect { described_class.handle_message('not json') }.not_to raise_error
     end

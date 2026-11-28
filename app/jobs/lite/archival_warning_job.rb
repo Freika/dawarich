@@ -30,8 +30,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
 
     # Find all crossed thresholds that haven't been sent yet
     unsent_crossed = THRESHOLDS.select do |threshold|
-      cutoff = threshold[:duration].ago.to_i
-      oldest_timestamp <= cutoff && warnings_sent[threshold[:key]].blank?
+      cutoff = DawarichSettings.lite_data_window_start(threshold[:duration]).to_i
+      oldest_timestamp < cutoff && warnings_sent[threshold[:key]].blank?
     end
 
     return if unsent_crossed.empty?
@@ -44,12 +44,12 @@ class Lite::ArchivalWarningJob < ApplicationJob
 
   def notify_approaching(user)
     I18n.with_locale(user.locale) do
-      Notification.create!(
+      Notifications::Create.new(
         user: user,
         kind: :warning,
         title: I18n.t('jobs.lite.archival_warning_job.your_oldest_data_will_archive_in_30_days'),
         content: I18n.t('jobs.lite.archival_warning_job.your_oldest_month_of_location_data_will_be_archived_soon')
-      )
+      ).call
     end
   end
 
@@ -59,12 +59,12 @@ class Lite::ArchivalWarningJob < ApplicationJob
 
   def notify_archived(user)
     I18n.with_locale(user.locale) do
-      Notification.create!(
+      Notifications::Create.new(
         user: user,
         kind: :warning,
         title: I18n.t('jobs.lite.archival_warning_job.data_has_been_archived'),
         content: I18n.t('jobs.lite.archival_warning_job.month_of_location_data_has_been_archived_your_archived')
-      )
+      ).call
     end
   end
 

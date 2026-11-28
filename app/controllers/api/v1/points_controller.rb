@@ -6,28 +6,33 @@ class Api::V1::PointsController < ApiController
   BULK_DESTROY_MAX = 5_000
   MAX_PER_PAGE = 10_000
 
-  before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
-  before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
+  before_action :authenticate_active_api_user!,
+                only: %i[create update destroy bulk_destroy reapply_anomaly_filter mark_valid]
+  before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter mark_valid]
   before_action :validate_points_limit, only: %i[create]
 
   def index
     start_at = params[:start_at].present? ? safe_timestamp(params[:start_at]) : nil
     end_at   = params[:end_at].present? ? safe_timestamp(params[:end_at]) : Time.zone.now.to_i
     order    = params[:order] || 'desc'
+    query_end = Points::ReadSummary.end_timestamp(current_api_user.id, end_at)
+    readable = Points::ReadSummary.plan_scope(current_api_user.points, current_api_user)
+    readable = readable.none unless query_end
 
     points = if ActiveModel::Type::Boolean.new.cast(params[:anomalies_only])
-               scoped_points.anomaly
+               readable.anomaly
              elsif ActiveModel::Type::Boolean.new.cast(params[:include_anomalies])
-               scoped_points
+               readable
              else
-               scoped_points.not_anomaly
+               readable.not_anomaly
              end
 
     points = points
              .without_raw_data
-             .where(timestamp: start_at..end_at)
+             .where(timestamp: start_at..query_end)
 
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+    points = map_read_masker.mask_points(points)
 
     if params[:min_longitude].present? && params[:max_longitude].present? &&
        params[:min_latitude].present? && params[:max_latitude].present?
@@ -46,7 +51,7 @@ class Api::V1::PointsController < ApiController
     end
 
     cache_count, cache_max_ts, cache_max_updated =
-      points.pick(Arel.sql('COUNT(*)'), Arel.sql('MAX(timestamp)'), Arel.sql('MAX(updated_at)'))
+      Points::ReadSummary.new(points, user_id: current_api_user.id).call
     fresh_when(
       etag: points_index_etag(start_at, end_at, order, cache_max_ts, cache_count, cache_max_updated),
       last_modified: cache_max_ts && Time.zone.at(cache_max_ts),
@@ -79,9 +84,10 @@ class Api::V1::PointsController < ApiController
     # so the frontend can show how many points fall outside the 12-month data window.
     if current_api_user.plan_restricted?
       total_in_range = current_api_user.points
-                                       .where(timestamp: start_at..end_at)
+                                       .where(timestamp: start_at..query_end)
       total_in_range = total_in_range.where(import_id: params[:import_id]) if params[:import_id].present?
-      total_in_range = total_in_range.count
+      total_in_range = total_in_range.none unless query_end
+      total_in_range = Points::ReadSummary.new(total_in_range, user_id: current_api_user.id).call.first
       response.set_header('X-Total-Points-In-Range', total_in_range.to_s)
       response.set_header('X-Scoped-Points', total_count.to_s)
     end
@@ -94,6 +100,9 @@ class Api::V1::PointsController < ApiController
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
     render json: { data: sanitized }
+  rescue Points::TimestampParser::InvalidTimestampError => e
+    Rails.logger.warn("Point validation failed: #{e.message}")
+    render json: { error: e.message }, status: :unprocessable_content
   rescue StandardError => e
     Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
@@ -104,8 +113,10 @@ class Api::V1::PointsController < ApiController
   def update
     point = current_api_user.points.find(params[:id])
 
-    if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+    if relocate(point)
       Points::TileEpoch.bump(point.user_id, timestamps: [point.timestamp])
+      Achievements::CheckJob.schedule(point.user_id, oldest_timestamp: point.timestamp)
+      point.async_reverse_geocode(force: true)
 
       if point.track_id.present?
         Rails.logger.info(
@@ -151,17 +162,19 @@ class Api::V1::PointsController < ApiController
            status: :ok
   end
 
+  def mark_valid
+    point = Points::MarkValid.call(user: current_api_user, point_id: params[:id])
+
+    render json: point_serializer.new(point).call
+  end
+
   def reapply_anomaly_filter
-    pending_key = "anomaly_backfill_pending:#{current_api_user.id}"
-    if Rails.cache.read(pending_key)
+    unless Points::QueueAnomalyReevaluation.new(current_api_user).call
       return render(
         json: { error: I18n.t('controllers.api.v1.points.anomaly_re_evaluation_already_in_progress') },
         status: :conflict
       )
     end
-
-    Rails.cache.write(pending_key, true, expires_in: 30.minutes)
-    Points::AnomalyBackfillUserJob.perform_later(current_api_user.id, reset: true)
 
     render json: {
       message: I18n.t('controllers.api.v1.points.re_evaluation_queued_existing_anomaly_flags_will_be_cleared_and')
@@ -169,6 +182,22 @@ class Api::V1::PointsController < ApiController
   end
 
   private
+
+  def relocate(point)
+    point.lonlat = "POINT(#{point_params[:longitude]} #{point_params[:latitude]})"
+    return false unless point.validate
+
+    country = point.found_in_country
+    point.assign_attributes(
+      country_id: country&.id,
+      country_name: country&.name,
+      city: nil,
+      geodata: {},
+      reverse_geocoded_at: nil
+    )
+    point[:country] = country&.name
+    point.save
+  end
 
   def point_params
     params.require(:point).permit(:latitude, :longitude)
@@ -193,7 +222,8 @@ class Api::V1::PointsController < ApiController
       params[:anomalies_only], params[:include_anomalies],
       params[:min_longitude], params[:max_longitude],
       params[:min_latitude], params[:max_latitude],
-      max_timestamp, count, max_updated
+      max_timestamp, count, max_updated,
+      map_read_masker.fingerprint
     ]
   end
 

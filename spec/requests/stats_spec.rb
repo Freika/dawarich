@@ -27,10 +27,10 @@ RSpec.describe '/stats', type: :request do
     before { sign_in user }
 
     describe 'GET /index' do
-      it 'renders a successful response' do
+      it 'redirects to the all-time insights' do
         get stats_url
 
-        expect(response.status).to eq(200)
+        expect(response).to redirect_to(insights_path(year: 'all'))
       end
 
       context 'with a stat to show' do
@@ -41,14 +41,14 @@ RSpec.describe '/stats', type: :request do
         it 'renders the geocoding stats when the instance has a geocoding provider' do
           configure_instance_geocoding
 
-          get stats_url
+          get insights_path(year: 'all')
 
           expect(response.status).to eq(200)
           expect(response.body).to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
         end
 
         it 'renders without the geocoding stats when no geocoding provider is configured' do
-          get stats_url
+          get insights_path(year: 'all')
 
           expect(response.status).to eq(200)
           expect(response.body).not_to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
@@ -59,10 +59,30 @@ RSpec.describe '/stats', type: :request do
     describe 'GET /show' do
       let(:stat) { create(:stat, user:, year: 2024) }
 
-      it 'renders a successful response' do
-        get stats_url(stat.year)
+      it 'redirects to that year in insights' do
+        get "/stats/#{stat.year}"
 
-        expect(response.status).to eq(200)
+        expect(response).to redirect_to(insights_path(year: stat.year))
+      end
+    end
+
+    describe 'GET /month' do
+      before { create(:stat, user:, year: 2024, month: 6) }
+
+      it 'tells a user with privacy zones that the shared month keeps them hidden' do
+        tag = create(:tag, user:, privacy_radius_meters: 300)
+        tag.places << create(:place, user:, latitude: 52.5, longitude: 13.4)
+
+        get month_stats_path(year: 2024, month: 6)
+
+        expect(response.body).to include('data-testid="share-privacy-zones-note"')
+      end
+
+      it 'leaves the privacy zone note out for a user without privacy zones' do
+        get month_stats_path(year: 2024, month: 6)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).not_to include('data-testid="share-privacy-zones-note"')
       end
     end
 
@@ -82,7 +102,7 @@ RSpec.describe '/stats', type: :request do
               put update_year_month_stats_url(year: '2024', month:)
             end.not_to have_enqueued_job(Stats::CalculatingJob)
 
-            expect(response).to redirect_to(stats_path)
+            expect(response).to redirect_to(insights_path)
             expect(response).to have_http_status(:see_other)
             expect(flash[:alert]).to eq('Select a valid month before updating statistics')
           end

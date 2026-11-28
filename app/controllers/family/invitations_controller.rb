@@ -7,6 +7,12 @@ class Family::InvitationsController < ApplicationController
   before_action :ensure_family_feature_available!, except: %i[show index destroy]
   before_action :set_family, except: %i[show]
   before_action :set_invitation_by_id_and_family, only: %i[destroy]
+  # Same limit as the API: each invitation sends an email.
+  rate_limit to: 10, within: 1.hour, only: :create, by: -> { current_user.id },
+             with: lambda {
+               redirect_to family_path, alert: I18n.t('controllers.family.invitations.too_many_invitations')
+             },
+             unless: -> { DawarichSettings.self_hosted? }
 
   def index
     authorize @family, :show?
@@ -27,6 +33,10 @@ class Family::InvitationsController < ApplicationController
       redirect_to root_path,
                   alert: I18n.t('controllers.family.invitations.this_invitation_is_no_longer_valid') and return
     end
+
+    # Kept for whichever sign-in path the invitee takes next, so signing in
+    # accepts it (ApplicationController#after_sign_in_path_for).
+    session[:invitation_token] = @invitation.token unless user_signed_in?
 
     # Warns the invitee up front instead of letting them click Accept only to
     # be refused by the plan validation in Families::AcceptInvitation.

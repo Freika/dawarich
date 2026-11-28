@@ -4,7 +4,7 @@
     <div class="card-body space-y-5">
       <div class="flex items-center gap-3">
         <%= integration_icon('airtrail', css: 'size-6') %>
-        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.airtrail_integration') %></h2>
+        <h2 class="text-lg font-medium"><%= t('settings.integrations.index.airtrail_integration') %></h2>
       </div>
       <div class="form-control w-full max-w-md">
         <%= f.label :airtrail_url, class: 'label' do %>
@@ -19,6 +19,7 @@
         <% end %>
         <%= f.password_field :airtrail_api_key, value: current_user.safe_settings.airtrail_api_key, class: 'input input-bordered w-full', placeholder: t('settings.integrations.index.xxxxxxxxxxxxxx') %>
         <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.create_an_api_key_in_airtrail_under_settings_rarr_security') %></span>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.airtrail_recorded_flight_tracks_need_airtrail_3_13') %></span>
       </div>
       <div class="form-control">
         <label class="label cursor-pointer justify-start gap-3">
@@ -44,7 +45,7 @@
         <p class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.last_synced') %> <%= last_synced ? l(last_synced, format: :long) : current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
       <% end %>
       <div class="card-actions">
-        <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>
+        <%= render 'settings/integrations/connection_actions' %>
       </div>
     </div>
   <% end %>
@@ -53,13 +54,13 @@
     <div class="border-t border-base-content/10 px-8 py-5">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="font-semibold flex items-center gap-2">
+          <h3 class="font-medium flex items-center gap-2">
             <%= icon 'plane', class: 'size-5 text-primary' %> <%= t('settings.integrations.index.sync_airtrail_flights') %>
           </h3>
           <span class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.flights_also_sync_automatically_once_a_day') %></span>
         </div>
         <%= button_to t('settings.integrations.index.sync_now'), settings_background_jobs_path(job_name: 'start_airtrail_import'),
-            method: :post, class: 'btn btn-primary btn-sm' %>
+            method: :post, class: 'btn btn-sm' %>
       </div>
     </div>
   <% end %>

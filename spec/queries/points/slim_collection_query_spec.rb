@@ -24,6 +24,25 @@ RSpec.describe Points::SlimCollectionQuery do
     expect(result.first[:country_name]).to eq('Germany')
   end
 
+  it 'prefers the linked country over stored text' do
+    country = create(:country, name: 'Germany')
+    point = create(:point, user: user)
+    point.update_columns(country_name: 'Deutschland', country: 'Deutschland', country_id: country.id)
+
+    result = described_class.new(user.points.where(id: point.id)).call
+
+    expect(result.first[:country_name]).to eq('Germany')
+  end
+
+  it 'falls back to stored text when the point has no linked country' do
+    point = create(:point, user: user)
+    point.update_columns(country_name: 'Deutschland', country: nil, country_id: nil)
+
+    result = described_class.new(user.points.where(id: point.id)).call
+
+    expect(result.first[:country_name]).to eq('Deutschland')
+  end
+
   it 'falls back to an empty string when no country information exists' do
     point = create(:point, user: user)
     point.update_columns(country_name: nil, country: nil, country_id: nil)
