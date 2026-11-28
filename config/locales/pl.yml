@@ -3804,6 +3804,9 @@ pl:
         weekday_preference: Podróżujesz częściej w dni robocze niż w weekendy
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    enhanced_import:
+      extract_job:
+        invalid_json: plik nie jest prawidłowym plikiem JSON. Wyeksportuj dane ponownie i zaimportuj nowy plik.
     tesla_mate:
       sync_job:
         teslamate_sync_failed: Synchronizacja TeslaMateApi nie powiodła się

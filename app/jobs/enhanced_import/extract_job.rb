@@ -53,8 +53,12 @@ module EnhancedImport
       # Sibling imports from one archive all finish together; wait our turn
       # rather than surfacing a red card the user can do nothing about.
       requeue(import, attempt, e)
-    rescue Oj::ParseError => e
-      mark_failed!(import, e)
+    rescue Oj::ParseError, JSON::ParserError => e
+      # A bad file is the user's to fix, not ours. The parser message can quote
+      # the whole document, so it is neither stored nor logged.
+      Rails.logger.info("[EnhancedImport::ExtractJob] import #{import.id} is not valid JSON (#{e.class})")
+      message = I18n.with_locale(import.user.locale) { I18n.t('jobs.enhanced_import.extract_job.invalid_json') }
+      mark_failed!(import, e, message:)
     rescue ActiveRecord::Deadlocked
       raise
     rescue StandardError => e
@@ -162,10 +166,10 @@ module EnhancedImport
       broadcast_card(import)
     end
 
-    def mark_failed!(import, error)
+    def mark_failed!(import, error, message: error.message)
       payload = import.additional_data_extraction.merge(
         'completed_at' => Time.current.iso8601,
-        'error_message' => error.message
+        'error_message' => message
       )
       import.update_columns(
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:failed],

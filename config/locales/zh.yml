@@ -3815,6 +3815,9 @@ zh:
         weekday_preference: 您在工作日出行的次数比周末多
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    enhanced_import:
+      extract_job:
+        invalid_json: 文件不是有效的 JSON。请重新导出数据并导入新文件。
     tesla_mate:
       sync_job:
         teslamate_sync_failed: TeslaMateApi 同步失败
