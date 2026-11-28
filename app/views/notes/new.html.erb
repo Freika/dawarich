@@ -1,0 +1,5 @@
+<% if turbo_frame_request? %>
+  <%= render 'form', note: @note %>
+<% else %>
+  <%= render 'page', note: @note %>
+<% end %>

@@ -17,6 +17,83 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       allow_any_instance_of(Users::Digests::CalculateYear).to receive(:call)
     end
 
+    context 'when only the tracks are rebuilt' do
+      it 'leaves stats and digests alone' do
+        described_class.perform_now(user.id, year: 2024, only: 'tracks')
+
+        expect(Tracks::ParallelGenerator).to have_received(:new).once
+        expect(Stats::CalculateMonth).not_to have_received(:new)
+        expect(Users::Digests::CalculateYear).not_to have_received(:new)
+      end
+    end
+
+    context 'when only stats and digests are rebuilt' do
+      it 'leaves the tracks alone' do
+        described_class.perform_now(user.id, year: 2024, only: 'stats')
+
+        expect(Stats::CalculateMonth).to have_received(:new).exactly(12).times
+        expect(Users::Digests::CalculateYear).to have_received(:new).once
+        expect(Tracks::ParallelGenerator).not_to have_received(:new)
+      end
+    end
+
+    context 'when a GPS noise re-check queued the rebuild' do
+      let(:fingerprint_key) { Points::AnomalyRebuildScope::SETTINGS_KEY }
+
+      before { user.update_columns(settings: user.settings.merge(fingerprint_key => {})) }
+
+      it 'forgets the re-check fingerprint once the rebuild succeeded' do
+        described_class.perform_now(user.id, year: [2024], anomaly_rebuild: true)
+
+        expect(user.reload.settings).not_to have_key(fingerprint_key)
+      end
+
+      it 'keeps the re-check fingerprint when the rebuild fails' do
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_raise(StandardError, 'boom')
+
+        expect { described_class.perform_now(user.id, year: [2024], anomaly_rebuild: true) }
+          .to raise_error(StandardError, 'boom')
+        expect(user.reload.settings).to have_key(fingerprint_key)
+      end
+
+      it 'forgets the re-check fingerprint when there is nothing to rebuild' do
+        described_class.perform_now(user.id, anomaly_rebuild: true)
+
+        expect(user.reload.settings).not_to have_key(fingerprint_key)
+      end
+    end
+
+    context 'with further digest years' do
+      it 'refreshes their digests after the stats, without rebuilding their stats or tracks' do
+        calls = []
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call) { calls << :stats }
+        allow(Users::Digests::CalculateYear).to receive(:new).and_wrap_original do |original, user_id, digest_year|
+          calls << [:digest, digest_year]
+          original.call(user_id, digest_year)
+        end
+
+        described_class.perform_now(user.id, year: [2024], digest_years: [2022, 2024])
+
+        expect(calls.last(2)).to eq([[:digest, 2024], [:digest, 2022]])
+        expect(calls.index(:stats)).to be < calls.index([:digest, 2022])
+        expect(Tracks::ParallelGenerator).to have_received(:new).once
+      end
+    end
+
+    context 'with a list of years' do
+      it 'rebuilds only the listed years' do
+        described_class.perform_now(user.id, year: [2022, 2024], only: 'tracks')
+
+        expect(Tracks::ParallelGenerator).to have_received(:new).twice
+        expect(Tracks::ParallelGenerator).to have_received(:new).with(
+          user, hash_including(start_at: Time.use_zone('UTC') { Time.zone.local(2022, 1, 1) })
+        )
+        expect(Tracks::ParallelGenerator).to have_received(:new).with(
+          user, hash_including(start_at: Time.use_zone('UTC') { Time.zone.local(2024, 1, 1) })
+        )
+      end
+    end
+
     context 'with a specific year' do
       let(:year) { 2024 }
 
@@ -31,7 +108,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         subject
 
         (1..12).each do |month|
-          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month)
+          expect(Stats::CalculateMonth).to have_received(:new).with(user.id, year, month, notify_on_failure: true)
         end
       end
 
@@ -58,6 +135,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('info')
         expect(Notification.last.title).to eq('Data recalculation completed')
         expect(Notification.last.content).to include('2024')
+        expect(Notification.last.action_path).to eq('/stats')
       end
     end
 
@@ -76,7 +154,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
 
         [2023, 2024].each do |y|
           (1..12).each do |month|
-            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month)
+            expect(Stats::CalculateMonth).to have_received(:new).with(user.id, y, month, notify_on_failure: true)
           end
         end
       end
@@ -185,6 +263,7 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
         expect(Notification.last.kind).to eq('error')
         expect(Notification.last.title).to eq('Data recalculation failed')
         expect(Notification.last.content).to include('Test error')
+        expect(Notification.last.content).not_to match(/stacktrace|\.rb:\d+/)
       end
 
       it 're-raises the error' do
@@ -192,18 +271,21 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
-    context 'when the stats service handles an internal error' do
+    context 'when the stats service propagates an internal error' do
       before do
         user.update!(settings: { 'locale' => 'fr' })
         allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_call_original
         allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(StandardError, 'boom')
       end
 
-      it 'creates the service notifications in the user saved locale' do
-        I18n.with_locale(:en) { described_class.perform_now(user.id, year: 2024) }
+      it 'creates failure notifications without a success notification' do
+        I18n.with_locale(:en) do
+          expect { described_class.perform_now(user.id, year: 2024) }.to raise_error(StandardError, 'boom')
+        end
 
         titles = user.notifications.error.pluck(:title).uniq
-        expect(titles).to eq(["L'actualisation des statistiques a échoué"])
+        expect(titles).to include("L'actualisation des statistiques a échoué")
+        expect(user.notifications.info).to be_empty
       end
     end
 

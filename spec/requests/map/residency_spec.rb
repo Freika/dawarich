@@ -14,11 +14,12 @@ RSpec.describe 'Map::Residency', type: :request do
         create(:point, user:, country_name: 'Czechia', timestamp: Time.zone.local(2026, 3, 6, 12).to_i)
       end
 
-      it 'renders a countries card and a heatmap card side by side' do
+      it 'renders the year calendar and the country timeline' do
         get map_residency_path(year: 2026)
 
-        expect(response.body).to include(I18n.t('map.residency.show.countries'))
-        expect(response.body).to include(I18n.t('map.residency.show.days_per_country'))
+        doc = Nokogiri::HTML(response.body)
+        expect(doc.at_css('[data-testid="year-calendar"]')).to be_present
+        expect(doc.at_css('[data-testid="country-ribbon"]')).to be_present
       end
 
       it 'counts the days for the requested year' do
@@ -35,10 +36,10 @@ RSpec.describe 'Map::Residency', type: :request do
 
         get map_residency_path(year: 2026)
 
-        expect(response.body).to include(
-          'bg-blue-600', 'bg-orange-700', 'bg-emerald-600', 'bg-fuchsia-600',
-          'bg-amber-700', 'bg-cyan-700', 'bg-rose-600', 'bg-violet-500'
-        )
+        colors = Nokogiri::HTML(response.body).css('[data-testid="year-calendar-countries"] button span:first-child')
+                         .map { _1['style'][/#\h{6}/] }
+        expect(colors.size).to eq(8)
+        expect(colors.uniq.size).to eq(8)
       end
 
       it 'takes the year from the page instead of offering its own selector' do

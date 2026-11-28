@@ -1,72 +1,29 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import vm from "node:vm"
-
-const currentDir = path.dirname(fileURLToPath(import.meta.url))
-const repoRoot = path.resolve(currentDir, "../..")
-const dataLoaderPath = path.join(
-  repoRoot,
-  "app/javascript/controllers/maps/maplibre/data_loader.js",
-)
-const settingsManagerPath = path.join(
-  repoRoot,
-  "app/javascript/maps_maplibre/utils/settings_manager.js",
-)
-let dataLoaderSource = await readFile(dataLoaderPath, "utf8")
-dataLoaderSource = dataLoaderSource
-  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-  .replace("export class DataLoader", "class DataLoader")
-  .concat("\nglobalThis.DataLoader = DataLoader\n")
-let settingsManagerSource = await readFile(settingsManagerPath, "utf8")
-settingsManagerSource = settingsManagerSource
-  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-  .replaceAll("export function ", "function ")
-  .replaceAll("export const ", "const ")
-  .replace("export class SettingsManager", "class SettingsManager")
-  .concat("\nglobalThis.SettingsManager = SettingsManager\n")
+import { DataLoader } from "controllers/maps/maplibre/data_loader"
+import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 const requests = []
-const context = {
-  console,
-  fetch: async (_url, options = {}) => {
-    requests.push(options)
-    return {
-      ok: true,
-      json: async () => ({
-        settings: {
-          enabled_map_layers: ["Places"],
-          places_tag_filters: [11, "untagged"],
-        },
-      }),
-    }
-  },
-  performanceMonitor: { mark() {}, measure() {} },
-  pointsToGeoJSON: () => ({ type: "FeatureCollection", features: [] }),
-  createCircle: () => null,
-  applySpeedColors: (value) => value,
+globalThis.fetch = async (_url, options = {}) => {
+  requests.push(options)
+  return {
+    ok: true,
+    json: async () => ({
+      settings: {
+        enabled_map_layers: ["Places"],
+        places_tag_filters: [11, "untagged"],
+      },
+    }),
+  }
 }
-vm.createContext(context)
-const basemapSource = await readFile(
-  path.join(repoRoot, "app/javascript/maps_maplibre/utils/basemap_url.js"),
-  "utf8",
-)
-vm.runInContext(
-  basemapSource.replaceAll("export function ", "function "),
-  context,
-)
-vm.runInContext(settingsManagerSource, context)
-vm.runInContext(dataLoaderSource, context)
 
-context.SettingsManager.initialize("test-key")
-const settings = await context.SettingsManager.sync()
+SettingsManager.initialize("test-key")
+const settings = await SettingsManager.sync()
 assert.deepEqual(JSON.parse(JSON.stringify(settings.placesTagFilters)), [
   11,
   "untagged",
 ])
 
-await context.SettingsManager.updateSetting("placesTagFilters", [12])
+await SettingsManager.updateSetting("placesTagFilters", [12])
 const savedSettings = JSON.parse(requests.at(-1).body).settings
 assert.deepEqual(savedSettings.places_tag_filters, [12])
 
@@ -77,19 +34,46 @@ const api = {
     return []
   },
 }
-await context.SettingsManager.updateSetting("pointsVisible", false)
+await SettingsManager.updateSetting("pointsVisible", false)
 settings.pointsVisible = false
 settings.placesEnabled = true
 
-const loader = new context.DataLoader(api, "test-key", settings)
+const loader = new DataLoader(api, "test-key", settings)
 await loader.fetchMapData("2026-06-01", "2026-06-30")
 
-assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
-  { tag_ids: [11, "untagged"] },
-])
+assert.deepEqual(JSON.parse(JSON.stringify(calls)), [{ tag_ids: [12] }])
 
 settings.placesTagFilters = []
 calls.length = 0
-const emptyLoader = new context.DataLoader(api, "test-key", settings)
+const emptyLoader = new DataLoader(api, "test-key", settings)
 await emptyLoader.fetchMapData("2026-06-01", "2026-06-30")
 assert.deepEqual(calls, [])
+
+const placeFeatures = loader.placesToGeoJSON([
+  {
+    id: 7,
+    name: "Home",
+    latitude: "52.52",
+    longitude: "13.405",
+    visit_radius: 125,
+    tags: [{ color: "#123456" }],
+  },
+]).features
+assert.equal(placeFeatures.length, 2)
+assert.deepEqual(
+  JSON.parse(
+    JSON.stringify(placeFeatures.map((feature) => feature.geometry.type)),
+  ),
+  ["Polygon", "Point"],
+)
+assert.deepEqual(
+  JSON.parse(
+    JSON.stringify(
+      placeFeatures.map((feature) => feature.properties.featureKind),
+    ),
+  ),
+  ["boundary", "center"],
+)
+assert.ok(
+  placeFeatures.every((feature) => feature.properties.visitRadius === 125),
+)

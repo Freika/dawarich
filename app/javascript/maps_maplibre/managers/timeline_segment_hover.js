@@ -80,7 +80,12 @@ export class TimelineSegmentHover {
       layer.setSelectedTrack(
         {
           type: "Feature",
-          geometry: { type: "LineString", coordinates },
+          geometry: {
+            type: Array.isArray(coordinates[0][0])
+              ? "MultiLineString"
+              : "LineString",
+            coordinates,
+          },
           properties: {
             ...track.properties,
             color: segment.color || track.properties.color,
@@ -169,15 +174,21 @@ export function segmentCoordinates(track, segment) {
       return null
     coordinates = full.slice(start, end + 1)
   }
-  return Array.isArray(coordinates) &&
-    coordinates.length >= 2 &&
-    coordinates.every(
+  if (!Array.isArray(coordinates)) return null
+  const lines = Array.isArray(coordinates[0]?.[0]) ? coordinates : [coordinates]
+  return lines.length > 0 && lines.every(validLine) ? coordinates : null
+}
+
+function validLine(line) {
+  return (
+    Array.isArray(line) &&
+    line.length >= 2 &&
+    line.every(
       (point) =>
         Array.isArray(point) &&
         point.length >= 2 &&
         Number.isFinite(point[0]) &&
         Number.isFinite(point[1]),
     )
-    ? coordinates
-    : null
+  )
 }

@@ -82,6 +82,7 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
     expect { job.perform_now }.not_to have_enqueued_job(described_class)
 
     expect(user.notifications.last.content).to include('drive 42 failed')
+    expect(user.notifications.last.action_path).to eq('/settings/integrations')
     expect(ExceptionReporter).to have_received(:call)
       .with(instance_of(TeslaMate::Sync::IncompleteError), "TeslaMateApi sync failed for user #{user.id}")
   end

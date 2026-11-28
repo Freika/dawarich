@@ -1,0 +1,8 @@
+ca:
+  javascript:
+    range_statistics:
+      scope: "Els teus punts del període seleccionat; exclou zones privades i historial familiar."
+      unavailable: "Estadístiques no disponibles"
+      summary:
+        one: "%{points} punt · %{distance} %{unit}"
+        other: "%{points} punts · %{distance} %{unit}"

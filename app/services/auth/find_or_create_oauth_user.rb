@@ -31,18 +31,50 @@ module Auth
     LINK_EMAIL_RATE_LIMIT_WINDOW = 1.hour
     LINK_EMAIL_RATE_LIMIT_KEY_PREFIX = 'oauth_account_link:rate_limit:'
 
-    # Stores the send time so a rate-limited retry can report how long is left.
+    # Stores the send time so a rate-limited retry can report how long is left,
+    # and a nonce so a failed send can tell its own marker from a newer one.
+    # Returns the marker when this call took the slot, nil when it is taken.
     def self.acquire_rate_limit(user_id)
-      Rails.cache.write(
-        "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}", Time.current.to_i,
+      marker = { sent_at: Time.current.to_i, nonce: SecureRandom.uuid }
+      marker if Rails.cache.write(
+        rate_limit_key(user_id), marker,
         expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
         unless_exist: true
       )
     end
 
+    # Runs the block, which must return the enqueued mailer job, only when this
+    # call takes the rate-limit slot. If the block raises or the job was not
+    # queued, no email went out, so the slot is released and the error raised.
+    # Returns true when the job was queued, false when rate-limited.
+    def self.with_link_email_rate_limit(user_id)
+      marker = acquire_rate_limit(user_id)
+      return false unless marker
+
+      begin
+        job = yield
+        unless job.try(:successfully_enqueued?)
+          raise ActiveJob::EnqueueError, 'OAuth account link email could not be queued'
+        end
+      rescue StandardError
+        # ponytail: read-compare-delete is not atomic; if the marker expires and
+        # a new request takes the slot between the read and the delete, that
+        # request's marker is dropped. Use a Lua compare-and-delete if it matters.
+        Rails.cache.delete(rate_limit_key(user_id)) if Rails.cache.read(rate_limit_key(user_id)) == marker
+        raise
+      end
+      true
+    end
+
+    def self.rate_limit_key(user_id)
+      "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}"
+    end
+
     def self.rate_limit_retry_after(user_id)
       window = LINK_EMAIL_RATE_LIMIT_WINDOW.to_i
-      sent_at = Rails.cache.read("#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}")
+      marker = Rails.cache.read(rate_limit_key(user_id))
+      # A bare Integer is the marker format written before the nonce was added.
+      sent_at = marker.is_a?(Hash) ? marker[:sent_at] : marker
       return window unless sent_at.is_a?(Integer)
 
       (window - (Time.current.to_i - sent_at)).clamp(1, window)
@@ -122,23 +154,23 @@ module Auth
     end
 
     def send_verification_email(existing_user)
-      return :rate_limited unless self.class.acquire_rate_limit(existing_user.id)
-
-      token = Auth::IssueAccountLinkToken.new(
-        existing_user, provider: @provider, uid: @uid
-      ).call
-      link_url = Rails.application.routes.url_helpers.auth_account_link_url(
-        token: token,
-        host: default_mailer_host,
-        protocol: default_mailer_protocol
-      )
-      Users::MailerSendingJob.perform_later(
-        existing_user.id,
-        'oauth_account_link',
-        provider_label: @provider_label,
-        link_url: link_url
-      )
-      :sent
+      sent = self.class.with_link_email_rate_limit(existing_user.id) do
+        token = Auth::IssueAccountLinkToken.new(
+          existing_user, provider: @provider, uid: @uid
+        ).call
+        link_url = Rails.application.routes.url_helpers.auth_account_link_url(
+          token: token,
+          host: default_mailer_host,
+          protocol: default_mailer_protocol
+        )
+        Users::MailerSendingJob.perform_later(
+          existing_user.id,
+          'oauth_account_link',
+          provider_label: @provider_label,
+          link_url: link_url
+        )
+      end
+      sent ? :sent : :rate_limited
     end
 
     def default_mailer_host

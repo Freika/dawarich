@@ -166,6 +166,13 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       expect(invitation.reload).to be_accepted
     end
 
+    it 'welcomes the invitee with a notification, the only confirmation this path gives' do
+      post '/api/v1/auth/register', params: invitee_params
+
+      welcome = User.find_by(email: invitation.email).notifications.last
+      expect(welcome.title).to eq(I18n.t('services.families.accept_invitation.welcome_to_family'))
+    end
+
     it 'still requires payment when the token is unusable' do
       invitation.update!(status: :cancelled)
 

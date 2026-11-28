@@ -10,7 +10,7 @@
       create_form_partial — partial path for the create form (rendered when share is nil)
 %>
 <turbo-frame id="share-link-modal">
-  <div class="modal modal-open" data-controller="share-link-modal" style="z-index: 10000;">
+  <div class="modal modal-open items-start pt-[8vh]" data-controller="share-link-modal" style="z-index: 10000;">
     <div class="modal-box max-w-xl">
       <%= link_to close_path,
                   class: "btn btn-sm btn-circle btn-ghost absolute right-3 top-3",
@@ -22,8 +22,8 @@
       <% if share %>
         <%= render 'shared_links/modal_active', share: share, paths: paths, subtitle: local_assigns[:subtitle] %>
       <% else %>
-        <h3 class="font-bold text-lg mb-1"><%= title %></h3>
-        <p class="text-sm text-base-content/70 mb-5"><%= t('.anyone_with_the_link_will_be_able_to_view_this') %></p>
+        <h3 class="font-medium text-lg mb-1"><%= title %></h3>
+        <p class="text-sm text-base-content/70 mb-5"><%= resource.is_a?(Trip) ? t('shared_links.family.choose_audience') : t('.anyone_with_the_link_will_be_able_to_view_this') %></p>
         <%= render create_form_partial, resource: resource, paths: paths, close_path: close_path %>
       <% end %>
     </div>

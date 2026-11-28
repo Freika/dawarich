@@ -117,10 +117,12 @@ module Users
         end_of_month = start_of_month.end_of_month
 
         user.points
-            .without_raw_data
+            .not_anomaly
+            .not_flyover
+            .joins(Countries::NameAliases.point_joins_sql)
             .where('timestamp >= ? AND timestamp <= ?', start_of_month.to_i, end_of_month.to_i)
             .where.not(country_name: [nil, ''])
-            .select(:country_name, :timestamp)
+            .select("#{Countries::NameAliases::POINT_NAME_SQL} AS country_name", :timestamp)
             .order(timestamp: :asc)
       end
 

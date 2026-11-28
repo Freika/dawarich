@@ -8,4 +8,8 @@ class InsightsPolicy < ApplicationPolicy
   def details?
     user.present?
   end
+
+  def routes?
+    user.present?
+  end
 end

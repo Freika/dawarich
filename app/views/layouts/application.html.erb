@@ -11,10 +11,12 @@
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= achievement_stylesheet_tags if achievements_visible? %>
     <% if ENV['POSTHOG_ENABLED'] == 'true' %>
       <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
     <% end %>
     <%= javascript_translations %>
+    <%= date_time_preferences_meta_tag %>
     <%= javascript_importmap_tags %>
     <%= turbo_refreshes_with(method: :morph, scroll: :preserve) if morph_page_refreshes? %>
     <%= yield :head %>
@@ -24,7 +26,7 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
+      <script src="<%= Rybbit::HOST %>/api/script.js" data-site-id="<%= Rybbit::SITE_ID %>" defer></script>
       <script async src="https://cdn.paddle.com/paddle/v2/paddle.js" onload="
         Paddle.Environment.set(<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production').to_json.html_safe %>);
         Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
@@ -65,7 +67,8 @@
       <%= render 'shared/navbar' %>
       <%= render 'shared/locale_suggestion' %>
       <%= render 'shared/flash' %>
-      <div class="w-full px-4 sm:px-5 flex-1">
+      <%= queued_analytics_event_tags %>
+      <div class="layout-content w-full px-4 sm:px-5 flex-1 flex flex-col">
         <div class="flex w-full min-w-0 gap-5">
           <%= yield %>
         </div>
@@ -78,5 +81,6 @@
     <%# auto_open: false — non-map pages keep the dialog only for the navbar's
         manual "Getting started" trigger; it never pops open on load (N1). %>
     <%= render 'map/onboarding_modal', auto_open: false %>
+    <%= render 'layouts/achievement_unlock_host' %>
   </body>
 </html>

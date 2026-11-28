@@ -17,6 +17,15 @@ RSpec.describe 'Api::V1::Flights', type: :request do
     expect(body['features'].size).to eq(1)
   end
 
+  it 'returns the recorded track of a flight that has one' do
+    track = [[13.493, 52.351], [9.0, 51.5], [2.547, 49.009]]
+    create(:flight, user: user, track_coordinates: track)
+
+    get '/api/v1/flights', params: { api_key: user.api_key }
+
+    expect(response.parsed_body['features'].first['geometry']['coordinates']).to eq(track)
+  end
+
   it 'rejects unauthenticated requests' do
     get '/api/v1/flights'
     expect(response).to have_http_status(:unauthorized)
@@ -37,6 +46,15 @@ RSpec.describe 'Api::V1::Flights', type: :request do
     get '/api/v1/flights', params: { api_key: user.api_key, start_at: '25:99:99', end_at: 'garbage' }
 
     expect(response).to have_http_status(:ok)
+    expect(response.parsed_body['features'].size).to eq(1)
+  end
+
+  it 'returns a flight without a departure time when the range covers its date' do
+    create(:flight, user: user, departure_time: nil, arrival_time: nil, flight_date: Date.new(2026, 4, 20))
+    create(:flight, user: user, departure_time: nil, arrival_time: nil, flight_date: Date.new(2026, 1, 15))
+
+    get '/api/v1/flights', params: { api_key: user.api_key, start_at: '2026-04-19', end_at: '2026-04-22' }
+
     expect(response.parsed_body['features'].size).to eq(1)
   end
 

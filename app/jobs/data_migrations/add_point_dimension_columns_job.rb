@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-# Fallback for the ALTER that adds points.source_id when the boot-time
-# migration cannot win the lock race. Adding the column from a job
-# rather than aborting the migration keeps boot from crash-looping on a busy
-# instance, which is the failure DataMigrations::DropLegacyLatLonJob exists to
-# avoid for the mirror-image drop.
+# Fallback for the ALTER that adds points.source_id, enqueued by
+# 20260816150200 when the boot-time migration lost the lock race. Since 1.21.0
+# that migration fails instead, so 20260816150200 never sees the column
+# missing, and 20261102000100 repairs instances left short before (#3972).
+# ponytail: kept so jobs already queued drain; delete it (moving
+# backfill_allowed? to BackfillPointDimensionsJob) a release after 1.21.0.
 class DataMigrations::AddPointDimensionColumnsJob < ApplicationJob
   queue_as :data_migrations
 

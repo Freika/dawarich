@@ -1,7 +1,5 @@
 <% content_for :title, t('.new_trip') %>
 
-<div class="mx-auto my-5 w-full md:w-2/3">
-  <%= render 'shared/page_header', title: t('.new_trip') %>
-
-  <%= render "form", trip: @trip %>
+<div class="w-full my-5">
+  <%= render "form", trip: @trip, title: t('.new_trip') %>
 </div>

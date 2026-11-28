@@ -2,10 +2,11 @@
 
 module ShareLinks
   class HubData
-    def initialize(user, start_date: nil, end_date: nil)
+    def initialize(user, start_date: nil, end_date: nil, import_id: nil)
       @user = user
       @start_date = start_date
       @end_date = end_date
+      @import_id = import_id.presence
     end
 
     def all_shares
@@ -17,7 +18,16 @@ module ShareLinks
     end
 
     def timeline_share
-      all_shares.find { |share| share.resource_type == 'timeline' }
+      all_shares.find do |share|
+        share.timeline? && share.settings['import_id'].to_s == import_id.to_s
+      end
+    end
+
+    attr_reader :import_id
+
+    def timeline_settings
+      dates = { 'start_date' => default_start_date.iso8601, 'end_date' => default_end_date.iso8601 }
+      import_id ? dates.merge('import_id' => import_id.to_s) : dates
     end
 
     def any_shares?

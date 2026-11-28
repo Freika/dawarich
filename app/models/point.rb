@@ -44,7 +44,17 @@ class Point < ApplicationRecord
   scope :visited, -> { where.not(visit_id: nil) }
   scope :not_visited, -> { where(visit_id: nil) }
   scope :complete, -> { where.not(timestamp: nil).where.not(lonlat: nil) }
+  # Native presence observations retain real coordinates/time for visits, but are
+  # not movement vertices. Do not classify all sensor-reported still fixes this way.
+  ROUTE_OBSERVATION_SQL = "COALESCE(points.motion_data->>'action', '') <> 'stationary_presence'"
+  scope :route_observations, -> { where(ROUTE_OBSERVATION_SQL) }
+
+  def stationary_presence?
+    has_attribute?(:motion_data) && motion_data&.fetch('action', nil) == 'stationary_presence'
+  end
+
   scope :not_anomaly, -> { where(anomaly: [false, nil]) }
+  scope :not_flyover, -> { where(CountriesAndCities.not_flyover_sql) }
   scope :anomaly, -> { where(anomaly: true) }
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a
   # broken coordinate; Points::NullIsland owns that definition.
@@ -88,10 +98,23 @@ class Point < ApplicationRecord
     @recorded_at ||= Time.zone.at(timestamp)
   end
 
-  GEOCODE_DEDUP_TTL = 1.day.to_i
+  GEOCODE_CLAIM_SCRIPT = <<~LUA
+    if redis.call('SET', KEYS[1], '1', 'NX') then return 1 end
+    redis.call('PERSIST', KEYS[1])
+    return 0
+  LUA
 
   def self.geocode_dedup_key(id)
     "geocode:enq:Point:#{id}"
+  end
+
+  def self.claim_geocode_ids(ids)
+    results = Sidekiq.redis do |redis|
+      redis.pipelined do |pipe|
+        ids.each { |id| pipe.call('EVAL', GEOCODE_CLAIM_SCRIPT, 1, geocode_dedup_key(id)) }
+      end
+    end
+    ids.zip(results).filter_map { |id, claimed| id if claimed == 1 }
   end
 
   def async_reverse_geocode(force: false, config: nil)
@@ -100,11 +123,8 @@ class Point < ApplicationRecord
 
     if force
       Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) }
-    else
-      claimed = Sidekiq.redis do |r|
-        r.set(self.class.geocode_dedup_key(id), 1, nx: true, ex: GEOCODE_DEDUP_TTL)
-      end
-      return unless claimed
+    elsif self.class.claim_geocode_ids([id]).empty?
+      return
     end
 
     begin
@@ -117,6 +137,11 @@ class Point < ApplicationRecord
 
   def reverse_geocoded?
     reverse_geocoded_at.present?
+  end
+
+  def address_line
+    props = Geocoding::ResultNormalizer.from_data(geodata)[:properties]
+    props.values_at('street', 'city', 'country').compact_blank.join(', ').presence
   end
 
   def lon
@@ -164,7 +189,7 @@ class Point < ApplicationRecord
 
   # Metrics/AbcSize
   def broadcast_coordinates
-    if user.safe_settings.live_map_enabled
+    if user.safe_settings.live_map_enabled && !Maps::PrivacyZoneMasker.new(user).in_zone?(lon, lat)
       PointsChannel.broadcast_to(
         user,
         [
@@ -197,6 +222,7 @@ class Point < ApplicationRecord
       {
         user_id: user.id,
         email: user.email,
+        name: user.display_name,
         email_initial: user.email.first.upcase,
         latitude: lat,
         longitude: lon,

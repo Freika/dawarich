@@ -80,7 +80,9 @@ trix-toolbar .trix-button:focus-visible {
   outline-offset: -2px;
 }
 
-:is([data-theme="dark"], [data-theme="dawarich-dark"], .dark) trix-toolbar .trix-button--icon::before {
+:is([data-theme="dark"], [data-theme="dawarich-dark"], .dark)
+  trix-toolbar
+  .trix-button--icon::before {
   filter: invert(1);
 }
 
@@ -97,4 +99,25 @@ trix-editor.trix-content-editor {
 trix-editor.trix-content-editor:focus {
   outline: 2px solid oklch(var(--bc) / 0.2);
   outline-offset: 2px;
+}
+
+/* The link dialog follows the theme: it sits on the page's raised surface and
+   its URL field is a well like every other field in the app. */
+trix-toolbar .trix-dialog {
+  background: oklch(var(--b2));
+  color: oklch(var(--bc));
+  border-top-color: oklch(var(--bc) / 0.2);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+trix-toolbar .trix-dialog .trix-input--dialog {
+  background-color: var(--well);
+  border: 1px solid var(--well-edge);
+  border-radius: var(--rounded-btn, 0.5rem);
+  box-shadow: inset 0 1px 2px var(--well-shadow);
+  color: inherit;
+}
+
+trix-toolbar .trix-dialog .trix-input--dialog:hover {
+  border-color: var(--well-edge-hover);
 }

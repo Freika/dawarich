@@ -44,7 +44,7 @@ class Tracks::PointGeometryQuery
   private
 
   def points_sql
-    scope = @points_scope.except(:select, :order, :includes, :preload, :eager_load)
+    scope = @points_scope.route_observations.except(:select, :order, :includes, :preload, :eager_load)
                          .where.not(lonlat: nil)
     scope = scope.where('timestamp >= ?', @start_timestamp) if @start_timestamp
     scope = scope.where('timestamp <= ?', @end_timestamp) if @end_timestamp

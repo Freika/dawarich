@@ -51,7 +51,18 @@ RSpec.describe OwnTracks::PointCreator do
       .with(hash_including(user_id: user.id))
   end
 
-  it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
+  it 'enqueues VisitSuggestingJob when reverse geocoding is disabled and visit suggestions are enabled' do
+    user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'true'))
+    expect(Geocoding::Config.for(user).enabled?).to be(false)
+
+    expect { call_service }.to have_enqueued_job(VisitSuggestingJob)
+      .with(hash_including(user_id: user.id))
+  end
+
+  it 'does not enqueue VisitSuggestingJob when the user has opted out of visit suggestions' do
+    configure_instance_geocoding
+    user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+
     expect { call_service }.not_to have_enqueued_job(VisitSuggestingJob)
   end
 

@@ -1,0 +1,8 @@
+<%# locals: (note:) %>
+<li>
+  <%= link_to map_v2_path(panel: 'timeline', date: note.date), class: 'on-this-day__note', title: note.body,
+                                                              data: { turbo_frame: '_top' } do %>
+    <span class="on-this-day__year"><%= note.date.year %></span>
+    <span class="on-this-day__body"><%= note.body %></span>
+  <% end %>
+</li>

@@ -127,14 +127,12 @@ module Visits
     end
 
     def parse_time(value)
-      return nil if value.blank?
-
-      Time.zone.parse(value.to_s)
-    rescue ArgumentError
-      nil
+      Visits::TimeValue.parse(value)
     end
 
     def find_or_create_place
+      return supplied_place if supplied_place
+
       existing_place = find_existing_place
 
       return existing_place if existing_place
@@ -143,10 +141,16 @@ module Visits
     end
 
     def existing_visit
-      place = find_existing_place
+      place = supplied_place || find_existing_place
       return nil unless place
 
       user.visits.find_by(place_id: place.id, started_at: started_at)
+    end
+
+    def supplied_place
+      return @supplied_place if defined?(@supplied_place)
+
+      @supplied_place = user.places.find_by(id: params[:place_id]) if params[:place_id].present?
     end
 
     def find_existing_place
@@ -167,6 +171,9 @@ module Visits
         latitude: latitude,
         longitude: longitude,
         lonlat: "POINT(#{longitude} #{latitude})",
+        city: address[:city].presence,
+        country: address[:country].presence,
+        geodata: address_geodata,
         source: :manual,
         user_named: !suggested?,
         machine_named: suggested?
@@ -176,14 +183,36 @@ module Visits
       nil
     end
 
+    # Suggested places need a name; manual places sent without an address need
+    # one filled in. A user-given name is locked and survives the lookup.
     def enqueue_name_fetching
-      return unless suggested?
+      return unless suggested? || !address_known?
       return if @created_place.nil?
       return unless Geocoding::Config.for(user).enabled?
 
       Places::NameFetchingJob.perform_later(@created_place.id)
     rescue StandardError => e
       ExceptionReporter.call(e, "Failed to enqueue place name fetching: #{e.message}")
+    end
+
+    def address
+      @address ||= params[:address].respond_to?(:key?) ? params[:address] : {}
+    end
+
+    def address_known?
+      address_geodata.fetch('properties', {}).slice('street', 'city').any?
+    end
+
+    # Stored in the Photon shape the rest of the app reads from places.geodata.
+    def address_geodata
+      properties = {
+        'street' => address[:street],
+        'housenumber' => address[:house_number],
+        'postcode' => address[:postcode],
+        'city' => address[:city],
+        'country' => address[:country]
+      }.compact_blank
+      properties.empty? ? {} : { 'properties' => properties }
     end
 
     def suggested?
@@ -194,8 +223,9 @@ module Visits
       duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(
-        name: params[:name].presence || place.name,
+        name: @created_place.nil? && params[:name] == place.name ? nil : params[:name].presence,
         place: place,
+        location_label: place&.name,
         started_at: started_at,
         ended_at: ended_at,
         duration: duration_minutes,

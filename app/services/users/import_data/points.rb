@@ -152,14 +152,23 @@ class Users::ImportData::Points
     logger.debug "Loaded #{user.imports.size} imports with #{@imports_lookup.size} lookup keys"
 
     @countries_lookup = {}
-    Country.all.find_each do |country|
+    Country.without_geom.find_each do |country|
       @countries_lookup[[country.name, country.iso_a2, country.iso_a3]] = country
       @countries_lookup[country.name] = country
     end
     logger.debug "Loaded #{Country.count} countries for lookup"
 
-    @visits_lookup = user.visits.reload.index_by do |visit|
-      [visit.name, visit.started_at.utc.iso8601, visit.ended_at.utc.iso8601]
+    @visits_lookup = {}
+    user.visits.includes(:place).find_each do |visit|
+      started_at = visit.started_at.utc.iso8601
+      ended_at = visit.ended_at.utc.iso8601
+      exact_key = [visit.name, visit.location_label, started_at, ended_at, place_identity(visit.place)]
+      labeled_legacy_key = [visit.name, visit.location_label, started_at, ended_at]
+      legacy_key = [visit.name.presence || visit.location_label, started_at, ended_at]
+
+      @visits_lookup[exact_key] = visit
+      add_unambiguous_visit_key(labeled_legacy_key, visit)
+      add_unambiguous_visit_key(legacy_key, visit)
     end
     logger.debug "Loaded #{@visits_lookup.size} visits for lookup"
 
@@ -198,7 +207,15 @@ class Users::ImportData::Points
       'import_reference',
       'country_info',
       'visit_reference',
-      'country'
+      'country',
+      # Never trust archive-supplied identity/foreign keys: they are resolved from
+      # *_reference hashes below, so a raw id here would point at another tenant's
+      # rows. Mirrors the visits importer, which already strips these.
+      'id',
+      'visit_id',
+      'import_id',
+      'track_id',
+      'raw_data_archive_id'
     )
 
     ensure_lonlat_field(attributes, point_data)
@@ -276,13 +293,16 @@ class Users::ImportData::Points
     started_at = normalize_timestamp_for_lookup(visit_reference['started_at'])
     ended_at = normalize_timestamp_for_lookup(visit_reference['ended_at'])
 
-    visit_key = [
-      visit_reference['name'],
-      started_at,
-      ended_at
-    ]
+    name = visit_reference['name']
+    label = visit_reference['location_label']
+    visit_keys = []
+    if visit_reference.key?('place_reference')
+      visit_keys << [name, label, started_at, ended_at, place_identity(visit_reference['place_reference'])]
+    end
+    visit_keys << [name, label, started_at, ended_at] if visit_reference.key?('location_label')
+    visit_keys << [name.presence || label, started_at, ended_at]
 
-    visit = visits_lookup[visit_key]
+    visit = visit_keys.lazy.filter_map { |key| visits_lookup[key] }.first
     if visit
       attributes['visit_id'] = visit.id
       logger.debug "Resolved visit reference: #{visit_reference['name']} -> #{visit.id}"
@@ -290,6 +310,26 @@ class Users::ImportData::Points
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
     end
+  end
+
+  def add_unambiguous_visit_key(key, visit)
+    @visits_lookup[key] = @visits_lookup.key?(key) ? nil : visit
+  end
+
+  def place_identity(place_or_reference)
+    return unless place_or_reference
+
+    if place_or_reference.is_a?(Place)
+      name = place_or_reference.name
+      latitude = place_or_reference.lat
+      longitude = place_or_reference.lon
+    else
+      name = place_or_reference['name']
+      latitude = place_or_reference['latitude']
+      longitude = place_or_reference['longitude']
+    end
+
+    [name.to_s.strip.downcase, format('%.6f', latitude.to_f), format('%.6f', longitude.to_f)]
   end
 
   # Export dumps carry the array columns as Postgres literals ('{home}'),
@@ -307,7 +347,7 @@ class Users::ImportData::Points
   # SQL-backed exports encode these JSONB values as JSON text inside JSONL.
   # Decode before upsert_all, otherwise its serializer stores string scalars.
   def deserialize_jsonb_columns(attributes)
-    %w[geodata raw_data].each do |column|
+    %w[geodata raw_data motion_data].each do |column|
       value = attributes[column]
       attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end

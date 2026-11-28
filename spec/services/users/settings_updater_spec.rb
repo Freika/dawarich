@@ -96,6 +96,14 @@ RSpec.describe Users::SettingsUpdater do
           .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
       end
 
+      it 'schedules an achievements recheck' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+        clear_achievement_checks(user.id)
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
+          .to have_enqueued_job(Achievements::CheckJob).with(user.id)
+      end
+
       it 'does not recalculate when the value is unchanged' do
         user.update!(settings: user.settings.merge('min_minutes_spent_in_city' => 15))
 

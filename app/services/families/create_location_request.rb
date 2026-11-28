@@ -12,6 +12,7 @@ class Families::CreateLocationRequest
 
   def call
     return not_in_same_family_error unless in_same_family?
+    return family_turned_off_error unless target_user.feature_enabled?(:family)
     return already_sharing_error if target_user.family_sharing_enabled?
     return cooldown_error if cooldown_active?
 
@@ -62,13 +63,14 @@ class Families::CreateLocationRequest
         class: 'link link-primary'
       )
 
-      Notification.create!(
+      Notifications::Create.new(
         user: target_user,
         kind: :info,
         title: I18n.t('services.families.create_location_request.location_request'),
         content: I18n.t('services.families.create_location_request.safe_email_is_requesting_your_location_link',
-                        email: safe_email, link: link)
-      )
+                        email: safe_email, link: link),
+        action_path: Notifications.paths.family_location_request_path(request)
+      ).call
     end
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to create notification for location request: #{e.message}")
@@ -82,6 +84,11 @@ class Families::CreateLocationRequest
     message = I18n.t('services.families.create_location_request.users_must_be_in_the_same_family')
     Result.new(success?: false,
                payload: { message: message }, status: :forbidden)
+  end
+
+  def family_turned_off_error
+    message = I18n.t('services.families.create_location_request.target_user_turned_family_off')
+    Result.new(success?: false, payload: { message: message }, status: :unprocessable_content)
   end
 
   def already_sharing_error

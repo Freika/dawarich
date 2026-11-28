@@ -19,31 +19,48 @@ module Users
     end
 
     def call
-      return Result.new(status: :throttled, message: THROTTLED_MESSAGE) unless acquire_rate_limit_slot
+      ActiveRecord::Base.with_advisory_lock("account_destroy:request:#{@user.id}") do
+        request_confirmation
+      end
+    end
+
+    private
+
+    def request_confirmation
+      acquired = acquire_rate_limit_slot
+      return Result.new(status: :throttled, message: THROTTLED_MESSAGE) unless acquired
 
       token = Users::IssueDestroyToken.new(@user).call
       link_url = Rails.application.routes.url_helpers.user_destroy_confirmation_url(
         token: token, host: @host, protocol: @protocol
       )
 
-      Users::MailerSendingJob.perform_later(
+      job = Users::MailerSendingJob.perform_later(
         @user.id,
         'account_destroy_confirmation',
         link_url: link_url
       )
+      unless job.try(:successfully_enqueued?)
+        raise ActiveJob::EnqueueError, 'Account deletion confirmation could not be queued'
+      end
 
       Result.new(status: :sent, message: SENT_MESSAGE)
+    rescue StandardError
+      Rails.cache.delete(rate_limit_key) if acquired
+      raise
     end
-
-    private
 
     def acquire_rate_limit_slot
       Rails.cache.write(
-        "#{RATE_LIMIT_KEY_PREFIX}#{@user.id}",
+        rate_limit_key,
         true,
         expires_in: RATE_LIMIT_WINDOW,
         unless_exist: true
       )
+    end
+
+    def rate_limit_key
+      "#{RATE_LIMIT_KEY_PREFIX}#{@user.id}"
     end
   end
 end

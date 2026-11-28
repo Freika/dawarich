@@ -28,6 +28,7 @@ if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
   exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
 fi
 
+ensure_writable_home
 warn_if_development_env
 
 # Parse DATABASE_URL if present, otherwise use individual variables
@@ -88,7 +89,7 @@ create_database() {
 
   # Wait for the database to become available
   echo "⏳ Waiting for database $db_name to be ready..."
-  until PGPASSWORD=$db_password psql -h "$db_host" -p "$db_port" -U "$db_username" -d "$db_name" -c '\q' 2>/dev/null; do
+  until PGPASSWORD=$db_password psql -h "$db_host" -p "$db_port" -U "$db_username" -d "$db_name" -c '\q'; do
     >&2 echo "Postgres database $db_name is unavailable - retrying..."
     sleep 2
   done

@@ -39,4 +39,33 @@ RSpec.describe Tag, type: :model do
       expect(Tag.for_user(tag1.user).ordered).to eq([tag1, tag2])
     end
   end
+
+  describe '.home_tagged_place' do
+    let(:user) { create(:user) }
+
+    def tag_place(tag, name, **attrs)
+      create(:place, user: tag.user, name:, **attrs).tap { |place| Tagging.create!(tag:, taggable: place) }
+    end
+
+    it 'finds a Place tagged Home in any letter case' do
+      tag = create(:tag, user:, name: 'HOME')
+      place = tag_place(tag, 'Casa')
+
+      expect(Tag.home_tagged_place(user)).to eq([tag, place])
+    end
+
+    it 'looks past a Home-named tag that has no live Place' do
+      tag_place(create(:tag, user:, name: 'Home'), 'Old flat', archived_at: Time.current)
+      zuhause = create(:tag, user:, name: 'Zuhause')
+      place = tag_place(zuhause, 'Wohnung')
+
+      expect(Tag.home_tagged_place(user)).to eq([zuhause, place])
+    end
+
+    it 'ignores Home tags of other users' do
+      tag_place(create(:tag, name: 'Home'), 'Not mine')
+
+      expect(Tag.home_tagged_place(user)).to be_nil
+    end
+  end
 end

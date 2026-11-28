@@ -19,6 +19,20 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       )
     end
 
+    it 'says an integration is configured without returning its API key' do
+      user.update!(settings: user.settings.merge('immich_url' => 'https://immich.example.com',
+                                                 'immich_api_key' => 'secret-immich-key',
+                                                 'photoprism_url' => 'https://photoprism.example.com'))
+
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      settings = response.parsed_body['settings']
+      expect(settings).to include('immich_url' => 'https://immich.example.com', 'immich_configured' => true,
+                                  'photoprism_configured' => false, 'airtrail_configured' => false)
+      expect(settings.keys).not_to include('immich_api_key', 'photoprism_api_key', 'airtrail_api_key')
+      expect(response.body).not_to include('secret-immich-key')
+    end
+
     it 'returns custom timezone when set' do
       user.settings['timezone'] = 'America/New_York'
       user.save!
@@ -30,6 +44,64 @@ RSpec.describe 'Api::V1::Settings', type: :request do
   end
 
   describe 'PATCH /update' do
+    describe 'changing an integration URL' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user.update!(settings: user.settings.merge('immich_url' => 'https://gate:secret@immich.example.com',
+                                                   'immich_api_key' => 'stored-immich-key',
+                                                   'immich_connection_status' => 'ok'))
+      end
+
+      def patch_settings(settings)
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: settings }
+        user.reload.settings
+      end
+
+      it 'forgets the stored key, so it cannot be sent to the new host' do
+        settings = patch_settings(immich_url: 'https://elsewhere.example.com')
+
+        expect(response).to have_http_status(:ok)
+        expect(settings).to include('immich_url' => 'https://elsewhere.example.com', 'immich_api_key' => nil,
+                                    'immich_connection_status' => nil)
+        expect(response.parsed_body['settings']).to include('immich_configured' => false)
+      end
+
+      it 'keeps a key that arrives together with the new URL' do
+        settings = patch_settings(immich_url: 'https://elsewhere.example.com', immich_api_key: 'new-key')
+
+        expect(settings).to include('immich_url' => 'https://elsewhere.example.com', 'immich_api_key' => 'new-key')
+      end
+
+      it 'keeps the stored credentials when a client writes back the URL it read' do
+        get "/api/v1/settings?api_key=#{api_key}"
+        read_back = response.parsed_body['settings']['immich_url']
+
+        settings = patch_settings(immich_url: read_back, route_opacity: 0.4)
+
+        expect(read_back).to eq('https://immich.example.com')
+        expect(settings).to include('immich_url' => 'https://gate:secret@immich.example.com',
+                                    'immich_api_key' => 'stored-immich-key', 'immich_connection_status' => 'ok')
+      end
+
+      it 'leaves the key alone when another setting changes' do
+        settings = patch_settings(route_opacity: 0.4)
+
+        expect(settings).to include('immich_api_key' => 'stored-immich-key')
+      end
+    end
+
+    it 'stores an integration API key and leaves it out of the response' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { immich_url: 'https://immich.example.com', immich_api_key: 'secret-immich-key' } }
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.settings['immich_api_key']).to eq('secret-immich-key')
+      expect(response.parsed_body['settings']).to include('immich_configured' => true)
+      expect(response.body).not_to include('secret-immich-key')
+    end
+
     context 'with valid request' do
       it 'returns http success' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
@@ -92,6 +164,24 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.point_dragging_enabled?).to be false
       end
 
+      it 'updates the optional accuracy threshold' do
+        patch "/api/v1/settings?api_key=#{api_key}",
+              params: { settings: { gps_accuracy_filter_enabled: true, gps_accuracy_threshold: 250 } }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['settings']).to include('gps_accuracy_filter_enabled' => true,
+                                                            'gps_accuracy_threshold' => 250)
+        expect(user.reload.safe_settings.gps_accuracy_filter_enabled?).to be true
+      end
+
+      it 'updates split_tracks_at_midnight' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { split_tracks_at_midnight: true } }
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['settings']).to include('split_tracks_at_midnight' => true)
+        expect(user.reload.safe_settings.split_tracks_at_midnight?).to be true
+      end
+
       it 'updates points_tiled_rendering' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
 
@@ -117,17 +207,17 @@ RSpec.describe 'Api::V1::Settings', type: :request do
       end
 
       it 'updates fog_of_war_mode' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'hexagons' } }
-
-        expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
-      end
-
-      it 'normalizes unknown fog_of_war_mode values to points' do
-        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'points' } }
 
         expect(response).to have_http_status(:success)
         expect(user.reload.safe_settings.fog_of_war_mode).to eq('points')
+      end
+
+      it 'normalizes unknown fog_of_war_mode values to the default' do
+        patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { fog_of_war_mode: 'octagons' } }
+
+        expect(response).to have_http_status(:success)
+        expect(user.reload.safe_settings.fog_of_war_mode).to eq('hexagons')
       end
 
       it 'updates maps_maplibre_custom_theme' do
@@ -388,6 +478,25 @@ RSpec.describe 'Api::V1::Settings', type: :request do
           expect(lite_user.reload.safe_settings.maps_maplibre_style).to eq('dark')
         end
 
+        it 'keeps stored Pro layers when an unrelated setting changes' do
+          lite_user.update_columns(settings: lite_user.settings.merge('enabled_map_layers' => %w[Tracks Heatmap]))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}",
+                params: { settings: { maps: { distance_unit: 'mi' } } }
+
+          expect(response).to have_http_status(:success)
+          expect(lite_user.reload.settings['enabled_map_layers']).to eq(%w[Tracks Heatmap])
+        end
+
+        it 'keeps the stored globe choice when a Lite write sends it' do
+          lite_user.update_columns(settings: lite_user.settings.merge('globe_projection' => true))
+
+          patch "/api/v1/settings?api_key=#{lite_api_key}", params: { settings: { globe_projection: true } }
+
+          expect(lite_user.reload.settings['globe_projection']).to be true
+          expect(response.parsed_body['settings']['globe_projection']).to be false
+        end
+
         it 'still persists point_dragging_enabled so it applies after an upgrade' do
           patch "/api/v1/settings?api_key=#{lite_api_key}",
                 params: { settings: { point_dragging_enabled: true } }
@@ -525,6 +634,57 @@ RSpec.describe 'Api::V1::Settings', type: :request do
     end
   end
 
+  describe 'PATCH /update with app_store_supporter' do
+    it 'stores the flag sent by the mobile app' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: true } }, as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag when the subscription lapses' do
+      user.settings['app_store_supporter'] = true
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: false } }, as: :json
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    def report_supporter(active, install)
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { app_store_supporter: active, app_store_supporter_install: install } }, as: :json
+      expect(response).to have_http_status(:success)
+    end
+
+    it 'keeps the flag while another install is still subscribed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be true
+    end
+
+    it 'clears the flag once every reporting install has lapsed' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-b')
+      report_supporter(false, 'install-a')
+      report_supporter(false, 'install-b')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+
+    it 'counts an install once however often it reports' do
+      report_supporter(true, 'install-a')
+      report_supporter(true, 'install-a')
+      report_supporter(false, 'install-a')
+
+      expect(user.reload.settings['app_store_supporter']).to be false
+    end
+  end
+
   describe 'PATCH /update with maps.distance_unit' do
     it 'updates the distance unit' do
       patch "/api/v1/settings?api_key=#{api_key}",
@@ -565,6 +725,139 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(user.reload.settings['maps']).to eq('distance_unit' => 'km')
+    end
+  end
+
+  describe 'date, time and week-start preferences' do
+    it 'returns the defaults' do
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response.parsed_body['settings']).to include(
+        'date_format' => 'auto', 'time_format' => 'auto', 'first_day_of_week' => 'monday'
+      )
+    end
+
+    it 'updates the preferences' do
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { date_format: 'yyyy-mm-dd', first_day_of_week: 'sunday' } }
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['settings'])
+        .to include('date_format' => 'yyyy-mm-dd', 'first_day_of_week' => 'sunday')
+
+      get "/api/v1/settings?api_key=#{api_key}"
+
+      expect(response.parsed_body['settings'])
+        .to include('date_format' => 'yyyy-mm-dd', 'first_day_of_week' => 'sunday')
+    end
+
+    it 'ignores unknown values' do
+      user.settings['time_format'] = '12h'
+      user.save!
+
+      patch "/api/v1/settings?api_key=#{api_key}",
+            params: { settings: { time_format: '25h', date_format: 'dd-mm', first_day_of_week: 'friday' } }
+
+      expect(response).to have_http_status(:success)
+      expect(user.reload.settings['time_format']).to eq('12h')
+      expect(user.settings).not_to have_key('date_format')
+      expect(user.settings).not_to have_key('first_day_of_week')
+    end
+  end
+
+  describe 'DELETE /settings/appearance' do
+    before do
+      user.update!(settings: user.settings.merge(
+        'maps_maplibre_style' => 'dark',
+        'globe_projection' => false,
+        'fog_of_war_mode' => 'points',
+        'track_color' => '#123456',
+        'enabled_transportation_modes' => %w[walking cycling],
+        'meters_between_routes' => 900,
+        'maps' => { 'distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'], 'disabled_poi_groups' => ['food'] }
+      ))
+    end
+
+    it 'restores appearance settings to a fresh account and returns them' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      expect(response).to have_http_status(:ok)
+      body = response.parsed_body['settings']
+      expect(body).to include('maps_maplibre_style' => 'light', 'globe_projection' => true,
+                              'fog_of_war_mode' => 'hexagons', 'track_color' => '#6366F1')
+      stored = user.reload.settings
+      expect(stored).not_to include('maps_maplibre_style', 'globe_projection', 'fog_of_war_mode', 'track_color')
+      expect(stored['maps']).to eq('distance_unit' => 'mi')
+    end
+
+    it 'keeps data rules untouched' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+      stored = user.reload.settings
+      expect(stored['enabled_transportation_modes']).to eq(%w[walking cycling])
+      expect(stored['meters_between_routes']).to eq(900)
+    end
+
+    it 'resets only the requested appearance keys' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['track_color'] }
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'accepts a single key without brackets' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}&keys=track_color"
+
+      expect(response).to have_http_status(:ok)
+      stored = user.reload.settings
+      expect(stored).not_to include('track_color')
+      expect(stored['maps_maplibre_style']).to eq('dark')
+    end
+
+    it 'rejects keys outside the appearance group' do
+      delete "/api/v1/settings/appearance?api_key=#{api_key}", params: { keys: ['meters_between_routes'] }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(user.reload.settings['meters_between_routes']).to eq(900)
+    end
+
+    it 'requires an API key' do
+      delete '/api/v1/settings/appearance'
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    context 'when user is on the lite plan (cloud)' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update_columns(plan: User.plans[:lite], settings: user.settings.merge(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'globe_projection' => false,
+          'enabled_map_layers' => %w[Points Heatmap Hexagons]
+        ))
+      end
+
+      it 'keeps stored Pro-only values and resets the rest' do
+        delete "/api/v1/settings/appearance?api_key=#{api_key}"
+
+        expect(response).to have_http_status(:ok)
+        stored = user.reload.settings
+        expect(stored).to include(
+          'maps_maplibre_style' => 'custom',
+          'maps_maplibre_custom_theme' => { 'water' => '#000000' },
+          'maps_maplibre_tiles_url' => 'https://tiles.example.com/{z}/{x}/{y}.png',
+          'track_color' => '#123456',
+          'globe_projection' => false
+        )
+        expect(stored['enabled_map_layers']).to contain_exactly('Tracks', 'Heatmap', 'Hexagons')
+        expect(stored['maps']).to eq('distance_unit' => 'mi', 'hidden_tile_categories' => ['roads'],
+                                     'disabled_poi_groups' => ['food'])
+        expect(stored).not_to include('fog_of_war_mode')
+      end
     end
   end
 end

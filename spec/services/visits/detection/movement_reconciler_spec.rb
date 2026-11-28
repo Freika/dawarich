@@ -123,4 +123,28 @@ RSpec.describe Visits::Detection::MovementReconciler do
     end
     expect(survivors).to be_empty
   end
+
+  describe 'snapping between neighbouring fragments' do
+    def intervals(result) = result.map { |f| [f[:start_ts] - base_ts, f[:end_ts] - base_ts] }
+
+    it 'stretches only the edges that face the movement' do
+      result = reconcile([fragment(1000, 1006), fragment(1300, 1306)],
+                         [seg('driving', 800, 900), seg('driving', 1500, 1600)])
+
+      expect(intervals(result)).to eq([[900, 1006], [1300, 1500]])
+    end
+
+    it 'looks past a neighbour that the movement vetoes' do
+      result = reconcile([fragment(850, 950), fragment(1000, 1300)], [seg('driving', 500, 900)])
+
+      expect(intervals(result)).to eq([[900, 1300]])
+    end
+
+    it 'keeps every fragment between two movements to its own time' do
+      result = reconcile([fragment(1000, 1006), fragment(1100, 1106), fragment(1200, 1206)],
+                         [seg('driving', 800, 900), seg('driving', 1400, 1500)])
+
+      expect(intervals(result)).to eq([[900, 1006], [1100, 1106], [1200, 1400]])
+    end
+  end
 end

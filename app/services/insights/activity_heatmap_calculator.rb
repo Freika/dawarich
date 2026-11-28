@@ -57,34 +57,7 @@ module Insights
     end
 
     def aggregate_daily_distances
-      daily_data = {}
-
-      @stats.each do |stat|
-        next unless stat.daily_distance.is_a?(Hash) || stat.daily_distance.is_a?(Array)
-
-        daily_distance = normalize_daily_distance(stat.daily_distance)
-        daily_distance.each do |day_number, distance|
-          date = build_date(stat.year, stat.month, day_number.to_i)
-          next unless date
-
-          date_key = date.strftime('%Y-%m-%d')
-          daily_data[date_key] = (daily_data[date_key] || 0) + distance.to_i
-        end
-      end
-
-      daily_data
-    end
-
-    def normalize_daily_distance(daily_distance)
-      return daily_distance unless daily_distance.is_a?(Array)
-
-      daily_distance.to_h
-    end
-
-    def build_date(year, month, day)
-      Date.new(year, month, day)
-    rescue ArgumentError
-      nil
+      DailyDistances.call(@stats)
     end
 
     def calculate_activity_levels(distances)

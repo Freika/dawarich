@@ -1,9 +1,7 @@
 <%= turbo_frame_tag "point-address-#{@point.id}" do %>
-  <% props = Geocoding::ResultNormalizer.from_data(@point.geodata)[:properties] %>
-  <% parts = [props['street'], props['city'], props['country']].compact_blank %>
-  <% if parts.any? %>
+  <% if (address = @point.address_line) %>
     <div>
-      <span class="font-semibold"><%= t('.address') %></span> <%= parts.join(', ') %>
+      <span class="font-semibold"><%= t('.address') %></span> <%= address %>
     </div>
   <% end %>
 <% end %>

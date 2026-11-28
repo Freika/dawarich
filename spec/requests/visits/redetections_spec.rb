@@ -15,7 +15,7 @@ RSpec.describe 'Visits::Redetections', type: :request do
         post visits_redetections_path
       end.to have_enqueued_job(Visits::FullHistoryRedetectJob).with(user.id)
 
-      expect(response).to redirect_to(settings_visits_path)
+      expect(response).to redirect_to(settings_data_processing_path(anchor: 'visits'))
       expect(flash[:notice]).to match(/queued/i)
     end
 

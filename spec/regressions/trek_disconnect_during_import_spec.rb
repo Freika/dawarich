@@ -7,7 +7,7 @@ RSpec.describe 'Disconnecting a TREK source while its import is running', type: 
 
   before do
     sign_in user
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   it 'locks the source row before deleting it so a concurrent import cannot attach a trip' do

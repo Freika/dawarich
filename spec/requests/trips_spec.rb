@@ -34,6 +34,18 @@ RSpec.describe '/trips', type: :request do
     sign_in user
   end
 
+  it 'links a trip to the full map with its exact date range' do
+    trip = create(:trip, user: user, started_at: Time.utc(2024, 11, 27, 17, 16, 21),
+                                     ended_at: Time.utc(2024, 11, 29, 9, 45, 12))
+    get trip_path(trip)
+
+    link = Nokogiri::HTML(response.body).at_css('a[data-testid="trip-open-map"]')
+    expect(link).to be_present
+    query = Rack::Utils.parse_query(URI.parse(link['href']).query)
+    expect(Time.iso8601(query['start_at'])).to eq(trip.started_at)
+    expect(Time.iso8601(query['end_at'])).to eq(trip.ended_at)
+  end
+
   describe 'GET /index' do
     it 'previews the plan of a trip that has no recorded path yet' do
       planned = create(:trip, user:, path: nil, distance: nil, started_at: 1.day.from_now, ended_at: 2.days.from_now)
@@ -50,6 +62,137 @@ RSpec.describe '/trips', type: :request do
     it 'renders a successful response' do
       get trips_url
       expect(response).to be_successful
+    end
+
+    it 'lists trips shared by the family without loading their paths' do
+      owner = create(:user)
+      family = create(:family, creator: owner)
+      create(:family_membership, :owner, family:, user: owner)
+      create(:family_membership, family:, user:)
+      shared = create(:trip, user: owner, path: 'LINESTRING(13.4 52.5, 13.45 52.52)')
+      create(:shared_link, user: owner, resource_type: :trip, resource_id: shared.id,
+                           settings: { 'audience' => 'family', 'family_id' => family.id, 'show_route' => true })
+
+      queries = capture_sql { get trips_url }
+
+      expect(response.body).to include(shared.name)
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
+    it 'previews recorded routes from tiles without loading the path' do
+      trip = create(:trip, user:, path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      queries = capture_sql { get trips_url }
+
+      card = Nokogiri::HTML(response.body).at_css("#trip-#{trip.id} [data-controller='trip-maplibre-preview']")
+      expect(card['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(card['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(card['data-trip-maplibre-preview-api-key-value']).to eq(user.api_key)
+      expect(JSON.parse(card['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
+      expect(queries.grep(/FROM "trips"/).none? { |sql| sql.include?('"trips".*') || sql.include?('"trips"."path"') })
+        .to be(true)
+    end
+
+    describe 'Trip Detection hints' do
+      def long_absence_hint(days = 90)
+        I18n.t('trip_detection.hints.long_absence', days:)
+      end
+
+      it 'asks for a Home when detection is on and there is none' do
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+        expect(Nokogiri::HTML(response.body).at_css('[role="status"] a[href="/places"]')).to be_present
+      end
+
+      it 'explains that a Home tag on a Place does not set the Home' do
+        tag = create(:tag, user:, name: 'home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Casa'))
+        get trips_path
+        expect(response.body).to include(
+          ERB::Util.html_escape(I18n.t('trip_detection.hints.tagged_home', place: 'Casa', tag: 'home'))
+        )
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+        link = Nokogiri::HTML(response.body).at_css('[role="status"] a')
+        expect(link['href']).to eq(places_path(tag_ids: [tag.id]))
+        expect(link.text.strip).to eq(I18n.t('trip_detection.hints.tagged_home_link', tag: 'home'))
+      end
+
+      it 'escapes the Place and tag names in the Home tag hint' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: '<b>Casa</b>'))
+        get trips_path
+        hint = Nokogiri::HTML(response.body).at_css('[data-testid="trip-detection-hint"]')
+        expect(hint.at_css('b')).to be_nil
+        expect(hint.text).to include('<b>Casa</b>')
+      end
+
+      it 'keeps the plain Places link on the long-absence hint next to the Home tag hint' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Casa'))
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        links = Nokogiri::HTML(response.body).css('[data-testid="trip-detection-hint"] a').map { |a| a['href'] }
+        expect(links).to eq([places_path(tag_ids: [tag.id]), places_path])
+      end
+
+      it 'recognises a Home tag named in another language' do
+        tag = create(:tag, user:, name: 'Zuhause')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Wohnung'))
+        get trips_path
+        expect(response.body).to include(
+          ERB::Util.html_escape(I18n.t('trip_detection.hints.tagged_home', place: 'Wohnung', tag: 'Zuhause'))
+        )
+      end
+
+      it 'asks for a Home when the only Place with the Home tag is archived' do
+        tag = create(:tag, user:, name: 'Home')
+        Tagging.create!(tag:, taggable: create(:place, user:, name: 'Old flat', archived_at: Time.current))
+        get trips_path
+        expect(response.body).to include(I18n.t('trip_detection.hints.no_home'))
+        expect(response.body).not_to include('Old flat')
+      end
+
+      it 'shows no hint once there is a Home' do
+        create(:home, user:, place: create(:place, user:))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+      end
+
+      it 'shows no hint when detection is off' do
+        user.update!(settings: user.settings.merge('trip_detection_enabled' => false,
+                                                   'trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).not_to include(I18n.t('trip_detection.hints.no_home'))
+        expect(response.body).not_to include(long_absence_hint)
+      end
+
+      it 'explains a skipped long absence' do
+        create(:home, user:, place: create(:place, user:))
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).to include(long_absence_hint)
+      end
+
+      it 'names the longest trip from the detection policy in the long-absence hint' do
+        stub_const('Trips::Detection::Policy::MAX_TRIP_DURATION', 60.days)
+        user.update!(settings: user.settings.merge('trip_detection_long_absence' => true))
+        get trips_path
+        expect(response.body).to include(long_absence_hint(60))
+        expect(long_absence_hint(60)).to include('60')
+      end
+    end
+
+    it 'filters the list by origin' do
+      create(:trip, user:, name: 'Planned by hand')
+      create(:trip, user:, name: 'Found on its own', origin: :detected)
+
+      get trips_path(origin: 'detected')
+
+      names = Nokogiri::HTML(response.body).css('[data-testid="trip-card-name"]').map { _1.text.strip }
+      expect(names).to eq(['Found on its own'])
+      expect(Nokogiri::HTML(response.body).at_css('select[name="origin"] option[selected]')['value']).to eq('detected')
     end
 
     context 'when trip path is not yet calculated' do
@@ -72,12 +215,73 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'hands the poster studio a trip stats line from the stored distance' do
+      trip.update_columns(distance: 27_430)
+
+      get trip_url(trip)
+
+      studio = Nokogiri::HTML(response.body).at_css('#poster-studio')
+      expect(studio['data-poster-studio-editor-stats-label-value']).to eq('27.4 km')
+      toggle = studio.at_css('[data-poster-studio-editor-target="statsToggle"]')
+      expect(toggle).to be_present
+      expect(toggle['checked']).to be_nil
+    end
+
+    it 'hands the replay speed the user distance unit' do
+      user.update!(settings: user.settings.merge('maps' => { 'distance_unit' => 'mi' }))
+
+      get trip_url(trip)
+
+      map = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(map['data-trip-maplibre-distance-unit-value']).to eq('mi')
+    end
+
+    it 'offers no stats block before the trip distance is calculated' do
+      trip.update_columns(distance: nil)
+
+      get trip_url(trip)
+
+      studio = Nokogiri::HTML(response.body).at_css('#poster-studio')
+      expect(studio.at_css('[data-poster-studio-editor-target="statsToggle"]')).to be_nil
+    end
+
     it 'does not load the unused raw point coordinate projection' do
       queries = capture_sql { get trip_url(trip) }
 
       expect(
         queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
       ).to be(true)
+    end
+
+    it 'draws the route from tiles instead of embedding the path' do
+      coordinates = Array.new(50_000) { |i| "#{13 + (i * 0.00001)} #{52 + (i * 0.00001)}" }
+      Trip.where(id: trip.id).update_all(['path = ST_GeomFromText(?, 4326)', "LINESTRING(#{coordinates.join(', ')})"])
+
+      get trip_url(trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(wrapper.key?('data-trip-maplibre-path-data-value')).to be(false)
+      expect(wrapper['data-trip-maplibre-tiles-url-value'])
+        .to start_with("/api/v1/tiles/trips/#{trip.id}/{z}/{x}/{y}.mvt")
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).not_to be_empty
+      bounds = JSON.parse(wrapper['data-trip-maplibre-full-bounds-value'])
+      expect(bounds.map { |pair| pair.map { _1.round(5) } }).to eq([[13.0, 52.0], [13.49999, 52.49999]])
+      expect(response.body).not_to include('13.00001')
+      expect(response.body.bytesize).to be < 400_000
+    end
+
+    it "lists no days before a Lite user's data window" do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+      old = 2.years.ago.change(hour: 10)
+      old_trip = create(:trip, user:, started_at: old.beginning_of_day, ended_at: old.end_of_day,
+                               path: 'LINESTRING(13.4 52.5, 13.5 52.55)', skip_calculation_enqueue: true)
+      create(:point, user:, timestamp: old.to_i, lonlat: 'POINT(13.4 52.5)')
+
+      get trip_url(old_trip)
+
+      wrapper = Nokogiri::HTML(response.body).at_css('[data-controller="trip-maplibre"]')
+      expect(JSON.parse(wrapper['data-trip-maplibre-day-keys-value'])).to eq([])
     end
 
     it 'renders the recalculate button' do
@@ -94,7 +298,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'renders a read-only itinerary for a TREK-managed trip' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(trip_source: source, source_identifier: '12', source_status: :active)
       day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
@@ -122,7 +326,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'says when a TREK plan was synced and links back to the trip in TREK' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(trip_source: source, source_identifier: '12', source_status: :active,
                    source_synced_at: 5.minutes.ago)
@@ -199,7 +403,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'shows a future TREK trip as planned instead of permanently calculating its path' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(
         trip_source: source,
@@ -462,6 +666,18 @@ RSpec.describe '/trips', type: :request do
       ).to be(true)
     end
 
+    it 'previews the saved route from tiles' do
+      trip.update_columns(path: 'LINESTRING(13.4 52.5, 13.45 52.52, 13.5 52.55)')
+
+      get edit_trip_url(trip)
+
+      preview = Nokogiri::HTML(response.body).at_css("[data-controller='trip-maplibre-preview']")
+      expect(preview['data-trip-maplibre-preview-path-value']).to be_nil
+      expect(preview['data-trip-maplibre-preview-tiles-url-value']).to start_with("/api/v1/tiles/trips/#{trip.id}/")
+      expect(JSON.parse(preview['data-trip-maplibre-preview-bounds-value'])).to eq([[13.4, 52.5], [13.5, 52.55]])
+      expect(response.body).not_to include('13.45')
+    end
+
     it 'ends the form with saving and cancelling back to the trip' do
       get edit_trip_url(trip)
 
@@ -471,7 +687,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'keeps the name and dates of a TREK-managed trip read-only and says where to change them' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       trip.update!(trip_source: create(:trip_source, user:), source_identifier: '12', source_status: :active)
 
       get edit_trip_url(trip)
@@ -558,6 +774,23 @@ RSpec.describe '/trips', type: :request do
 
         expect(response).to redirect_to(trip_url(trip))
       end
+
+      it 'marks a Detected Trip as edited' do
+        trip = create(:trip, user:, origin: :detected)
+        patch trip_path(trip), params: { trip: { name: 'Portugal with Anna' } }
+
+        expect(trip.reload).to have_attributes(user_edited_at: be_present, origin: 'detected')
+      end
+
+      it 'lets a Detected Trip take the exact period of another Detected Trip' do
+        other = create(:trip, user:, origin: :detected)
+        trip = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        patch trip_path(trip), params: { trip: { started_at: other.started_at, ended_at: other.ended_at } }
+
+        expect(response).to redirect_to(trip_url(trip))
+        expect(trip.reload).to have_attributes(started_at: other.started_at, ended_at: other.ended_at)
+      end
     end
 
     context 'with invalid parameters' do
@@ -583,6 +816,83 @@ RSpec.describe '/trips', type: :request do
       delete trip_url(trip)
 
       expect(response).to redirect_to(trips_url)
+    end
+
+    it 'dismisses the period when a Detected Trip is deleted' do
+      detected = create(:trip, user:, origin: :detected, started_at: 2.months.ago, ended_at: 1.month.ago)
+
+      expect { delete trip_path(detected) }.to change(user.trip_detection_dismissals, :count).by(1)
+      expect(Trip.exists?(detected.id)).to be(false)
+    end
+  end
+
+  describe 'privacy zones on the trip page' do
+    let(:owner) { create(:user, settings: { 'timezone' => 'UTC' }) }
+    let(:trip) do
+      create(:trip, user: owner, started_at: Time.utc(2026, 4, 1), ended_at: Time.utc(2026, 4, 14),
+                    skip_calculation_enqueue: true)
+    end
+
+    before do
+      sign_in owner
+      home = create(:place, user: owner, latitude: 60.0, longitude: 10.0, lonlat: 'POINT(10.0 60.0)')
+      create(:tagging, tag: create(:tag, user: owner, privacy_radius_meters: 1_000), taggable: home)
+      create(:point, user: owner, lonlat: 'POINT(10.0 60.0)', timestamp: Time.utc(2026, 4, 2, 9).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.0 61.0)', timestamp: Time.utc(2026, 4, 2, 10).to_i)
+      create(:point, user: owner, lonlat: 'POINT(11.5 61.5)', timestamp: Time.utc(2026, 4, 2, 11).to_i)
+      create(:point, user: owner, lonlat: 'POINT(12.0 62.0)', timestamp: Time.utc(2026, 4, 3, 10).to_i)
+    end
+
+    it 'never starts a day, or fits the map, inside a privacy zone' do
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(JSON.parse(data['data-trip-maplibre-day-endpoints-value'])['2026-04-02'])
+        .to eq('first' => [11.0, 61.0], 'last' => [11.5, 61.5])
+      expect(JSON.parse(data['data-trip-maplibre-day-bounds-value'])['2026-04-02']).to eq([[11.0, 61.0], [11.5, 61.5]])
+      expect(JSON.parse(data['data-trip-maplibre-full-bounds-value'])).to eq([[11.0, 61.0], [12.0, 62.0]])
+    end
+
+    it 'fits trip previews to the route outside the zone' do
+      trip.update_columns(path: 'SRID=4326;LINESTRING(10.0 60.0, 11.0 61.0)')
+
+      get trips_path
+      card_bounds = Nokogiri::HTML(response.body).at_css("#map-#{trip.id}")['data-trip-maplibre-preview-bounds-value']
+      get edit_trip_path(trip)
+      form_bounds = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre-preview"]')
+                            .attribute('data-trip-maplibre-preview-bounds-value').value
+
+      [card_bounds, form_bounds].each do |bounds|
+        (min_lon, min_lat), (max_lon, max_lat) = JSON.parse(bounds)
+        expect(Geocoder::Calculations.distance_between([60.0, 10.0], [min_lat, min_lon], units: :km)).to be >= 0.99
+        expect([max_lon, max_lat]).to eq([11.0, 61.0])
+      end
+    end
+
+    it 'gives the trip page empty full bounds when every point lies inside the zone' do
+      Point.where(user: owner).where.not(lonlat: 'POINT(10.0 60.0)').delete_all
+
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(data['data-trip-maplibre-full-bounds-value']).to eq('[]')
+    end
+
+    it 'gives a trip preview empty bounds when the whole route lies inside the zone' do
+      trip.update_columns(path: 'SRID=4326;LINESTRING(10.0 60.0, 10.001 60.001)')
+
+      get trips_path
+
+      expect(Nokogiri::HTML(response.body).at_css("#map-#{trip.id}")['data-trip-maplibre-preview-bounds-value'])
+        .to eq('[]')
+    end
+
+    it 'keys the route tile URL by the zone fingerprint' do
+      get trip_path(trip)
+
+      data = Nokogiri::HTML(response.body).at_css('[data-controller~="trip-maplibre"]')
+      expect(data['data-trip-maplibre-tiles-url-value'])
+        .to end_with("&pz=#{Maps::PrivacyZoneMasker.new(owner).fingerprint}")
     end
   end
 end

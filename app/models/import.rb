@@ -34,7 +34,7 @@ class Import < ApplicationRecord
     google_phone_takeout: 3, gpx: 4, immich_api: 5, geojson: 6, photoprism_api: 7,
     user_data_archive: 8, kml: 9,
     csv: 10, tcx: 11, fit: 12, polarsteps: 13, google_photos: 14,
-    mobile_photo_library: 15
+    mobile_photo_library: 15, swarm: 16
   }, allow_nil: true
 
   enum :additional_data_extraction_status, {
@@ -49,6 +49,13 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  def self.unique_name(original_name)
+    return original_name unless exists?(name: original_name)
+
+    extension = File.extname(original_name)
+    "#{File.basename(original_name, extension)}_#{Time.current.strftime('%Y%m%d_%H%M%S')}#{extension}"
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -61,12 +68,8 @@ class Import < ApplicationRecord
     Users::ImportDataJob.perform_later(id)
   end
 
-  def reverse_geocoded_points_count
-    points.reverse_geocoded.count
-  end
-
   def years_and_months_tracked
-    quoted_tz = ActiveRecord::Base.connection.quote(Time.zone.tzinfo.identifier)
+    quoted_tz = ActiveRecord::Base.connection.quote(user.timezone_iana)
     points
       .select(Arel.sql(
                 "DISTINCT EXTRACT(YEAR FROM TO_TIMESTAMP(timestamp) AT TIME ZONE #{quoted_tz})::integer AS year, \
@@ -110,6 +113,21 @@ class Import < ApplicationRecord
     additional_data_extraction.fetch('counts', {}).transform_keys(&:to_sym)
   end
 
+  # Portable identity shared by source files and source-scoped export metadata.
+  def backup_reference
+    as_json(only: %w[name source]).merge('created_at' => created_at.iso8601(6))
+  end
+
+  def failure_summary
+    I18n.t("ux_p2.import.#{failure_key}")
+  end
+
+  # The list has no reference beside it, so a generic failure points to the
+  # import page instead; a format error reads the same everywhere.
+  def failure_summary_in_list
+    I18n.t("ux_p2.import.#{failure_key == 'failed_reason' ? 'failed_reason_in_list' : failure_key}")
+  end
+
   def extraction_error_message
     additional_data_extraction['error_message']
   end
@@ -133,10 +151,6 @@ class Import < ApplicationRecord
     false
   end
 
-  def trust_source_for_extraction?
-    additional_data_extraction.dig('options', 'trust_source') != false
-  end
-
   # Two rapid submissions both pass the extraction policy before either
   # writes; the compare-and-swap lets exactly one of them move the status
   # to pending and enqueue the job.
@@ -149,6 +163,10 @@ class Import < ApplicationRecord
   end
 
   private
+
+  def failure_key
+    error_message.to_s.match?(/detect.*format|unsupported|parse|json/i) ? 'format_error' : 'failed_reason'
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current

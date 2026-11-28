@@ -7,4 +7,5 @@ import "@hotwired/turbo-rails"
 
 import "./channels"
 
-Rails.start()
+// The vendored UJS build can auto-start when it attaches itself to window.
+if (!window._rails_loaded) Rails.start()

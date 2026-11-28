@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Imports::Create do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:service) { described_class.new(user, import) }
 
@@ -38,6 +40,51 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.status).to eq('completed')
         end
+
+        it 'records import_succeeded for Dawarich Cloud with the import' do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+          expect { service.call }.to have_enqueued_job(Analytics::DeliverEventJob)
+          expect(AnalyticsEvent.sole).to have_attributes(event: 'import_succeeded',
+                                                         dedup_key: "import_succeeded:#{import.id}")
+        end
+      end
+
+      context 'when the file holds no points at all' do
+        let(:user) { empty_import.user }
+        let(:empty_import) { create(:import, source: 'geojson', status: 'created', name: 'empty.json') }
+
+        before do
+          empty_import.file.attach(io: StringIO.new({ type: 'FeatureCollection', features: [] }.to_json),
+                                   filename: 'empty.json', content_type: 'application/json')
+        end
+
+        it 'warns once and leads to the import list' do
+          described_class.new(user, empty_import).call
+
+          notifications = user.notifications.where(title: 'Import completed with no points')
+          expect(notifications.count).to eq(1)
+          expect(notifications.first).to have_attributes(kind: 'warning', action_path: '/imports')
+        end
+      end
+
+      context 'when every point in the file was already imported' do
+        let(:user) { import.user }
+        let(:repeat_import) { create(:import, user:, source: 'owntracks', status: 'created') }
+
+        before do
+          service.call
+          repeat_import.file.attach(io: File.open(file_path), filename: 'again.rec',
+                                    content_type: 'application/octet-stream')
+        end
+
+        it 'says so once and leads to the import list' do
+          described_class.new(user, repeat_import).call
+
+          notification = user.notifications.find_by!(title: 'Import completed with no new points')
+          expect(notification.kind).to eq('info')
+          expect(notification.action_path).to eq('/imports')
+        end
       end
 
       context 'when post-import processing raises' do
@@ -68,6 +115,12 @@ RSpec.describe Imports::Create do
           service.call
 
           expect(user.notifications.warning.where('title ILIKE ?', '%post-processing%')).to exist
+        end
+
+        it 'leads from that notification to the import list' do
+          service.call
+
+          expect(user.notifications.warning.last.action_path).to eq('/imports')
         end
 
         it 'creates a single notification when multiple steps fail' do
@@ -185,6 +238,33 @@ RSpec.describe Imports::Create do
             expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
           end
         end
+
+        it 'schedules Trip Detection for the user' do
+          clear_trip_detection_schedule(user.id)
+          freeze_time do
+            expect { service.call }.to have_enqueued_job(Trips::DetectJob).with(user.id)
+                                                                          .at(Trips::DetectJob::DEBOUNCE_DELAY.from_now)
+          end
+        end
+
+        it 'schedules one Trip Detection run for several imports in a row' do
+          clear_trip_detection_schedule(user.id)
+          second = create(:import, source: 'owntracks', name: '2024-03-copy.rec')
+          second.file.attach(io: File.open(file_path), filename: '2024-03-copy.rec',
+                             content_type: 'application/octet-stream')
+
+          expect do
+            service.call
+            described_class.new(user, second).call
+          end.to have_enqueued_job(Trips::DetectJob).with(user.id).exactly(:once)
+        end
+
+        it 'schedules an achievements check from the oldest imported point' do
+          clear_achievement_checks(user.id)
+
+          expect { service.call }.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+          expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([import.points.minimum(:timestamp)])
+        end
       end
 
       context 'when import fails' do
@@ -205,7 +285,13 @@ RSpec.describe Imports::Create do
             service.call
 
             expect(user.notifications.last.content).to \
-              include('Import "2024-03.rec" failed: StandardError, stacktrace: ')
+              include('Import &quot;2024-03.rec&quot; failed.', '/imports/')
+          end
+
+          it 'opens the import list, which survives the import being deleted' do
+            service.call
+
+            expect(user.notifications.last.action_path).to eq('/imports')
           end
 
           it 'localizes the failed notification' do
@@ -215,7 +301,7 @@ RSpec.describe Imports::Create do
 
             expect(user.notifications.last.title).to eq("L'importation a échoué")
             expect(user.notifications.last.content).to \
-              include("L'importation « 2024-03.rec » a échoué : StandardError, détail de l'erreur : ")
+              include('L’importation « 2024-03.rec » a échoué.', '/imports/')
           end
         end
 
@@ -232,7 +318,7 @@ RSpec.describe Imports::Create do
             service.call
 
             expect(user.notifications.last.content).to \
-              include('Import "2024-03.rec" failed, please contact us at hi@dawarich.com')
+              include('Import &quot;2024-03.rec&quot; failed.', '/imports/')
           end
 
           it 'localizes the failed notification' do
@@ -241,7 +327,7 @@ RSpec.describe Imports::Create do
             service.call
 
             expect(user.notifications.last.content).to \
-              include("L'importation « 2024-03.rec » a échoué. Contactez-nous à hi@dawarich.com")
+              include('L’importation « 2024-03.rec » a échoué.', '/imports/')
           end
         end
       end
@@ -325,6 +411,36 @@ RSpec.describe Imports::Create do
         expect { service.call }.to change { import.points.count }.from(0)
 
         expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    describe 'speeds for fixes recorded without one' do
+      # Invented fixes on the equator, mid-Atlantic, 15 km a minute apart (900 km/h).
+      let(:fixes) { [[-30.0, 0], [-29.865, 60], [-29.73, 120]] }
+
+      it 'derives them for track files so flights are recognised' do
+        import = create(:import, user:, source: 'csv')
+        rows = fixes.map { |lon, seconds| "0.0,#{lon},#{1_718_444_200 + seconds}" }
+        import.file.attach(io: StringIO.new("lat,lon,timestamp\n#{rows.join("\n")}\n"), filename: 'flight.csv',
+                           content_type: 'text/csv')
+
+        described_class.new(user, import).call
+
+        expect(import.points.order(:timestamp).pluck(:velocity).map { |speed| speed&.to_f.to_f * 3.6 })
+          .to match([0, be_within(10).of(900), 0])
+      end
+
+      it 'leaves photo locations without a speed' do
+        import = create(:import, user:, source: 'immich_api')
+        photos = fixes.map do |lon, seconds|
+          { latitude: 0.0, longitude: lon, lonlat: "POINT(#{lon} 0.0)", timestamp: 978_296_400 + seconds }
+        end
+        import.file.attach(io: StringIO.new(photos.to_json), filename: 'geodata.json',
+                           content_type: 'application/json')
+
+        described_class.new(user, import).call
+
+        expect(import.points.pluck(:velocity).uniq).to eq([nil])
       end
     end
 

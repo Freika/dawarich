@@ -1,0 +1,75 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+require Rails.root.join('db/migrate/20261026000000_backfill_kml_velocities.rb')
+require Rails.root.join('db/migrate/20261026120000_backfill_missing_gpx_and_geojson_velocities.rb')
+require Rails.root.join('db/migrate/20261117110937_backfill_flyover_velocities.rb')
+
+RSpec.describe BackfillFlyoverVelocities do
+  subject(:migration) { described_class.new }
+
+  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+  def queued_backfills
+    enqueued_jobs.count { |job| job[:job] == DataMigrations::BackfillMissingVelocitiesJob }
+  end
+
+  it 'queues the backfill again on an instance that ran the 1.22 backfill' do
+    ActiveRecord::Base.connection.pool.internal_metadata['missing_velocities_backfill_enqueued'] = 'true'
+
+    expect { migration.up }.to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'does not queue a second backfill when the 1.22 migrations ran in the same upgrade' do
+    BackfillKmlVelocities.new.up
+    BackfillMissingGpxAndGeojsonVelocities.new.up
+    migration.up
+
+    expect(queued_backfills).to eq(1)
+  end
+
+  it 'does not queue a second backfill when replayed' do
+    2.times { described_class.new.up }
+
+    expect(queued_backfills).to eq(1)
+  end
+
+  it 'queues the backfill on a rerun after the job queue was unreachable' do
+    allow(DataMigrations::BackfillMissingVelocitiesJob)
+      .to receive(:perform_later).and_raise(StandardError, 'Connection refused')
+    expect { migration.up }.not_to raise_error
+    allow(DataMigrations::BackfillMissingVelocitiesJob).to receive(:perform_later).and_call_original
+
+    expect { described_class.new.up }.to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'logs how to start the backfill by hand when the job queue is unreachable' do
+    allow(DataMigrations::BackfillMissingVelocitiesJob)
+      .to receive(:perform_later).and_raise(StandardError, 'Connection refused')
+    allow(Rails.logger).to receive(:warn)
+
+    migration.up
+
+    expect(Rails.logger).to have_received(:warn).with(/DataMigrations::BackfillMissingVelocitiesJob\.perform_later/)
+  end
+
+  it 'does not start the backfill on Dawarich Cloud' do
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+    expect { migration.up }.not_to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'honours the opt-out variable' do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('SKIP_POINT_DIMENSION_BACKFILL').and_return('1')
+
+    expect { migration.up }.not_to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'aborts on a missing constant instead of hiding a broken deploy' do
+    allow(DataMigrations::BackfillMissingVelocitiesJob)
+      .to receive(:perform_later).and_raise(NameError, 'uninitialized constant')
+
+    expect { migration.up }.to raise_error(NameError)
+  end
+end

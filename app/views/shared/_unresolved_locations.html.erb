@@ -1,0 +1,8 @@
+<div class="rounded-lg border border-base-300 bg-base-200 p-3 mb-4 text-sm" data-testid="unresolved-locations">
+  <p><%= t('ux_p2.insights.names_pending') %></p>
+  <% if current_user.admin? && DawarichSettings.self_hosted? %>
+    <%= link_to t('ux_p2.insights.configure'), admin_settings_path, class: 'link' %>
+  <% else %>
+    <p><%= t('ux_p2.insights.ask_admin') %></p>
+  <% end %>
+</div>

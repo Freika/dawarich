@@ -4,6 +4,7 @@ class Users::DigestsMailer < ApplicationMailer
   helper Users::DigestsHelper
   helper CountryFlagHelper
   helper Users::DigestsMailerHelper
+  helper WeekStartHelper
 
   SIGNIFICANT_MINUTES = 60
 

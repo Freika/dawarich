@@ -15,13 +15,24 @@ RSpec.describe 'Family invitees are never sent to checkout', type: :request do
   describe 'an abandoned-checkout user who gets invited' do
     let(:invitee) { create(:user, status: :pending_payment, skip_auto_trial: true) }
 
-    it 'is taken to the invitation instead of the checkout on sign in' do
+    it 'joins the family instead of being sent to the checkout on sign in' do
       post user_session_path, params: {
         user: { email: invitee.email, password: invitee.password },
         invitation_token: invitation.token
       }
 
-      expect(response).to redirect_to(family_invitation_path(invitation.token))
+      expect(response).to redirect_to(family_path)
+      expect(invitee.reload.family).to eq(family)
+    end
+
+    it 'joins the family and goes back to the app when signing in from the app' do
+      post user_session_path, params: {
+        user: { email: invitee.email, password: invitee.password },
+        invitation_token: invitation.token
+      }, headers: { 'X-Dawarich-Client' => 'ios' }
+
+      expect(response).to redirect_to(%r{auth/ios/success\?token=})
+      expect(invitee.reload.family).to eq(family)
     end
 
     it 'still goes to resume checkout when no invitation is waiting' do

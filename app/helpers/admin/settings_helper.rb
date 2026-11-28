@@ -4,7 +4,7 @@ module Admin
   module SettingsHelper
     GEOCODING_SECTIONS = %w[photon geoapify nominatim locationiq rate_limit].freeze
     PROVIDER_SECTIONS = %w[photon geoapify nominatim locationiq].freeze
-    SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin' }.freeze
+    SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin', 'imports' => 'file-up' }.freeze
 
     CHIBIGEO_KEY_URL = 'https://chibigeo.com/docs/guides/dawarich-self-hosted-geocoding?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings'
 
@@ -19,7 +19,11 @@ module Admin
     def instance_section_title(section)
       return geocoding_provider_name(section) if PROVIDER_SECTIONS.include?(section)
 
-      section == 'rate_limit' ? t('admin.settings.show.geocoding.rate_limit') : t('admin.settings.show.points.title')
+      case section
+      when 'rate_limit' then t('admin.settings.show.geocoding.rate_limit')
+      when 'imports' then t('admin.settings.show.imports.title')
+      else t('admin.settings.show.points.title')
+      end
     end
 
     def instance_section_icon(section)
@@ -58,10 +62,13 @@ module Admin
     def instance_setting_hint(setting, settings)
       case setting.key
       when :photon_api_host, :nominatim_api_host then t('admin.settings.show.fields.host_hint')
+      when :photon_api_language then t('admin.settings.show.fields.photon_api_language_hint')
       when :photon_api_use_https
         t('admin.settings.show.geocoding.https_locked') if https_locked?(setting, settings)
       when :reverse_geocoding_rps then t('admin.settings.show.fields.rps_hint')
       when :store_geodata then t('admin.settings.show.fields.store_geodata_hint')
+      when :import_max_file_size_mb then t('admin.settings.show.fields.import_max_file_size_mb_hint')
+      when :kml_max_file_size_mb then t('admin.settings.show.fields.kml_max_file_size_mb_hint')
       else
         t('admin.settings.show.fields.api_key_keep_hint') if secret_kept?(setting)
       end

@@ -25,12 +25,12 @@ RSpec.describe 'Locale registration', type: :request do
   end
 
   it 'suggests Spanish to a Spanish browser without applying it' do
-    get root_path, headers: { 'Accept-Language' => 'es-ES,es;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'es-ES,es;q=0.9' }
 
     banner = Nokogiri::HTML(response.body).at_css('[data-testid="locale-suggestion"]')
     expect(response.body).to include('<html lang="en"')
     expect(banner).to be_present
-    expect(banner.at_css('a')['href']).to eq('/?locale=es')
+    expect(banner.at_css('a')['href']).to eq('/users/sign_in?locale=es')
     expect(banner.text).to include(I18n.t('shared.locale_suggestion.message', locale: :es))
   end
 end

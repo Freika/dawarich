@@ -1,0 +1,15 @@
+fr:
+  javascript:
+    photo_cluster:
+      title: "Photos de ce groupe"
+      close: "Fermer"
+      previous: "Précédent"
+      next: "Suivant"
+      loading: "Chargement des photos…"
+      range: "%{start}–%{end} sur %{total} photos"
+      empty: "Aucune photo dans ce groupe."
+      error: "Impossible de charger les photos. Veuillez réessayer."
+      retry: "Réessayer"
+      back: "Retour aux miniatures"
+      image_error: "Miniature indisponible"
+      keyboard_hint: "Appuyez sur Entrée pour ouvrir le groupe de photos le plus proche du centre de la carte."

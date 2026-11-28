@@ -5,14 +5,14 @@
   <%= render 'settings/navigation' %>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <div class="card bg-base-200 shadow-xl">
+    <div class="card bg-base-200">
       <%= form_with url: settings_general_path, method: :patch, data: { turbo: false } do |f| %>
-        <div class="card-body">
+        <div class="card-body p-4 sm:p-8">
           <div class="space-y-8 animate-fade-in">
             <!-- Email Preferences Section -->
             <div id="email-digests">
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'mail', class: "text-primary mr-2" %> <%= t('.email_preferences') %>
+              <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                <%= icon 'mail', class: 'w-4 h-4 text-base-content/60' %> <%= t('.email_preferences') %>
               </h2>
               <% if DawarichSettings.email_configured? %>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
@@ -56,13 +56,13 @@
                   </label>
                 </div>
 
-                <% if DawarichSettings.self_hosted? %>
+                <% if DawarichSettings.self_hosted? && current_user.admin? %>
                   <div class="border-t border-base-content/10 pt-4">
                     <div class="flex flex-wrap items-center gap-3">
                       <%= link_to t('.send_test_email'), settings_test_email_path,
                                   data: { turbo: true, turbo_method: :post },
                                   class: 'btn btn-outline btn-sm' %>
-                      <span class="text-sm text-base-content/70"><%= t('.test_email_hint') %></span>
+                      <span class="text-sm text-base-content/70"><%= t('.test_email_worker_hint') %></span>
                     </div>
                   </div>
                 <% end %>
@@ -81,8 +81,8 @@
 
             <!-- Language Section -->
             <div>
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'globe', class: "text-primary mr-2" %> <%= t('.language') %>
+              <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                <%= icon 'globe', class: 'w-4 h-4 text-base-content/60' %> <%= t('.language') %>
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control">
@@ -117,8 +117,8 @@
 
             <!-- Timezone Section -->
             <div>
-              <h2 class="text-2xl font-bold mb-4 flex items-center">
-                <%= icon 'clock', class: "text-primary mr-2" %> <%= t('.timezone') %>
+              <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                <%= icon 'clock', class: 'w-4 h-4 text-base-content/60' %> <%= t('.timezone') %>
               </h2>
               <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                 <div class="form-control">
@@ -131,7 +131,7 @@
                                  .uniq(&:first)
                                  .sort_by { |_, _, seconds| seconds }
                                  .map { |iana, offset, _| ["(GMT#{offset}) #{iana}", iana] },
-                               { selected: current_user.timezone },
+                               { selected: current_user.timezone_iana },
                                class: "select select-bordered w-full" %>
                   <p class="text-sm text-base-content/70 mt-1">
                     <%= t('.all_dates_and_times_will_be_displayed_in_this_timezone') %>
@@ -140,11 +140,71 @@
               </div>
             </div>
 
+            <!-- Date and Time Section -->
+            <div>
+              <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                <%= icon 'calendar', class: 'w-4 h-4 text-base-content/60' %> <%= t('.date_and_time') %>
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <% preferences = current_user.safe_settings.date_time_preferences %>
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="form-control min-w-0">
+                    <label class="label" for="date_format">
+                      <span class="label-text font-medium"><%= t('.date_format') %></span>
+                    </label>
+                    <%= f.select :date_format, date_format_options, { selected: preferences.date_format },
+                                 id: 'date_format', class: 'select select-bordered w-full',
+                                 data: { testid: 'date-format-select' } %>
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="time_format">
+                      <span class="label-text font-medium"><%= t('.time_format') %></span>
+                    </label>
+                    <%= f.select :time_format, time_format_options, { selected: preferences.time_format },
+                                 id: 'time_format', class: 'select select-bordered w-full',
+                                 data: { testid: 'time-format-select' } %>
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="first_day_of_week">
+                      <span class="label-text font-medium"><%= t('.first_day_of_week') %></span>
+                    </label>
+                    <%= f.select :first_day_of_week, first_day_of_week_options,
+                                 { selected: preferences.first_day_of_week },
+                                 id: 'first_day_of_week', class: 'select select-bordered w-full',
+                                 data: { testid: 'first-day-of-week-select' } %>
+                  </div>
+                </div>
+                <p class="text-sm text-base-content/70"><%= t('.date_and_time_hint') %></p>
+              </div>
+            </div>
+
+            <div id="features">
+              <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                <%= icon 'toggle-right', class: 'w-4 h-4 text-base-content/60' %> <%= t('.features') %>
+              </h2>
+              <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
+                <p class="text-sm text-base-content/70"><%= t('.features_hint') %></p>
+                <% Users::SafeSettings::TOGGLEABLE_FEATURES.each do |feature| %>
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <%= f.check_box "#{feature}_enabled",
+                                      checked: current_user.feature_enabled?(feature),
+                                      class: "toggle toggle-primary" %>
+                      <div class="min-w-0">
+                        <span class="label-text font-medium"><%= t(".#{feature}_feature") %></span>
+                        <p class="text-sm text-base-content/70 mt-1"><%= t(".#{feature}_feature_hint") %></p>
+                      </div>
+                    </label>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
             <% if DawarichSettings.self_hosted? && current_user.supporter? %>
               <!-- Badge Toggle (only for verified supporters) -->
               <div>
-                <h2 class="text-2xl font-bold mb-4 flex items-center">
-                  <%= icon 'gem', class: 'mr-2 text-sky-400' %> <%= t('.supporter_badge') %>
+                <h2 class="text-lg font-medium mb-3 flex items-center gap-2">
+                  <%= icon 'gem', class: 'w-4 h-4 text-base-content/60' %> <%= t('.supporter_badge') %>
                 </h2>
                 <div class="bg-base-100 p-5 rounded-lg shadow-sm space-y-4">
                   <div class="form-control">
@@ -173,6 +233,6 @@
 
     <%= render 'settings/general/supporter_status' %>
 
-    <%= render 'settings/general/changelog_consent' %>
+    <%= render 'settings/general/changelog_consent' if DawarichSettings.self_hosted? %>
   </div>
 </div>

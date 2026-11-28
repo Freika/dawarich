@@ -27,10 +27,6 @@ export class CleanupHelper {
     return id
   }
 
-  addObserver(observer) {
-    this.observers.push(observer)
-  }
-
   cleanup() {
     this.listeners.forEach(({ target, event, handler, options }) => {
       target.removeEventListener(event, handler, options)

@@ -16,7 +16,8 @@ class SharedLinkContext
   end
 
   def show_photos?
-    settings['show_photos'] == true
+    # External photo libraries cannot be attributed to an individual import.
+    settings['show_photos'] == true && !shared_link.timeline_import_scoped?
   end
 
   def show_stats?
@@ -25,6 +26,13 @@ class SharedLinkContext
 
   def show_day_notes?
     settings['show_day_notes'] == true
+  end
+
+  # Map notes are shown for a period of time, so only on the links that share
+  # one. A note belongs to no import, so an import-scoped link shows none.
+  def show_map_notes?
+    settings['show_map_notes'] == true && (shared_link.timeline? || shared_link.track?) &&
+      !shared_link.timeline_import_scoped?
   end
 
   def show_route?

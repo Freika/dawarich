@@ -1,0 +1,17 @@
+<turbo-frame id="timeline-feed-frame">
+  <div class="timeline-note-results" data-testid="timeline-note-results">
+    <% if @notes.empty? %>
+      <p class="text-center text-sm text-base-content/60 py-8"><%= t('notes.index.nothing_found') %></p>
+    <% end %>
+    <%# Each result opens its month, on its day. %>
+    <% @notes.each do |note| %>
+      <%= link_to map_v2_path(panel: 'timeline', month: note.date.strftime('%Y-%m'), date: note.date),
+                  class: 'timeline-note-result', data: { turbo_frame: '_top' } do %>
+        <span class="timeline-note-result__date">
+          <%= l(note.date, format: :long) %> · <%= l(note.noted_at.in_time_zone, format: :hour_minute) %>
+        </span>
+        <span class="timeline-note-result__body"><%= note.body.truncate(220) %></span>
+      <% end %>
+    <% end %>
+  </div>
+</turbo-frame>

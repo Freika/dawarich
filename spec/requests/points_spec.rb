@@ -24,6 +24,27 @@ RSpec.describe '/points', type: :request do
         expect(response).to be_successful
       end
 
+      %w[gpx json].each do |format|
+        it "submits current date fields when exporting #{format} without searching" do
+          get points_url(start_at: 1.month.ago.iso8601, end_at: Time.current.iso8601)
+          page = Nokogiri::HTML(response.body)
+          button = page.at_css("button[formaction*='file_format=#{format}']")
+          expect(button).to be_present
+          form = page.at_css("form[id='#{button['form']}']")
+          expect(form).to be_present
+          expect(button['formmethod']).to eq('post')
+          fields = form.css('input[name]').to_h { |input| [input['name'], input['value']] }
+          fields['start_at'] = '2026-10-31T08:00'
+          fields['end_at'] = '2026-10-31T20:00'
+
+          expect { post button['formaction'], params: fields }.to change(Export, :count).by(1)
+          export = user.exports.last
+          expect(export.start_at).to eq(Time.iso8601("#{fields['start_at']}:00Z"))
+          expect(export.end_at).to eq(Time.iso8601("#{fields['end_at']}:00Z"))
+          expect(export.file_format).to eq(format)
+        end
+      end
+
       it 'renders the page-entry summary in French without missing translations' do
         user.update!(settings: { 'locale' => 'fr' })
 

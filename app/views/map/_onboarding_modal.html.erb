@@ -1,12 +1,15 @@
 <% if user_signed_in? %>
+<% has_home = current_user.homes.exists? %>
 <div data-controller="onboarding-modal"
      data-onboarding-modal-auto-value="<%= local_assigns.fetch(:auto_open, false) %>"
      data-onboarding-modal-showable-value="<%= onboarding_modal_showable?(current_user) %>"
      data-onboarding-modal-onboarding-url-value="<%= settings_onboarding_path %>"
      data-onboarding-modal-user-trial-value="<%= current_user.trial? %>"
      data-onboarding-modal-imports-count-value="<%= current_user.imports.count %>"
+     data-onboarding-modal-demo-description-value="<%= t('ux_p2.demo.description') %>"
      data-onboarding-modal-demo-data-url-value="<%= demo_data_settings_onboarding_path %>"
      data-onboarding-modal-has-demo-data-value="<%= current_user.imports.exists?(demo: true) %>"
+     data-onboarding-modal-has-home-value="<%= has_home %>"
      data-onboarding-modal-user-id-value="<%= current_user.id %>">
   <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
     <div class="modal-box max-w-2xl bg-base-200">
@@ -14,7 +17,7 @@
       <%# ═══ Choice Screen ═══ %>
       <div data-onboarding-modal-target="choiceScreen">
         <div class="text-center mb-6">
-          <h3 class="text-2xl font-bold text-primary mb-2"><%= t('.welcome_to_dawarich') %></h3>
+          <h3 class="text-2xl font-medium mb-2"><%= t('.welcome_to_dawarich') %></h3>
           <p class="text-base-content/70">
             <%= t('.your_map_starts_with_your_next_step_literally') %>
           </p>
@@ -28,7 +31,7 @@
               <div class="flex items-center gap-2 mb-2">
                 <%= icon 'smartphone', class: 'w-6 h-6 text-primary' %>
                 <h4 class="text-lg font-semibold"><%= t('.start_tracking_now') %></h4>
-                <span class="badge badge-primary badge-sm"><%= t('.minutes') %></span>
+                <span class="badge badge-ghost badge-sm"><%= t('.minutes') %></span>
               </div>
               <p class="text-sm text-base-content/70">
                 <%= t('.get_the_app_scan_a_qr_code_and_watch_your') %>
@@ -60,12 +63,12 @@
                 <h4 class="text-lg font-semibold"><%= t('.explore_with_demo_data') %></h4>
               </div>
               <p class="text-sm text-base-content/70">
-                <%= t('.load_sample_location_data_3_days_in_berlin_to_see') %>
+                <%= t('ux_p2.demo.description') %>
               </p>
             </div>
           </button>
           <%# Path D: Family %>
-          <% if family_feature_available? || current_user.in_family? %>
+          <% if family_nav_visible? %>
             <%= link_to family_home_path,
                   class: "card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-info sm:col-span-2",
                   data: { action: "onboarding-modal#dismiss" } do %>
@@ -95,21 +98,20 @@
           <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
             <%= icon 'arrow-left', class: 'w-4 h-4' %>
           </button>
-          <h3 class="text-xl font-bold"><%= t('.import_your_data') %></h3>
+          <h3 class="text-xl font-medium"><%= t('.import_your_data') %></h3>
         </div>
 
         <div class="card bg-base-100 shadow-sm mb-4">
           <div class="card-body p-4">
             <h4 class="card-title text-sm"><%= t('.supported_formats') %></h4>
-            <ul class="text-xs space-y-1">
-              <li><strong><%= t('.google_maps') %></strong> <%= t('.records_json_semantic_history_phone_takeout_json') %></li>
-              <li><strong><%= t('.gpx') %></strong> <%= t('.track_files_gpx') %></li>
-              <li><strong><%= t('.geojson') %></strong> <%= t('.feature_collections_json') %></li>
-              <li><strong><%= t('.owntracks') %></strong> <%= t('.recorder_files_rec') %></li>
-              <li><strong><%= t('.kml') %></strong> <%= t('.kml_files_kml_kmz') %></li>
-            </ul>
+            <%= render "imports/supported_formats" %>
             <div class="text-xs text-base-content/60 mt-2">
               <%= t('.file_format_is_automatically_detected_during_upload') %>
+            </div>
+            <div class="text-xs text-base-content/60 mt-2">
+              <%= t('.not_sure_where_your_app_keeps_its_export') %>
+              <%= link_to t('.step_by_step_export_guides'), 'https://dawarich.app/docs/getting-started/import-sources?utm_source=app&utm_medium=referral&utm_campaign=onboarding',
+                  class: 'link link-primary font-medium', target: '_blank', rel: 'noopener' %>
             </div>
             <% if current_user.legacy_trial? %>
               <div class="text-xs text-warning mt-2 font-medium">
@@ -145,7 +147,8 @@
             </div>
           </label>
 
-          <div class="flex justify-end">
+          <div class="flex flex-wrap justify-end gap-2">
+            <button type="button" class="btn btn-ghost" data-action="onboarding-modal#finish"><%= t('trip_detection.onboarding.continue') %></button>
             <%= form.submit t('.import_files'), class: "btn btn-primary",
                 data: { upload_target: "submit" } %>
           </div>
@@ -158,7 +161,7 @@
           <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
             <%= icon 'arrow-left', class: 'w-4 h-4' %>
           </button>
-          <h3 class="text-xl font-bold"><%= t('.start_tracking') %></h3>
+          <h3 class="text-xl font-medium"><%= t('.start_tracking') %></h3>
         </div>
 
         <div class="card bg-base-100 shadow-sm">
@@ -166,17 +169,17 @@
             <%# Step 1: Download %>
             <div>
               <div class="flex items-center gap-2 mb-2">
-                <div class="badge badge-primary badge-sm">1</div>
+                <div class="badge badge-ghost badge-sm tabular-nums">1</div>
                 <h4 class="font-semibold"><%= t('.download_the_app') %></h4>
               </div>
               <div class="flex justify-center items-center gap-3 flex-wrap">
                 <%= link_to 'https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&itsct=apps_box_badge&mttnsubad=6739544999',
-                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105' do %>
+                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-base-content/30 transition-colors duration-150' do %>
                   <%= image_tag 'Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg',
                       class: 'h-[40px] transition-opacity duration-300' %>
                 <% end %>
                 <%= link_to 'https://play.google.com/store/apps/details?id=app.dawarich.Dawarich',
-                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105',
+                    class: 'inline-block rounded-lg border-2 border-transparent hover:border-base-content/30 transition-colors duration-150',
                     target: '_blank', rel: 'noopener' do %>
                   <%= image_tag 'GetItOnGooglePlay_Badge_Web_color_English.svg',
                       class: 'h-[40px] transition-opacity duration-300' %>
@@ -187,7 +190,7 @@
             <%# Step 2: Connect %>
             <div>
               <div class="flex items-center gap-2 mb-2">
-                <div class="badge badge-primary badge-sm">2</div>
+                <div class="badge badge-ghost badge-sm tabular-nums">2</div>
                 <h4 class="font-semibold"><%= t('.scan_qr_code_to_connect') %></h4>
               </div>
               <p class="text-sm text-base-content/70 mb-3">
@@ -217,11 +220,49 @@
         </div>
 
         <div class="flex justify-end mt-4">
-          <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
+          <button class="btn btn-primary" data-action="onboarding-modal#finish">
             <%= t('.got_it_let_s_start') %>
           </button>
         </div>
       </div>
+
+      <%# ═══ Home Screen ═══ %>
+      <%# Only while onboarding is open and no Home exists. showHome() attaches place-location, so the map starts only when shown. %>
+      <% if onboarding_modal_showable?(current_user) && !has_home %>
+        <div data-onboarding-modal-target="homeScreen" class="hidden">
+          <h3 class="text-xl font-medium mb-2"><%= t('trip_detection.onboarding.title') %></h3>
+          <p class="text-sm text-base-content/70 mb-4"><%= t('trip_detection.onboarding.intro') %></p>
+
+          <%= form_with url: homes_path, data: { action: 'turbo:submit-end->onboarding-modal#homeSaved' } do |f| %>
+            <div data-onboarding-modal-target="homeMap" data-place-location-editable-value="true"
+                 data-place-location-latitude-value="0" data-place-location-longitude-value="0"
+                 data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+                 data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>"
+                 data-action="input->onboarding-modal#homeLocationChanged change->onboarding-modal#homeLocationChanged">
+              <div class="h-64 rounded-xl overflow-hidden mb-3" data-place-location-target="map"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label class="form-control min-w-0"><span><%= t('ux_p2.places.latitude') %></span><%= f.number_field :latitude, step: :any, min: -90, max: 90, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'latitude', onboarding_modal_target: 'homeLatitude', action: 'change->place-location#coordinatesChanged' } %></label>
+                <label class="form-control min-w-0"><span><%= t('ux_p2.places.longitude') %></span><%= f.number_field :longitude, step: :any, min: -180, max: 180, required: true, class: 'input input-bordered w-full', data: { place_location_target: 'longitude', onboarding_modal_target: 'homeLongitude', action: 'change->place-location#coordinatesChanged' } %></label>
+              </div>
+            </div>
+
+            <p class="hidden text-sm text-warning mt-3" role="status" data-onboarding-modal-target="homeDeniedHint">
+              <%= t('trip_detection.onboarding.location_denied') %>
+            </p>
+
+            <div class="flex flex-wrap justify-end gap-2 mt-4">
+              <button type="button" class="btn btn-ghost" data-action="onboarding-modal#dismiss">
+                <%= t('trip_detection.onboarding.skip') %>
+              </button>
+              <button type="button" class="btn btn-outline" data-action="onboarding-modal#locateHome">
+                <%= t('trip_detection.onboarding.use_my_location') %>
+              </button>
+              <%= f.submit t('trip_detection.onboarding.confirm'), class: 'btn btn-primary', disabled: true,
+                  data: { onboarding_modal_target: 'homeSubmit' } %>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
 
     </div>
 

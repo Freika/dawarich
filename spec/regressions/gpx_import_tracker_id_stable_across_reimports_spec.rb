@@ -66,9 +66,10 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     ids_b = Point.where(import_id: import_b.id).pluck(:tracker_id).uniq
 
     expect(ids_a).to eq(ids_b)
-    expect(ids_a.first).to start_with('gpx-')
-    expect(ids_a.first).not_to include(import_a.id.to_s)
-    expect(ids_a.first).not_to include(import_b.id.to_s)
+    # The id is the device hash, not the per-import fallback "import-<id>-trk-…".
+    # (A substring check against the import id failed whenever a small id such
+    # as 30 happened to appear inside the hex hash.)
+    expect(ids_a.first).to match(/\Agpx-\h{16}-trk-0-seg-0\z/)
   end
 
   it 'prefers <src> over <name> for device identity' do

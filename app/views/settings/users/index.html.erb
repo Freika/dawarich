@@ -52,7 +52,7 @@
             <tr>
               <td>
                 <div>
-                  <%= link_to user.email, settings_user_path(user), class: 'font-bold underline hover:no-underline' %>
+                  <%= link_to user.email, settings_user_path(user), class: 'font-medium underline hover:no-underline' %>
                 </div>
               </td>
               <td>
@@ -104,7 +104,7 @@
 
 <dialog id="create_user" class="modal">
   <div class="modal-box">
-    <h2 class="text-2xl font-bold"><%= t('.create_a_new_user') %></h2>
+    <h2 class="text-2xl font-medium"><%= t('.create_a_new_user') %></h2>
     <%= form_for :user, url: settings_users_path, method: :post, data: { turbo_method: :post, turbo: false } do |f| %>
       <div class="form-control">
         <%= f.label :email do %>
@@ -133,7 +133,7 @@
   <% unless user == current_user %>
     <dialog id="delete_user_<%= user.id %>" class="modal">
       <div class="modal-box">
-        <h3 class="text-lg font-bold"><%= t('.delete_user') %></h3>
+        <h3 class="text-lg font-medium"><%= t('.delete_user') %></h3>
         <p class="py-4">
           <%= t('.are_you_sure_you_want_to_delete') %> <strong><%= user.email %></strong><%= t('.this_will_permanently_remove_their_account_and_all_associated_data') %>
         </p>

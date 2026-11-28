@@ -32,6 +32,12 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
           expect { parser }.to change { Point.count }.by(6)
         end
 
+        it 'streams the file without buffering it whole' do
+          expect(Oj).not_to receive(:saj_parse)
+
+          expect { parser }.to change { Point.count }.by(6)
+        end
+
         it 'stamps the per-import tracker id on every point' do
           parser
 

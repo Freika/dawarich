@@ -93,4 +93,18 @@ RSpec.describe 'map/timeline_feeds/_day' do
   it 'prints each visit duration once, opposite its arrival time' do
     expect(rendered).to have_css('.visit-row__duration', text: '24m')
   end
+
+  context 'when a visit has no name of its own' do
+    let(:entries) do
+      [visit_entry(id: 7, name: 'Corner Cafe', start_hm: '09:00', end_hm: '10:00', duration: 60)
+        .merge(editable_name: nil)]
+    end
+
+    it 'leaves the name editor empty and shows the display name as a hint' do
+      field = Nokogiri::HTML(rendered).at_css('#visit-editor-name-7')
+
+      expect(field['value'].to_s).to be_empty
+      expect(field['placeholder']).to eq('Corner Cafe')
+    end
+  end
 end

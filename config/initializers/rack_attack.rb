@@ -142,7 +142,12 @@ def throttle_path(request)
 end
 
 def request_api_key(request)
-  safe_params(request)['api_key'] || bearer_token(request.get_header('HTTP_AUTHORIZATION'))
+  # safe_body_params parses+rewinds a JSON body, so an api_key sent there is
+  # throttled like one in the query string or Authorization header (the controller
+  # authenticates from the JSON body, so the throttle must see it too).
+  safe_params(request)['api_key'] ||
+    bearer_token(request.get_header('HTTP_AUTHORIZATION')) ||
+    safe_body_params(request)['api_key']
 end
 
 # Disabled in the test environment so request specs aren't throttled by

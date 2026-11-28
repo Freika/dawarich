@@ -1,19 +1,14 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { strippedSource } from "./support/stripped_source.mjs"
 
 // clearLayerReferences() touches only `this.layers` and `this.eventHandlersSetup`,
 // so it runs against a plain object — no map, no layer classes. Imports are
 // stripped because the other methods reference them, but none of that executes
 // here (same base64 data-URL technique as points_mvt_layer_test.mjs).
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
-    import.meta.url,
-  ),
-  "utf8",
+const withoutImports = await strippedSource(
+  "controllers/maps/maplibre/layer_manager.js",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(withoutImports).toString("base64")}`
 const { LayerManager } = await import(moduleUrl)
 
@@ -98,4 +93,20 @@ test("unsubscribes every delegated map handler before rebuilding a style", () =>
 
 test("tears down without any layers present", () => {
   assert.deepEqual(teardown({}).layers, {})
+})
+
+test("clears every DOM label layer before rebuilding the map style", () => {
+  const seen = []
+  const ids = ["placesLayer", "areasLayer", "visitsLayer", "familyLayer"]
+  teardown(
+    Object.fromEntries(
+      ids.map((id) => [
+        id,
+        {
+          remove: () => seen.push(id),
+        },
+      ]),
+    ),
+  )
+  assert.deepEqual(seen.sort(), ids.sort())
 })

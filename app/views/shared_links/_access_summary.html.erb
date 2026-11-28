@@ -1,0 +1,12 @@
+<dl class="rounded-lg bg-base-200 p-3 mb-4 text-sm space-y-2" data-testid="share-access-summary">
+  <div><dt class="font-semibold"><%= t('ux_p2.sharing.expires') %></dt><dd><%= shared_link_expiration_label(share) %></dd></div>
+  <% if share.timeline? %>
+    <div><dt class="font-semibold"><%= t('ux_p2.sharing.period') %></dt><dd><%= formatted_date_range(share.settings['start_date'], share.settings['end_date']) %> (<%= share.user.timezone_iana %>)</dd></div>
+  <% elsif share.resource.respond_to?(:started_at) || share.resource.respond_to?(:start_at) %>
+    <% resource = share.resource; start_at = resource.try(:started_at) || resource.try(:start_at); end_at = resource.try(:ended_at) || resource.try(:end_at) %>
+    <div><dt class="font-semibold"><%= t('ux_p2.sharing.period') %></dt><dd><%= human_datetime_with_seconds(start_at, share.user.timezone_iana) %> — <%= human_datetime_with_seconds(end_at, share.user.timezone_iana) %> (<%= share.user.timezone_iana %>)</dd></div>
+  <% end %>
+  <% shared_link_sections(share).each do |key, enabled| %>
+    <div class="flex justify-between gap-3"><dt><%= t("ux_p2.sharing.sections.#{key}") %></dt><dd><%= t(enabled ? 'ux_p2.sharing.included' : 'ux_p2.sharing.excluded') %></dd></div>
+  <% end %>
+</dl>

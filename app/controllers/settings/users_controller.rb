@@ -5,6 +5,8 @@ class Settings::UsersController < ApplicationController
   before_action :authenticate_user!
   before_action :authenticate_admin!, except: %i[export import]
 
+  around_action :serialize_admin_access_changes, only: %i[update destroy]
+
   def index
     @users = filtered_users.order(created_at: :desc).page(params[:page]).per(25)
   end
@@ -23,6 +25,12 @@ class Settings::UsersController < ApplicationController
     return redirect_to settings_users_url, alert: last_admin_alert_message if last_admin_protection_needed?
 
     update_params = filtered_user_params
+    # A password set by an admin replaces the one the sign-in and two-factor
+    # lockouts were guarding, as a password reset does; one write clears them all.
+    if update_params.key?('password')
+      update_params.merge!(locked_at: nil, failed_attempts: 0, unlock_token: nil,
+                           otp_locked_at: nil, failed_otp_attempts: 0)
+    end
 
     if @user.update(update_params)
       redirect_to settings_users_url, notice: I18n.t('controllers.settings.users.user_was_successfully_updated')
@@ -53,6 +61,13 @@ class Settings::UsersController < ApplicationController
 
   def destroy
     @user = User.find(params[:id])
+
+    if @user.id == current_user.id || (@user.admin? && @user.active? && sole_admin?)
+      redirect_to settings_users_url,
+                  alert: I18n.t('controllers.settings.users.cannot_delete_yourself_or_last_admin'),
+                  status: :see_other
+      return
+    end
 
     unless @user.can_delete_account?
       redirect_to settings_users_url,
@@ -123,6 +138,17 @@ class Settings::UsersController < ApplicationController
 
   private
 
+  def serialize_admin_access_changes
+    User.with_advisory_lock('admin_access_changes') do
+      actor = User.find_by(id: current_user.id)
+      if actor&.admin?
+        yield
+      else
+        user_not_authorized
+      end
+    end
+  end
+
   def filtered_users
     return User.all if params[:search].blank?
 
@@ -140,13 +166,13 @@ class Settings::UsersController < ApplicationController
   end
 
   def last_admin_protection_needed?
-    return false unless @user.admin? && sole_admin?
+    return false unless @user.admin? && @user.active? && sole_admin?
 
     removing_admin_role? || disabling_user?
   end
 
   def removing_admin_role?
-    user_params.key?(:admin) && user_params[:admin].to_s == '0'
+    user_params.key?(:admin) && !ActiveModel::Type::Boolean.new.cast(user_params[:admin])
   end
 
   def disabling_user?
@@ -154,7 +180,7 @@ class Settings::UsersController < ApplicationController
   end
 
   def sole_admin?
-    User.where(admin: true).count == 1
+    User.where(admin: true, status: :active).count == 1
   end
 
   def last_admin_alert_message
@@ -173,7 +199,7 @@ class Settings::UsersController < ApplicationController
     # Validate that it's a ZIP file
     validate_blob_file_type(blob)
 
-    import_name = generate_unique_import_name(blob.filename.to_s)
+    import_name = current_user.imports.unique_name(blob.filename.to_s)
     import = current_user.imports.build(
       name: import_name,
       source: :user_data_archive
@@ -181,27 +207,6 @@ class Settings::UsersController < ApplicationController
     import.file.attach(blob)
 
     import
-  end
-
-  def generate_unique_import_name(original_name)
-    return original_name unless current_user.imports.exists?(name: original_name)
-
-    # Extract filename and extension
-    basename = File.basename(original_name, File.extname(original_name))
-    extension = File.extname(original_name)
-
-    # Add current datetime
-    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    "#{basename}_#{timestamp}#{extension}"
-  end
-
-  def validate_archive_file(archive_file)
-    unless ['application/zip', 'application/x-zip-compressed'].include?(archive_file.content_type) ||
-           File.extname(archive_file.original_filename).downcase == '.zip'
-
-      redirect_to edit_user_registration_path,
-                  alert: I18n.t('controllers.settings.users.please_upload_a_valid_zip_file') and return
-    end
   end
 
   def validate_blob_file_type(blob)

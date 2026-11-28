@@ -11,6 +11,19 @@ module Users
       end
 
       def call
+        Time.use_zone(user.timezone_iana) { calculate }
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        @attempts = @attempts.to_i + 1
+        raise if @attempts >= 3
+
+        retry
+      end
+
+      private
+
+      attr_reader :user, :year
+
+      def calculate
         return nil if monthly_stats.empty?
 
         digest = find_or_build_digest
@@ -28,16 +41,7 @@ module Users
 
         digest.save!
         digest
-      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
-        @attempts = @attempts.to_i + 1
-        raise if @attempts >= 3
-
-        retry
       end
-
-      private
-
-      attr_reader :user, :year
 
       def find_or_build_digest
         existing = user.digests.yearly.where(year: year).order(:id).to_a
@@ -67,19 +71,17 @@ module Users
             country = toponym['country']
             next if country.blank?
 
-            if toponym['cities'].is_a?(Array)
-              toponym['cities'].each do |city|
-                city_name = city['city'] if city.is_a?(Hash)
-                country_cities[country].add(city_name) if city_name.present?
-              end
-            else
-              # Ensure country appears even if no cities
-              country_cities[country]
+            country_cities[country]
+            next unless toponym['cities'].is_a?(Array)
+
+            toponym['cities'].each do |city|
+              city_name = city['city'] if city.is_a?(Hash)
+              country_cities[country].add(city_name) if city_name.present?
             end
           end
         end
 
-        country_cities.sort_by { |_country, cities| -cities.size }.map do |country, cities|
+        country_cities.sort_by { |country, cities| [-cities.size, country] }.map do |country, cities|
           {
             'country' => country,
             'cities' => cities.to_a.sort.map { |city| { 'city' => city } }
@@ -114,7 +116,7 @@ module Users
 
       def format_top_countries(country_minutes)
         country_minutes
-          .sort_by { |_, minutes| -minutes }
+          .sort_by { |name, minutes| [-minutes, name] }
           .first(10)
           .map { |name, minutes| { 'name' => name, 'minutes' => minutes } }
       end
@@ -140,28 +142,30 @@ module Users
       end
 
       def fetch_daily_country_stats
-        start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
+        timezone = user.timezone_iana
+        start_of_year = ActiveSupport::TimeZone[timezone].local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
-        lower_bound = if user.plan_restricted?
-                        [start_of_year.to_i, user.data_window_start.to_i].max
-                      else
-                        start_of_year.to_i
-                      end
+        lower_bound = [start_of_year, user.data_window_start].compact.max.to_i
+
+        country = Countries::NameAliases::POINT_NAME_SQL
 
         sql = <<~SQL
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
-            MIN(timestamp) as min_timestamp,
-            MAX(timestamp) as max_timestamp
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE #{ActiveRecord::Base.connection.quote(timezone)}) as point_date,
+            #{country} as country_name,
+            MIN(points.timestamp) as min_timestamp,
+            MAX(points.timestamp) as max_timestamp
           FROM points
-          WHERE user_id = #{user.id}
-            AND timestamp >= #{lower_bound}
-            AND timestamp <= #{end_of_year.to_i}
-            AND country_name IS NOT NULL
-            AND country_name != ''
-          GROUP BY point_date, country_name
-          ORDER BY point_date, min_timestamp
+          #{Countries::NameAliases.point_joins_sql}
+          WHERE points.user_id = #{user.id}
+            AND points.timestamp >= #{lower_bound}
+            AND points.timestamp <= #{end_of_year.to_i}
+            AND points.country_name IS NOT NULL
+            AND points.country_name != ''
+            AND points.anomaly IS NOT TRUE
+            AND #{CountriesAndCities.not_flyover_sql('points.velocity')}
+          GROUP BY point_date, #{country}
+          ORDER BY point_date, min_timestamp, #{country} COLLATE "C"
         SQL
 
         ActiveRecord::Base.connection.execute(sql).to_a

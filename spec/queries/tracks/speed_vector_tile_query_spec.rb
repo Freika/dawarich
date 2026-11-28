@@ -16,7 +16,8 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
   end
 
   def query(points_scope: user.points, **coordinates)
-    described_class.new(scope: user.tracks, points_scope:, z: 15, x: 16_384, y: 16_383, **coordinates)
+    described_class.new(scope: user.tracks, points_scope:, z: 15, x: 16_384, y: 16_383, **coordinates,
+                        privacy_zone_masker: Maps::PrivacyZoneMasker.none)
   end
 
   it 'colors the slow part independently while preserving track popup properties' do

@@ -1,0 +1,13 @@
+<div data-controller="map-note" data-map-note-new-url-value="<%= new_note_path %>">
+  <dialog class="modal z-[10000]" data-map-note-target="modal" aria-labelledby="map-note-title"
+          data-action="cancel->map-note#close" data-testid="map-note-modal">
+    <div class="modal-box max-w-lg min-w-0">
+      <h3 class="font-medium text-lg mb-4" id="map-note-title"><%= t('.map_note') %></h3>
+      <%# Any link that targets this frame opens the dialog once its form has loaded. %>
+      <turbo-frame id="map-note-form" data-map-note-target="frame"
+                   data-action="turbo:frame-load->map-note#show"></turbo-frame>
+    </div>
+    <div class="modal-backdrop" data-action="click->map-note#close"></div>
+  </dialog>
+  <div id="map-note-event" hidden></div>
+</div>

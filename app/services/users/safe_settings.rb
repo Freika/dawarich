@@ -3,22 +3,30 @@
 class Users::SafeSettings
   attr_reader :settings
 
-  GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
-
   MIN_MINUTES_BETWEEN_ROUTES = 1
   MAX_MINUTES_BETWEEN_ROUTES = 1440
 
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
+  # Features a user can switch off in general settings, stored as
+  # "<feature>_enabled". A missing key means the feature is on.
+  TOGGLEABLE_FEATURES = %w[family achievements trip_detection].freeze
+
+  def self.feature_enabled?(settings, feature)
+    ActiveModel::Type::Boolean.new.cast(settings["#{feature}_enabled"]) != false
+  end
+
   DEFAULT_VALUES = {
     'fog_of_war_meters' => 50,
     'fog_of_war_threshold' => 50,
-    'fog_of_war_mode' => 'points',
+    'fog_of_war_mode' => 'hexagons',
     'meters_between_routes' => 500,
     'preferred_map_layer' => 'OpenStreetMap',
     'speed_colored_routes' => false,
+    'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
     'points_rendering_mode' => 'raw',
     'minutes_between_routes' => 30,
+    'split_tracks_at_midnight' => false,
     'time_threshold_minutes' => 30,
     'merge_threshold_minutes' => 15,
     'live_map_enabled' => true,
@@ -70,20 +78,42 @@ class Users::SafeSettings
     'min_minutes_spent_in_city' => 60,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
+    'gps_accuracy_filter_enabled' => false,
+    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
+    'date_format' => 'auto',
+    'time_format' => 'auto',
+    'first_day_of_week' => 'monday',
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
     'point_dragging_enabled' => false,
-    'points_tiled_rendering' => true
+    'points_tiled_rendering' => true,
+    'family_enabled' => true,
+    'achievements_enabled' => true,
+    'trip_detection_enabled' => true
   }.freeze
+
+  # Map look settings that the map's Reset restores by deleting the stored
+  # values. Dotted keys live inside the nested `maps` hash.
+  APPEARANCE_KEYS = %w[
+    maps_maplibre_style maps_maplibre_custom_theme maps_maplibre_tiles_url
+    maps_maplibre_tiles_fallback track_color enabled_map_layers places_tag_filters
+    globe_projection speed_colored_routes speed_color_scale
+    fog_of_war_mode fog_of_war_meters fog_of_war_threshold
+    maps.hidden_tile_categories maps.disabled_poi_groups
+  ].freeze
+
+  GPS_ACCURACY_THRESHOLD_MIN = 50
+  GPS_ACCURACY_THRESHOLD_MAX = 1000
 
   def initialize(settings = {}, plan: nil)
     settings = {} unless settings.is_a?(Hash)
 
     @provided_settings = settings
-    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
+    @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
+    @settings = Users::PlanSettingsGate.visible(@settings) if lite?
   end
 
   def config
@@ -94,12 +124,12 @@ class Users::SafeSettings
       merge_threshold_minutes: merge_threshold_minutes,
       live_map_enabled: live_map_enabled,
       track_color: track_color,
-      immich_url: immich_url,
-      immich_api_key: immich_api_key,
-      photoprism_url: photoprism_url,
-      photoprism_api_key: photoprism_api_key,
-      airtrail_url: airtrail_url,
-      airtrail_api_key: airtrail_api_key,
+      immich_url: Users::IntegrationSettingKeys.without_credentials(immich_url),
+      immich_configured: immich_url.present? && immich_api_key.present?,
+      photoprism_url: Users::IntegrationSettingKeys.without_credentials(photoprism_url),
+      photoprism_configured: photoprism_url.present? && photoprism_api_key.present?,
+      airtrail_url: Users::IntegrationSettingKeys.without_credentials(airtrail_url),
+      airtrail_configured: airtrail_url.present? && airtrail_api_key.present?,
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
@@ -115,12 +145,21 @@ class Users::SafeSettings
       enabled_transportation_modes: enabled_transportation_modes,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
+      gps_accuracy_filter_enabled: gps_accuracy_filter_enabled?,
+      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      family_enabled: feature_enabled?('family'),
+      achievements_enabled: feature_enabled?('achievements'),
+      trip_detection_enabled: trip_detection_enabled?
     }
+  end
+
+  def feature_enabled?(feature)
+    self.class.feature_enabled?(settings, feature)
   end
 
   # Preserve the public API contract for clients that still synchronize
@@ -131,19 +170,22 @@ class Users::SafeSettings
       speed_colored_routes: speed_colored_routes,
       points_rendering_mode: points_rendering_mode,
       minutes_between_routes: minutes_between_routes,
+      split_tracks_at_midnight: split_tracks_at_midnight?,
       route_opacity: route_opacity,
       route_color: route_color,
       speed_color_scale: speed_color_scale,
-      points_tiled_rendering: points_tiled_rendering?
+      points_tiled_rendering: points_tiled_rendering?,
+      **date_time_preferences.to_h
     )
   end
 
   def fog_of_war_meters
-    settings['fog_of_war_meters']
+    positive_integer('fog_of_war_meters')
   end
 
   def meters_between_routes
-    settings['meters_between_routes']
+    meters = settings['meters_between_routes'].to_i
+    meters.positive? ? meters : DEFAULT_VALUES['meters_between_routes']
   end
 
   def preferred_map_layer
@@ -249,19 +291,23 @@ class Users::SafeSettings
   end
 
   def maps
-    m = settings['maps']
-    return m unless lite?
-
-    # Lite users cannot customize map layers or POI groups
-    m&.except('hidden_tile_categories', 'disabled_poi_groups') || m
+    settings['maps']
   end
 
   def distance_unit
     settings.dig('maps', 'distance_unit') || DEFAULT_VALUES.dig('maps', 'distance_unit')
   end
 
+  def trip_detection_enabled?
+    feature_enabled?('trip_detection')
+  end
+
+  def trip_detection_long_absence?
+    ActiveModel::Type::Boolean.new.cast(settings['trip_detection_long_absence']) == true
+  end
+
   def visits_suggestions_enabled?
-    settings['visits_suggestions_enabled'] == 'true'
+    ActiveModel::Type::Boolean.new.cast(settings['visits_suggestions_enabled']) == true
   end
 
   def speed_color_scale
@@ -269,20 +315,21 @@ class Users::SafeSettings
   end
 
   def fog_of_war_threshold
-    settings['fog_of_war_threshold']
+    positive_integer('fog_of_war_threshold')
   end
 
   def fog_of_war_mode
     value = settings['fog_of_war_mode'].to_s
-    FOG_OF_WAR_MODES.include?(value) ? value : 'points'
+    FOG_OF_WAR_MODES.include?(value) ? value : DEFAULT_VALUES['fog_of_war_mode']
   end
 
   def enabled_map_layers
     layers = Array(settings['enabled_map_layers']).dup
     layers << 'Tracks' if layers.include?('Routes')
     layers.delete('Routes')
+    layers.push('Places', 'Place boundaries') if layers.delete('Areas')
     layers.uniq!
-    lite? ? layers - GATED_MAP_LAYERS : layers
+    layers
   end
 
   def places_tag_filters
@@ -309,8 +356,6 @@ class Users::SafeSettings
   end
 
   def globe_projection
-    return false if lite?
-
     ActiveModel::Type::Boolean.new.cast(settings['globe_projection'])
   end
 
@@ -337,6 +382,10 @@ class Users::SafeSettings
     settings['supporter_github_username']
   end
 
+  def app_store_supporter?
+    ActiveModel::Type::Boolean.new.cast(settings['app_store_supporter']) == true
+  end
+
   def show_supporter_badge?
     value = settings['show_supporter_badge']
     return true if value.nil?
@@ -361,6 +410,14 @@ class Users::SafeSettings
     settings['timezone'] || DEFAULT_VALUES['timezone']
   end
 
+  def date_time_preferences
+    Users::DateTimePreferences.new(
+      date_format: settings['date_format'],
+      time_format: settings['time_format'],
+      first_day_of_week: settings['first_day_of_week']
+    )
+  end
+
   def persisted_timezone
     settings['timezone'].presence
   end
@@ -370,6 +427,21 @@ class Users::SafeSettings
     return true if value.nil?
 
     ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  # Off unless the user turns it on: the old slider saved a threshold on every
+  # settings save, so a stored value alone is not a choice to filter by it.
+  def gps_accuracy_filter_enabled?
+    ActiveModel::Type::Boolean.new.cast(settings['gps_accuracy_filter_enabled']) || false
+  end
+
+  def gps_accuracy_threshold
+    raw = settings['gps_accuracy_threshold'].presence || DEFAULT_VALUES['gps_accuracy_threshold']
+    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
+  end
+
+  def split_tracks_at_midnight?
+    ActiveModel::Type::Boolean.new.cast(settings['split_tracks_at_midnight']) || false
   end
 
   def point_dragging_enabled?
@@ -397,6 +469,11 @@ class Users::SafeSettings
 
   def lite?
     @plan&.to_sym == :lite
+  end
+
+  def positive_integer(key)
+    value = settings[key].to_i
+    value.positive? ? value : DEFAULT_VALUES[key]
   end
 
   def fetch_with_legacy_fallback(new_key, legacy_key, default:)

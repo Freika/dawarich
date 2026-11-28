@@ -290,27 +290,19 @@ RSpec.describe Points::Create do
     end
 
     context 'with real data insertion' do
-      let(:actual_processed_data) do
-        [
-          {
-            lonlat: 'POINT(-0.1278 51.5074)',
-            timestamp: timestamp,
-            user_id: user.id,
-            created_at: Time.current,
-            updated_at: Time.current
-          },
-          {
-            lonlat: 'POINT(-74.006 40.7128)',
-            timestamp: timestamp + 1.hour,
-            user_id: user.id,
-            created_at: Time.current,
-            updated_at: Time.current
-          }
-        ]
-      end
-
-      before do
-        allow_any_instance_of(Points::Params).to receive(:call).and_return(actual_processed_data)
+      let(:point_params) do
+        {
+          locations: [
+            {
+              geometry: { coordinates: [-0.1278, 51.5074] },
+              properties: { timestamp: timestamp.iso8601 }
+            },
+            {
+              geometry: { coordinates: [-74.006, 40.7128] },
+              properties: { timestamp: (timestamp + 1.hour).iso8601 }
+            }
+          ]
+        }
       end
 
       it 'creates points in the database' do
@@ -347,10 +339,19 @@ RSpec.describe Points::Create do
         end.to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
       end
 
-      it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
-        expect do
-          described_class.new(user, point_params).call
-        end.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'enqueues VisitSuggestingJob when reverse geocoding is disabled and visit suggestions are enabled' do
+        user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'true'))
+        expect(Geocoding::Config.for(user).enabled?).to be(false)
+
+        expect { described_class.new(user, point_params).call }.to have_enqueued_job(VisitSuggestingJob)
+          .with(hash_including(user_id: user.id))
+      end
+
+      it 'does not enqueue VisitSuggestingJob when the user has opted out of visit suggestions' do
+        configure_instance_geocoding
+        user.update!(settings: user.settings.merge('visits_suggestions_enabled' => 'false'))
+
+        expect { described_class.new(user, point_params).call }.not_to have_enqueued_job(VisitSuggestingJob)
       end
 
       it 'does not increment points_count for duplicate upserts' do

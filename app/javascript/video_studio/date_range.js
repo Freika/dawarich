@@ -1,3 +1,5 @@
+import { formatDateTime } from "i18n"
+
 function pad(value) {
   return String(value).padStart(2, "0")
 }
@@ -131,16 +133,24 @@ export function selectableDateTimeRange(start, end, timeZone) {
   return { start: startWithOffset, end: endWithOffset }
 }
 
-export function formatDateTimeRange(start, end, locale, timeZone) {
-  const format = new Intl.DateTimeFormat(locale || undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-    ...(timeZone ? { timeZone } : {}),
-  })
+export function formatDateTimeRange(start, end, timeZone) {
   const labels = [start, end]
     .map((value) => (value ? new Date(value) : null))
     .filter((date) => date && !Number.isNaN(date.valueOf()))
-    .map((date) => format.format(date))
+    .map((date) => formatDateTime(date, timeZone ? { timeZone } : {}))
 
   return [...new Set(labels)].join(" – ")
+}
+
+// Calendar dates in the owner's zone, independent of the browser's zone and DST.
+export function calendarPresetRange(preset, now = new Date(), timeZone) {
+  const today = toLocalDateTimeInput(now, timeZone).slice(0, 10)
+  const start = new Date(`${today}T12:00:00Z`)
+  if (preset === "week") start.setUTCDate(start.getUTCDate() - 6)
+  else if (preset === "month") start.setUTCMonth(start.getUTCMonth() - 1)
+  else if (preset !== "today") return null
+  return {
+    start: `${start.toISOString().slice(0, 10)}T00:00`,
+    end: `${today}T23:59`,
+  }
 }

@@ -8,6 +8,8 @@ RSpec.describe 'Maps Hexagons API', type: :request do
 
   path '/api/v1/maps/hexagons' do
     get 'Retrieves hexagon grid data for the map' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Maps'
       description 'Returns hexagonal grid data for map visualization. ' \
                   'Supports both authenticated access and public sharing via UUID.'
@@ -66,6 +68,8 @@ RSpec.describe 'Maps Hexagons API', type: :request do
 
   path '/api/v1/maps/hexagons/bounds' do
     get 'Retrieves geographic bounds for hexagon data' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Maps'
       description 'Returns the geographic bounding box for the user\'s location data within the specified date range'
       produces 'application/json'

@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'POST /api/v1/visits/:id/select_place' do
   let(:user)  { create(:user) }
   let(:other) { create(:user) }
-  let(:visit) { create(:visit, user: user, area: nil, place: nil) }
+  let(:visit) { create(:visit, user: user, place: nil) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
   before { allow(DawarichSettings).to receive(:store_geodata?).and_return(true) }
@@ -26,7 +26,7 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
 
   it 'excludes tombstoned visits from the serialized visits_count' do
     existing_place = create(:place, user: user, name: 'Café Bravo', latitude: 52.5126, longitude: 13.4012)
-    create(:visit, user: user, place: existing_place, area: nil, deleted_at: 1.day.ago)
+    create(:visit, user: user, place: existing_place, deleted_at: 1.day.ago)
 
     post "/api/v1/visits/#{visit.id}/select_place", params: photon_payload, headers: headers, as: :json
 
@@ -37,7 +37,7 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
   end
 
   it 'returns 404 for a tombstoned visit' do
-    tombstone = create(:visit, user: user, area: nil, place: nil, deleted_at: 1.day.ago)
+    tombstone = create(:visit, user: user, place: nil, deleted_at: 1.day.ago)
 
     post "/api/v1/visits/#{tombstone.id}/select_place", params: photon_payload, headers: headers, as: :json
 
@@ -52,10 +52,11 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
     body = JSON.parse(response.body)
     expect(body['name']).to eq('Café Bravo')
     expect(body['id']).to eq(visit.reload.place_id)
+    expect(body['visit_radius']).to eq(50)
   end
 
   it 'returns 404 for a visit not owned by current user' do
-    other_visit = create(:visit, user: other, area: nil)
+    other_visit = create(:visit, user: other)
     post "/api/v1/visits/#{other_visit.id}/select_place", params: photon_payload, headers: headers, as: :json
 
     expect(response).to have_http_status(:not_found)

@@ -1,0 +1,27 @@
+<% settings = current_user.safe_settings %>
+<% if settings.trip_detection_enabled? %>
+  <%# Each hint is its text, its link text and where that link to the Places page goes. %>
+  <% hints = [] %>
+  <% unless current_user.homes.exists? %>
+    <%# A Place tagged Home looks like a Home to the user, but only a Home record counts for detection. %>
+    <% home_tag, tagged_place = Tag.home_tagged_place(current_user) %>
+    <% hints << if tagged_place
+                  [t('trip_detection.hints.tagged_home', place: tagged_place.name, tag: home_tag.name),
+                   t('trip_detection.hints.tagged_home_link', tag: home_tag.name),
+                   places_path(tag_ids: [home_tag.id])]
+                else [t('trip_detection.hints.no_home'), t('trip_detection.hints.add_home'), places_path] end %>
+  <% end %>
+  <% if settings.trip_detection_long_absence? %>
+    <% hints << [t('trip_detection.hints.long_absence', days: Trips::Detection::Policy::MAX_TRIP_DURATION.in_days.to_i),
+                 t('trip_detection.hints.add_home'), places_path] %>
+  <% end %>
+  <% hints.each do |hint, link_text, path| %>
+    <div role="status" class="alert mb-4" data-testid="trip-detection-hint">
+      <%= icon 'info', class: 'w-5 h-5 shrink-0 text-info', 'aria-hidden': true %>
+      <p class="min-w-0 [overflow-wrap:anywhere]">
+        <%= hint %>
+        <%= link_to link_text, path, class: 'link link-primary whitespace-normal' %>
+      </p>
+    </div>
+  <% end %>
+<% end %>

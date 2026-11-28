@@ -1,0 +1,202 @@
+# frozen_string_literal: true
+
+module McpTools
+  class TimelineSerializer
+    DEFS = {
+      location: {
+        type: %w[object null],
+        additionalProperties: false,
+        properties: {
+          name: { type: %w[string null] },
+          latitude: { type: 'number' },
+          longitude: { type: 'number' },
+          city: { type: %w[string null] },
+          country: { type: %w[string null] },
+          visit_radius: { type: 'integer', description: 'Visit Radius in meters' }
+        },
+        required: %w[name latitude longitude city country visit_radius]
+      },
+      area: {
+        type: %w[object null],
+        additionalProperties: false,
+        properties: {
+          name: { type: 'string' },
+          latitude: { type: 'number' },
+          longitude: { type: 'number' },
+          radius: { type: 'number' }
+        },
+        required: %w[name latitude longitude radius]
+      }
+    }.freeze
+
+    ENTRY_SCHEMA = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', enum: %w[visit journey] },
+        name: { type: %w[string null] },
+        status: { type: 'string' },
+        started_at: { type: 'string', format: 'date-time' },
+        ended_at: { type: 'string', format: 'date-time' },
+        local_timezone: {
+          type: %w[string null],
+          description: 'IANA time zone of the visit location or of the journey start, for reading ' \
+                       'started_at and ended_at as local time there; null when unknown.'
+        },
+        duration_minutes: { type: 'number' },
+        continuation_of_date: {
+          type: %w[string null],
+          format: 'date',
+          description: 'Start date of a journey or visit listed in full on that date; ' \
+                       'this row is its part after midnight.'
+        },
+        place: { '$ref': '#/$defs/location' },
+        area: { '$ref': '#/$defs/area' },
+        distance: { type: 'number' },
+        distance_unit: { type: 'string', enum: %w[km mi] },
+        dominant_mode: { type: %w[string null] },
+        average_speed: { type: 'number' },
+        speed_unit: { type: 'string' }
+      },
+      required: %w[type started_at ended_at duration_minutes]
+    }.freeze
+
+    OUTPUT_SCHEMA = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        days: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              date: { type: 'string', format: 'date' },
+              summary: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  total_distance: { type: 'number' },
+                  distance_unit: { type: 'string', enum: %w[km mi] },
+                  places_visited: { type: 'integer' },
+                  time_moving_minutes: { type: 'integer' },
+                  time_stationary_minutes: { type: 'integer' },
+                  facts: {
+                    type: %w[string null],
+                    description: 'Generated line naming the places of the day in order, with the distance travelled.'
+                  }
+                },
+                required: %w[total_distance distance_unit places_visited time_moving_minutes time_stationary_minutes]
+              },
+              entries: { type: 'array', items: ENTRY_SCHEMA },
+              notes: {
+                type: 'array',
+                description: 'Notes the user wrote on the map about a moment of this day, oldest first.',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    body: { type: 'string' },
+                    noted_at: { type: 'string', format: 'date-time' },
+                    latitude: { type: %w[number null] },
+                    longitude: { type: %w[number null] }
+                  },
+                  required: %w[body noted_at]
+                }
+              }
+            },
+            required: %w[date summary entries]
+          }
+        }
+      },
+      required: ['days'],
+      '$defs': DEFS
+    }.freeze
+
+    class << self
+      def call(days)
+        { days: days.map { |day| serialize_day(day) } }
+      end
+
+      def entry(entry)
+        common = {
+          type: entry.fetch(:type),
+          started_at: entry.fetch(:started_at),
+          ended_at: entry.fetch(:ended_at),
+          local_timezone: entry[:local_timezone]
+        }
+
+        entry[:type] == 'visit' ? common.merge(serialize_visit(entry)) : common.merge(serialize_journey(entry))
+      end
+
+      private
+
+      def serialize_day(day)
+        {
+          date: day.fetch(:date),
+          summary: serialize_summary(day.fetch(:summary)),
+          entries: day.fetch(:entries).map { |day_entry| entry(day_entry) },
+          notes: Array(day[:notes]).map { |note| note.slice(:body, :noted_at, :latitude, :longitude) }
+        }
+      end
+
+      def serialize_summary(summary)
+        {
+          total_distance: summary.fetch(:total_distance).to_f,
+          distance_unit: summary.fetch(:distance_unit),
+          places_visited: summary.fetch(:places_visited).to_i,
+          time_moving_minutes: summary.fetch(:time_moving_minutes).to_i,
+          time_stationary_minutes: summary.fetch(:time_stationary_minutes).to_i,
+          facts: summary[:facts]
+        }
+      end
+
+      def serialize_visit(entry)
+        {
+          name: entry[:name],
+          status: entry.fetch(:status),
+          continuation_of_date: entry[:continuation_of_date],
+          duration_minutes: (entry[:day_duration] || entry.fetch(:duration)).to_f,
+          place: serialize_location(entry[:place]),
+          area: serialize_area(entry[:area])
+        }
+      end
+
+      def serialize_journey(entry)
+        {
+          continuation_of_date: entry[:continuation_of_date],
+          duration_minutes: ((entry[:day_duration] || entry.fetch(:duration)).to_f / 60).round(1),
+          distance: (entry[:day_distance] || entry.fetch(:distance)).to_f,
+          distance_unit: entry.fetch(:distance_unit),
+          dominant_mode: entry[:dominant_mode],
+          average_speed: entry.fetch(:avg_speed).to_f,
+          speed_unit: entry.fetch(:speed_unit)
+        }
+      end
+
+      def serialize_location(location)
+        return unless location
+
+        {
+          name: location[:name],
+          latitude: location.fetch(:lat).to_f,
+          longitude: location.fetch(:lng).to_f,
+          city: location[:city],
+          country: location[:country],
+          visit_radius: location.fetch(:visit_radius).to_i
+        }
+      end
+
+      def serialize_area(area)
+        return unless area
+
+        {
+          name: area.fetch(:name),
+          latitude: area.fetch(:lat).to_f,
+          longitude: area.fetch(:lng).to_f,
+          radius: area.fetch(:radius).to_f
+        }
+      end
+    end
+  end
+end

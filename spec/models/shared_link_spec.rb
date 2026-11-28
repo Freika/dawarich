@@ -25,6 +25,47 @@ RSpec.describe SharedLink, type: :model do
       link = build(:shared_link, resource_type: :live, resource_id: 42)
       expect(link).not_to be_valid
     end
+
+    [900, 3600, 21_600, 86_400].each do |seconds|
+      it "accepts a live window of #{seconds} seconds" do
+        expect(build(:shared_link, :live, settings: { 'live_freshness_seconds' => seconds })).to be_valid
+      end
+    end
+
+    [60, 999_999, 'banana', true, nil].each do |bad_value|
+      it "rejects a live window of #{bad_value.inspect}" do
+        link = build(:shared_link, :live, settings: { 'live_freshness_seconds' => bad_value })
+
+        expect(link).not_to be_valid
+        expect(link.errors[:settings]).to be_present
+      end
+    end
+
+    it 'accepts a live link that never chose a window' do
+      expect(build(:shared_link, :live, settings: {})).to be_valid
+    end
+
+    it 'can still save a live link whose stored window is unchanged and bad' do
+      link = create(:shared_link, :live)
+      link.update_columns(settings: { 'live_freshness_seconds' => 'banana' })
+
+      expect(link.reload.update(name: 'Renamed')).to be(true)
+    end
+  end
+
+  describe '#live_freshness_seconds' do
+    it 'returns the window stored on the link' do
+      expect(build(:shared_link, :live, settings: { 'live_freshness_seconds' => 21_600 }).live_freshness_seconds)
+        .to eq(21_600)
+    end
+
+    it 'defaults to 15 minutes when nothing is stored' do
+      expect(build(:shared_link, :live, settings: {}).live_freshness_seconds).to eq(900)
+    end
+
+    it 'defaults to 15 minutes when the stored value is not an allowed window' do
+      expect(build(:shared_link, :live, settings: { 'live_freshness_seconds' => 7 }).live_freshness_seconds).to eq(900)
+    end
   end
 
   describe '#active?' do
@@ -147,7 +188,8 @@ RSpec.describe SharedLink, type: :model do
       expect(SharedLink::DEFAULT_SETTINGS[:trip]).to include('show_photos' => false, 'show_stats' => false)
       expect(SharedLink::DEFAULT_SETTINGS[:track]).to include('show_stats' => false)
       expect(SharedLink::DEFAULT_SETTINGS[:timeline]).to include('show_photos' => false)
-      expect(SharedLink::DEFAULT_SETTINGS[:live]).to eq('show_photos' => false, 'show_route' => false)
+      expect(SharedLink::DEFAULT_SETTINGS[:live])
+        .to eq('show_photos' => false, 'show_route' => false, 'live_freshness_seconds' => 900)
     end
 
     it 'returns defaults via .default_settings_for' do

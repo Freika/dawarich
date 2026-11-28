@@ -10,7 +10,7 @@ RSpec.describe 'Onboarding modal family card', type: :request do
   it 'offers the family step to a family-plan user' do
     sign_in create(:user, plan: :family, status: :trial, active_until: 7.days.from_now)
 
-    get stats_path
+    get insights_path
 
     expect(response.body).to include(card_title)
   end
@@ -24,7 +24,7 @@ RSpec.describe 'Onboarding modal family card', type: :request do
 
     sign_in member
 
-    get stats_path
+    get insights_path
 
     expect(response.body).to include(card_title)
   end
@@ -32,7 +32,7 @@ RSpec.describe 'Onboarding modal family card', type: :request do
   it 'hides the family step from a pro user' do
     sign_in create(:user, plan: :pro, status: :trial, active_until: 7.days.from_now)
 
-    get stats_path
+    get insights_path
 
     expect(response.body).not_to include(card_title)
   end

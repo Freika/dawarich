@@ -29,6 +29,8 @@ module InstanceSettings
 
     def copy_environment
       copied = Registry::DEFINITIONS.values.filter_map do |definition|
+        next unless definition.env_var
+
         raw = ENV.fetch(definition.env_var, nil)
         next if raw.to_s.strip.empty?
 

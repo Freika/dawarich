@@ -5,13 +5,20 @@ class Settings::Update
 
   attr_reader :user, :settings_params, :refresh_photos_cache
 
-  def initialize(user, settings_params, refresh_photos_cache: false)
+  def initialize(user, settings_params, refresh_photos_cache: false, connection_action: nil, service: nil)
     @user = user
     @settings_params = settings_params
     @refresh_photos_cache = refresh_photos_cache
+    @connection_action = connection_action
+    @service = service
+    @connection_results = {}
   end
 
   def call
+    unless user.settings.is_a?(Hash)
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
+    end
+
     existing_settings = user.safe_settings.settings
     params_hash = cast_boolean_params(settings_params)
     reset_teslamate_checkpoint(params_hash, existing_settings)
@@ -45,14 +52,27 @@ class Settings::Update
     test_notices = []
     alerts = []
     statuses = {}
-    test_immich_connection(updated_settings, test_notices, alerts, statuses) if immich_changed
-    test_photoprism_connection(updated_settings, test_notices, alerts, statuses) if photoprism_changed
-    test_airtrail_connection(updated_settings, test_notices, alerts, statuses) if airtrail_changed
-    test_teslamate_connection(updated_settings, test_notices, alerts, statuses) if teslamate_changed
+    changed = { 'immich' => immich_changed, 'photoprism' => photoprism_changed,
+                'airtrail' => airtrail_changed, 'teslamate' => teslamate_changed }
+    changed.each do |service, did_change|
+      if @connection_action == 'save'
+        statuses["#{service}_connection_status"] = nil if did_change
+      elsif did_change || (@service == service && @connection_action.present?)
+        send("test_#{service}_connection", updated_settings, test_notices, alerts, statuses)
+      end
+    end
+    if @connection_action == 'test'
+      return { success: true, notices: [], alerts: [], connection_results: @connection_results }
+    end
 
     # The connection tests above take seconds; re-read settings so a write that
     # landed in the meantime is not reverted by this save.
-    final_settings = user.reload.settings.merge(params_hash).merge(statuses)
+    current_settings = user.reload.settings
+    unless current_settings.is_a?(Hash)
+      return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
+    end
+
+    final_settings = current_settings.merge(params_hash).merge(statuses)
     unless user.update(settings: final_settings)
       return { success: false, notices: [], alerts: [I18n.t('services.settings.update.failed')] }
     end
@@ -64,7 +84,7 @@ class Settings::Update
       notices << I18n.t('services.settings.update.photo_cache_refreshed')
     end
 
-    { success: true, notices: notices + test_notices, alerts: alerts }
+    { success: true, notices: notices + test_notices, alerts: alerts, connection_results: @connection_results }
   end
 
   private
@@ -133,6 +153,7 @@ class Settings::Update
   end
 
   def record_result(service, result, notices, alerts, statuses)
+    @connection_results[service] = { success: result[:success], reason: result[:reason] || 'check_settings' }
     result[:success] ? notices << result[:message] : alerts << result[:error]
     statuses["#{service}_connection_status"] = result[:success] ? 'ok' : 'failed'
   end

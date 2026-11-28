@@ -1,0 +1,19 @@
+<ul class="text-xs space-y-1.5">
+  <% {
+    google_maps: :records_json_semantic_history_phone_takeout_json,
+    google_photos: :takeout_metadata_sidecars_json,
+    mobile_photo_library: :dawarich_mobile_app_export_json,
+    gpx: :track_files_gpx,
+    geojson: :feature_collections_json_geojson,
+    owntracks: :recorder_files_rec,
+    kml: :kml_files_kml_kmz,
+    fit: :garmin_activity_files_fit,
+    tcx: :training_center_files_tcx,
+    csv: :location_data_csv,
+    polarsteps: :locations_json_json,
+    swarm: :swarm_checkins_json,
+    zip: :archives_containing_any_of_the_above_zip
+  }.each do |format, description| %>
+    <li class="flex items-start gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 mt-px text-success shrink-0' %> <span class="min-w-0"><strong><%= t("imports.form.#{format}") %></strong> <%= t("imports.form.#{description}") %></span></li>
+  <% end %>
+</ul>

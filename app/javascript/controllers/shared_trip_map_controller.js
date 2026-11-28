@@ -1,44 +1,32 @@
-import { Controller } from "@hotwired/stimulus"
 import * as maplibregl from "maplibre-gl"
-import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
+import { TripRoutesTileLayer } from "maps_maplibre/layers/trip_routes_tile_layer"
+import { ReplayHost } from "maps_maplibre/managers/replay_host"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
-export default class extends Controller {
+export default class extends ReplayHost {
   static values = {
     linkId: String,
     showPhotos: Boolean,
     byDay: Boolean,
     timezone: String,
+    tilesUrl: String,
+    dayKeys: Array,
+    dayBounds: Object,
+    dayEndpoints: Object,
+    fullBounds: Array,
   }
 
-  static targets = [
-    "map",
-    "replayToggleBtn",
-    "replayPanel",
-    "replayScrubber",
-    "replayScrubberTrack",
-    "replayDensityContainer",
-    "replayDayDisplay",
-    "replayDayCount",
-    "replayPrevDayButton",
-    "replayNextDayButton",
-    "replayTimeDisplay",
-    "replaySpeedDisplay",
-    "replayDataIndicator",
-    "replayPlayButton",
-    "replayFollowButton",
-    "replayPlayIcon",
-    "replayPauseIcon",
-    "replaySpeedSlider",
-    "replaySpeedLabel",
-    "replayCycleControls",
-    "replayPointCounter",
-  ]
+  static targets = ["map", "replayToggleBtn"]
 
   connect() {
     this.selectedDay = null
-    this.allPoints = []
+    this.pointsPromise = null
     this.photoMarkers = []
     this.initializeMap()
   }
@@ -48,6 +36,7 @@ export default class extends Controller {
   }
 
   async initializeMap() {
+    startMapLoading(this.mapContainer)
     const style = await getMapStyle("light")
 
     this.map = new maplibregl.Map({
@@ -55,9 +44,11 @@ export default class extends Controller {
       style,
       center: [0, 0],
       zoom: 1,
-      attributionControl: { compact: true },
+      attributionControl: false,
       interactive: true,
     })
+    finishMapLoadingOn(this.map)
+    this.map.addControl(collapsedAttributionControl())
 
     this.map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
@@ -122,20 +113,14 @@ export default class extends Controller {
     this.map.fitBounds(bounds, { padding: 40, duration: 0 })
   }
 
-  async loadDayRoutes() {
-    const points = await this.fetchPoints()
-    if (!points.length) return
-
-    this.allPoints = points.map(([lon, lat, ts]) => ({
-      longitude: lon,
-      latitude: lat,
-      timestamp: ts,
-    }))
-
-    const pointsByDay = this.groupByDay(points)
-
-    this.dayRoutesLayer = new DayRoutesLayer(this.map)
-    this.dayRoutesLayer.addDayRoutes(pointsByDay)
+  loadDayRoutes() {
+    this.dayRoutesLayer = new TripRoutesTileLayer(this.map, {
+      tilesUrl: this.tilesUrlValue,
+      dayKeys: this.dayKeysValue,
+      dayBounds: this.dayBoundsValue,
+      fullBounds: this.fullBoundsValue,
+      dayEndpoints: this.dayEndpointsValue,
+    })
     this.recolorDots()
     this.dayRoutesLayer.setupInteractions({
       onDayClick: (dayKey) => this.pinDay(dayKey),
@@ -146,27 +131,22 @@ export default class extends Controller {
       this.map.fitBounds(bounds, { padding: 40, maxZoom: 15, duration: 0 })
   }
 
-  groupByDay(points) {
-    const fmt = this.dayFormatter()
-    const byDay = {}
-    for (const [lon, lat, ts] of points) {
-      const key = fmt.format(new Date(ts * 1000))
-      if (!byDay[key]) byDay[key] = []
-      byDay[key].push({ longitude: lon, latitude: lat, timestamp: ts })
-    }
-    return byDay
-  }
-
-  dayFormatter() {
-    const opts = { year: "numeric", month: "2-digit", day: "2-digit" }
-    try {
-      return new Intl.DateTimeFormat("en-CA", {
-        timeZone: this.timezoneValue || "UTC",
-        ...opts,
-      })
-    } catch {
-      return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", ...opts })
-    }
+  ensurePoints() {
+    this.pointsPromise ||= this.fetchPoints().then(
+      (points) => {
+        if (!points.length) this.pointsPromise = null
+        return points.map(([lon, lat, ts]) => ({
+          longitude: lon,
+          latitude: lat,
+          timestamp: ts,
+        }))
+      },
+      (error) => {
+        this.pointsPromise = null
+        throw error
+      },
+    )
+    return this.pointsPromise
   }
 
   recolorDots() {
@@ -217,7 +197,8 @@ export default class extends Controller {
 
   // ----- replay (delegates to the reusable ReplayPanel) -----
 
-  toggleReplay() {
+  async toggleReplay() {
+    if (this.replayToggling) return
     if (!this.replayPanel) {
       this.replayPanel = new ReplayPanel({
         controller: this,
@@ -225,7 +206,10 @@ export default class extends Controller {
         dayRoutesLayer: this.dayRoutesLayer,
         element: this.element,
         timezone: this.timezoneValue,
-        allPoints: this.allPoints,
+        loadPoints: async () => {
+          const points = await this.ensurePoints()
+          return this.map ? points : []
+        },
         getPhotos: () =>
           (this.photoMarkers || []).map(({ photo }) => ({
             id: photo.id,
@@ -242,39 +226,14 @@ export default class extends Controller {
         },
       })
     }
-    this.replayPanel.toggle()
-  }
-
-  replayScrubberHover(event) {
-    this.replayPanel?.scrubberHover(event)
-  }
-
-  replayPrevDay() {
-    this.replayPanel?.prevDay()
-  }
-
-  replayNextDay() {
-    this.replayPanel?.nextDay()
-  }
-
-  replayCyclePrev() {
-    this.replayPanel?.cyclePrev()
-  }
-
-  replayCycleNext() {
-    this.replayPanel?.cycleNext()
-  }
-
-  replayTogglePlayback() {
-    this.replayPanel?.togglePlayback()
-  }
-
-  replayRecenterFollow() {
-    this.replayPanel?.recenterFollow()
-  }
-
-  replaySpeedChange(event) {
-    this.replayPanel?.speedChange(event)
+    this.replayToggling = true
+    try {
+      await this.replayPanel.toggle()
+    } catch (error) {
+      console.error("[SharedTripMap] Error fetching points:", error)
+    } finally {
+      this.replayToggling = false
+    }
   }
 
   markActiveRow() {

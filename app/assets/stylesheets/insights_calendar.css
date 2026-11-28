@@ -1,0 +1,137 @@
+.year-calendar {
+  width: 100%;
+  min-width: 46rem;
+  max-width: 72rem;
+}
+
+.year-calendar__months,
+.year-calendar__body {
+  display: grid;
+  grid-template-columns: 2rem repeat(var(--weeks), minmax(0, 1fr));
+  column-gap: 3px;
+}
+
+.year-calendar__months {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: oklch(var(--bc) / 0.6);
+  white-space: nowrap;
+}
+
+.year-calendar__body {
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+  row-gap: 3px;
+}
+
+.year-calendar__day {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: oklch(var(--bc) / 0.6);
+}
+
+.year-calendar__cell {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 22%;
+  background-color: oklch(var(--bc) / 0.08);
+}
+
+.year-calendar__swatch {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.year-calendar__swatch {
+  background-color: color-mix(
+    in oklab,
+    oklch(var(--p)) calc(var(--a) * 100%),
+    oklch(var(--bc) / 0.08)
+  );
+}
+
+.year-calendar__cell--pad {
+  background-color: transparent;
+}
+
+.year-calendar__cell--future {
+  background-color: oklch(var(--bc) / 0.03);
+}
+
+.year-calendar[data-mode="both"] .year-calendar__cell[data-distance],
+.year-calendar[data-mode="both"] .year-calendar__cell[data-country] {
+  background-color: color-mix(
+    in oklab,
+    var(--c) calc(var(--a) * 100%),
+    oklch(var(--bc) / 0.08)
+  );
+}
+
+.year-calendar[data-mode="distance"] .year-calendar__cell[data-distance] {
+  background-color: color-mix(
+    in oklab,
+    oklch(var(--p)) calc(var(--a) * 100%),
+    oklch(var(--bc) / 0.08)
+  );
+}
+
+.year-calendar[data-mode="countries"] .year-calendar__cell[data-country] {
+  background-color: var(--c);
+}
+
+.year-calendar .year-calendar__cell[data-date]:hover {
+  outline: 1.5px solid oklch(var(--bc));
+  outline-offset: 0;
+}
+
+.year-calendar[data-focus] .year-calendar__cell[data-date]:not(.is-focused) {
+  opacity: 0.15;
+}
+
+.country-ribbon__lane {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    to right,
+    oklch(var(--bc) / 0.08) 0 1px,
+    transparent 1px calc(100% / 12)
+  );
+}
+
+.country-ribbon__segment {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  min-width: 4px;
+  border-radius: 5px;
+  transition:
+    filter 100ms,
+    transform 100ms;
+}
+
+.country-ribbon__segment:hover,
+.country-ribbon__segment:focus-visible {
+  filter: brightness(1.12);
+  transform: scaleY(1.15);
+}
+
+.country-ribbon__today {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  border-radius: 1px;
+  background: oklch(var(--bc) / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .country-ribbon__segment {
+    transition: none;
+  }
+}

@@ -23,14 +23,14 @@ RSpec.describe 'Track generation partitions points by tracker_id' do
         user: user,
         tracker_id: 'iphone',
         timestamp: base_time + (i * 60),
-        lonlat: "POINT(#{berlin_lon + (i * 0.0001)} #{berlin_lat + (i * 0.0001)})"
+        lonlat: "POINT(#{berlin_lon + (i * 0.001)} #{berlin_lat + (i * 0.001)})"
       )
       create(
         :point,
         user: user,
         tracker_id: 'watch',
         timestamp: base_time + (i * 60) + 30,
-        lonlat: "POINT(#{paris_lon + (i * 0.0001)} #{paris_lat + (i * 0.0001)})"
+        lonlat: "POINT(#{paris_lon + (i * 0.001)} #{paris_lat + (i * 0.001)})"
       )
     end
   end

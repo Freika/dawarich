@@ -38,33 +38,35 @@ export class MapPageProvider {
     return this.controller?.timezoneValue || undefined
   }
 
-  // Poster/video generation is an explicit bounded consumer, so it may fetch
-  // exact Points and canonical Tracks without making the browsing map bulk-load.
+  // Posters need only geometry; imports have no canonical track filter.
   async ensureTrackLoaded() {
     const controller = this.controller
     if (!controller) return
-    const { startAt, endAt } = this.dateRange()
     if (controller.api.importId) {
-      await controller.mapDataManager?.ensurePointsLoaded()
-      this._tracks = RouteSegmenter.pointsToRoutes(
-        controller._getLoadedPoints?.() ?? [],
-      )
+      await this.points()
       return
     }
-    const [, tracks] = await Promise.all([
-      controller.mapDataManager?.ensurePointsLoaded(),
-      controller.api.fetchTracks({ start_at: startAt, end_at: endAt }),
-    ])
-    this._tracks = tracks || EMPTY_COLLECTION
+    const { startAt, endAt } = this.dateRange()
+    this._tracks =
+      (await controller.api.fetchTracks({
+        start_at: startAt,
+        end_at: endAt,
+      })) || EMPTY_COLLECTION
   }
 
-  // Timestamped points, for consumers that animate the track rather than
-  // draw it flat.
+  // Video geometry and its clock must use the same range-scoped points.
   async points() {
     const controller = this.controller
     if (!controller) return []
-    await this.ensureTrackLoaded()
-    return controller._getLoadedPoints?.() ?? []
+    const [, { zones }] = await Promise.all([
+      controller.mapDataManager?.ensurePointsLoaded(),
+      controller.api.fetchPrivacyZones(),
+    ])
+    const points = controller._getLoadedPoints?.() ?? []
+    this._tracks = RouteSegmenter.pointsToRoutes(points, {
+      privacyZones: zones,
+    })
+    return points
   }
 
   fallbackBounds() {
@@ -100,29 +102,13 @@ export class MapPageProvider {
   }
 }
 
-export function buildTripGeojson({
-  dayRouteCollections = [],
-  pathData = null,
-}) {
-  const features = []
-  for (const collection of dayRouteCollections) {
-    features.push(...(collection?.features ?? []))
+export function buildTripGeojson({ dayRouteCollections = [] }) {
+  return {
+    type: "FeatureCollection",
+    features: dayRouteCollections.flatMap(
+      (collection) => collection?.features ?? [],
+    ),
   }
-  if (!features.length && pathData) {
-    try {
-      const coordinates = JSON.parse(pathData)
-      if (Array.isArray(coordinates) && coordinates.length >= 2) {
-        features.push({
-          type: "Feature",
-          properties: {},
-          geometry: { type: "LineString", coordinates },
-        })
-      }
-    } catch {
-      // malformed path data falls through to an empty collection
-    }
-  }
-  return { type: "FeatureCollection", features }
 }
 
 export class TripProvider {

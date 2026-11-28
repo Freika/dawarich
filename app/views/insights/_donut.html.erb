@@ -1,0 +1,25 @@
+<%# locals: (title:, values:, labels:, colors:, center:) %>
+<% segments = donut_segments(values) %>
+<div class="min-w-0">
+  <h3 class="text-sm font-medium mb-3"><%= title %></h3>
+  <div class="flex items-center gap-4">
+    <svg viewBox="0 0 42 42" class="w-24 h-24 shrink-0" role="img" aria-label="<%= title %>">
+      <circle cx="21" cy="21" r="15.915" fill="none" stroke-width="5" style="stroke: oklch(var(--bc) / 0.08)"></circle>
+      <% segments.each do |segment| %>
+        <circle cx="21" cy="21" r="15.915" fill="none" stroke-width="5"
+                stroke-dasharray="<%= segment.dash %> <%= (100 - segment.dash).round(2) %>" stroke-dashoffset="<%= segment.offset %>"
+                style="stroke: <%= colors.fetch(segment.key) %>"><title><%= labels.fetch(segment.key) %>: <%= segment.percent.zero? ? "<1" : segment.percent %>%</title></circle>
+      <% end %>
+      <text x="21" y="22.6" text-anchor="middle" font-size="4.6" style="fill: currentColor"><%= center %></text>
+    </svg>
+    <ul class="grid gap-1 text-sm min-w-0 flex-1">
+      <% segments.each do |segment| %>
+        <li class="grid grid-cols-[0.6rem_minmax(0,1fr)_auto] items-center gap-2">
+          <span class="h-2.5 w-2.5 rounded-full" style="background: <%= colors.fetch(segment.key) %>" aria-hidden="true"></span>
+          <span class="truncate"><%= labels.fetch(segment.key) %></span>
+          <span class="tabular-nums text-base-content/60"><%= segment.percent.zero? ? "<1" : segment.percent %>%</span>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+</div>

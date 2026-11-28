@@ -13,6 +13,27 @@ RSpec.describe Countries::NameAliases do
     end
   end
 
+  describe '.spellings' do
+    it 'lists every stored form of a country, whichever form it is given' do
+      expect(described_class.spellings('Macau')).to contain_exactly('Macao S.A.R', 'Macau', 'Macao')
+      expect(described_class.spellings('Macao S.A.R')).to contain_exactly('Macao S.A.R', 'Macau', 'Macao')
+    end
+
+    it 'returns a name without aliases on its own' do
+      expect(described_class.spellings('Atlantis')).to eq(['Atlantis'])
+    end
+  end
+
+  describe '.spellings_containing' do
+    it 'finds every form of the countries a search term names' do
+      expect(described_class.spellings_containing('cape ve')).to contain_exactly('Cape Verde', 'Cabo Verde')
+    end
+
+    it 'finds nothing for a term no alias holds' do
+      expect(described_class.spellings_containing('Atlantis')).to eq([])
+    end
+  end
+
   # A Natural Earth data refresh that renames a country would silently break
   # its aliases: the backfill would match nothing and rows would quietly stay
   # unresolved. Pin every canonical value to the shipped seed file.

@@ -2,6 +2,7 @@
 
 class Users::AppleOauthController < ApplicationController
   include PendingImportClaimable
+  include OtpChallengeStaging
 
   skip_before_action :verify_authenticity_token, only: :callback
   before_action :ensure_enabled
@@ -17,11 +18,15 @@ class Users::AppleOauthController < ApplicationController
     cookies.encrypted[:apple_oauth_state] = COOKIE_OPTS.merge(value: state, expires: COOKIE_TTL.from_now)
 
     # Apple's callback is a cross-site form POST, so the SameSite=Lax session
-    # cookie won't accompany it. Relay the pending-import ticket through an
-    # encrypted SameSite=None cookie, same as the nonce/state above.
+    # cookie won't accompany it. Relay the pending-import ticket and the family
+    # invitation through encrypted SameSite=None cookies, same as the nonce/state above.
     if session[:pending_import_ticket].present?
       cookies.encrypted[:apple_pending_import_ticket] =
         COOKIE_OPTS.merge(value: session[:pending_import_ticket], expires: COOKIE_TTL.from_now)
+    end
+    if session[:invitation_token].present?
+      cookies.encrypted[:apple_pending_invitation_token] =
+        COOKIE_OPTS.merge(value: session[:invitation_token], expires: COOKIE_TTL.from_now)
     end
 
     redirect_to authorize_url(nonce: nonce, state: state), allow_other_host: true
@@ -31,6 +36,7 @@ class Users::AppleOauthController < ApplicationController
     expected_state = cookies.encrypted[:apple_oauth_state]
     expected_nonce = cookies.encrypted[:apple_oauth_nonce]
     restore_pending_import_ticket
+    restore_pending_invitation_token
     cookies.delete(:apple_oauth_state)
     cookies.delete(:apple_oauth_nonce)
 
@@ -52,6 +58,8 @@ class Users::AppleOauthController < ApplicationController
       email_verified: [true, 'true'].include?(claims[:email_verified]),
       name_attrs: extract_name_from_params
     ).call
+
+    return stage_otp_challenge(user) if otp_challenge_required?(user)
 
     flash[:notice] = I18n.t('devise.omniauth_callbacks.success', kind: I18n.t('oauth_providers.apple'))
     sign_in_and_redirect user, event: :authentication
@@ -96,6 +104,14 @@ class Users::AppleOauthController < ApplicationController
     return if ticket.blank?
 
     session[:pending_import_ticket] ||= ticket
+  end
+
+  def restore_pending_invitation_token
+    token = cookies.encrypted[:apple_pending_invitation_token]
+    cookies.delete(:apple_pending_invitation_token)
+    return if token.blank?
+
+    session[:invitation_token] ||= token
   end
 
   def ensure_enabled

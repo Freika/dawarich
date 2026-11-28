@@ -76,6 +76,7 @@ module TransportationModes
       {
         start_ts: start_ts, end_ts: end_ts,
         mean_dt: dts.empty? ? 0.0 : dts.sum.to_f / dts.size,
+        altitude_p50: altitude_median(valid),
         speed_p50: percentile(speeds_kmh, 0.50),
         speed_p85: percentile(speeds_kmh, 0.85),
         speed_p95: percentile(speeds_kmh, 0.95),
@@ -83,9 +84,17 @@ module TransportationModes
         motion_variance: standard_deviation(moving),
         stop_fraction: (speeds_kmh.size - moving.size).to_f / speeds_kmh.size,
         hints: window_hints(window_rows),
+        authoritative_mode: window_authoritative_mode(window_rows),
         sparse: dts.any? && (dts.sum.to_f / dts.size) > Emissions::TUNING[:sparse_dt_s],
         point_ids: window_rows.map { |r| r[:point_id] }
       }
+    end
+
+    def self.altitude_median(rows)
+      values = rows.filter_map { |r| r[:altitude_m] }.select { |v| v.finite? && v.between?(-500, 20_000) }.sort
+      return if values.size < 3 || values.size < rows.size / 2.0
+
+      percentile(values, 0.5)
     end
 
     def self.percentile(sorted_values, fraction)
@@ -114,6 +123,12 @@ module TransportationModes
       mean = values.sum / values.size
       variance = values.sum { |v| (v - mean)**2 } / (values.size - 1)
       Math.sqrt(variance)
+    end
+
+    def self.window_authoritative_mode(rows)
+      counts = rows.filter_map { |row| HintScorer.authoritative_mode(row[:motion_data]) }.tally
+      mode, count = counts.max_by { |_mode, total| total }
+      mode if count && count > rows.size / 2.0
     end
 
     def self.window_hints(rows)

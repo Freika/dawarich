@@ -14,6 +14,7 @@ gem 'aws-sdk-kms', '~> 1.132', require: false
 gem 'aws-sdk-s3', '~> 1.232', require: false
 gem 'bcrypt', '>= 3.1.22'
 gem 'bootsnap', require: false
+gem 'cgi'
 gem 'chartkick'
 gem 'connection_pool', '< 4' # Pin to 2.x - version 3.0+ has breaking API changes with Rails RedisCacheStore
 gem 'data_migrate'
@@ -34,6 +35,7 @@ gem 'json', '>= 2.19.2'
 gem 'jwt', '~> 3.3.0'
 gem 'kaminari'
 gem 'lograge'
+gem 'mcp', '~> 1.6'
 gem 'net-imap', '>= 0.5.14'
 gem 'oj'
 gem 'omniauth-github', '~> 2.0.0'
@@ -70,6 +72,7 @@ gem 'sprockets-rails'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
+gem 'tzf2', '~> 0.0.1'
 gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
 gem 'webrick' # Required by Yabeda::Prometheus::Exporter.start_metrics_server! on Ruby 3.0+
 gem 'with_advisory_lock'
@@ -87,6 +90,7 @@ group :development, :test, :staging do
   gem 'dotenv-rails'
   gem 'factory_bot_rails'
   gem 'ffaker'
+  gem 'parallel_tests'
   gem 'pry-byebug'
   gem 'pry-rails'
   gem 'rspec-rails', '>= 8.0.1'
@@ -94,6 +98,7 @@ group :development, :test, :staging do
 end
 
 group :test do
+  gem 'benchmark'
   gem 'capybara'
   gem 'fakeredis'
   gem 'selenium-webdriver'

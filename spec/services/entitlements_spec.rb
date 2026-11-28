@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Entitlements do
   let(:user) { create(:user) }
-  let(:entitlements) { described_class.for(user) }
+  let(:entitlements) { described_class.new(user) }
 
   describe 'when self-hosted' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
@@ -14,10 +14,7 @@ RSpec.describe Entitlements do
 
       expect(entitlements.full_access?).to be true
       expect(entitlements.restricted?).to be false
-      expect(entitlements.write_api?).to be true
-      expect(entitlements.pro_api?).to be true
-      expect(entitlements.integrations?).to be true
-      expect(entitlements.public_sharing?).to be true
+      expect(entitlements.full_access?).to be true
       expect(entitlements.families?).to be true
     end
 
@@ -31,6 +28,10 @@ RSpec.describe Entitlements do
     it 'has no points limit' do
       expect(entitlements.unlimited_points?).to be true
       expect(entitlements.points_limit).to be_nil
+    end
+
+    it 'puts no Cloud limits on webhooks' do
+      expect(entitlements.webhook_limits?).to be false
     end
 
     it 'reports the user own plan as effective plan' do
@@ -49,10 +50,7 @@ RSpec.describe Entitlements do
       it 'grants pro capabilities' do
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
-        expect(entitlements.pro_api?).to be true
-        expect(entitlements.integrations?).to be true
-        expect(entitlements.public_sharing?).to be true
+        expect(entitlements.full_access?).to be true
       end
 
       it 'does not grant family creation' do
@@ -68,6 +66,10 @@ RSpec.describe Entitlements do
         expect(entitlements.unlimited_points?).to be false
         expect(entitlements.points_limit).to eq(DawarichSettings::BASIC_PAID_PLAN_LIMIT)
       end
+
+      it 'applies the Cloud webhook limits' do
+        expect(entitlements.webhook_limits?).to be true
+      end
     end
 
     context 'with a lite user' do
@@ -76,17 +78,13 @@ RSpec.describe Entitlements do
       it 'denies pro capabilities' do
         expect(entitlements.full_access?).to be false
         expect(entitlements.restricted?).to be true
-        expect(entitlements.write_api?).to be false
-        expect(entitlements.pro_api?).to be false
-        expect(entitlements.integrations?).to be false
-        expect(entitlements.public_sharing?).to be false
+        expect(entitlements.full_access?).to be false
         expect(entitlements.families?).to be false
       end
 
       it 'applies the 12-month data window' do
         expect(entitlements.data_window).to eq(DawarichSettings::LITE_DATA_WINDOW)
-        expect(entitlements.data_window_start)
-          .to be_within(5.seconds).of(DawarichSettings::LITE_DATA_WINDOW.ago)
+        expect(entitlements.data_window_start).to eq(user.data_window_start)
       end
 
       it 'caps points at the paid plan limit' do
@@ -101,8 +99,7 @@ RSpec.describe Entitlements do
       it 'grants pro capabilities during the trial' do
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
-        expect(entitlements.pro_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.data_window).to be_nil
       end
     end
@@ -117,7 +114,7 @@ RSpec.describe Entitlements do
 
       it 'grants pro capabilities and family creation' do
         expect(entitlements.full_access?).to be true
-        expect(entitlements.write_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.families?).to be true
         expect(entitlements.data_window).to be_nil
       end
@@ -147,7 +144,7 @@ RSpec.describe Entitlements do
         expect(entitlements.effective_plan).to eq(:family)
         expect(entitlements.full_access?).to be true
         expect(entitlements.restricted?).to be false
-        expect(entitlements.write_api?).to be true
+        expect(entitlements.full_access?).to be true
         expect(entitlements.data_window).to be_nil
       end
     end

@@ -24,7 +24,7 @@ Rails.application.routes.draw do
     (u.admin? && DawarichSettings.self_hosted?) ||
       (u.admin? && ENV['SIDEKIQ_USERNAME'].present? && ENV['SIDEKIQ_PASSWORD'].present?)
   } do
-    mount Sidekiq::Web => '/sidekiq'
+    mount Dawarich::SidekiqWeb => '/sidekiq'
   end
 
   authenticate :user, ->(u) { u.admin? } do
@@ -63,9 +63,22 @@ Rails.application.routes.draw do
       end
     end
 
+    resource :geofencing, only: :show, controller: 'geofencing'
+    resources :webhooks, only: %i[show create update destroy] do
+      member do
+        post :test
+        post :regenerate_secret
+        post :retry_delivery
+      end
+    end
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resource :visits, only: %i[show update]
+    resource :data_processing, only: %i[show update], controller: 'data_processing' do
+      post :recalculate
+      post :reapply_anomaly_filter
+      post :detect_trips
+    end
+    resource :visits, only: :show
     resources :users, only: %i[index show create destroy edit update] do
       member do
         post 'regenerate_api_key'
@@ -111,6 +124,8 @@ Rails.application.routes.draw do
   get 'trial/resume', to: 'trial/resume#show', as: :trial_resume
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
+  post 'analytics/first_map_view', to: 'analytics/first_map_views#create', as: :analytics_first_map_view
+
   resources :imports do
     get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
@@ -139,14 +154,24 @@ Rails.application.routes.draw do
     end
   end
   resources :areas, only: %i[create update]
-  resources :places, only: %i[index show destroy create update] do
+  resources :places, only: %i[index show new edit destroy create update] do
+    member do
+      patch :confirm
+      post :merge
+    end
     collection do
+      patch :bulk_update
+      delete :bulk_destroy
+      post :bulk_merge
       get 'nearby'
     end
+    resources :homes, controller: 'places/homes', only: %i[create update destroy]
   end
+  resources :homes, only: :create
   resources :exports, only: %i[index create destroy]
   resources :posters, only: %i[create destroy]
   resources :route_videos, only: %i[create destroy]
+  resources :notes, only: %i[index new create edit update destroy]
   resources :trips do
     member do
       post :recalculate
@@ -163,7 +188,7 @@ Rails.application.routes.draw do
 
   namespace :share_links do
     resource :hub, only: :show, controller: 'hubs'
-    resources :shares, only: [] do
+    resources :shares, only: %i[edit update] do
       member { patch :revoke }
     end
     resource :timeline, only: %i[new create destroy], controller: 'timelines' do
@@ -187,7 +212,7 @@ Rails.application.routes.draw do
   # ApplicationController#ensure_family_feature_available!, since the routes are
   # built at boot and cannot depend on the current user's plan.
   resource :family, only: %i[show new create edit update destroy] do
-    resources :invitations, except: %i[edit update], controller: 'family/invitations'
+    resources :invitations, except: %i[new edit update], controller: 'family/invitations'
     resources :members, only: %i[destroy], controller: 'family/memberships'
     resources :location_requests, only: %i[show create], controller: 'family/location_requests' do
       member do
@@ -210,7 +235,9 @@ Rails.application.routes.draw do
       get :address
     end
   end
-  resources :notifications, only: %i[index show destroy]
+  resources :notifications, only: %i[index show destroy] do
+    get :open, on: :member
+  end
   post 'notifications/mark_as_read', to: 'notifications#mark_as_read', as: :mark_notifications_as_read
   post 'notifications/destroy_all', to: 'notifications#destroy_all', as: :delete_all_notifications
   resources :stats, only: :index do
@@ -218,18 +245,40 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
+  post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
+  post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
+  resources :achievement_selections, path: 'achievements/places', controller: 'achievements/selections',
+                                    only: %i[create update destroy]
+  resources :achievement_cities, path: 'achievements/cities', controller: 'achievements/cities',
+                                only: %i[create update destroy]
+  resources :achievement_cards, path: 'achievements/cards', controller: 'achievements/collectibles',
+                               only: %i[index show] do
+    member { patch :toggle_sharing }
+  end
+  get 'shared/achievement_cards/:uuid/og.png', to: 'shared/collectibles#image', as: :shared_collectible_image
+  get 'shared/achievement_cards/:uuid', to: 'shared/collectibles#show', as: :shared_collectible
+  resources :achievements, only: %i[index show], param: :key do
+    member do
+      patch :toggle_sharing
+    end
+  end
   resources :insights, only: :index do
     collection do
       get :details
+      get 'routes/:year', action: :routes, as: :routes, constraints: { year: /\d{4}/ }
     end
   end
   get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
-  get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
+  get 'stats/:year/:month', to: 'stats#month', as: :month_stats,
+                            constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/achievements/:uuid/og.png', to: 'shared/achievements#image', as: :shared_achievement_image
+  get 'shared/achievements/:uuid', to: 'shared/achievements#show', as: :shared_achievement
 
   # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
@@ -258,6 +307,7 @@ Rails.application.routes.draw do
   devise_for :users, controllers: {
     registrations: 'users/registrations',
     sessions: 'users/sessions',
+    passwords: 'users/passwords',
     omniauth_callbacks: 'users/omniauth_callbacks'
   }
 
@@ -299,10 +349,20 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      post 'achievements/unlocks/next', to: 'achievements/unlocks#next'
+      post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen'
+      post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss'
+      resources :achievements, only: %i[index show], param: :key do
+        patch :sharing, on: :member
+      end
+
+      match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+      get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
+      delete 'settings/appearance', to: 'settings#reset_appearance'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'
       get   'settings/mobile', to: 'settings/mobile#show'
       patch 'settings/mobile', to: 'settings/mobile#update'
@@ -324,6 +384,13 @@ Rails.application.routes.draw do
       namespace :imports do
         post :pending, to: 'pending#create'
       end
+      resources :webhooks, only: %i[index show create update destroy] do
+        member do
+          post :test
+          post :regenerate_secret
+        end
+      end
+      resources :geofence_events, only: %i[index]
       resources :places, only: %i[index show create update destroy] do
         collection do
           get 'nearby'
@@ -337,9 +404,11 @@ Rails.application.routes.draw do
       end
       resources :points, only: %i[index create update destroy] do
         resource :position, only: :update, controller: 'points/positions'
+        patch :mark_valid, on: :member
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
+          post :transitions, to: 'points/transitions#create'
         end
       end
       resources :visits, only: %i[index show create update destroy] do
@@ -387,6 +456,8 @@ Rails.application.routes.draw do
         resources :visited_cities, only: :index
       end
 
+      get 'maps/statistics', to: 'maps/statistics#index'
+
       namespace :points do
         get 'tracked_months', to: 'tracked_months#index'
       end
@@ -394,6 +465,7 @@ Rails.application.routes.draw do
       namespace :tiles do
         get 'points/:z/:x/:y.mvt', to: 'points#show', defaults: { format: :mvt }
         get 'tracks/:z/:x/:y.mvt', to: 'tracks#show', defaults: { format: :mvt }
+        get 'trips/:trip_id/:z/:x/:y.mvt', to: 'trips#show', defaults: { format: :mvt }
       end
 
       resources :photos, only: %i[index] do
@@ -425,8 +497,15 @@ Rails.application.routes.draw do
       end
 
       namespace :families do
-        resource :mine, only: [:show], controller: 'mine'
+        resource :mine, only: %i[show create update destroy], controller: 'mine'
         resource :sharing, only: [:update], controller: 'sharing'
+        resources :invitations, only: %i[create destroy] do
+          collection do
+            post :preview
+            post :accept
+          end
+        end
+        resources :members, only: :destroy, param: :user_id
         resources :locations, only: [:index] do
           collection do
             get :history
@@ -445,6 +524,7 @@ Rails.application.routes.draw do
         get ':id/trip',   to: 'trips#show'
         get ':id/points', to: 'points#index'
         get ':id/route',  to: 'points#route'
+        get ':id/tiles/:z/:x/:y.mvt', to: 'tiles#show', defaults: { format: :mvt }
         get ':id/photos', to: 'photos#index'
         get ':id/photos/:photo_id/thumbnail', to: 'photos#thumbnail', constraints: { photo_id: %r{[^/]+} }
       end

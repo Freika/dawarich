@@ -139,6 +139,16 @@ RSpec.describe Points::Intake do
       expect(scheduler).to have_received(:call)
     end
 
+    it 'schedules visits backfill with the arrival timestamps' do
+      scheduler = instance_double(Visits::BackfillScheduler, call: nil)
+      allow(Visits::BackfillScheduler)
+        .to receive(:new).with(user.id, [1_760_000_000, 1_760_000_060]).and_return(scheduler)
+
+      intake
+
+      expect(scheduler).to have_received(:call)
+    end
+
     it 'triggers the visits debouncer' do
       debouncer = instance_double(Visits::RealtimeDebouncer, trigger: nil)
       allow(Visits::RealtimeDebouncer).to receive(:new).with(user.id).and_return(debouncer)
@@ -199,6 +209,7 @@ RSpec.describe Points::Intake do
       allow(Tracks::RealtimeDebouncer).to receive(:new)
       allow(Tracks::BackfillScheduler).to receive(:new)
       allow(Visits::RealtimeDebouncer).to receive(:new)
+      allow(Visits::BackfillScheduler).to receive(:new)
 
       expect { bulk_intake }
         .to change { user.points.count }.by(2)
@@ -209,6 +220,7 @@ RSpec.describe Points::Intake do
       expect(Tracks::RealtimeDebouncer).not_to have_received(:new)
       expect(Tracks::BackfillScheduler).not_to have_received(:new)
       expect(Visits::RealtimeDebouncer).not_to have_received(:new)
+      expect(Visits::BackfillScheduler).not_to have_received(:new)
     end
   end
 

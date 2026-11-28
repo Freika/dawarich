@@ -2,8 +2,6 @@
 
 module TeslaMate
   class Client
-    include SslConfigurable
-
     class Error < StandardError; end
     class RetryableResponseError < StandardError; end
 
@@ -80,7 +78,11 @@ module TeslaMate
 
       begin
         attempts += 1
-        response = HTTParty.get("#{@url}#{path}", request_options.merge(query: query).compact)
+        response = Integrations::Transport.request(
+          :get, "#{@url}#{path}",
+          query: query, headers: request_headers,
+          skip_ssl_verification: @skip_ssl_verification, timeout: @timeout
+        )
         raise RetryableResponseError, "TeslaMateApi responded with #{response.code}" if response.code.to_i >= 500
 
         response
@@ -106,19 +108,16 @@ module TeslaMate
       raise Error, "TeslaMateApi #{label} must be a positive integer"
     end
 
-    def request_options
-      options = {
-        headers: { 'Accept' => 'application/json' },
-        timeout: @timeout
-      }
+    def request_headers
+      headers = { 'Accept' => 'application/json' }
 
       if @username.present?
-        options[:basic_auth] = { username: @username, password: @password.to_s }
+        headers['Authorization'] = "Basic #{Base64.strict_encode64("#{@username}:#{@password}")}"
       elsif @api_token.present?
-        options[:headers]['Authorization'] = "Bearer #{@api_token}"
+        headers['Authorization'] = "Bearer #{@api_token}"
       end
 
-      http_options_with_ssl_flag(@skip_ssl_verification, options)
+      headers
     end
   end
 end

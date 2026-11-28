@@ -1,0 +1,56 @@
+name: Mirror master to OneDev
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dawarich-onedev-master-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    if: github.repository == 'Freika/dawarich' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out master with its history
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: master
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push master to OneDev
+        env:
+          ONEDEV_MIRROR_TOKEN: ${{ secrets.ONEDEV_MIRROR_TOKEN }}
+        shell: bash
+        run: |
+          set -eu
+          if [ -z "$ONEDEV_MIRROR_TOKEN" ]; then
+            echo 'Configure the repository secret ONEDEV_MIRROR_TOKEN.' >&2
+            exit 1
+          fi
+
+          askpass=$(mktemp)
+          trap 'rm -f "$askpass"' EXIT
+          cat > "$askpass" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' frey ;;
+            *Password*) printf '%s\n' "$ONEDEV_MIRROR_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "$askpass"
+          export GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0
+
+          # Fast-forward only: a diverged OneDev master fails the push instead
+          # of being overwritten. The OneDev master trigger builds the image.
+          git -c credential.helper= push \
+            https://onedev.dwri.xyz/dawarich.git \
+            HEAD:refs/heads/master

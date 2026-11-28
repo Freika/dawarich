@@ -99,6 +99,7 @@ async function main() {
     theme,
     title: text.title ?? "",
     subtitle: text.subtitle ?? "",
+    stats: text.stats ?? "",
     coords: text.coords ? formatCoords({ lat: view.lat, lng: view.lon }) : "",
     font: fontFamily,
   })

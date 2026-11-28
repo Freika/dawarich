@@ -2,11 +2,33 @@
 
 module Geocoding
   class UserLookup
+    # Raised when a Photon server answers forward search (/api) with its own
+    # "endpoint not found" 404, which is how one in reverse-only mode reports it.
+    class ForwardSearchUnavailable < Geocoder::Error; end
+
+    module PhotonForwardSearch
+      # A 404 without this body comes from a proxy (e.g. a wrong path prefix).
+      MISSING_ENDPOINT = 'Endpoint GET /api not found'
+
+      private
+
+      def make_api_request(query)
+        response = super
+        if response.code.to_i == 404 && !query.reverse_geocode? && response.body.to_s.include?(MISSING_ENDPOINT)
+          raise ForwardSearchUnavailable, 'Photon server does not support forward search'
+        end
+
+        response
+      end
+    end
+
     def self.build(config)
       lookup = Geocoder::Lookup.get(Providers.gem_handle(config.provider)).class.new
       merged = merged_configuration(config)
       lookup.define_singleton_method(:configuration) { merged }
       lookup.singleton_class.send(:private, :configuration)
+      lookup.extend(PersistentHttp::Lookup)
+      lookup.extend(PhotonForwardSearch) if config.provider == :photon
       lookup
     end
 
@@ -19,6 +41,7 @@ module Geocoding
       case config.provider
       when :photon
         overrides = { host: config.host, use_https: config.use_https }
+        overrides[:language] = config.language if config.language.present?
         if config.api_key.present?
           overrides[:http_headers] = base[:http_headers].to_h.merge('X-Api-Key' => config.api_key)
         end

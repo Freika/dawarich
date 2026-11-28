@@ -6,7 +6,7 @@ require 'oj'
 
 RSpec.describe Users::ImportData, type: :service do
   let(:user) { create(:user) }
-  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
+  let(:archive_path) { Rails.root.join("tmp/test_export_#{SecureRandom.hex(4)}.zip") }
   let(:service) { described_class.new(user, archive_path) }
   let(:import_directory) { Rails.root.join('tmp', "import_#{user.email.gsub(/[^0-9A-Za-z._-]/, '_')}_1234567890") }
 
@@ -59,9 +59,17 @@ RSpec.describe Users::ImportData, type: :service do
         expect(::Notifications::Create).to receive(:new).with(
           user: user,
           title: 'Data import completed',
-          content: include('1000 points, 4 visits, 3 places, 2 trips'),
+          content: include('1000 points, 4 visits, 5 places, 2 trips'),
           kind: :info
         )
+        service.import
+      end
+
+      it 'does not expose the legacy Area compatibility counter in the notification' do
+        expect(::Notifications::Create).to receive(:new).with(
+          hash_including(content: satisfy { |content| content.include?('5 places') && !content.include?('areas') })
+        )
+
         service.import
       end
 
@@ -176,7 +184,9 @@ RSpec.describe Users::ImportData, type: :service do
       service.instance_variable_set(:@import_directory, tmp_dir)
 
       allow(Users::ImportData::Settings).to receive(:new).and_return(double(call: true))
-      allow(Users::ImportData::Areas).to receive(:new).and_return(double(call: 0))
+      allow(Users::ImportData::Areas).to receive(:new).and_return(
+        double(call: 0, place_references_by_id: {}, place_references_by_name: {})
+      )
       allow(Users::ImportData::Imports).to receive(:new).and_return(double(call: [0, 0]))
       allow(Users::ImportData::Exports).to receive(:new).and_return(double(call: [0, 0]))
       allow(Users::ImportData::Trips).to receive(:new).and_return(double(call: 0))
@@ -188,7 +198,7 @@ RSpec.describe Users::ImportData, type: :service do
         double(call: batch.size)
       end
 
-      allow(Users::ImportData::Visits).to receive(:new) do |_, batch|
+      allow(Users::ImportData::Visits).to receive(:new) do |_, batch, **_options|
         visits_batches << batch
         double(call: batch.size)
       end

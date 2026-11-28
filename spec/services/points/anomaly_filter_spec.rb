@@ -20,6 +20,17 @@ RSpec.describe Points::AnomalyFilter do
       expect(point.updated_at).to be > before_updated
     end
 
+    it 'defers the achievement rebuild from the oldest newly excluded point to the next check' do
+      point = create(:point, user: user, accuracy: 50_000, timestamp: 30.minutes.ago.to_i,
+                             latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      clear_achievement_checks(user.id)
+
+      expect do
+        described_class.new(user.id, start_time, end_time).call
+      end.not_to have_enqueued_job(Achievements::CheckJob)
+      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+    end
+
     # A reported accuracy radius is a confidence estimate, not evidence that the
     # position is wrong. Google Timeline routinely reports 1-4km while the point
     # still sits on the road, and deleting those points replaces real route
@@ -73,6 +84,92 @@ RSpec.describe Points::AnomalyFilter do
 
       it 'does not mark points with nil accuracy' do
         expect(no_accuracy.reload.anomaly).not_to be true
+      end
+    end
+
+    context 'when the user marked a point as correct' do
+      let(:base_time) { 30.minutes.ago.to_i }
+
+      def walk_point(offset, minutes, **attrs)
+        lon = 13.405 + offset
+        lat = 52.52 + offset
+        create(:point, user: user, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})",
+                       timestamp: base_time + (minutes * 60), accuracy: 10, **attrs)
+      end
+
+      let!(:spike) { walk_point(10.0, 2, anomaly_override: true) }
+      let!(:absurd) { walk_point(0.0004, 4, accuracy: 20_000, anomaly_override: true) }
+
+      before do
+        walk_point(0, 0)
+        walk_point(0.0001, 1)
+        walk_point(0.0002, 3)
+        walk_point(0.0003, 5)
+        described_class.new(user.id, start_time, end_time).call
+      end
+
+      it 'never flags it, whichever pass would have' do
+        expect(spike.reload.anomaly).not_to be true
+        expect(absurd.reload.anomaly).not_to be true
+        expect(Point.where(user:, anomaly: true)).to be_empty
+      end
+    end
+
+    context 'Pass 1: optional accuracy threshold' do
+      let(:base_lat) { 52.52 }
+      let(:base_lon) { 13.405 }
+
+      let!(:precise) do
+        create(:point, user: user, accuracy: 15, timestamp: 30.minutes.ago.to_i,
+               latitude: base_lat, longitude: base_lon,
+               lonlat: "POINT(#{base_lon} #{base_lat})")
+      end
+      let!(:wifi_grade) do
+        create(:point, user: user, accuracy: 300, timestamp: 29.minutes.ago.to_i,
+               latitude: base_lat + 0.0001, longitude: base_lon + 0.0001,
+               lonlat: "POINT(#{base_lon + 0.0001} #{base_lat + 0.0001})")
+      end
+      let!(:timeline_grade) do
+        create(:point, user: user, accuracy: 3_000, timestamp: 28.minutes.ago.to_i,
+               latitude: base_lat + 0.0002, longitude: base_lon + 0.0002,
+               lonlat: "POINT(#{base_lon + 0.0002} #{base_lat + 0.0002})")
+      end
+      let!(:no_accuracy) do
+        create(:point, user: user, accuracy: nil, timestamp: 27.minutes.ago.to_i,
+               latitude: base_lat + 0.0003, longitude: base_lon + 0.0003,
+               lonlat: "POINT(#{base_lon + 0.0003} #{base_lat + 0.0003})")
+      end
+
+      def run_filter
+        described_class.new(user.id, start_time, end_time).call
+      end
+
+      context 'when a threshold value is stored but the threshold is not turned on' do
+        before { user.update!(settings: { 'gps_accuracy_threshold' => 100 }) }
+
+        it 'keeps coarse points' do
+          run_filter
+
+          expect([wifi_grade, timeline_grade].map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the threshold is turned on' do
+        before do
+          user.update!(settings: { 'gps_accuracy_filter_enabled' => true, 'gps_accuracy_threshold' => 200 })
+        end
+
+        it 'flags points less accurate than the threshold' do
+          run_filter
+
+          expect([wifi_grade, timeline_grade].map { |point| point.reload.anomaly }).to eq([true, true])
+        end
+
+        it 'keeps precise points and points without accuracy' do
+          run_filter
+
+          expect([precise, no_accuracy].map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
       end
     end
 
@@ -744,32 +841,6 @@ RSpec.describe Points::AnomalyFilter do
       end
     end
 
-    # gps_accuracy_threshold no longer gates flagging: a coarse radius is not
-    # evidence of a wrong position, and honouring a 100-1000m threshold deleted
-    # the coarse points that carry route shape. The setting is still accepted by
-    # the settings API but no longer affects which points are flagged.
-    context 'when the user has set an accuracy threshold' do
-      let(:user) { create(:user, settings: { 'gps_accuracy_threshold' => 500 }) }
-      let!(:above_user_threshold) do
-        create(:point, user: user, accuracy: 600, timestamp: 30.minutes.ago.to_i,
-               latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
-      end
-      let!(:absurd) do
-        create(:point, user: user, accuracy: 40_000, timestamp: 29.minutes.ago.to_i,
-               latitude: 52.5201, longitude: 13.4051, lonlat: 'POINT(13.4051 52.5201)')
-      end
-
-      before { described_class.new(user.id, start_time, end_time).call }
-
-      it 'keeps coarse points regardless of the threshold' do
-        expect(above_user_threshold.reload.anomaly).not_to be true
-      end
-
-      it 'still flags absurd radii' do
-        expect(absurd.reload.anomaly).to be true
-      end
-    end
-
     context 'Pass 2: narrow realtime window does not rescan the whole month' do
       let(:base_lat) { 52.52 }
       let(:base_lon) { 13.405 }
@@ -1326,6 +1397,277 @@ RSpec.describe Points::AnomalyFilter do
         expect { described_class.new(user.id, 2.hours.ago.to_i, Time.current.to_i).call }
           .to have_enqueued_job(Stats::CalculatingJob)
           .with(user.id, time.year, time.month).exactly(:once)
+      end
+    end
+
+    # An idle Android phone reports network fixes every few minutes, and now and
+    # then one of them lands on a distant cell tower — across a bay, several km
+    # away, with a ±200 m radius — before the next fix is home again. Each leg
+    # reads as ordinary driving, so no speed test can see it; the shape gives it
+    # away. The rule is kept strict so a real short trip survives: the jumping fix
+    # is coarse (radius over 100 m), its same-tracker neighbours are each at most
+    # 15 minutes away and within 500 m of each other, and it sits 1–50 km from
+    # both of them and further than three times its own radius.
+    context 'Pass 6: a single coarse fix that jumps to a distant tower and back' do
+      let(:base_time) { 40.minutes.ago.to_i }
+      let(:home) { 'POINT(13.405 52.520)' }
+      let(:across_the_bay) { 'POINT(13.508 52.520)' } # ~7 km east
+
+      def fix(offset, lonlat, accuracy:, tracker: 'android-phone')
+        create(:point, user: user, tracker_id: tracker, accuracy: accuracy, velocity: '0',
+                       vertical_accuracy: 0, timestamp: base_time + offset, lonlat: lonlat)
+      end
+
+      def run_filter(from = 1.hour.ago.to_i, to = Time.current.to_i)
+        described_class.new(user.id, from, to).call
+      end
+
+      context 'when a ±200 m fix sits 7 km from a stay it leaves and rejoins within 5 minutes' do
+        let!(:before_jump) { fix(0, home, accuracy: 20) }
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+        let!(:after_jump) { fix(600, 'POINT(13.4051 52.5201)', accuracy: 20) }
+
+        before { run_filter }
+
+        it 'flags the jump' do
+          expect(jump.reload.anomaly).to be true
+        end
+
+        it 'keeps the stay either side' do
+          expect([before_jump, after_jump].map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the stay fixes are coarse network fixes themselves, 300 m apart' do
+        let!(:jump) do
+          fix(0, home, accuracy: 200)
+          fix(600, 'POINT(13.405 52.5227)', accuracy: 200)
+          fix(300, across_the_bay, accuracy: 200)
+        end
+
+        it 'flags the jump' do
+          run_filter
+
+          expect(jump.reload.anomaly).to be true
+        end
+      end
+
+      context 'when the fix back home arrives in a later batch' do
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+        let!(:after_jump) { fix(600, home, accuracy: 20) }
+
+        before { fix(0, home, accuracy: 20) }
+
+        it 'flags the jump although it predates the batch window' do
+          run_filter(after_jump.timestamp, after_jump.timestamp)
+
+          expect(jump.reload.anomaly).to be true
+        end
+      end
+
+      context 'when another tracker reports in between the stay fixes' do
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+        let!(:other_device) do
+          [150, 450].map { |offset| fix(offset, 'POINT(13.300 52.450)', accuracy: 10, tracker: 'tablet') }
+        end
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+          run_filter
+        end
+
+        it 'still judges the jump against its own tracker' do
+          expect(jump.reload.anomaly).to be true
+        end
+
+        it 'keeps the other tracker' do
+          expect(other_device.map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when a quick out-and-back drive is recorded with precise fixes' do
+        let!(:drive) do
+          [13.405, 13.425, 13.445, 13.465, 13.485, 13.508, 13.485, 13.445, 13.405].each_with_index.map do |lon, index|
+            fix(index * 120, "POINT(#{lon} 52.520)", accuracy: 10)
+          end
+        end
+
+        it 'keeps the whole drive' do
+          run_filter
+
+          expect(drive.map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the jump is the last fix of a month and the fix back home is in the next' do
+        let(:base_time) { Time.zone.parse('2026-03-31 23:50').to_i }
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+        end
+
+        it 'flags the jump' do
+          run_filter(base_time - 3600, base_time + 3600)
+
+          expect(jump.reload.anomaly).to be true
+        end
+      end
+
+      context 'when the far fix of an out-and-back is precise (100 m radius or better)' do
+        let!(:far_fix) { fix(300, across_the_bay, accuracy: 100) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(far_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when a coarse fix falls in a real trip that does not come back' do
+        let!(:on_the_way) { fix(300, 'POINT(13.479 52.520)', accuracy: 200) } # ~5 km out
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, 'POINT(13.553 52.520)', accuracy: 20) # ~10 km out
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(on_the_way.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the fix after it is more than 500 m from the fix before it' do
+        let!(:far_fix) { fix(300, across_the_bay, accuracy: 200) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, 'POINT(13.405 52.5254)', accuracy: 20) # ~600 m north of home
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(far_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when two consecutive coarse fixes are away' do
+        let!(:excursion) do
+          [fix(300, across_the_bay, accuracy: 200), fix(600, 'POINT(13.509 52.521)', accuracy: 200)]
+        end
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(900, home, accuracy: 20)
+        end
+
+        it 'keeps both, since only a single fix is judged' do
+          run_filter
+
+          expect(excursion.map { |point| point.reload.anomaly }).to all(be_falsey)
+        end
+      end
+
+      context 'when the coarse fix belongs to a different tracker than the stay around it' do
+        let!(:car_fix) { fix(300, across_the_bay, accuracy: 200, tracker: 'car') }
+
+        before do
+          fix(0, home, accuracy: 20, tracker: 'phone')
+          fix(600, home, accuracy: 20, tracker: 'phone')
+          fix(-300, 'POINT(13.500 52.520)', accuracy: 10, tracker: 'car')
+          fix(900, 'POINT(13.520 52.520)', accuracy: 10, tracker: 'car')
+        end
+
+        it 'keeps it, since the stay is not its own' do
+          run_filter
+
+          expect(car_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the coarse fix is less than 1 km from the stay' do
+        let!(:near_fix) { fix(300, 'POINT(13.4183 52.520)', accuracy: 200) } # ~900 m
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(near_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the coarse fix is more than 50 km from the stay' do
+        let!(:distant_fix) { fix(840, 'POINT(14.291 52.520)', accuracy: 200) } # ~60 km, ~260 km/h legs
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(1680, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(distant_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the stay lies within three times the fix radius' do
+        let!(:cell_fix) { fix(300, 'POINT(13.4419 52.520)', accuracy: 1000) } # ~2.5 km, ±1 km
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(600, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(cell_fix.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the fix before it is more than 15 minutes earlier' do
+        let!(:jump) { fix(960, across_the_bay, accuracy: 200) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(1260, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(jump.reload.anomaly).to be_falsey
+        end
+      end
+
+      context 'when the fix after it is more than 15 minutes later' do
+        let!(:jump) { fix(300, across_the_bay, accuracy: 200) }
+
+        before do
+          fix(0, home, accuracy: 20)
+          fix(1260, home, accuracy: 20)
+        end
+
+        it 'keeps it' do
+          run_filter
+
+          expect(jump.reload.anomaly).to be_falsey
+        end
       end
     end
 

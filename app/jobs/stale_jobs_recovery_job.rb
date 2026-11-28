@@ -25,7 +25,8 @@ class StaleJobsRecoveryJob < ApplicationJob
           kind: :error,
           title: I18n.t('jobs.stale_jobs_recovery_job.export_failed'),
           content: I18n.t('jobs.stale_jobs_recovery_job.export_name_was_stuck_in_processing_and_has_been_marked',
-                          name: export.name)
+                          name: export.name),
+          action_path: Notifications.paths.exports_path
         ).call
       end
     rescue StandardError => e
@@ -44,7 +45,8 @@ class StaleJobsRecoveryJob < ApplicationJob
           kind: :error,
           title: I18n.t('jobs.stale_jobs_recovery_job.import_failed'),
           content: I18n.t('jobs.stale_jobs_recovery_job.import_name_was_stuck_in_processing_and_has_been_marked',
-                          name: import.name)
+                          name: import.name),
+          action_path: Notifications.paths.imports_path
         ).call
       end
     rescue StandardError => e

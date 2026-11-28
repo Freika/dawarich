@@ -17,10 +17,25 @@ class UsersMailer < ApplicationMailer
 
   def archival_approaching
     @user = params[:user]
-    @upgrade_url = "#{MANAGER_URL}/auth/dawarich?token=#{@user.generate_subscription_token}" \
-                   '&utm_source=email&utm_medium=email&utm_campaign=archival_approaching&utm_content=upgrade'
+    @upgrade_url = trial_upgrade_url(utm_source: 'email', utm_medium: 'email',
+                                     utm_campaign: 'archival_approaching', utm_content: 'upgrade')
 
     mail(to: @user.email, subject: I18n.t('mailers.users.archival_approaching.subject'))
+  end
+
+  # Sent by Users::RetentionSweepJob 30, 7 and 1 day before the account is
+  # deleted under the Privacy Policy's 12-month retention limit.
+  def account_deletion_warning
+    @user = params[:user]
+    @deletion_date = I18n.l(Date.iso8601(params[:deletion_on]), format: :long)
+    @exports_url = exports_url
+    # Emails link to the upgrade page, not to a checkout token: the token expires
+    # in 30 minutes, and the page signs the user in and mints a fresh one.
+    @resubscribe_url = trial_upgrade_url(utm_source: 'email', utm_medium: 'email',
+                                         utm_campaign: 'account_deletion_warning', utm_content: 'resubscribe')
+
+    mail(to: @user.email,
+         subject: I18n.t('mailers.users.account_deletion_warning.subject', date: @deletion_date))
   end
 
   # Sent by Auth::FindOrCreateOauthUser when a mobile OAuth signup
@@ -53,8 +68,11 @@ class UsersMailer < ApplicationMailer
 
   def test_email
     @user = params[:user]
+    return unless @user.reload.admin? && @user.deleted_at.nil?
 
-    mail(to: @user.email, subject: I18n.t('mailers.users.test_email.subject'))
+    mail(to: @user.email, subject: I18n.t('mailers.users.test_email.subject')).tap do |message|
+      message.raise_delivery_errors = true
+    end
   end
 
   def trial_expired; end

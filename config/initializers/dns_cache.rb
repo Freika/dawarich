@@ -22,12 +22,19 @@ Rails.application.config.after_initialize do
         cached = Rails.cache.read(cache_key)
         return cached if cached
 
-        result = getaddress_without_cache(name)
+        result = preferred_address(name)
         Rails.cache.write(cache_key, result, expires_in: 5.minutes)
         result
       end
 
       private
+
+      def preferred_address(name)
+        addresses = getaddresses(name)
+        return getaddress_without_cache(name) if addresses.empty?
+
+        addresses.find { |address| address.match?(Resolv::IPv4::Regex) } || addresses.first
+      end
 
       def ip_address?(name)
         # Match IPv4 addresses (e.g., 192.168.1.1)

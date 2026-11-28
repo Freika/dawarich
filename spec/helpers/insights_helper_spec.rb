@@ -43,32 +43,6 @@ RSpec.describe InsightsHelper, type: :helper do
     end
   end
 
-  describe '#activity_level_class' do
-    it 'returns bg-base-300 for level 0' do
-      expect(helper.activity_level_class(0)).to eq('bg-base-300')
-    end
-
-    it 'returns bg-success/30 for level 1' do
-      expect(helper.activity_level_class(1)).to eq('bg-success/30')
-    end
-
-    it 'returns bg-success/50 for level 2' do
-      expect(helper.activity_level_class(2)).to eq('bg-success/50')
-    end
-
-    it 'returns bg-success/70 for level 3' do
-      expect(helper.activity_level_class(3)).to eq('bg-success/70')
-    end
-
-    it 'returns bg-success for level 4' do
-      expect(helper.activity_level_class(4)).to eq('bg-success')
-    end
-
-    it 'returns bg-base-300 for unknown level' do
-      expect(helper.activity_level_class(99)).to eq('bg-base-300')
-    end
-  end
-
   describe '#format_heatmap_distance' do
     before do
       allow(Stat).to receive(:convert_distance).and_call_original
@@ -127,6 +101,15 @@ RSpec.describe InsightsHelper, type: :helper do
       end
     end
 
+    context 'with a Sunday week start' do
+      it 'starts from the Sunday containing or before Jan 1 and ends on a Saturday' do
+        weeks = helper.heatmap_week_columns(2026, week_start: :sunday)
+
+        expect(weeks.first).to eq(Date.new(2025, 12, 28))
+        expect(weeks.last + 6).to eq(Date.new(2027, 1, 2))
+      end
+    end
+
     context 'with 2023 (Jan 1 is Sunday)' do
       let(:weeks) { helper.heatmap_week_columns(2023) }
 
@@ -134,6 +117,31 @@ RSpec.describe InsightsHelper, type: :helper do
         # Jan 1 2023 is Sunday, so we go back to Dec 26 2022 (Monday)
         expect(weeks.first).to eq(Date.new(2022, 12, 26))
       end
+    end
+  end
+
+  describe 'weekday ordering' do
+    let(:user) { create(:user) }
+    let(:monday_first) { [1000, 2000, 0, 0, 0, 0, 7000] }
+    let(:digest) { Struct.new(:weekly_pattern).new(monday_first) }
+
+    def as_sunday_user(&)
+      Users::DateTimePreferences.with(Users::DateTimePreferences.new(first_day_of_week: 'sunday'), &)
+    end
+
+    it 'lists the weekly pattern from Monday by default' do
+      expect(helper.weekly_pattern_chart_data(digest, user).first(2)).to eq([['Mon', 1], ['Tue', 2]])
+    end
+
+    it 'lists the weekly pattern from Sunday for a Sunday week start' do
+      data = as_sunday_user { helper.weekly_pattern_chart_data(digest, user) }
+
+      expect(data.first(3)).to eq([['Sun', 7], ['Mon', 1], ['Tue', 2]])
+    end
+
+    it 'lists the day-of-week strip from the first day of week' do
+      expect(helper.weekday_strip(monday_first).first).to eq(['Mon', 1000])
+      expect(as_sunday_user { helper.weekday_strip(monday_first) }.first(2)).to eq([['Sun', 7000], ['Mon', 1000]])
     end
   end
 

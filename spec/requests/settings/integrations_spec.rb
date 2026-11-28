@@ -9,10 +9,9 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
     before do
       sign_in user
-      allow(Resolv).to receive(:getaddress).and_call_original
-      allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
-      allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
-      allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
+      stub_host_addresses('immich.test', '93.184.216.34')
+      stub_host_addresses('photoprism.test', '93.184.216.34')
+      stub_host_addresses('airtrail.test', '93.184.216.34')
     end
 
     it 'updates the user settings' do
@@ -145,7 +144,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       let(:teslamate_url) { 'https://teslamate.test' }
 
       before do
-        allow(Resolv).to receive(:getaddress).with('teslamate.test').and_return('93.184.216.34')
+        stub_host_addresses('teslamate.test', '93.184.216.34')
       end
 
       it 'persists settings and verifies the cars endpoint' do
@@ -332,7 +331,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       get settings_integrations_path(service: 'teslamate')
 
       expect(response.body).to include('name="settings[teslamate_url]"')
-      expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('TeslaMateApi integration')
       expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
       expect(response.body).to include('man-in-the-middle attacks')
     end

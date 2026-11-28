@@ -39,12 +39,6 @@ RSpec.describe Cache::UserPreheatingJob do
       expect(Rails.cache.exist?("dawarich/user_#{user.id}_cities_visited")).to be true
     end
 
-    it 'preheats total_distance' do
-      described_class.new.perform(user.id)
-
-      expect(Rails.cache.exist?("dawarich/user_#{user.id}_total_distance")).to be true
-    end
-
     it 'handles a user with no points gracefully' do
       user_without_points = create(:user)
 

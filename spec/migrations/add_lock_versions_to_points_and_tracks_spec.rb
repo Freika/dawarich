@@ -18,8 +18,8 @@ RSpec.describe AddLockVersionsToPointsAndTracks, :non_transactional do
   it 'adds lock_version to points and tracks' do
     migration.up
 
-    expect(connection.column_exists?(:points, :lock_version, :integer, null: false, default: 0)).to be(true)
-    expect(connection.column_exists?(:tracks, :lock_version, :integer, null: false, default: 0)).to be(true)
+    expect(connection.column_exists?(:points, :lock_version, :integer, null: false, default: '0')).to be(true)
+    expect(connection.column_exists?(:tracks, :lock_version, :integer, null: false, default: '0')).to be(true)
   end
 
   it 'is idempotent when the columns already exist' do

@@ -4,12 +4,24 @@ import test from "node:test"
 
 globalThis.document = { getElementById: () => ({}) }
 
-const segmenterSource = await readFile(
+const flightArcsSource = await readFile(
   new URL(
-    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    "../../app/javascript/maps_maplibre/utils/flight_arcs.js",
     import.meta.url,
   ),
   "utf8",
+)
+const segmenterSource = (
+  await readFile(
+    new URL(
+      "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).replace(
+  '"./flight_arcs"',
+  `"data:text/javascript;base64,${Buffer.from(flightArcsSource).toString("base64")}"`,
 )
 const source = await readFile(
   new URL(
@@ -38,6 +50,9 @@ function fakeMapPage() {
         controller.trackLoads += 1
         return { type: "FeatureCollection", features: [] }
       },
+      async fetchPrivacyZones() {
+        return { zones: [], fingerprint: null }
+      },
     },
     _getLoadedPoints: () => [{ latitude: "51.3402", longitude: "12.3712" }],
   }
@@ -47,12 +62,12 @@ function fakeMapPage() {
   return { controller, provider: new MapPageProvider({ application }) }
 }
 
-test("loads exact points and canonical tracks for the studio", async () => {
+test("poster loads canonical tracks without loading points", async () => {
   const { controller, provider } = fakeMapPage()
 
   await provider.ensureTrackLoaded()
 
-  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.pointLoads, 0)
   assert.equal(controller.trackLoads, 1)
 })
 
@@ -62,7 +77,7 @@ test("points still resolve through the same lazy load", async () => {
   const points = await provider.points()
 
   assert.equal(controller.pointLoads, 1)
-  assert.equal(controller.trackLoads, 1)
+  assert.equal(controller.trackLoads, 0)
   assert.equal(points.length, 1)
 })
 
@@ -82,6 +97,25 @@ test("import-scoped studio geometry uses only imported points", async () => {
     [13.4, 52.5],
     [13.5, 52.6],
   ])
+})
+
+test("import-scoped studio geometry breaks at a privacy zone", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.api.importId = 42
+  controller.api.fetchPrivacyZones = async () => ({
+    zones: [{ lon: 13.5, lat: 52.444, radiusMeters: 500 }],
+    fingerprint: "abc",
+  })
+  controller._getLoadedPoints = () => [
+    { latitude: 52.444, longitude: 13.4, timestamp: 1 },
+    { latitude: 52.444, longitude: 13.49, timestamp: 2 },
+    { latitude: 52.444, longitude: 13.51, timestamp: 3 },
+    { latitude: 52.444, longitude: 13.6, timestamp: 4 },
+  ]
+
+  await provider.ensureTrackLoaded()
+
+  assert.equal(provider.trackGeojson().features.length, 2)
 })
 
 test("date changes wait for the map reload promise", async (t) => {
@@ -175,4 +209,36 @@ test("a trip provider satisfies the same contract without a map", async () => {
   })
 
   await provider.ensureTrackLoaded()
+})
+
+test("video geometry uses the selected points rather than an overlapping track", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.startDateValue = "2026-01-01T10:00:00Z"
+  controller.endDateValue = "2026-01-01T11:00:00Z"
+  controller._getLoadedPoints = () => [
+    { latitude: 52, longitude: 13, timestamp: 1767261900 },
+    { latitude: 52.1, longitude: 13.1, timestamp: 1767262200 },
+  ]
+  controller.api.fetchTracks = async () => ({
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [0, 0],
+            [13, 52],
+            [13.1, 52.1],
+            [40, 40],
+          ],
+        },
+      },
+    ],
+  })
+  await provider.points()
+  assert.deepEqual(provider.trackGeojson().features[0].geometry.coordinates, [
+    [13, 52],
+    [13.1, 52.1],
+  ])
 })
