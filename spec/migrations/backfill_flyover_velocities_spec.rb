@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require Rails.root.join('db/migrate/20261026000000_backfill_kml_velocities.rb')
 require Rails.root.join('db/migrate/20261026120000_backfill_missing_gpx_and_geojson_velocities.rb')
 require Rails.root.join('db/migrate/20261117110937_backfill_flyover_velocities.rb')
 
@@ -13,10 +14,18 @@ RSpec.describe BackfillFlyoverVelocities do
     enqueued_jobs.count { |job| job[:job] == DataMigrations::BackfillMissingVelocitiesJob }
   end
 
-  it 'queues the backfill again on an instance that ran the earlier one' do
-    BackfillMissingGpxAndGeojsonVelocities.new.up
+  it 'queues the backfill again on an instance that ran the 1.22 backfill' do
+    ActiveRecord::Base.connection.pool.internal_metadata['missing_velocities_backfill_enqueued'] = 'true'
 
     expect { migration.up }.to have_enqueued_job(DataMigrations::BackfillMissingVelocitiesJob)
+  end
+
+  it 'does not queue a second backfill when the 1.22 migrations ran in the same upgrade' do
+    BackfillKmlVelocities.new.up
+    BackfillMissingGpxAndGeojsonVelocities.new.up
+    migration.up
+
+    expect(queued_backfills).to eq(1)
   end
 
   it 'does not queue a second backfill when replayed' do

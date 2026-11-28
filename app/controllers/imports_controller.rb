@@ -81,6 +81,8 @@ status: :unprocessable_content and return
                   status: :unprocessable_content) and return
     end
 
+    queue_import_started_event
+
     redirect_to imports_url,
                 notice: I18n.t('controllers.imports.size_files_are_queued_to_be_imported_in_background',
                                size: @created_imports.size),
@@ -128,13 +130,34 @@ status: :unprocessable_content and return
     Array(files_params).reject(&:blank?)
   end
 
+  # The files of one upload share archive_import_id, the way the files of a
+  # ZIP do, so analytics counts the upload once. One transaction: the import
+  # jobs enqueue on commit, after the link is set.
   def process_raw_files(raw_files)
-    raw_files.each do |item|
-      next if item.is_a?(ActionDispatch::Http::UploadedFile)
+    Import.transaction do
+      raw_files.each do |item|
+        next if item.is_a?(ActionDispatch::Http::UploadedFile)
 
-      import = create_import_from_signed_id(item)
-      @created_imports << import if import.present?
+        import = create_import_from_signed_id(item)
+        @created_imports << import if import.present?
+      end
+      link_upload_imports
     end
+  end
+
+  def link_upload_imports
+    return if @created_imports.size < 2
+
+    Import.where(id: @created_imports.map(&:id)).update_all(archive_import_id: @created_imports.first.id)
+  end
+
+  # One import_started per accepted upload, sent by the next page's browser so
+  # it lands in the session that goes on to view the map.
+  def queue_import_started_event
+    return if DawarichSettings.self_hosted?
+
+    session[:analytics_events] = Array(session[:analytics_events]) +
+                                 [{ 'name' => 'import_started', 'props' => { 'files' => @created_imports.size } }]
   end
 
   def cleanup_failed_imports

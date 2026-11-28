@@ -3,6 +3,9 @@
 class BackfillKmlVelocities < ActiveRecord::Migration[8.1]
   # Shares the key with BackfillMissingGpxAndGeojsonVelocities: one backfill covers KML, GPX and GeoJSON.
   ENQUEUED_KEY = 'missing_velocities_backfill_enqueued'
+  # The job already runs the 1.24 flyover pass, so BackfillFlyoverVelocities,
+  # later in the same upgrade, does not queue it a second time.
+  FLYOVER_ENQUEUED_KEY = 'flyover_velocities_backfill_enqueued'
 
   # Same gate as BackfillFlyoverVelocities: self-hosted only, honouring the
   # opt-out variable.
@@ -15,7 +18,10 @@ class BackfillKmlVelocities < ActiveRecord::Migration[8.1]
       next if metadata[ENQUEUED_KEY] == 'true'
 
       job = DataMigrations::BackfillMissingVelocitiesJob.perform_later
-      metadata[ENQUEUED_KEY] = 'true' if job&.successfully_enqueued?
+      next unless job&.successfully_enqueued?
+
+      metadata[ENQUEUED_KEY] = 'true'
+      metadata[FLYOVER_ENQUEUED_KEY] = 'true'
     end
   rescue NameError
     raise

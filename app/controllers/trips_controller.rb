@@ -4,6 +4,11 @@ class TripsController < ApplicationController
   include FlashStreamable
   include VideoStudioContext
 
+  # The trips list state (pagination and filters) a trip page carries so its
+  # links can return to the same list. Only these keys, and only scalars, so
+  # nothing else in the request (host, anchor, ...) reaches a generated URL.
+  LIST_STATE_KEYS = %i[page family_page q sort year month country origin].freeze
+
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
@@ -60,7 +65,8 @@ class TripsController < ApplicationController
   def update
     if @trip.update(trip_params.merge(user_edited_at: Time.current))
       @trip.adopt!
-      redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
+      redirect_to trip_path(@trip, trip_list_state),
+                  notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
       render :edit, status: :unprocessable_content
     end
@@ -158,6 +164,11 @@ class TripsController < ApplicationController
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :description)
   end
+
+  def trip_list_state
+    params.slice(*LIST_STATE_KEYS).permit(*LIST_STATE_KEYS).compact_blank.to_h
+  end
+  helper_method :trip_list_state
 
   def show_plan_map?
     return false if @trip.route_present?

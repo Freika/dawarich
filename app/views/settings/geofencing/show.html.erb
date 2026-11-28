@@ -110,7 +110,7 @@
           <div data-testid="webhooks-upgrade" class="flex flex-col items-start gap-3">
             <h3 class="text-lg font-medium"><%= t("#{s}.upgrade_title") %></h3>
             <p class="text-sm text-base-content/70 max-w-md"><%= t("#{s}.upgrade_text") %></p>
-            <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'geofencing') %>" class="btn btn-primary btn-sm">
+            <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'geofencing') %>" class="btn btn-primary btn-sm">
               <%= t("#{s}.upgrade") %>
             </a>
           </div>

@@ -13,7 +13,7 @@
         <p class="text-base-content/60 mb-6 max-w-md">
           <%= t('.connect_your_photo_management_tools_to_see_your_photos_on') %>
         </p>
-        <a href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'integrations') %>"
+        <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'settings', utm_content: 'integrations') %>"
            class="btn btn-primary">
           <%= t('.upgrade_to_pro') %>
         </a>

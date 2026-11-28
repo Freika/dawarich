@@ -7,7 +7,9 @@ Sidekiq::Cron.configuration.cron_poll_interval =
 
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
-  config.logger = Sidekiq::Logger.new($stdout)
+  # A Logger without a level writes DEBUG and up, so take the level RAILS_LOG_LEVEL
+  # configures. Not Rails.logger.level: the Sentry broadcast lowers it to INFO.
+  config.logger = Sidekiq::Logger.new($stdout, level: Rails.configuration.log_level)
 
   # The worker process caches instance settings independently of the web
   # process, so it needs its own subscriber to notice a change made in the UI.

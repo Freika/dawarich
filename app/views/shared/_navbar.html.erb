@@ -44,7 +44,7 @@
         </li>
         <% if user_signed_in? && current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <li>
-            <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %>
+            <%= link_to t('.subscribe'), subscription_upgrade_url(current_user), class: 'btn btn-sm btn-success', data: checkout_link_data(current_user) %>
           </li>
         <% end %>
         <% if user_signed_in? %>
@@ -117,7 +117,8 @@
       <div class="flex items-center gap-1 xl:hidden">
         <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <%= link_to subscription_upgrade_url(current_user),
-                      class: "btn btn-xs #{trial_button_class(current_user)}" do %>
+                      class: "btn btn-xs #{trial_button_class(current_user)}",
+                      data: checkout_link_data(current_user) do %>
             <%= subscription_button_label(current_user) %>
           <% end %>
         <% end %>
@@ -142,7 +143,7 @@
             <li><%= link_to t('.account'), edit_user_registration_path %></li>
             <li><%= link_to t('.settings'), settings_general_index_path %></li>
             <% if !DawarichSettings.self_hosted? %>
-              <li><%= link_to t('.subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
+              <li><%= link_to t('.subscription'), trial_upgrade_path, data: { turbo: false } %></li>
             <% end %>
             <li>
               <button type="button" onclick="getting_started.showModal()" class="relative whitespace-nowrap">
@@ -161,7 +162,8 @@
       <div class="hidden xl:flex items-center gap-2 flex-nowrap">
         <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <%= link_to subscription_upgrade_url(current_user),
-                      class: "join flex-nowrap" do %>
+                      class: "join flex-nowrap",
+                      data: checkout_link_data(current_user) do %>
             <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
               <% if current_user.pending_payment? %>
                 <span class="tooltip tooltip-bottom" data-tip="<%= t('.finish_setting_up_your_account') %>" title="<%= t('.finish_setting_up_your_account') %>"><%= t('.finish_signup') %></span>
@@ -242,7 +244,7 @@
                 <li><%= link_to t('.account'), edit_user_registration_path %></li>
                 <li><%= link_to t('.settings'), settings_general_index_path %></li>
                 <% if !DawarichSettings.self_hosted? %>
-                  <li><%= link_to t('.subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
+                  <li><%= link_to t('.subscription'), trial_upgrade_path, data: { turbo: false } %></li>
                 <% end %>
                 <li>
                   <button type="button" onclick="getting_started.showModal()" class="relative whitespace-nowrap">

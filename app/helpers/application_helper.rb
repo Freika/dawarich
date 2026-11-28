@@ -112,11 +112,7 @@ module ApplicationHelper
   end
 
   def subscription_upgrade_url(user)
-    if user.pending_payment?
-      trial_resume_path
-    else
-      "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
-    end
+    user.pending_payment? ? trial_resume_path : trial_upgrade_path
   end
 
   def subscription_button_label(user)
@@ -212,26 +208,24 @@ module ApplicationHelper
     map_v2_path(params)
   end
 
-  # Generates a user-specific upgrade URL that authenticates the user
-  # with the external subscription service via JWT token.
-  # Accepts optional UTM parameters for tracking.
+  # Links to /trial/upgrade, which mints the checkout token at redirect time:
+  # a token rendered into the page would reach analytics through outbound
+  # click tracking, and expire 30 minutes after the page was rendered.
+  # Accepts optional UTM parameters, which the redirect forwards.
   # Returns an empty string on self-hosted instances — there is no
   # upgrade flow there, and the JWT secret is not configured.
   def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
     return '' if DawarichSettings.self_hosted?
 
-    base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"
-    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
-    utm.any? ? "#{base}&#{utm.to_query}" : base
+    trial_upgrade_path({ utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact)
   end
 
   def family_upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'family_upgrade', utm_content: nil)
     return '' if DawarichSettings.self_hosted?
 
-    token = current_user.generate_subscription_token(plan: 'family', interval: 'annual')
-    base = "#{MANAGER_URL}/auth/dawarich?token=#{token}"
-    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
-    utm.any? ? "#{base}&#{utm.to_query}" : base
+    trial_upgrade_path(
+      { plan: 'family', interval: 'annual', utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    )
   end
 
   def pro_badge_tag(preview: true)
