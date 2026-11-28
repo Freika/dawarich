@@ -8,7 +8,10 @@ import {
   composeRasterFallback,
   composeVectorFallback,
 } from "maps_maplibre/utils/basemap_fallback"
-import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+import {
+  classifyBasemapUrl,
+  pmtilesTilesUrl,
+} from "maps_maplibre/utils/basemap_url"
 import { resolveTheme } from "poster_studio/data/theme_loader"
 import { buildBasemapStyle } from "poster_studio/render/style_builder"
 
@@ -82,6 +85,15 @@ async function buildRasterStyle(url) {
       { id: "basemap-raster", type: "raster", source: "protomaps" },
     ],
   }
+}
+
+async function pmtilesTiles(url) {
+  const { registerPmtilesProtocol } = await import(
+    "maps_maplibre/utils/pmtiles_protocol"
+  )
+  registerPmtilesProtocol()
+
+  return pmtilesTilesUrl(url)
 }
 
 /**
@@ -371,6 +383,9 @@ export async function getMapStyle(styleName = "light", options = {}) {
     // setStyle/new Map, which fetch it; app layers are re-added on style.load.
     if (basemapType === "style") return customUrl
 
+    const customTiles =
+      basemapType === "pmtiles" ? await pmtilesTiles(customUrl) : customUrl
+
     // With the fallback on, the default basemap stays as the lower stack and
     // the user's tiles are drawn over it, so a tileset covering one country
     // no longer leaves the rest of the world blank.
@@ -382,14 +397,14 @@ export async function getMapStyle(styleName = "light", options = {}) {
       return await buildRasterStyle(customUrl)
     }
 
-    const tilesUrl = fallback ? TILE_SOURCE_URL : customUrl || TILE_SOURCE_URL
+    const tilesUrl = fallback ? TILE_SOURCE_URL : customTiles || TILE_SOURCE_URL
 
     const composeFallback = (style) => {
       if (!fallback) return style
 
       return basemapType === "raster"
-        ? composeRasterFallback(style, customUrl)
-        : composeVectorFallback(style, customUrl)
+        ? composeRasterFallback(style, customTiles)
+        : composeVectorFallback(style, customTiles)
     }
 
     // Custom themes are built client-side from the user's stored color

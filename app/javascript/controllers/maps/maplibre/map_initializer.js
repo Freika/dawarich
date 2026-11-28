@@ -14,6 +14,8 @@ import {
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
+const HTTP_PROTOCOLS = ["http:", "https:"]
+
 /**
  * Handles map initialization for Maps V2
  */
@@ -55,6 +57,8 @@ export class MapInitializer {
       attributionControl: false,
       transformRequest: (url) => {
         const requestUrl = new URL(url, window.location.origin)
+
+        if (!HTTP_PROTOCOLS.includes(requestUrl.protocol)) return { url }
 
         // The origin check is load-bearing: a custom basemap or a third-party
         // style document can point a tile source at any host, and matching on

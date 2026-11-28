@@ -67,6 +67,10 @@ test("studios keep the default tiles for anything they cannot theme", () => {
     studioTilesUrl("https://tiles.example.test/style.json", false),
     undefined,
   )
+  assert.equal(
+    studioTilesUrl("https://tiles.example.test/planet.pmtiles", false),
+    undefined,
+  )
   assert.equal(studioTilesUrl("", false), undefined)
   assert.equal(studioTilesUrl(null, false), undefined)
 })

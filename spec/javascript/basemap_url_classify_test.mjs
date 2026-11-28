@@ -10,7 +10,8 @@ const source = await readFile(
   "utf8",
 )
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
-const { classifyBasemapUrl, styleDocumentFailed } = await import(moduleUrl)
+const { classifyBasemapUrl, pmtilesTilesUrl, styleDocumentFailed } =
+  await import(moduleUrl)
 
 test("classifies a raster XYZ URL with a jpg extension as raster", () => {
   assert.equal(
@@ -212,4 +213,39 @@ test("treats an error carrying no URL as a style failure", () => {
     true,
   )
   assert.equal(styleDocumentFailed(undefined, "s"), true)
+})
+
+test("classifies a PMTiles archive URL as pmtiles, not a style", () => {
+  assert.equal(
+    classifyBasemapUrl("https://tiles.example/planet.pmtiles"),
+    "pmtiles",
+  )
+  assert.equal(
+    classifyBasemapUrl("https://tiles.example/planet.PMTILES?key=abc"),
+    "pmtiles",
+  )
+  assert.equal(classifyBasemapUrl("/maps/region.pmtiles"), "pmtiles")
+})
+
+test("rejects PMTiles archive locations the API would reject", () => {
+  assert.equal(classifyBasemapUrl("//tiles.example/planet.pmtiles"), null)
+  assert.equal(classifyBasemapUrl("tiles.example/planet.pmtiles"), null)
+})
+
+test("keeps an XYZ template under a pmtiles path a vector tile URL", () => {
+  assert.equal(
+    classifyBasemapUrl("https://tiles.example/planet.pmtiles/{z}/{x}/{y}"),
+    "vector",
+  )
+})
+
+test("turns a PMTiles archive URL into a tile template the pmtiles protocol reads", () => {
+  assert.equal(
+    pmtilesTilesUrl(" https://tiles.example/planet.pmtiles "),
+    "pmtiles://https://tiles.example/planet.pmtiles/{z}/{x}/{y}",
+  )
+  assert.equal(
+    pmtilesTilesUrl("/maps/region.pmtiles"),
+    "pmtiles:///maps/region.pmtiles/{z}/{x}/{y}",
+  )
 })

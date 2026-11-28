@@ -326,6 +326,13 @@ test("basemap URLs also accept raster XYZ, style.json and suffixless style URLs"
   )
 })
 
+test("basemap URLs accept a PMTiles archive", () => {
+  assert.equal(
+    SettingsManager.validVectorTilesUrl("https://t.example/planet.pmtiles"),
+    true,
+  )
+})
+
 test("Track generation thresholds load and persist with their existing backend keys", async () => {
   const originalFetch = globalThis.fetch
   let saved

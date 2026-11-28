@@ -253,7 +253,8 @@ export class MapStyleSettings {
     const basemap = classifyBasemapUrl(
       SettingsManager.getSetting("vectorTilesUrl"),
     )
-    const unavailable = basemap !== "raster" && basemap !== "vector"
+    const unavailable =
+      basemap !== "raster" && basemap !== "vector" && basemap !== "pmtiles"
     input.disabled = unavailable
 
     const label = input.closest("label")
