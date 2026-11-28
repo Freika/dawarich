@@ -50,7 +50,7 @@ class Users::ImportData::Digests
   end
 
   def create_digest_record(digest_data)
-    attributes = digest_data.except('sharing_uuid')
+    attributes = digest_data.except('sharing_uuid', 'generation_status')
     # Regenerate sharing_uuid for security - old share links shouldn't work for new user
     attributes['sharing_uuid'] = SecureRandom.uuid
 

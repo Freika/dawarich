@@ -26,6 +26,16 @@ RSpec.describe DemoData::Destroyer do
         expect(user.tags.demo.count).to eq(0)
       end
 
+      it 'preserves a demo place that is a Home' do
+        place = Place.demo.where(user_id: user.id).first
+        create(:home, user:, place:)
+
+        described_class.new(user).call
+
+        expect(Place.exists?(place.id)).to be(true)
+        expect(user.homes.count).to eq(1)
+      end
+
       it 'preserves a demo place referenced by a non-demo visit' do
         place = Place.demo.where(user_id: user.id).first
         non_demo_visit = user.visits.create!(

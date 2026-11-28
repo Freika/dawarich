@@ -38,6 +38,21 @@ RSpec.describe 'Settings', type: :request do
           expect(user.reload.theme).to eq('dark')
         end
       end
+
+      [{}, { theme: '' }, { theme: 'purple' }].each do |invalid_params|
+        context "with params #{invalid_params.inspect}" do
+          let(:params) { invalid_params }
+
+          it 'rejects the request without changing the theme' do
+            user.update!(theme: 'light')
+
+            get '/settings/theme', params: params
+
+            expect(response).to have_http_status(:unprocessable_entity)
+            expect(user.reload.theme).to eq('light')
+          end
+        end
+      end
     end
   end
 
@@ -167,6 +182,15 @@ RSpec.describe 'Settings', type: :request do
       get settings_general_index_path
 
       expect(response.body).to include('Turn off notices')
+    end
+
+    it 'hides the notices panel on cloud' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      get settings_general_index_path
+
+      expect(response.body).not_to include('changelog-consent-setting')
+      expect(response.body).not_to include("What's New notices")
     end
   end
 end

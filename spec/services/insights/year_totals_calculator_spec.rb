@@ -161,9 +161,8 @@ RSpec.describe Insights::YearTotalsCalculator do
       it 'handles malformed data gracefully' do
         result = calculator.call
 
-        # Stat#toponyms sanitizes away all malformed city entries, so no
-        # country retains a valid city and none are counted.
-        expect(result.countries_count).to eq(0)
+        # Stat#toponyms sanitizes malformed cities while retaining country names.
+        expect(result.countries_count).to eq(2)
         expect(result.cities_count).to eq(0)
       end
     end

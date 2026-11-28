@@ -12,7 +12,6 @@ class GoogleMaps::RecordsImporter
 
   def initialize(import, current_index = 0)
     @import = import
-    @batch = []
     @current_index = current_index
   end
 

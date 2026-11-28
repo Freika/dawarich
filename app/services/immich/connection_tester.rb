@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Immich::ConnectionTester
-  include SslConfigurable
-
   attr_reader :url, :api_key, :skip_ssl_verification
 
   def initialize(url, api_key, skip_ssl_verification: false)
@@ -12,15 +10,18 @@ class Immich::ConnectionTester
   end
 
   def call
-    return { success: false, error: I18n.t('services.immich.connection_tester.immich_url_is_missing') } if url.blank?
+    if url.blank?
+      return { success: false, reason: 'missing_fields',
+error: I18n.t('services.immich.connection_tester.immich_url_is_missing') }
+    end
     if api_key.blank?
-      return { success: false,
+      return { success: false, reason: 'missing_fields',
 error: I18n.t('services.immich.connection_tester.immich_api_key_is_missing') }
     end
 
     test_connection
   rescue *Photos::ConnectionErrors::HANDLED => e
-    { success: false,
+    { success: false, reason: Photos::ConnectionErrors.certificate?(e) ? 'certificate' : 'unreachable',
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_message', message: e.message) }
   end
 
@@ -29,7 +30,7 @@ error: I18n.t('services.immich.connection_tester.immich_connection_failed_messag
   def test_connection
     response = search_metadata
     unless response.success?
-      return { success: false,
+      return { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_connection_failed_code',
               code: response.code) }
     end
@@ -44,35 +45,20 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
   end
 
   def search_metadata
-    HTTParty.post(
-      "#{url}/api/search/metadata",
-      http_options_with_ssl_flag(
-        skip_ssl_verification, {
-          headers: {
-            'x-api-key' => api_key,
-            'accept' => 'application/json',
-            'Content-Type' => 'application/json'
-          },
-          body: {
-            takenAfter: Time.current.beginning_of_day.iso8601,
-            size: 1,
-            page: 1,
-            order: 'asc',
-            withExif: true
-          }.to_json,
-        timeout: 10
-        }
-      )
+    Integrations::Transport.request(
+      :post, "#{url}/api/search/metadata",
+      headers: { 'x-api-key' => api_key, 'accept' => 'application/json', 'Content-Type' => 'application/json' },
+      body: { takenAfter: Time.current.beginning_of_day.iso8601, size: 1, page: 1, order: 'asc',
+              withExif: true }.to_json,
+      skip_ssl_verification:
     )
   end
 
   def test_thumbnail_access(asset_id)
-    response = HTTParty.get(
-      "#{url}/api/assets/#{asset_id}/thumbnail?size=preview",
-      http_options_with_ssl_flag(skip_ssl_verification, {
-                                   headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
-        timeout: 10
-                                 })
+    response = Integrations::Transport.request(
+      :get, "#{url}/api/assets/#{Integrations::Transport.path_segment(asset_id)}/thumbnail?size=preview",
+      headers: { 'x-api-key' => api_key, 'accept' => 'application/octet-stream' },
+      skip_ssl_verification:
     )
 
     if response.success?
@@ -81,11 +67,11 @@ message: I18n.t('services.immich.connection_tester.immich_connection_verified') 
     end
 
     if missing_asset_view_permission?(response)
-      return { success: false,
+      return { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_api_key_missing_permission_asset_view') }
     end
 
-    { success: false,
+    { success: false, reason: response.code.to_i.in?([401, 403]) ? 'credentials' : 'check_settings',
 error: I18n.t('services.immich.connection_tester.immich_thumbnail_check_failed_code', code: response.code) }
   end
 

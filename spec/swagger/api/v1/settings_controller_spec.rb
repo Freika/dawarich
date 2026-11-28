@@ -23,6 +23,9 @@ describe 'Settings API', type: :request do
           'photoprism_api_key': 'your-photoprism-api-key',
           'speed_color_scale': 'viridis',
           'fog_of_war_threshold': 100,
+          'date_format': 'dd.mm.yyyy',
+          'time_format': '24h',
+          'first_day_of_week': 'monday',
           'maps': { 'distance_unit': 'km' }
         }
       }
@@ -111,6 +114,24 @@ describe 'Settings API', type: :request do
             example: 100,
             description: 'Fog of war threshold value'
           },
+          date_format: {
+            type: :string,
+            enum: %w[auto dd.mm.yyyy dd/mm/yyyy mm/dd/yyyy yyyy-mm-dd],
+            example: 'dd.mm.yyyy',
+            description: 'How full dates are displayed; auto follows the interface language'
+          },
+          time_format: {
+            type: :string,
+            enum: %w[auto 12h 24h],
+            example: '24h',
+            description: 'How times are displayed; auto follows the interface language'
+          },
+          first_day_of_week: {
+            type: :string,
+            enum: %w[monday sunday],
+            example: 'monday',
+            description: 'First day of the week in calendars and weekday charts'
+          },
           maps: {
             type: :object,
             properties: {
@@ -195,15 +216,12 @@ describe 'Settings API', type: :request do
                          { type: :null }
                        ],
                        example: 'https://immich.example.com',
-                       description: 'Immich server URL for photo integration'
+                       description: 'Immich server URL, returned without any user:password@ part'
                      },
-                     immich_api_key: {
-                       oneOf: [
-                         { type: :string },
-                         { type: :null }
-                       ],
-                       example: 'your-immich-api-key',
-                       description: 'API key for Immich photo service'
+                     immich_configured: {
+                       type: :boolean,
+                       example: true,
+                       description: 'Whether an Immich URL and API key are both stored. The key is never returned.'
                      },
                      photoprism_url: {
                        oneOf: [
@@ -211,15 +229,25 @@ describe 'Settings API', type: :request do
                          { type: :null }
                        ],
                        example: 'https://photoprism.example.com',
-                       description: 'PhotoPrism server URL for photo integration'
+                       description: 'PhotoPrism server URL, returned without any user:password@ part'
                      },
-                     photoprism_api_key: {
+                     photoprism_configured: {
+                       type: :boolean,
+                       example: false,
+                       description: 'Whether a PhotoPrism URL and API key are both stored. The key is never returned.'
+                     },
+                     airtrail_url: {
                        oneOf: [
                          { type: :string },
                          { type: :null }
                        ],
-                       example: 'your-photoprism-api-key',
-                       description: 'API key for PhotoPrism photo service'
+                       example: 'https://airtrail.example.com',
+                       description: 'AirTrail server URL, returned without any user:password@ part'
+                     },
+                     airtrail_configured: {
+                       type: :boolean,
+                       example: false,
+                       description: 'Whether an AirTrail URL and API key are both stored. The key is never returned.'
                      },
                      fog_of_war_threshold: {
                        oneOf: [
@@ -229,6 +257,24 @@ describe 'Settings API', type: :request do
                        ],
                        example: 100,
                        description: 'Fog of war threshold value'
+                     },
+                     date_format: {
+                       type: :string,
+                       enum: %w[auto dd.mm.yyyy dd/mm/yyyy mm/dd/yyyy yyyy-mm-dd],
+                       example: 'auto',
+                       description: 'How full dates are displayed; auto follows the interface language'
+                     },
+                     time_format: {
+                       type: :string,
+                       enum: %w[auto 12h 24h],
+                       example: 'auto',
+                       description: 'How times are displayed; auto follows the interface language'
+                     },
+                     first_day_of_week: {
+                       type: :string,
+                       enum: %w[monday sunday],
+                       example: 'monday',
+                       description: 'First day of the week in calendars and weekday charts'
                      }
                    }
                  }
@@ -269,6 +315,46 @@ describe 'Settings API', type: :request do
 
         let(:user) { create(:user) }
         let(:api_key) { user.api_key }
+
+        run_test!
+      end
+
+      response '401', 'unauthorized' do
+        let(:api_key) { 'invalid' }
+
+        run_test!
+      end
+    end
+  end
+
+  path '/api/v1/settings/appearance' do
+    delete 'Resets map appearance settings to their defaults' do
+      tags 'Settings'
+      description 'Deletes the stored map look settings (style, tiles, colours, layers, globe, fog drawing, ' \
+                  'POI filters) so they fall back to the defaults of a fresh account. Pass keys[] to reset ' \
+                  'only some of them. Data rules such as transportation modes are not touched.'
+      produces 'application/json'
+      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
+      parameter name: 'keys[]', in: :query, type: :array, items: { type: :string }, required: false,
+                description: 'Appearance settings to reset; defaults to all of them'
+
+      response '200', 'appearance reset' do
+        schema type: :object,
+               properties: {
+                 settings: { type: :object, description: 'Effective settings after the reset' },
+                 status: { type: :string }
+               }
+
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+
+        run_test!
+      end
+
+      response '422', 'unknown appearance setting' do
+        let(:user) { create(:user) }
+        let(:api_key) { user.api_key }
+        let(:'keys[]') { ['meters_between_routes'] }
 
         run_test!
       end

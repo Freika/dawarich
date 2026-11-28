@@ -1,0 +1,39 @@
+pl:
+  places:
+    # The Add home and Add work buttons of the Places list; the last is the name of the Place and of the tag.
+    shortcuts:
+      add_home: "Dodaj dom"
+      add_work: "Dodaj pracę"
+      work_place_name: "Praca"
+    # The optional dates of a Place: a fieldset on its form and a line under its name in the Places list.
+    period:
+      title: "Kiedy"
+      help: "Opcjonalnie: kiedy to miejsce było częścią Twojego życia. Pozostaw pole „Do” puste, jeśli nadal jest."
+      since: "od %{date}"
+      until: "do %{date}"
+      range: "%{from} – %{to}"
+    polish:
+      selected: "wybrano"
+      location: "Lokalizacja"
+      notifications: "Powiadomienia"
+      visits: "Wizyty"
+      manage: "Zarządzanie"
+      total_time: "Łączny czas"
+      avg_dwell: "Śr. pobyt"
+      statistics: "Statystyki"
+      merge_duplicate: "Scal duplikat"
+      back_to_places: "Powrót do miejsc"
+      clear: "Wyczyść"
+    inline_tags:
+      new_tag: "Nowy tag"
+      name: "Nazwa tagu"
+      emoji: "Emoji (opcjonalnie)"
+      create: "Utwórz tag"
+    drawer:
+      hidden_by_tag: "Ukryte przez tag %{name}, %{radius} m"
+      geofence_events: "Ostatnie zdarzenia geofencingu"
+      no_geofence_events: "Brak zdarzeń wejścia lub wyjścia."
+      geofence_disabled: "Włącz powiadomienia o wejściu i wyjściu, aby rejestrować zdarzenia dla tego miejsca."
+  javascript:
+    map_info:
+      geofence_boundary: "Granica geofencingu"

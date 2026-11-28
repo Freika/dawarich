@@ -25,6 +25,7 @@ export class FilterManager {
       // Apply search
       const matchesSearch =
         !searchTerm ||
+        visit.display_name?.toLowerCase().includes(searchTerm) ||
         visit.name?.toLowerCase().includes(searchTerm) ||
         visit.place?.name?.toLowerCase().includes(searchTerm)
 
@@ -39,16 +40,10 @@ export class FilterManager {
     visitsLayer.update(geojson)
   }
 
-  /**
-   * Get current visit filter
-   */
   getCurrentVisitFilter() {
     return this.currentVisitFilter
   }
 
-  /**
-   * Set current visit filter
-   */
   setCurrentVisitFilter(filter) {
     this.currentVisitFilter = filter
   }

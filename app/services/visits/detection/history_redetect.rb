@@ -84,7 +84,7 @@ module Visits
         user.visits.active.where(confidence: nil)
             .includes(:area, :place)
             .find_in_batches(batch_size: 200) do |batch|
-          points_by_visit = Point.where(visit_id: batch.map(&:id))
+          points_by_visit = Point.where(visit_id: batch.map(&:id)).where.not(lonlat: nil)
                                  .select(:id, :visit_id, :accuracy, :lonlat)
                                  .group_by(&:visit_id)
           batch.each { |visit| VisitRescore.call(visit, policy, points: points_by_visit[visit.id] || []) }

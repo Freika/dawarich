@@ -33,44 +33,6 @@ RSpec.describe TimelineHelper, type: :helper do
     end
   end
 
-  describe '#heat_bucket' do
-    it 'returns 0 for 0 seconds' do
-      expect(helper.heat_bucket(0)).to eq(0)
-    end
-
-    it 'returns 0 for nil' do
-      expect(helper.heat_bucket(nil)).to eq(0)
-    end
-
-    it 'returns 1 for 1 hour (3600s)' do
-      expect(helper.heat_bucket(3600)).to eq(1)
-    end
-
-    it 'returns 1 for just under 2 hours' do
-      expect(helper.heat_bucket(2 * 3600 - 1)).to eq(1)
-    end
-
-    it 'returns 2 for 3 hours' do
-      expect(helper.heat_bucket(3 * 3600)).to eq(2)
-    end
-
-    it 'returns 3 for 6 hours' do
-      expect(helper.heat_bucket(6 * 3600)).to eq(3)
-    end
-
-    it 'returns 4 for 10 hours' do
-      expect(helper.heat_bucket(10 * 3600)).to eq(4)
-    end
-
-    it 'returns 5 for 13 hours' do
-      expect(helper.heat_bucket(13 * 3600)).to eq(5)
-    end
-
-    it 'returns 5 for 24 hours' do
-      expect(helper.heat_bucket(24 * 3600)).to eq(5)
-    end
-  end
-
   describe '#visit_entry_search_tokens' do
     it 'joins name, place name, city, country, and tag names lowercased' do
       entry = {
@@ -129,9 +91,23 @@ RSpec.describe TimelineHelper, type: :helper do
   end
 
   describe '#visit_entry_all_day?' do
-    it 'returns true when duration >= 23 hours' do
+    it 'returns false on the arrival day of a long visit that starts during the day' do
       entry = { started_at: '2026-01-01T10:00:00Z', ended_at: '2026-01-02T09:00:00Z', duration: 23 * 60 }
+      expect(helper.visit_entry_all_day?(entry)).to be false
+    end
+
+    it 'returns true on a later day the visit covers completely' do
+      entry = { started_at: '2026-01-01T19:00:00Z', ended_at: '2026-01-03T09:00:00Z', duration: 38 * 60,
+                continuation_of_date: '2026-01-01', day_duration: 24 * 60,
+                day_started_at: '2026-01-02T00:00:00Z' }
       expect(helper.visit_entry_all_day?(entry)).to be true
+    end
+
+    it 'returns false on the departure day of a visit that ends during the day' do
+      entry = { started_at: '2026-01-01T19:00:00Z', ended_at: '2026-01-02T09:00:00Z', duration: 14 * 60,
+                continuation_of_date: '2026-01-01', day_duration: 9 * 60,
+                day_started_at: '2026-01-02T00:00:00Z' }
+      expect(helper.visit_entry_all_day?(entry)).to be false
     end
 
     it 'returns true when starts at midnight and spans >= 23 hours' do
@@ -195,68 +171,6 @@ RSpec.describe TimelineHelper, type: :helper do
 
     it 'returns nil when bounds missing' do
       expect(helper.day_bounds_json(bounds: nil)).to be_nil
-    end
-  end
-
-  describe '#calendar_month_nav' do
-    it 'returns prev/next month strings and a formatted title' do
-      result = helper.calendar_month_nav(month: '2026-03')
-
-      expect(result[:prev]).to eq('2026-02')
-      expect(result[:next]).to eq('2026-04')
-      expect(result[:title]).to eq('March 2026')
-    end
-
-    it 'handles year boundaries' do
-      result = helper.calendar_month_nav(month: '2026-01')
-
-      expect(result[:prev]).to eq('2025-12')
-      expect(result[:next]).to eq('2026-02')
-    end
-  end
-
-  describe '#calendar_weekday_labels' do
-    it 'returns Mon-Sun single-letter labels' do
-      expect(helper.calendar_weekday_labels).to eq(%w[M T W T F S S])
-    end
-  end
-
-  describe '#calendar_day_number' do
-    it 'returns the day of month integer' do
-      expect(helper.calendar_day_number(date: '2026-03-15')).to eq(15)
-    end
-  end
-
-  describe '#calendar_cell_classes' do
-    it 'includes base cal-cell and heat bucket class for an in-month cell with tracked time' do
-      cell = { tracked_seconds: 3600, suggested_count: 0, in_month: true, disabled: false }
-      result = helper.calendar_cell_classes(cell)
-
-      expect(result).to include('cal-cell')
-      expect(result).to match(/heat-\d/)
-    end
-
-    it 'adds has-suggestions when suggested_count is positive' do
-      cell = { tracked_seconds: 0, suggested_count: 2, in_month: true, disabled: false }
-      expect(helper.calendar_cell_classes(cell)).to include('has-suggestions')
-    end
-
-    it 'adds out-of-month when cell is not in the current month' do
-      cell = { tracked_seconds: 0, suggested_count: 0, in_month: false, disabled: false }
-      expect(helper.calendar_cell_classes(cell)).to include('out-of-month')
-    end
-
-    it 'adds disabled when cell is disabled' do
-      cell = { tracked_seconds: 0, suggested_count: 0, in_month: true, disabled: true }
-      expect(helper.calendar_cell_classes(cell)).to include('disabled')
-    end
-
-    it 'applies dark text for low heat buckets and light text for high ones' do
-      low = { tracked_seconds: 0, suggested_count: 0, in_month: true, disabled: false }
-      high = { tracked_seconds: 12 * 3600, suggested_count: 0, in_month: true, disabled: false }
-
-      expect(helper.calendar_cell_classes(low)).to include('cal-cell--dark-text')
-      expect(helper.calendar_cell_classes(high)).to include('cal-cell--light-text')
     end
   end
 
@@ -441,6 +355,40 @@ RSpec.describe TimelineHelper, type: :helper do
 
     it 'caps so a multi-day track cannot stretch the column' do
       expect(helper.journey_leg_extra_height(48 * 3600)).to eq(helper.journey_leg_extra_height(200 * 3600))
+    end
+  end
+
+  describe '#timeline_local_time' do
+    def label(account_zone, local_zone, utc)
+      Time.use_zone(account_zone) do
+        helper.timeline_local_time({ local_timezone: local_zone }, Time.zone.parse(utc))
+      end
+    end
+
+    it 'shows the time at the place when its clock differs from the account zone' do
+      expect(label('Europe/Berlin', 'America/Chicago', '2025-01-15T12:30:00Z')).to eq('06:30 local')
+    end
+
+    it 'adds the date when the place is already on another day' do
+      expect(label('Europe/Berlin', 'America/Chicago', '2025-01-15T01:30:00Z')).to eq('Jan 14, 19:30 local')
+      expect(label('America/Chicago', 'Europe/Berlin', '2025-01-15T04:30:00Z')).to eq('Jan 15, 05:30 local')
+    end
+
+    it 'shows nothing when the place keeps the same clock under another zone name' do
+      expect(label('Europe/Berlin', 'Europe/Paris', '2025-01-15T01:30:00Z')).to be_nil
+    end
+
+    it 'compares the clocks at that moment, daylight saving time included' do
+      expect(label('America/Denver', 'America/Phoenix', '2025-01-15T18:00:00Z')).to be_nil
+      expect(label('America/Denver', 'America/Phoenix', '2025-07-15T18:00:00Z')).to eq('11:00 local')
+    end
+
+    it 'shows nothing without a zone for the place' do
+      expect(label('Europe/Berlin', nil, '2025-01-15T01:30:00Z')).to be_nil
+    end
+
+    it 'shows nothing for a zone name it does not know' do
+      expect(label('Europe/Berlin', 'Mars/Olympus_Mons', '2025-01-15T01:30:00Z')).to be_nil
     end
   end
 end

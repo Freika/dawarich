@@ -65,8 +65,20 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
       expect(JSON.parse(response.body).first['taken_at']).to eq('2026-04-02T13:30:00Z')
     end
 
+    it 'answers 404 when the photo server cannot be reached' do
+      allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'asset-1').and_call_original
+      owner.update!(settings: owner.settings.merge('immich_url' => 'https://immich.example.com',
+                                                   'immich_api_key' => 'key'))
+      upstream = stub_request(:get, 'https://immich.example.com/api/assets/asset-1/thumbnail?size=preview').to_timeout
+
+      get "/api/v1/shared/#{link.id}/photos/asset-1/thumbnail", params: { source: 'immich' }
+
+      expect(response).to have_http_status(:not_found)
+      expect(upstream).to have_been_requested
+    end
+
     it 'serves thumbnails for photos belonging to the trip' do
-      upstream = instance_double(HTTParty::Response, success?: true, body: 'jpeg-bytes')
+      upstream = Integrations::Transport::Response.new(200, 'jpeg-bytes', nil)
       allow(Photos::Thumbnail).to receive(:new).with(owner, 'immich', 'asset-1').and_return(
         instance_double(Photos::Thumbnail, call: upstream)
       )
@@ -81,6 +93,62 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
 
       get "/api/v1/shared/#{link.id}/photos/foreign-asset/thumbnail", params: { source: 'immich' }
       expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  context 'when a trip has photos from multiple sources in reverse chronological order' do
+    let(:link) do
+      create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                           settings: { 'show_photos' => true })
+    end
+    let(:found_photos) do
+      Array.new(120) do |index|
+        timestamp = (Time.utc(2026, 4, 1) + index.hours).iso8601
+        photo = { id: "asset-#{index}", latitude: -40.0, longitude: -140.0 }
+        if index.even?
+          photo.merge(source: 'immich', capturedAt: timestamp)
+        else
+          photo.merge(source: 'photoprism', localDateTime: timestamp)
+        end
+      end.reverse
+    end
+
+    before do
+      allow(Photos::Search).to receive(:cached).and_return(found_photos)
+    end
+
+    it 'keeps distinct markers from both ends of the trip in capture order' do
+      get "/api/v1/shared/#{link.id}/photos"
+
+      photos = JSON.parse(response.body)
+      expect(photos.size).to eq(100)
+      expect(photos.map { |photo| photo['id'] }.uniq.size).to eq(100)
+      expect(photos.first['id']).to eq('asset-0')
+      expect(photos.last['id']).to eq('asset-119')
+      timestamps = photos.map { |photo| photo['taken_at'] }
+      expect(timestamps).to eq(timestamps.sort)
+      expect(photos.map { |photo| photo['source'] }.uniq).to contain_exactly('immich', 'photoprism')
+    end
+
+    context 'when there are fewer photos than the marker limit' do
+      let(:found_photos) do
+        [
+          { id: 'later', source: 'immich', latitude: -40.0, longitude: -140.0,
+            capturedAt: '2026-04-02T12:00:00Z' },
+          { id: 'tie-first', source: 'photoprism', latitude: -40.0, longitude: -140.0,
+            localDateTime: '2026-04-01T12:00:00Z' },
+          { id: 'tie-second', source: 'immich', latitude: -40.0, longitude: -140.0,
+            capturedAt: '2026-04-01T12:00:00Z' },
+          { id: 'undated', source: 'immich', latitude: -40.0, longitude: -140.0 }
+        ]
+      end
+
+      it 'keeps all photos and preserves source order for equal capture times' do
+        get "/api/v1/shared/#{link.id}/photos"
+
+        expect(JSON.parse(response.body).map { |photo| photo['id'] })
+          .to eq(%w[undated tie-first tie-second later])
+      end
     end
   end
 

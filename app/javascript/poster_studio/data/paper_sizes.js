@@ -13,8 +13,6 @@ export const PAPER_SIZES = {
   P70X100: { wmm: 700, hmm: 1000 },
 }
 
-export const DPI_PRESETS = [96, 150, 300]
-
 // Conservative when no WebGL context is available (worker, SSR, probe failure).
 export const SAFE_FALLBACK_MAX_DIMENSION = 8192
 // 2D canvas per-side cap on the strictest mainstream engines.

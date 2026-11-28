@@ -29,6 +29,14 @@ RSpec.describe DataMigrations::CleanupNullIslandJob do
     expect(normal_point.reload.anomaly).not_to be(true)
   end
 
+  it 'leaves a (0,0) point the user marked as correct unflagged' do
+    zero_point.update_columns(anomaly: false, anomaly_override: true)
+
+    expect { described_class.perform_now(user.id) }.not_to have_enqueued_job(Tracks::RecalculateJob)
+
+    expect(zero_point.reload.anomaly).to be(false)
+  end
+
   it 'destroys visits placed at (0,0) and keeps the rest' do
     expect { described_class.perform_now(user.id) }
       .to change { Visit.exists?(zero_visit.id) }.from(true).to(false)

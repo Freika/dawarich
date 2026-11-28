@@ -7,11 +7,13 @@
 # See the ActiveSupport::ParameterFilter documentation for supported notations and behaviors.
 Rails.application.config.filter_parameters += %i[
   passw secret token _key crypt salt certificate otp otp_attempt otp_secret ssn cvv cvc latitude longitude lat lng
-  email name first_name last_name phone
+  email name first_name last_name phone phrase signed_id signed_blob_id
 ]
 
+# Keep in step with Users::IntegrationSettingKeys::SECRETS (not referenced
+# here: initializers run before the app's constants can be autoloaded safely).
 SENSITIVE_SETTINGS_KEYS = %w[
-  immich_api_key photoprism_api_key teslamate_password teslamate_api_token
+  immich_api_key photoprism_api_key airtrail_api_key teslamate_password teslamate_api_token
 ].freeze
 
 Rails.application.config.filter_parameters += [

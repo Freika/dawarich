@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  include OtpChallengeStaging
   include PendingImportClaimable
 
   def github
@@ -59,6 +60,11 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       # request is a signup — otherwise a returning customer arriving through a
       # different affiliate link would be re-credited to the wrong partner.
       attribute_partnero_signup(@user) if @user.oauth_newly_created
+
+      # A 2FA-enabled account must still clear the second factor on OAuth sign-in,
+      # mirroring Users::SessionsController#check_otp_required on the password path.
+      return stage_otp_challenge(@user) if otp_challenge_required?(@user)
+
       flash[:notice] = I18n.t 'devise.omniauth_callbacks.success', kind: provider
       sign_in_and_redirect @user, event: :authentication
     elsif @user.nil?
@@ -91,5 +97,11 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
   def oidc_auto_register_enabled?
     OIDC_AUTO_REGISTER
+  end
+
+  # Devise renders outside the app's locale switch; stage the challenge inside it.
+  def stage_otp_challenge(user)
+    self.resource = user
+    switch_locale { super }
   end
 end

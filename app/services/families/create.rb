@@ -4,7 +4,7 @@ module Families
   class Create
     include ActiveModel::Validations
 
-    attr_reader :user, :name, :family, :error_message
+    attr_reader :user, :name, :family, :error_message, :error_code
 
     validates :name, presence: {
       message: ->(*) { I18n.t('services.families.create.family_name_is_required') }
@@ -14,22 +14,23 @@ module Families
       message: ->(*) { I18n.t('services.families.create.family_name_must_be_50_characters_or_less') }
     }
 
-    def initialize(user:, name:, notify: true)
+    def initialize(user:, name:)
       @user = user
       @name = name&.strip
-      @notify = notify
       @error_message = nil
     end
 
     def call
-      return false unless valid?
+      unless valid?
+        @error_code = :invalid_name
+        return false
+      end
       return false unless validate_user_eligibility
       return false unless validate_feature_access
 
       ActiveRecord::Base.transaction do
         create_family
         create_owner_membership
-        send_notification
       end
 
       true
@@ -51,11 +52,13 @@ module Families
 
     def validate_user_eligibility
       if user.in_family?
+        @error_code = :already_in_family
         @error_message = I18n.t('services.families.create.you_must_leave_your_current_family_before_creating_a_new')
         return false
       end
 
       if user.created_family.present?
+        @error_code = :family_already_created
         @error_message = I18n.t('services.families.create.you_have_already_created_a_family_each_user_can_only')
         return false
       end
@@ -64,18 +67,13 @@ module Families
     end
 
     def validate_feature_access
-      return true if can_create_family?
+      return true if user.entitlements.can_create_family?
 
       # Only reachable on cloud — self-hosted short-circuits in can_create_family?
+      @error_code = :family_plan_required
       @error_message = I18n.t('services.families.create.family_feature_requires_an_active_subscription')
 
       false
-    end
-
-    def can_create_family?
-      return true if DawarichSettings.self_hosted?
-
-      user.family?
     end
 
     def create_family
@@ -90,23 +88,8 @@ module Families
       )
     end
 
-    def send_notification
-      return unless @notify
-
-      I18n.with_locale(user.locale) do
-        Notification.create!(
-          user: user,
-          kind: :info,
-          title: I18n.t('services.families.create.family_created'),
-          content: I18n.t('services.families.create.you_ve_successfully_created_the_family_name', name: family.name)
-        )
-      end
-    rescue StandardError => e
-      # Don't fail the entire operation if notification fails
-      ExceptionReporter.call(e, "Unexpected error in Families::Create: #{e.message}")
-    end
-
     def handle_record_invalid_error(error)
+      @error_code = :unexpected_error
       @error_message =
         if family&.errors&.any?
           family.errors.full_messages.first
@@ -116,10 +99,12 @@ module Families
     end
 
     def handle_uniqueness_error(_error)
+      @error_code = :unexpected_error
       @error_message = I18n.t('services.families.create.a_family_with_this_name_already_exists_for_your_account')
     end
 
     def handle_generic_error(error)
+      @error_code = :unexpected_error
       ExceptionReporter.call(error, "Unexpected error in Families::Create: #{error.message}")
       @error_message = I18n.t(
         'services.families.create.an_unexpected_error_occurred_while_creating_the_family_please_try'

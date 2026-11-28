@@ -81,8 +81,10 @@ module EnhancedImport
           updated_at: Time.current
         }
         attributes[:name] = place_name(extracted) unless place.name_locked?
+        previous_name = place.name
 
         place.update_columns(attributes)
+        place.carry_name_to_visits(previous_name) if place.name != previous_name
       rescue ActiveRecord::RecordNotUnique
         nil
       end

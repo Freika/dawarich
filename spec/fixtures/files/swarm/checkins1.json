@@ -1,0 +1,74 @@
+{
+  "count": 5,
+  "items": [
+    {
+      "id": "6630f1a0c0ffee0000000002",
+      "createdAt": "2024-05-04 10:45:00",
+      "type": "checkin",
+      "visibility": "public",
+      "shout": "Bach!",
+      "timeZoneOffset": 120,
+      "venue": {
+        "id": "4adcda7ef964a520a64921e3",
+        "name": "Thomaskirche",
+        "url": "https://foursquare.com/v/4adcda7ef964a520a64921e3"
+      },
+      "lat": 51.33918,
+      "lng": 12.37266
+    },
+    {
+      "id": "6630f1a0c0ffee0000000003",
+      "createdAt": "2024-05-04 15:00:00.000000",
+      "type": "checkin",
+      "visibility": "public",
+      "timeZoneOffset": 120,
+      "venue": {
+        "id": "4b0588a1f964a520c0d922e3",
+        "name": "Café Kandler",
+        "url": "https://foursquare.com/v/4b0588a1f964a520c0d922e3"
+      },
+      "lat": 51.33965,
+      "lng": 12.37312,
+      "hacc": 12
+    },
+    {
+      "id": "6630f1a0c0ffee0000000001",
+      "createdAt": "2024-05-04 10:00:00.000000",
+      "type": "checkin",
+      "visibility": "public",
+      "timeZoneOffset": 120,
+      "venue": {
+        "id": "4b0588a1f964a520c0d922e3",
+        "name": "Café Kandler",
+        "url": "https://foursquare.com/v/4b0588a1f964a520c0d922e3"
+      },
+      "lat": 51.33963,
+      "lng": 12.37309,
+      "hacc": 10
+    },
+    {
+      "id": "6630f1a0c0ffee0000000004",
+      "createdAt": "2024-05-04 15:00:00.000000",
+      "type": "venueless",
+      "visibility": "public",
+      "shout": "Picnic in the park",
+      "timeZoneOffset": 120,
+      "lat": 51.34312,
+      "lng": 12.36241
+    },
+    {
+      "id": "6630f1a0c0ffee0000000005",
+      "createdAt": "2024-05-04 18:00:00.000000",
+      "type": "checkin",
+      "visibility": "public",
+      "timeZoneOffset": 120,
+      "venue": {
+        "id": "4c1d8a5ab306c9284f6f8c33",
+        "name": "Nowhere",
+        "url": "https://foursquare.com/v/4c1d8a5ab306c9284f6f8c33"
+      },
+      "lat": 0,
+      "lng": 0
+    }
+  ]
+}

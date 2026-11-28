@@ -12,8 +12,8 @@ RSpec.describe 'German interface copy', type: :helper do
   end
 
   it 'distinguishes registration from sign-in actions' do
-    expect(I18n.t('home.index.sign_up')).to eq('Registrieren')
-    expect(I18n.t('home.index.sign_in')).to eq('Anmelden')
+    expect(I18n.t('devise.shared.links.register')).to eq('Registrieren')
+    expect(I18n.t('devise.sessions.new.log_in')).to eq('Anmelden')
   end
 
   it 'describes map controls by their user-visible effect' do

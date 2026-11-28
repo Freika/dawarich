@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Maps::BoundsCalculator do
   describe '.call' do
     subject(:calculate_bounds) do
-      described_class.new(user:, start_date:, end_date:, import_id:, robust:).call
+      described_class.new(user:, start_date:, end_date:, import_id:, robust:, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
     end
 
     let(:user) { create(:user) }
@@ -144,7 +144,7 @@ RSpec.describe Maps::BoundsCalculator do
 
       it 'samples the time index when the full aggregation times out' do
         create(:point, user:, latitude: 52.5, longitude: 13.4, timestamp: Time.utc(2024, 6, 15).to_i)
-        calculator = described_class.new(user:, start_date:, end_date:, robust: true)
+        calculator = described_class.new(user:, start_date:, end_date:, robust: true, privacy_zone_masker: Maps::PrivacyZoneMasker.none)
         allow(calculator).to receive(:execute_cell_bounds_query).and_raise(ActiveRecord::QueryCanceled)
 
         result = calculator.call

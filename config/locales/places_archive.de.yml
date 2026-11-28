@@ -1,0 +1,8 @@
+de:
+  places:
+    archive:
+      badge: "Archiviert"
+      archive: "Archivieren"
+      unarchive: "Archivierung aufheben"
+      hint: "Bestätigte Besuche und der Privatsphärenschutz bleiben erhalten; im archivierten Zustand werden keine neuen Besuche zugeordnet und Geofencing pausiert."
+      show_on_map: "Archivierte Orte anzeigen"

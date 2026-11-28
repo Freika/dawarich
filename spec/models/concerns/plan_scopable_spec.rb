@@ -76,8 +76,49 @@ RSpec.describe PlanScopable do
   end
 
   describe '#data_window_start' do
-    it 'returns approximately 12 months ago' do
-      expect(user.data_window_start).to be_within(1.second).of(12.months.ago)
+    include ActiveSupport::Testing::TimeHelpers
+
+    it 'is nil for a user with no data window' do
+      expect(user.data_window_start).to be_nil
+    end
+
+    context 'when the user is restricted to a data window' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user.update!(plan: :lite)
+      end
+
+      it 'starts at the first UTC midnight after 12 months ago' do
+        travel_to Time.utc(2026, 10, 25, 10, 30) do
+          expect(user.data_window_start).to eq(Time.utc(2025, 10, 26))
+        end
+      end
+
+      it 'stays the same throughout a UTC day, whatever the current time zone' do
+        morning = travel_to(Time.utc(2026, 10, 25, 0, 1)) { user.data_window_start }
+        evening = travel_to(Time.utc(2026, 10, 25, 23, 59)) do
+          Time.use_zone('Pacific/Auckland') { user.data_window_start }
+        end
+
+        expect(evening).to eq(morning)
+      end
+    end
+  end
+
+  describe '#scoped_geofence_events' do
+    let!(:recent) { create(:geofence_event, user: user, occurred_at: 1.month.ago) }
+    let!(:old) { create(:geofence_event, user: user, occurred_at: 2.years.ago) }
+    let!(:synthetic) { create(:geofence_event, user: user, occurred_at: 1.month.ago, synthetic: true) }
+
+    it 'returns every real event for a user with no data window' do
+      expect(user.scoped_geofence_events).to contain_exactly(recent, old)
+    end
+
+    it 'keeps only real events inside the data window for a restricted user' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :lite)
+
+      expect(user.scoped_geofence_events).to contain_exactly(recent)
     end
   end
 
@@ -118,7 +159,7 @@ RSpec.describe PlanScopable do
       end
 
       let!(:boundary_point) do
-        create(:point, user: user, timestamp: 12.months.ago.to_i)
+        create(:point, user: user, timestamp: user.data_window_start.to_i)
       end
 
       it 'includes points at the exact boundary' do

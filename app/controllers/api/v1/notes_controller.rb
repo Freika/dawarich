@@ -3,14 +3,16 @@
 class Api::V1::NotesController < ApiController
   before_action :set_note, only: %i[show update destroy]
 
+  BOUNDS_PARAMS = %i[min_lon min_lat max_lon max_lat].freeze
+  MAX_PER_PAGE = 500
+
+  # Notes are the user's own writing and are not limited by the plan's data
+  # window (ADR-0029), so this read is deliberately not plan-scoped.
   def index
-    notes = current_api_user.notes
+    notes = map_read_masker.mask_notes(filtered_notes).ordered.includes(:user)
+    notes = paginate(notes) if params[:page].present?
 
-    notes = notes.where(attachable_type: params[:attachable_type]) if params[:attachable_type].present?
-    notes = notes.where(attachable_id: params[:attachable_id]) if params[:attachable_id].present?
-    notes = notes.standalone if params[:standalone] == 'true'
-
-    render json: notes.ordered.map { Api::NoteSerializer.new(_1).call }, status: :ok
+    render json: notes.map { Api::NoteSerializer.new(_1).call }, status: :ok
   end
 
   def show
@@ -42,6 +44,28 @@ class Api::V1::NotesController < ApiController
   end
 
   private
+
+  def filtered_notes
+    notes = current_api_user.notes
+    notes = notes.where(attachable_type: params[:attachable_type]) if params[:attachable_type].present?
+    notes = notes.where(attachable_id: params[:attachable_id]) if params[:attachable_id].present?
+    notes = notes.standalone if params[:standalone] == 'true'
+    notes = notes.where(noted_at: (params[:start_at].presence)..) if params[:start_at].present?
+    notes = notes.where(noted_at: ..(params[:end_at].presence)) if params[:end_at].present?
+    notes = notes.within_bounds(*params.values_at(*BOUNDS_PARAMS)) if BOUNDS_PARAMS.all? { params[_1].present? }
+    notes
+  end
+
+  # Optional, as for visits: without a page the whole list is returned.
+  def paginate(notes)
+    per_page = params[:per_page].to_i
+    per_page = 100 unless per_page.positive?
+    notes = notes.page(params[:page]).per([per_page, MAX_PER_PAGE].min)
+
+    response.set_header('X-Current-Page', notes.current_page.to_s)
+    response.set_header('X-Total-Pages', notes.total_pages.to_s)
+    notes
+  end
 
   def set_note
     @note = current_api_user.notes.find(params[:id])

@@ -9,7 +9,7 @@ class Users::ExportData::Exports
   end
 
   def call
-    exports_with_files = user.exports.includes(:file_attachment).to_a
+    exports_with_files = user.exports.includes(:file_attachment, :import).to_a
 
     if exports_with_files.size > 1
       Parallel.map(exports_with_files, in_threads: 2) do |export|
@@ -28,7 +28,16 @@ class Users::ExportData::Exports
   def process_export(export)
     Rails.logger.info "Processing export #{export.name}"
 
-    export_hash = export.as_json(except: %w[user_id id])
+    export_hash = export.as_json(except: %w[user_id id import_id import_scope_unavailable])
+    if export.import_scoped?
+      source = export.import unless export.import_scope_unavailable?
+      source = nil unless source&.user_id == user.id
+      export_hash['import_scope'] = if source
+                                      { 'reference' => source.backup_reference }
+                                    else
+                                      { 'unavailable' => true }
+                                    end
+    end
 
     if export.file.attached? && !export.user_data?
       add_file_data_to_export(export, export_hash)

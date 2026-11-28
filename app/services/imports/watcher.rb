@@ -83,7 +83,7 @@ class Imports::Watcher
     case source&.to_sym
     when :gpx then 'application/xml'
     when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history, :google_photos,
-         :polarsteps, :mobile_photo_library
+         :polarsteps, :mobile_photo_library, :swarm
       'application/json'
     when :owntracks, :fit
       'application/octet-stream'

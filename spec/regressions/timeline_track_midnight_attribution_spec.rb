@@ -28,7 +28,8 @@ RSpec.describe 'Timeline daily attribution for tracks crossing midnight' do
         described_class.new(
           user,
           start_at: date.in_time_zone(tz).beginning_of_day.iso8601,
-          end_at: date.in_time_zone(tz).end_of_day.iso8601
+          end_at: date.in_time_zone(tz).end_of_day.iso8601,
+          privacy_zone_masker: Maps::PrivacyZoneMasker.none
         ).call
       end
     end

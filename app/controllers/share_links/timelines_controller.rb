@@ -4,6 +4,11 @@ module ShareLinks
   class TimelinesController < ApplicationController
     include ShareLinks::Managable
 
+    def new
+      @share = nil if @share && @share.settings['import_id'].to_s != params[:import_id].to_s
+      super
+    end
+
     private
 
     def hub_tab
@@ -15,7 +20,8 @@ module ShareLinks
     end
 
     def redirect_after_action_path
-      new_share_links_timeline_path
+      import_id = @shared_link&.settings&.dig('import_id') || @share&.settings&.dig('import_id')
+      new_share_links_timeline_path(import_id: import_id)
     end
 
     def fallback_path
@@ -33,7 +39,7 @@ end_date: end_date.iso8601),
         settings: SharedLink.default_settings_for(:timeline).merge(
           'start_date' => start_date.iso8601,
           'end_date'   => end_date.iso8601
-        )
+        ).merge(import_scope(params[:import_id]))
       }
     end
 
@@ -55,12 +61,16 @@ end_date: end_date.iso8601),
         settings:      SharedLink.default_settings_for(:timeline).merge(
           'start_date' => create_params[:start_date],
           'end_date'   => create_params[:end_date]
-        ).merge(extracted_settings)
+        ).merge(extracted_settings).merge(import_scope(create_params[:import_id]))
       }
     end
 
     def create_params
-      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :start_date, :end_date, :expires_at)
+      params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :start_date, :end_date, :expires_at, :import_id)
+    end
+
+    def import_scope(import_id)
+      import_id.present? ? { 'import_id' => import_id.to_s } : {}
     end
 
     def default_name_for(attrs)

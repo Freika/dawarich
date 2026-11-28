@@ -6,7 +6,7 @@
 <%= t('.overview') %>
   <%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
 <% if @digest.flight_distance.positive? %>
-  <%= t('.flights') %>        <%= distance_with_unit(@digest.flight_distance, @distance_unit) %>
+  <%= "#{t('.flights')} ".ljust(15) %><%= distance_with_unit(@digest.flight_distance, @distance_unit) %>
 <% end %>
   <%= t('.active_days') %>    <%= @active_days %>
   <%= t('.countries') %>      <%= @digest.time_spent_by_location.to_h['countries'].to_a.size %>
@@ -14,8 +14,8 @@
 
 <%= t('.weekly_pattern') %>
 <%= ascii_hbar(
-  @weekday_totals,
-  labels: I18n.t('date.abbr_day_names').rotate,
+  week_ordered(@weekday_totals),
+  labels: week_ordered(I18n.t('date.abbr_day_names').rotate),
   width: 20,
   suffix: " #{@distance_unit}"
 ) %>

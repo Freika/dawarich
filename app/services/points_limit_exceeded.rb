@@ -3,7 +3,7 @@
 class PointsLimitExceeded
   def initialize(user)
     @user = user
-    @entitlements = Entitlements.for(user)
+    @entitlements = user.entitlements
   end
 
   def call

@@ -4,8 +4,11 @@ class SettingsController < ApplicationController
   before_action :authenticate_user!
 
   CHANGELOG_DECISIONS = %w[granted declined].freeze
+  THEMES = %w[light dark].freeze
 
   def theme
+    return head :unprocessable_entity unless THEMES.include?(params[:theme])
+
     current_user.update(theme: params[:theme])
 
     redirect_back(fallback_location: root_path)

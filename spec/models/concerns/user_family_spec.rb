@@ -214,6 +214,13 @@ RSpec.describe UserFamily do
   describe '#latest_location_for_family' do
     before { user.update_family_location_sharing!(true, duration: 'permanent') }
 
+    it 'includes the display name with emoji for standalone family map labels' do
+      user.update!(first_name: '🧑 Ada', last_name: 'Example')
+      create(:point, user: user)
+
+      expect(user.latest_location_for_family[:name]).to eq('🧑 Ada Example')
+    end
+
     it 'returns nil when sharing is disabled' do
       user.update_family_location_sharing!(false)
       create(:point, user: user, timestamp: 1.hour.ago.to_i)

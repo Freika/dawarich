@@ -14,8 +14,7 @@ module LocationSearch
 
       ActiveRecord::Base.connection.exec_query(safe_query)
                         .map { |row| format_point_result(row) }
-                        .sort_by { |point| point[:timestamp] }
-                        .reverse # Most recent first
+                        .sort_by { |point| [-point[:timestamp], point[:id]] }
     end
 
     private
@@ -46,7 +45,7 @@ module LocationSearch
           AND ST_DWithin(p.lonlat, search_point.geom, ?)
           #{date_filter_sql}
           #{plan_filter_sql}
-        ORDER BY p.timestamp DESC
+        ORDER BY p.timestamp DESC, p.id ASC
       SQL
 
       # Combine bind values: longitude, latitude, user_id, radius, then date filters, then plan filter
@@ -63,9 +62,10 @@ module LocationSearch
     end
 
     def build_plan_filter(user)
-      return ['', []] unless user.plan_restricted?
+      window_start = user.data_window_start
+      return ['', []] unless window_start
 
-      ['AND p.timestamp >= ?', [user.data_window_start.to_i]]
+      ['AND p.timestamp >= ?', [window_start.to_i]]
     end
 
     def build_date_filter(date_options)

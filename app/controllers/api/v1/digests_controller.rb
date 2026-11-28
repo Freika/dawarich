@@ -4,14 +4,14 @@ class Api::V1::DigestsController < ApiController
   before_action :authenticate_active_api_user!, only: %i[create destroy]
 
   def index
-    digests = current_api_user.digests.yearly.order(year: :desc)
+    digests = current_api_user.digests.yearly.generation_ready.order(year: :desc)
     available_years = available_years_for_generation
 
     render json: Api::DigestListSerializer.new(digests: digests, available_years: available_years).call
   end
 
   def show
-    digest = current_api_user.digests.yearly.find_by!(year: params[:year])
+    digest = current_api_user.digests.yearly.generation_ready.find_by!(year: params[:year])
 
     return unless stale?(last_modified: digest.updated_at.utc)
 
@@ -22,17 +22,17 @@ class Api::V1::DigestsController < ApiController
   def create
     year = params[:year].to_i
 
-    unless valid_year?(year)
+    unless Users::Digest.generatable_year?(current_api_user, year)
       render json: { error: I18n.t('controllers.api.v1.digests.invalid_year') }, status: :unprocessable_entity
       return
     end
 
-    if current_api_user.digests.yearly.exists?(year: year)
+    if current_api_user.digests.yearly.generation_ready.exists?(year: year)
       render json: { error: I18n.t('controllers.api.v1.digests.digest_already_exists') }, status: :conflict
       return
     end
 
-    Users::Digests::Yearly::CalculatingJob.perform_later(current_api_user.id, year)
+    Users::Digests::RequestYear.new(current_api_user, year).call
     render json: { message: I18n.t('controllers.api.v1.digests.digest_for_year_is_being_generated', year: year) },
            status: :accepted
   end
@@ -47,18 +47,10 @@ class Api::V1::DigestsController < ApiController
 
   def available_years_for_generation
     tracked_years = current_api_user.scoped_stats.select(:year).distinct.pluck(:year)
-    existing_digests = current_api_user.digests.yearly.pluck(:year)
+    existing_digests = current_api_user.digests.yearly.select(:id, :year, :generation_status, :updated_at)
+                                       .select { |digest| digest.generation_ready? || digest.generation_pending? }
+                                       .map(&:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
-  end
-
-  def valid_year?(year)
-    return false if year < 1970 || year >= Time.current.year
-
-    current_api_user.scoped_stats.exists?(year: year)
-  end
-
-  def distance_unit
-    params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
   end
 end

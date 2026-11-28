@@ -55,7 +55,19 @@ describe 'Users API', type: :request do
                    type: :object,
                    properties: {
                      family: { type: :boolean },
-                     reverse_geocoding: { type: :boolean }
+                     family_management: {
+                       type: :boolean,
+                       description: 'The server offers the family management endpoints'
+                     },
+                     reverse_geocoding: { type: :boolean },
+                     achievements: {
+                       type: :boolean,
+                       description: 'Achievements are turned on for this user'
+                     },
+                     achievements_api: {
+                       type: :boolean,
+                       description: 'The server offers the mobile achievements endpoints'
+                     }
                    }
                  }
                }

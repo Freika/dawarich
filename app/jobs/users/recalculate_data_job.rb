@@ -1,8 +1,13 @@
 # frozen_string_literal: true
 
 # Job to recalculate (hard update) stats, tracks, and digests for a user.
-# Optionally accepts a year to limit the recalculation scope.
+# Optionally accepts a year, or a list of years, to limit the recalculation scope.
 # If no year is provided, recalculates for all tracked years.
+# `only: 'tracks'` rebuilds just the tracks; `only: 'stats'` just stats and digests.
+# `digest_years:` refreshes the digests of further years once the stats are
+# rebuilt, since every yearly digest carries all-time totals.
+# `anomaly_rebuild: true` marks the rebuild a GPS noise re-check queued: it
+# forgets the re-check's fingerprint only once the rebuild has succeeded.
 class Users::RecalculateDataJob < ApplicationJob
   include UserTimezone
 
@@ -29,10 +34,13 @@ class Users::RecalculateDataJob < ApplicationJob
     end
   end
 
-  def perform(user_id, year: nil, notify: true, job_queue: nil)
-    @user = find_user_or_skip(user_id) || return
+  ONLY = %w[tracks stats].freeze
 
-    @year = year&.to_i
+  def perform(user_id, year: nil, notify: true, job_queue: nil, only: nil, digest_years: nil, anomaly_rebuild: false)
+    @user = find_user_or_skip(user_id) || return
+    @only = only.to_s.presence_in(ONLY)
+
+    @years = Array(year).map(&:to_i)
     @notify = notify
     @job_queue = job_queue
 
@@ -42,16 +50,21 @@ class Users::RecalculateDataJob < ApplicationJob
 
         if years_to_process.empty?
           Rails.logger.info "No data to recalculate for user #{user_id}"
+          Points::AnomalyRebuildScope.new(user).forget if anomaly_rebuild
           return
         end
 
-        recalculate_stats(years_to_process)
-        recalculate_tracks(years_to_process)
-        recalculate_digests(years_to_process)
+        recalculate_stats(years_to_process) unless @only == 'tracks'
+        recalculate_tracks(years_to_process) unless @only == 'stats'
+        unless @only == 'tracks'
+          recalculate_digests(years_to_process)
+          recalculate_digests(Array(digest_years).map(&:to_i) - years_to_process)
+        end
 
         create_success_notification(years_to_process) if @notify
       end
     end
+    Points::AnomalyRebuildScope.new(user).forget if anomaly_rebuild
   rescue Tracks::PerUserLock::AcquisitionTimeout
     raise
   rescue StandardError => e
@@ -61,11 +74,11 @@ class Users::RecalculateDataJob < ApplicationJob
 
   private
 
-  attr_reader :user, :year, :job_queue
+  attr_reader :user, :years, :job_queue
 
   def determine_years
-    if year.present?
-      [year]
+    if years.any?
+      years
     else
       user.years_tracked.map { |yt| yt[:year] }
     end
@@ -74,7 +87,7 @@ class Users::RecalculateDataJob < ApplicationJob
   def recalculate_stats(years_to_process)
     years_to_process.each do |y|
       (1..12).each do |month|
-        Stats::CalculateMonth.new(user.id, y, month).call
+        Stats::CalculateMonth.new(user.id, y, month, notify_on_failure: @notify).call
       end
     end
 
@@ -119,7 +132,8 @@ class Users::RecalculateDataJob < ApplicationJob
         content: I18n.t(
           'jobs.users.recalculate_data_job.stats_tracks_and_digests_have_been_recalculated_for_year_label',
           year_label: year_label
-        )
+        ),
+        action_path: Notifications.paths.stats_path
       ).call
     end
   end
@@ -130,8 +144,7 @@ class Users::RecalculateDataJob < ApplicationJob
         user: user,
         kind: :error,
         title: I18n.t('jobs.users.recalculate_data_job.data_recalculation_failed'),
-        content: I18n.t('jobs.users.recalculate_data_job.message_stacktrace_n', message: error.message,
-                        backtrace: error.backtrace.first(10).join("\n"))
+        content: error.message
       ).call
     end
   rescue ActiveRecord::RecordNotFound

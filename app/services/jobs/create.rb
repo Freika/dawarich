@@ -46,14 +46,7 @@ class Jobs::Create
   end
 
   def claim_dedup_keys(ids)
-    results = Sidekiq.redis do |redis|
-      redis.pipelined do |pipe|
-        ids.each do |id|
-          pipe.set(Point.geocode_dedup_key(id), 1, nx: true, ex: Point::GEOCODE_DEDUP_TTL)
-        end
-      end
-    end
-    ids.zip(results).filter_map { |id, claimed| id if claimed }
+    Point.claim_geocode_ids(ids)
   end
 
   def clear_dedup_keys(ids)

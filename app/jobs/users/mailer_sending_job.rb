@@ -10,7 +10,8 @@ class Users::MailerSendingJob < ApplicationJob
     'explore_features'            => ['UsersMailer', :explore_features],
     'archival_approaching'        => ['UsersMailer', :archival_approaching],
     'oauth_account_link'          => ['UsersMailer', :oauth_account_link],
-    'account_destroy_confirmation' => ['UsersMailer', :account_destroy_confirmation]
+    'account_destroy_confirmation' => ['UsersMailer', :account_destroy_confirmation],
+    'account_deletion_warning'     => ['UsersMailer', :account_deletion_warning]
   }.freeze
 
   LEGACY_MANAGER_EMAIL_TYPES = %w[

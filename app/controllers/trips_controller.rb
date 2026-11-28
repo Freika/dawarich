@@ -4,14 +4,28 @@ class TripsController < ApplicationController
   include FlashStreamable
   include VideoStudioContext
 
+  # The trips list state (pagination and filters) a trip page carries so its
+  # links can return to the same list. Only these keys, and only scalars, so
+  # nothing else in the request (host, anchor, ...) reaches a generated URL.
+  LIST_STATE_KEYS = %i[page family_page q sort year month country origin].freeze
+
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
 
   def index
-    @trips = current_user.trips
-                         .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
-                         .order(started_at: :desc).page(params[:page]).per(6)
+    trips_query = Trips::IndexQuery.new(current_user, params)
+    @filters = trips_query.filters
+    @has_trips = current_user.trips.exists?
+    @trip_years = @has_trips ? trips_query.years : []
+    @trip_countries = @has_trips ? trips_query.countries : []
+    @trips = trips_query.call.with_route_summary
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .page(params[:page]).per(6)
+    @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
+    @family_trips = Trip.with_route_summary.where(id: @family_trip_links.keys)
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .order(started_at: :desc).page(params[:family_page]).per(6)
   end
 
   def show
@@ -26,7 +40,7 @@ class TripsController < ApplicationController
     load_video_studio_context
 
     return if @trip.source_imported? && @trip.started_at > Time.current
-    return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
+    return unless @trip.calculation_missing?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)
   end
@@ -49,16 +63,17 @@ class TripsController < ApplicationController
   end
 
   def update
-    if @trip.update(trip_params)
+    if @trip.update(trip_params.merge(user_edited_at: Time.current))
       @trip.adopt!
-      redirect_to @trip, notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
+      redirect_to trip_path(@trip, trip_list_state),
+                  notice: I18n.t('controllers.trips.trip_was_successfully_updated'), status: :see_other
     else
       render :edit, status: :unprocessable_content
     end
   end
 
   def destroy
-    @trip.destroy!
+    @trip.destroy_by_user!
     redirect_to trips_url, notice: I18n.t('controllers.trips.trip_was_successfully_destroyed'), status: :see_other
   end
 
@@ -117,7 +132,7 @@ class TripsController < ApplicationController
       return
     end
 
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
+    tz = current_user.timezone_or_utc
     start_date = @trip.started_at.in_time_zone(tz).to_date
     export_name = "trip_#{@trip.name.to_s.parameterize.presence || @trip.id}_#{start_date}.#{file_format}"
 
@@ -142,24 +157,44 @@ class TripsController < ApplicationController
   private
 
   def set_trip
-    @trip = current_user.trips.find(params[:id])
+    trips = %w[show edit].include?(action_name) ? current_user.trips.with_route_summary : current_user.trips
+    @trip = trips.find(params[:id])
   end
 
   def trip_params
     params.require(:trip).permit(:name, :started_at, :ended_at, :description)
   end
 
+  def trip_list_state
+    params.slice(*LIST_STATE_KEYS).permit(*LIST_STATE_KEYS).compact_blank.to_h
+  end
+  helper_method :trip_list_state
+
   def show_plan_map?
-    return false if @trip.path.present?
+    return false if @trip.route_present?
 
     (@trip.source_imported? && @trip.started_at > Time.current) || @day_stats.empty?
   end
 
   def compute_day_stats
-    max_points_updated = @trip.points.maximum(:updated_at).to_i
-    cache_key = ['trip_day_stats/v3', @trip.id, @trip.updated_at.to_i, max_points_updated, @timezone,
-                 @trip.user.safe_settings.minutes_between_routes]
+    window = current_user.data_window_start&.to_date
+    masker = current_privacy_zone_masker
+    cache_key = ['trip_day_stats/v6', @trip.updated_at.to_i, @timezone, window, *@trip.recording_devices_cache_key,
+                 masker.fingerprint]
 
-    Rails.cache.fetch(cache_key, expires_in: 1.hour) { @trip.day_stats(@timezone) }
+    Rails.cache.fetch(cache_key, expires_in: 1.hour) do
+      @trip.day_stats(@timezone, points_scope: masker.mask_points(@trip.plan_scoped_route_points))
+    end
   end
+
+  def trip_full_bounds
+    return @trip.route_bounds unless current_privacy_zone_masker.any?
+
+    corners = @day_stats.values.filter_map { |stats| stats[:bounds] }.flatten(1)
+    return [] if corners.empty?
+
+    lons, lats = corners.transpose
+    [[lons.min, lats.min], [lons.max, lats.max]]
+  end
+  helper_method :trip_full_bounds
 end

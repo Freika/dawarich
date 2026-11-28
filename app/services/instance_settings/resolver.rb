@@ -40,7 +40,7 @@ module InstanceSettings
     class << self
       def get(key)
         definition = Registry.fetch(key)
-        env_raw = ENV.fetch(definition.env_var, nil)
+        env_raw = definition.env_var && ENV.fetch(definition.env_var, nil)
 
         return build(definition, definition.coerce(env_raw), :env) if present?(env_raw)
 

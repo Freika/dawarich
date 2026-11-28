@@ -3,7 +3,7 @@
 # Daily Track Generation Job
 #
 # Automatically processes new location points for all active/trial users on a regular schedule.
-# This job runs periodically (recommended: every 2-4 hours) to generate tracks from newly
+# This job runs on the schedule in config/schedule.yml to generate tracks from newly
 # received location data.
 #
 # Process:

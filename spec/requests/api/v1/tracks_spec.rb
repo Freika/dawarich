@@ -221,6 +221,48 @@ RSpec.describe '/api/v1/tracks', type: :request do
       expect(feature.dig('properties', 'duration')).to eq(40)
     end
 
+    it 'clips a Track crossing the requested range to its Points inside that range' do
+      crossing = create(:track, user:, start_at: Time.utc(2024, 1, 1, 23, 50),
+                                end_at: Time.utc(2024, 1, 2, 0, 20))
+      create(:track_segment, :walking, track: crossing, start_index: 0, end_index: 2)
+      [[0.001, Time.utc(2024, 1, 1, 23, 50)], [0.002, Time.utc(2024, 1, 2, 0, 5)],
+       [0.003, Time.utc(2024, 1, 2, 0, 20)]].each do |longitude, time|
+        create(:point, user:, track: crossing, longitude:, latitude: 0.001, timestamp: time.to_i)
+      end
+
+      get api_v1_track_url(crossing), headers:,
+                                      params: { start_at: '2024-01-02T00:00:00Z', end_at: '2024-01-02T23:59:59Z' }
+
+      expect(response).to have_http_status(:ok)
+      feature = JSON.parse(response.body).fetch('features').first
+      expect(feature.dig('geometry', 'coordinates')).to eq([[0.002, 0.001], [0.003, 0.001]])
+      expect(feature.dig('properties', 'start_at')).to eq('2024-01-02T00:05:00Z')
+      expect(feature.dig('properties', 'duration')).to eq(900)
+      expect(feature.dig('properties', 'segments')).to eq([])
+    end
+
+    it 'returns the whole Track when it lies inside the requested range' do
+      [0.001, 0.002].each_with_index do |longitude, index|
+        create(:point, user:, track:, longitude:, latitude: 0.001, timestamp: track.start_at.to_i + (index * 60))
+      end
+
+      get api_v1_track_url(track), headers:,
+                                   params: { start_at: '2024-01-01T00:00:00Z', end_at: '2024-01-01T23:59:59Z' }
+
+      properties = JSON.parse(response.body).dig('features', 0, 'properties')
+      expect(properties['distance']).to eq(5000)
+      expect(properties['segments'].length).to eq(2)
+    end
+
+    it 'returns the whole Track crossing the requested range when none of its Points are linked' do
+      get api_v1_track_url(track), headers:,
+                                   params: { start_at: '2024-01-01T10:30:00Z', end_at: '2024-01-01T23:59:59Z' }
+
+      properties = JSON.parse(response.body).dig('features', 0, 'properties')
+      expect(properties['distance']).to eq(5000)
+      expect(properties['segments'].length).to eq(2)
+    end
+
     it 'includes segments with transportation mode data' do
       get api_v1_track_url(track), headers: headers
       json = JSON.parse(response.body)

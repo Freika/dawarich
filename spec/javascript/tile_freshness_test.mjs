@@ -54,3 +54,36 @@ test("a refresh never reuses a tile URL from an earlier page load", async () => 
     earlier.withTileVersion(tileUrl(path)).toString(),
   )
 })
+
+test("tile requests carry the privacy zone fingerprint once it is known", async () => {
+  const { setPrivacyZonesFingerprint, withTileVersion } = await loadPage()
+  const path = "/api/v1/tiles/points/1/2/3.mvt"
+
+  assert.equal(withTileVersion(tileUrl(path)).searchParams.get("pz"), null)
+
+  assert.equal(setPrivacyZonesFingerprint("abc"), true)
+  assert.equal(withTileVersion(tileUrl(path)).searchParams.get("pz"), "abc")
+  assert.equal(
+    withTileVersion(tileUrl("/api/v1/tiles/tracks/1/2/3.mvt")).searchParams.get(
+      "pz",
+    ),
+    "abc",
+  )
+})
+
+test("a changed fingerprint changes the tile URL, an unchanged one does not", async () => {
+  const { setPrivacyZonesFingerprint, withTileVersion } = await loadPage()
+  const path = "/api/v1/tiles/tracks/1/2/3.mvt"
+
+  setPrivacyZonesFingerprint("abc")
+  const before = withTileVersion(tileUrl(path)).toString()
+
+  assert.equal(setPrivacyZonesFingerprint("abc"), false)
+  assert.equal(withTileVersion(tileUrl(path)).toString(), before)
+
+  assert.equal(setPrivacyZonesFingerprint("def"), true)
+  assert.notEqual(withTileVersion(tileUrl(path)).toString(), before)
+
+  assert.equal(setPrivacyZonesFingerprint(null), true)
+  assert.equal(withTileVersion(tileUrl(path)).searchParams.get("pz"), null)
+})

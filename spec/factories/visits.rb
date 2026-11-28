@@ -2,7 +2,6 @@
 
 FactoryBot.define do
   factory :visit do
-    area
     user
     started_at { Time.zone.now }
     ended_at { Time.zone.now + 1.hour }

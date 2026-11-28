@@ -1,0 +1,29 @@
+<%# locals: (card:, count:) %>
+<section class="ach-unlock-reveal" aria-label="<%= t('achievements.unlocks.announcement') %>" data-testid="achievement-unlock-deck">
+  <div class="ach-unlock-heading">
+    <div>
+      <span class="ach-unlock-kicker"><%= t('achievements.unlocks.kicker') %></span>
+      <h2><%= t('achievements.unlocks.announcement') %></h2>
+    </div>
+    <button type="button" class="ach-unlock-close" data-action="click->achievement-unlocks#dismiss"
+            aria-label="<%= t('achievements.unlocks.dismiss') %>"><%= icon 'x', class: 'w-4 h-4', 'aria-hidden': true %></button>
+  </div>
+
+  <div class="ach-unlock-stack <%= 'ach-unlock-stack--multiple' if count > 1 %>">
+    <% if count > 1 %>
+      <div class="ach-unlock-back ach-unlock-back--rear" aria-hidden="true"></div>
+      <div class="ach-unlock-back ach-unlock-back--middle" aria-hidden="true"></div>
+    <% end %>
+    <%= link_to card.path, class: 'ach-unlock-front', aria: { label: t('achievements.unlocks.view', name: card.name) } do %>
+      <%= render 'achievements/card', size: :sm, **card.attributes %>
+    <% end %>
+  </div>
+
+  <div class="ach-unlock-footer">
+    <span class="ach-unlock-count"><%= t('achievements.unlocks.remaining', count: count) %></span>
+    <button type="button" class="ach-unlock-next" data-action="click->achievement-unlocks#nextCard">
+      <%= t(count > 1 ? 'achievements.unlocks.next' : 'achievements.unlocks.done') %>
+      <%= icon 'chevron-right', class: 'w-4 h-4', 'aria-hidden': true %>
+    </button>
+  </div>
+</section>

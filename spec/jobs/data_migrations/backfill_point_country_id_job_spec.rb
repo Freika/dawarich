@@ -131,6 +131,27 @@ RSpec.describe DataMigrations::BackfillPointCountryIdJob, type: :job do
       expect(described_class).not_to have_been_enqueued
     end
 
+    it 'starts the localized-name links once the last batch is done' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      expect { described_class.perform_now(Point.maximum(:id)) }.to \
+        have_enqueued_job(DataMigrations::LinkCountryNamesJob)
+    end
+
+    it 'leaves the localized-name links to a hand run on Dawarich Cloud' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      expect { described_class.perform_now(Point.maximum(:id)) }.not_to \
+        have_enqueued_job(DataMigrations::LinkCountryNamesJob)
+    end
+
+    it 'does not start the localized-name links mid-walk' do
+      stub_const("#{described_class}::BATCH_SIZE", 1)
+
+      expect { described_class.perform_now(Point.minimum(:id)) }.not_to \
+        have_enqueued_job(DataMigrations::LinkCountryNamesJob)
+    end
+
     it 'resolves every matchable point across a chained run' do
       stub_const("#{described_class}::BATCH_SIZE", 1)
 

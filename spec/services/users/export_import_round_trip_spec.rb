@@ -39,6 +39,23 @@ RSpec.describe 'points export/import round trip' do
     expect(restored.map { |point| effective_combo(point) }).to eq(expected)
   end
 
+  # A restore recomputes anomalies and has no source to rebuild these from, so
+  # they survive only if the archive carries them.
+  it 'restores the point fields that cannot be recomputed' do
+    point = create(:point, user: user, timestamp: 1_700_000_000)
+    motion_data = { 'motion' => ['walking'], 'motion_authoritative' => true }
+    point.update_columns(altitude: 123, altitude_decimal: 123.45, anomaly_override: true, motion_data: motion_data)
+
+    exported = Users::ExportData::Points.new(user).call
+    Point.where(user_id: user.id).delete_all
+    Users::ImportData::Points.new(user, exported).call
+
+    restored = user.points.first
+    expect(restored.altitude_decimal).to eq(BigDecimal('123.45'))
+    expect(restored.anomaly_override).to be(true)
+    expect(restored.motion_data).to eq(motion_data)
+  end
+
   # Divergence proves which side the export SQL actually reads; the
   # round-trip example above passes under either side and so cannot.
   it 'exports the device combo of a stamped row from the dimension' do

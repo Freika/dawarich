@@ -1,5 +1,10 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
@@ -65,6 +70,7 @@ export default class extends BaseController {
 
   async initializeMap() {
     try {
+      startMapLoading(this.mapTarget)
       const style = await getMapStyle(getCurrentTheme(), {
         vectorTilesUrl: this.element.dataset.tilesUrl || null,
         tilesFallback: this.element.dataset.tilesFallback === "true",
@@ -78,11 +84,12 @@ export default class extends BaseController {
         zoom: 10,
         attributionControl: false,
       })
+      finishMapLoadingOn(this.map)
       this.map.addControl(
         new maplibregl.NavigationControl({ showCompass: false }),
         "top-right",
       )
-      this.map.addControl(new maplibregl.AttributionControl({ compact: true }))
+      this.map.addControl(collapsedAttributionControl())
       this.map.addControl(
         new maplibregl.ScaleControl({ maxWidth: 100 }),
         "bottom-right",
@@ -136,7 +143,7 @@ export default class extends BaseController {
 
     while (true) {
       const response = await fetch(
-        `/api/v1/points?slim=true&start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
+        `/api/v1/points?slim=true&start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}&mask_privacy_zones=true`,
         {
           method: "GET",
           headers: {

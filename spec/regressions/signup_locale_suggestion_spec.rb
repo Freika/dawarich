@@ -20,7 +20,7 @@ RSpec.describe 'Signing up and the language suggestion', type: :request do
 
     expect(User.find_by!(email: 'nouveau@example.com').preferred_locale).to be_nil
 
-    get root_path, headers: { 'Accept-Language' => 'fr-FR,fr;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'fr-FR,fr;q=0.9' }
 
     expect(response.body).to include('data-testid="locale-suggestion"')
   end
@@ -30,7 +30,7 @@ RSpec.describe 'Signing up and the language suggestion', type: :request do
 
     expect(User.find_by!(email: 'nouveau@example.com').preferred_locale).to be_nil
 
-    get root_path, headers: { 'Accept-Language' => 'fr-FR,fr;q=0.9' }
+    get new_user_session_path, headers: { 'Accept-Language' => 'fr-FR,fr;q=0.9' }
 
     expect(response.body).to include('data-testid="locale-suggestion"')
   end

@@ -19,7 +19,7 @@ class Users::ExportData::Digests
       stream_to_monthly_files
       @monthly_file_paths.sort
     else
-      user.digests.as_json(except: %w[user_id id])
+      user.digests.generation_ready.as_json(except: %w[user_id id generation_status])
     end
   end
 
@@ -30,8 +30,8 @@ class Users::ExportData::Digests
   def stream_to_monthly_files
     count = 0
 
-    user.digests.find_each do |digest|
-      digest_hash = digest.as_json(except: %w[user_id id])
+    user.digests.generation_ready.find_each do |digest|
+      digest_hash = digest.as_json(except: %w[user_id id generation_status])
       month_key = extract_month_key(digest)
 
       writer = monthly_writer_for(month_key)

@@ -17,9 +17,14 @@ describe 'Auth Apple API', type: :request do
     post 'Sign in with Apple' do
       tags 'Auth'
       description 'Exchanges an Apple `id_token` for a Dawarich API key. Creates a new account on first use ' \
-                  '(returns 201) or returns the existing account (returns 200).'
+                  '(returns 201) or returns the existing account (returns 200). A client that sends ' \
+                  '`X-Dawarich-Client-Capabilities: otp_challenge` gets a `202` with a challenge token for an ' \
+                  'account with 2FA, as from `POST /api/v1/auth/login`; it then calls ' \
+                  '`POST /api/v1/auth/otp_challenge`.'
       consumes 'application/json'
       produces 'application/json'
+      parameter name: 'X-Dawarich-Client-Capabilities', in: :header, type: :string, required: false,
+                description: 'Comma-separated client capabilities; `otp_challenge` asks for the 2FA challenge'
       parameter name: :payload, in: :body, schema: {
         type: :object,
         properties: {
@@ -44,6 +49,29 @@ describe 'Auth Apple API', type: :request do
         let(:payload) { { id_token: 'fake_token' } }
 
         run_test!
+      end
+
+      response '202', 'two-factor authentication required' do
+        schema type: :object,
+               properties: {
+                 two_factor_required: { type: :boolean },
+                 challenge_token: { type: :string },
+                 ttl: { type: :integer, description: 'Seconds the challenge token stays valid' }
+               },
+               required: %w[two_factor_required challenge_token ttl]
+
+        before do
+          allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+          create(:user, email: 'apple@example.com', provider: 'apple', uid: '000123.apple',
+                        otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+        end
+
+        let(:'X-Dawarich-Client-Capabilities') { 'otp_challenge' }
+        let(:payload) { { id_token: 'fake_token' } }
+
+        run_test! do |response|
+          expect(response.parsed_body).not_to have_key('api_key')
+        end
       end
 
       response '401', 'apple token verification failed' do

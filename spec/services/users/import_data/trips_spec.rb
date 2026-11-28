@@ -29,7 +29,7 @@ RSpec.describe Users::ImportData::Trips, type: :service do
   describe '#call' do
     context 'with trips exported from TREK' do
       before do
-        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        stub_host_addresses('trek.example.test', '93.184.216.34')
       end
 
       let(:original_user) { create(:user) }
@@ -101,6 +101,29 @@ RSpec.describe Users::ImportData::Trips, type: :service do
         expect(described_class.new(user, trips_data + [exported]).call).to eq(2)
         expect(user.trips.count).to eq(2)
         expect(user.trips.find_by(source_identifier: '12')).to be_nil
+      end
+    end
+
+    context 'with a Detected Trip the user edited' do
+      it 'keeps its origin and the user\'s mark through an export round trip' do
+        original_user = create(:user)
+        edited_at = Time.utc(2024, 12, 1, 10)
+        create(:trip, user: original_user, origin: :detected, user_edited_at: edited_at)
+        exported = Users::ExportData::Trips.new(original_user).call
+
+        expect(described_class.new(user, exported).call).to eq(1)
+        expect(user.trips.sole).to have_attributes(origin: 'detected', user_edited_at: edited_at)
+      end
+    end
+
+    context 'with an untouched Detected Trip' do
+      it 'keeps it when detection runs before the user adds a Home' do
+        original_user = create(:user)
+        create(:trip, user: original_user, origin: :detected, user_edited_at: nil)
+        described_class.new(user, Users::ExportData::Trips.new(original_user).call).call
+
+        expect { Trips::Detection::Runner.new(user).call }.not_to(change { user.trips.count })
+        expect(user.trips.sole).to be_origin_detected
       end
     end
 

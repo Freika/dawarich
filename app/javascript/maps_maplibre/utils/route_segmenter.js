@@ -1,3 +1,5 @@
+import { greatCircleLines } from "./flight_arcs"
+
 /**
  * RouteSegmenter - Utility for converting points into route segments
  * Handles route splitting based on time/distance thresholds and IDL crossings
@@ -26,122 +28,36 @@ export class RouteSegmenter {
   }
 
   /**
-   * Calculates the interpolated latitude for a given longitude on a Great Circle path.
-   * Unlike linear interpolation, this accounts for the Earth's spherical shape.
-   * @param {number} lat1 - Latitude of the first point.
-   * @param {number} lon1 - Longitude of the first point.
-   * @param {number} lat2 - Latitude of the second point.
-   * @param {number} lon2 - Longitude of the second point.
-   * @param {number} interpLon - The longitude at which to find the latitude.
-   * @returns {number|null} - The interpolated latitude or null if inputs are invalid.
-   */
-  static getInterpolatedLat(lat1, lon1, lat2, lon2, interpLon) {
-    const nLat1 = Number(lat1)
-    const nLon1 = Number(lon1)
-    const nLat2 = Number(lat2)
-    const nLon2 = Number(lon2)
-    const nInterpLon = Number(interpLon)
-
-    if ([nLat1, nLon1, nLat2, nLon2, nInterpLon].some(Number.isNaN)) {
-      return null
-    }
-
-    // Same longitude — can't interpolate latitude based on longitude
-    if (Math.abs(nLon1 - nLon2) < 0.0000001) {
-      return nLat1
-    }
-
-    const toRad = (deg) => (deg * Math.PI) / 180
-    const toDeg = (rad) => (rad * 180) / Math.PI
-
-    const φ1 = toRad(nLat1)
-    const λ1 = toRad(nLon1)
-    const φ2 = toRad(nLat2)
-    const λ2 = toRad(nLon2)
-    const λ3 = toRad(nInterpLon)
-
-    // Spherical interpolation: intersection of great circle and meridian
-    // tan(φ) = [tan(φ1) * sin(λ2 - λ3) + tan(φ2) * sin(λ3 - λ1)] / sin(λ2 - λ1)
-    const sinDeltaL = Math.sin(λ2 - λ1)
-    const term1 = Math.tan(φ1) * Math.sin(λ2 - λ3)
-    const term2 = Math.tan(φ2) * Math.sin(λ3 - λ1)
-    const tanPhi = (term1 + term2) / sinDeltaL
-    const result = toDeg(Math.atan(tanPhi))
-
-    return Number.isFinite(result) ? result : null
-  }
-
-  /**
-   * Detects indices where the path crosses the International Date Line.
-   * @param {Array<Object>} coords - Array of objects with 'latitude' and 'longitude' properties.
-   * @returns {Array<number>} Indices of the elements that represent the start of a crossing.
-   */
-  static findIDLCrossings(coords) {
-    const crossings = [0]
-
-    for (let i = 0; i < coords.length - 1; i++) {
-      const currentLng = parseFloat(coords[i].longitude)
-      const nextLng = parseFloat(coords[i + 1].longitude)
-
-      if (Number.isNaN(currentLng) || Number.isNaN(nextLng)) continue
-
-      // A jump of more than 180 degrees indicates a wrap-around
-      if (Math.abs(currentLng - nextLng) > 180) {
-        crossings.push(i + 1)
-      }
-    }
-    crossings.push(coords.length)
-
-    return crossings
-  }
-
-  /**
    * Unwrap coordinates to handle International Date Line (IDL) crossings
    * This ensures routes draw the short way across IDL instead of wrapping around globe
    * @param {Array} segment - Array of points with longitude and latitude properties
    * @returns {Array<Array<[number, number]>>} Always returns an array of coordinate arrays (MultiLineString-compatible)
    */
   static unwrapCoordinates(segment) {
-    const crossingIndices = RouteSegmenter.findIDLCrossings(segment)
-    const coordsList = []
+    const lines = greatCircleLines(
+      segment.map((p) => [parseFloat(p.longitude), parseFloat(p.latitude)]),
+    )
+    return lines.flatMap((line) =>
+      RouteSegmenter.stitchAntimeridian(
+        line.map(([longitude, latitude]) => ({ longitude, latitude })),
+      ),
+    )
+  }
 
-    for (let i = 0; i < crossingIndices.length - 1; i++) {
-      const subsegment = segment.slice(
-        crossingIndices[i],
-        crossingIndices[i + 1],
-      )
-      const coords = subsegment.map((p) => [
-        parseFloat(p.longitude),
-        parseFloat(p.latitude),
-      ])
-      coordsList.push(coords)
+  static stitchAntimeridian(points) {
+    const coordinates = points.map((point) => [
+      parseFloat(point.longitude),
+      parseFloat(point.latitude),
+    ])
+    // Keep each vertex in the world copy nearest the preceding vertex.
+    // Artificial seam vertices can introduce long edges and unstable polar interpolation.
+    for (let i = 1; i < coordinates.length; i++) {
+      while (coordinates[i][0] - coordinates[i - 1][0] > 180)
+        coordinates[i][0] -= 360
+      while (coordinates[i][0] - coordinates[i - 1][0] < -180)
+        coordinates[i][0] += 360
     }
-
-    if (coordsList.length > 1) {
-      // Stitch segments at ±180° with interpolated latitude for seamless rendering
-      for (let i = 0; i < coordsList.length - 1; i++) {
-        const lastPoint = coordsList[i].at(-1)
-        const nextPoint = coordsList[i + 1][0]
-        const interpLat = RouteSegmenter.getInterpolatedLat(
-          lastPoint[1],
-          lastPoint[0],
-          nextPoint[1],
-          nextPoint[0],
-          180,
-        )
-        const safeInterpLat = Number.isFinite(interpLat)
-          ? interpLat
-          : lastPoint[1]
-        coordsList[i].push([180 * Math.sign(lastPoint[0]), safeInterpLat])
-        coordsList[i + 1].unshift([
-          180 * Math.sign(nextPoint[0]),
-          safeInterpLat,
-        ])
-      }
-    }
-
-    // Always return array-of-arrays for consistent MultiLineString-compatible type
-    return coordsList
+    return [coordinates]
   }
 
   /**
@@ -163,6 +79,39 @@ export class RouteSegmenter {
   }
 
   /**
+   * True if the segment prev→curr passes within a zone's radius of its center.
+   * Uses an equirectangular projection around each zone (zones are small).
+   * @param {Object} prev - point with latitude/longitude
+   * @param {Object} curr - point with latitude/longitude
+   * @param {Array} zones - [{ lon, lat, radiusMeters }]
+   */
+  static segmentCrossesZone(prev, curr, zones) {
+    if (!zones?.length) return false
+
+    const R = 6371000
+    const toRad = (d) => (d * Math.PI) / 180
+
+    return zones.some((zone) => {
+      const cosLat = Math.cos(toRad(zone.lat))
+      const project = (lat, lon) => ({
+        x: R * toRad(Number(lon) - zone.lon) * cosLat,
+        y: R * toRad(Number(lat) - zone.lat),
+      })
+      const a = project(prev.latitude, prev.longitude)
+      const b = project(curr.latitude, curr.longitude)
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const lenSq = dx * dx + dy * dy
+      const t =
+        lenSq === 0
+          ? 0
+          : Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / lenSq))
+
+      return Math.hypot(a.x + t * dx, a.y + t * dy) <= zone.radiusMeters
+    })
+  }
+
+  /**
    * Split points into segments based on distance and time gaps
    * @param {Array} points - Sorted array of points
    * @param {Object} options - Splitting options
@@ -171,7 +120,7 @@ export class RouteSegmenter {
    * @returns {Array} Array of segments
    */
   static splitIntoSegments(points, options) {
-    const { distanceThresholdKm, timeThresholdMinutes } = options
+    const { distanceThresholdKm, timeThresholdMinutes, privacyZones } = options
 
     const segments = []
     let currentSegment = [points[0]]
@@ -192,7 +141,11 @@ export class RouteSegmenter {
       const timeDiff = (curr.timestamp - prev.timestamp) / 60
 
       // Split if any threshold is exceeded
-      if (distance > distanceThresholdKm || timeDiff > timeThresholdMinutes) {
+      if (
+        distance > distanceThresholdKm ||
+        timeDiff > timeThresholdMinutes ||
+        RouteSegmenter.segmentCrossesZone(prev, curr, privacyZones)
+      ) {
         if (currentSegment.length > 1) {
           segments.push(currentSegment)
         }
@@ -216,6 +169,7 @@ export class RouteSegmenter {
    */
   static segmentToFeature(segment) {
     const coordinates = RouteSegmenter.unwrapCoordinates(segment)
+    if (coordinates.length === 0) return null
     const totalDistance = RouteSegmenter.calculateSegmentDistance(segment)
 
     const startTime = segment[0].timestamp
@@ -241,6 +195,37 @@ export class RouteSegmenter {
         distance: totalDistance,
       },
     }
+  }
+
+  /**
+   * Cut a segment wherever another tracker's segment fits entirely inside one
+   * of its gaps, mirroring Tracks::HandoffSplitter on the server
+   * @param {Array} segment - Sorted points of one tracker
+   * @param {Array} otherSegments - Segments of the other trackers
+   * @returns {Array} Array of segments
+   */
+  static splitAtHandoffs(segment, otherSegments) {
+    const cuts = new Set()
+    for (const other of otherSegments) {
+      const start = other[0].timestamp
+      const end = other[other.length - 1].timestamp
+      let index = 0
+      let high = segment.length
+      while (index < high) {
+        const mid = (index + high) >> 1
+        if (segment[mid].timestamp < start) index = mid + 1
+        else high = mid
+      }
+      if (index > 0 && index < segment.length && segment[index].timestamp > end)
+        cuts.add(index)
+    }
+    if (cuts.size === 0) return [segment]
+
+    const bounds = [0, ...[...cuts].sort((a, b) => a - b), segment.length]
+    return bounds
+      .slice(1)
+      .map((to, i) => segment.slice(bounds[i], to))
+      .filter((piece) => piece.length > 1)
   }
 
   /**
@@ -271,14 +256,26 @@ export class RouteSegmenter {
       return acc
     }, {})
 
-    const features = Object.values(buckets).flatMap((bucket) => {
+    const segmentsByTracker = Object.values(buckets).map((bucket) => {
       if (bucket.length < 2) return []
       const sorted = bucket.slice().sort((a, b) => a.timestamp - b.timestamp)
-      const segments = RouteSegmenter.splitIntoSegments(sorted, {
+      return RouteSegmenter.splitIntoSegments(sorted, {
         distanceThresholdKm,
         timeThresholdMinutes,
+        privacyZones: options.privacyZones,
       })
-      return segments.map((segment) => RouteSegmenter.segmentToFeature(segment))
+    })
+
+    const features = segmentsByTracker.flatMap((segments, index) => {
+      const otherSegments = segmentsByTracker
+        .filter((_, otherIndex) => otherIndex !== index)
+        .flat()
+      return segments
+        .flatMap((segment) =>
+          RouteSegmenter.splitAtHandoffs(segment, otherSegments),
+        )
+        .map((segment) => RouteSegmenter.segmentToFeature(segment))
+        .filter(Boolean)
     })
 
     return {

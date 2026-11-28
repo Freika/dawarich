@@ -1,3 +1,8 @@
+# Node.js comes from the official image (Debian's nodejs package is the
+# upstream-EOL 20.x line). bookworm-slim is the variant that still ships
+# linux/arm/v7; the binary runs unchanged on the trixie-based Ruby image.
+FROM node:22.23.4-bookworm-slim AS node
+
 # Runtime libraries for the prebuilt maplibre-native Node binding
 # (vendor/poster_renderer). The binary is built on Ubuntu 24.04 and links
 # lib versions Debian doesn't ship (libicu74, libjpeg8) — vendor exactly
@@ -18,44 +23,124 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
        /usr/lib/*/libXext.so.6* /out/; \
     else mkdir /out; fi
 
-FROM ruby:3.4.9-slim
+# Shared by the build and runtime stages so both agree on paths and settings.
+FROM ruby:4.0.9-slim AS base
 
 ARG RAILS_ENV=production
 
 ENV APP_PATH=/var/app
-ENV BUNDLE_VERSION=2.5.21
 ENV BUNDLE_PATH=/usr/local/bundle/gems
 ENV RAILS_LOG_TO_STDOUT=true
 ENV RAILS_PORT=3000
 
+WORKDIR $APP_PATH
+
+# ---------------------------------------------------------------------------
+# build: compilers, -dev headers, npm and git live here and never reach the
+# final image. Produces the installed gems and the precompiled assets.
+# ---------------------------------------------------------------------------
+FROM base AS build
+
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    curl \
-    wget \
     build-essential \
     git \
-    postgresql-client \
     libpq-dev \
     libxml2-dev \
     libxslt-dev \
     libyaml-dev \
     zlib1g-dev \
     libgeos-dev libgeos++-dev \
-    tzdata \
-    less \
-    libjemalloc2 libjemalloc-dev \
     cmake \
     ca-certificates \
-    gosu \
-    && mkdir -p $APP_PATH \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js from Debian repositories (supports all architectures including armv7)
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
+
+# tzf2 ships no prebuilt gem for 32-bit ARM, so armv7 compiles it from
+# source; rb-sys' bindgen needs libclang, and rb-sys fetches its Rust
+# toolchain with curl.
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm" ]; then \
+    apt-get update -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libclang-dev curl \
+    && rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Install production gems only
+RUN bundle config set --local path 'vendor/bundle' \
+    && bundle config set --local without 'development test' \
+    && bundle install --jobs 4 --retry 3 \
+    && rm -rf vendor/bundle/ruby/*/cache/*.gem \
+       vendor/bundle/ruby/*/gems/*/ext/*/.rb-sys vendor/bundle/ruby/*/gems/*/ext/*/target
+
+COPY ../. ./
+
+# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
+# Install them here so the build does not depend on a host-side `npm install`
+# having populated node_modules in the build context.
+RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
+
+# Poster renderer dependencies — prebuilt maplibre-native binaries exist for
+# x64/arm64 only (Node 22 = ABI 127, which the release ships). On
+# armv7 the renderer is skipped; server-side poster rendering is unavailable
+# there.
+RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
+    cd vendor/poster_renderer \
+    && npm ci --no-audit --no-fund \
+    && rm -rf ~/.npm; \
+    fi
+
+# Precompile assets. npm is build-only (the runtime calls `node` directly),
+# so it is dropped here along with its bundled dependencies.
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
+    && rm -rf node_modules tmp/cache \
+       /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
+# Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
+RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
+    && chmod -R 777 tmp
+
+# Stage a pristine copy of public/ for the entrypoint to sync into the
+# persistent volume at runtime. Lives under the app dir, not /tmp, so
+# tmpfs-mounted /tmp cannot make the sync silently skip.
+RUN cp -r public $APP_PATH/public_dist
+
+# ---------------------------------------------------------------------------
+# runtime: only what is needed to run Rails, Sidekiq and the poster renderer.
+# No compilers, git, curl, npm or -dev packages.
+# ---------------------------------------------------------------------------
+FROM base AS runtime
+
+# wget is kept for the compose healthcheck; psql/createdb for the entrypoints;
+# gosu for the PUID/PGID privilege drop; procps for `pgrep -f sidekiq`, the
+# usual healthcheck of a separate Sidekiq container.
 RUN apt-get update -qq \
-    && apt-get install -y nodejs npm \
-    && npm install -g yarn \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    wget \
+    procps \
+    postgresql-client \
+    libpq5 \
+    libxml2 \
+    libxslt1.1 \
+    libyaml-0-2 \
+    libgeos-c1t64 \
+    libcurl4t64 \
+    tzdata \
+    libjemalloc2 \
+    ca-certificates \
+    librsvg2-bin fonts-dejavu-core fonts-noto-cjk \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
+
+# Node runs the poster renderer; npm is only needed at build time.
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
 
 # Headless GL stack for the in-container poster renderer (maplibre-native):
 # software rendering via Mesa + a virtual X display. No browser involved.
@@ -67,12 +152,9 @@ RUN apt-get update -qq \
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs
 
-# Use jemalloc with check for architecture
-RUN if [ "$(uname -m)" = "x86_64" ]; then \
-    echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    else \
-    echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2" > /etc/ld.so.preload; \
-    fi
+# Preload jemalloc from this architecture's multiarch lib dir
+# (x86_64-linux-gnu, aarch64-linux-gnu, arm-linux-gnueabihf).
+RUN ls /usr/lib/*/libjemalloc.so.2 > /etc/ld.so.preload
 
 # Return freed pages to the OS quickly instead of holding them in the
 # allocator, and cap arena count — keeps idle RSS low on small hosts.
@@ -81,59 +163,15 @@ ENV MALLOC_CONF="narenas:2,dirty_decay_ms:1000,muzzy_decay_ms:1000"
 # Enable YJIT
 ENV RUBY_YJIT_ENABLE=1
 
-# Update RubyGems and install Bundler
-RUN gem update --system 3.6.9 \
-    && gem install bundler --version "$BUNDLE_VERSION" \
-    && rm -rf $GEM_HOME/cache/*
+# Application, installed gems (vendor/bundle) and precompiled assets
+COPY --from=build $APP_PATH $APP_PATH
+# The base image points BUNDLE_APP_CONFIG at /usr/local/bundle, so the
+# `bundle config --local` settings (path, without) live here, not in .bundle/.
+COPY --from=build /usr/local/bundle/config /usr/local/bundle/config
 
-WORKDIR $APP_PATH
-
-COPY ../Gemfile ../Gemfile.lock ../.ruby-version ../vendor ./
-
-# Install production gems only
-RUN bundle config set --local path 'vendor/bundle' \
-    && bundle config set --local without 'development test' \
-    && bundle install --jobs 4 --retry 3 \
-    && rm -rf vendor/bundle/ruby/3.4.0/cache/*.gem
-
-COPY ../. ./
-
-# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
-# Install them here so the build does not depend on a host-side `npm install`
-# having populated node_modules in the build context.
-RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
-
-# Poster renderer dependencies — prebuilt maplibre-native binaries exist for
-# x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
-# armv7 the renderer is skipped; server-side poster rendering is unavailable
-# there.
-RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
-    cd vendor/poster_renderer \
-    && npm ci --no-audit --no-fund \
-    && rm -rf ~/.npm; \
-    fi
-
-# Precompile assets
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
-    && rm -rf node_modules tmp/cache
-
-# Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
-RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
-    && chmod -R 777 tmp
-
-# Stage a pristine copy of public/ for the entrypoint to sync into the
-# persistent volume at runtime. Lives under the app dir, not /tmp, so
-# tmpfs-mounted /tmp cannot make the sync silently skip.
-RUN cp -r public $APP_PATH/public_dist
-
-# Copy entrypoint scripts and grant execution permissions
-COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
-
-COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
-RUN chmod +x /usr/local/bin/web-entrypoint.sh
-
-COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
-RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+# Entrypoint scripts
+COPY --chmod=755 ./docker/entrypoint-env-guard.sh ./docker/web-entrypoint.sh \
+    ./docker/sidekiq-entrypoint.sh ./docker/cloud-entrypoint.sh /usr/local/bin/
 
 EXPOSE $RAILS_PORT
 

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
   let(:user) { create(:user) }
-  let(:visit) { create(:visit, user: user, area: nil, place: place) }
+  let(:visit) { create(:visit, user: user, place: place) }
   let(:place) { create(:place, user: user, name: 'Current Place', latitude: 52.5126, longitude: 13.4012) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
@@ -21,7 +21,7 @@ RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
   end
 
   it 'returns 404 for a tombstoned visit' do
-    tombstone = create(:visit, user: user, area: nil, place: nil, deleted_at: 1.day.ago)
+    tombstone = create(:visit, user: user, place: nil, deleted_at: 1.day.ago)
 
     get "/api/v1/visits/#{tombstone.id}/possible_places", headers: headers
 
@@ -73,5 +73,15 @@ RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
     visit_id = visit.id
     expect { get "/api/v1/visits/#{visit_id}/possible_places", headers: headers }
       .not_to(change { Place.count })
+  end
+
+  it 'does not suggest an archived current Place and keeps its history link', :archive do
+    place.update!(archived: true)
+    allow_any_instance_of(Places::NearbySearch).to receive(:call).and_return(photon_hashes)
+
+    get "/api/v1/visits/#{visit.id}/possible_places", headers: headers
+
+    expect(JSON.parse(response.body).pluck('id')).not_to include(place.id)
+    expect(visit.reload.place).to eq(place)
   end
 end

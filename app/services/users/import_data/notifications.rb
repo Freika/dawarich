@@ -2,6 +2,9 @@
 
 class Users::ImportData::Notifications
   BATCH_SIZE = 1000
+  # The file is untrusted and upsert_all skips validations, so only these
+  # columns are taken from it.
+  IMPORTABLE = %w[kind title content read_at created_at].freeze
 
   def initialize(user, notifications_data)
     @user = user
@@ -60,7 +63,7 @@ class Users::ImportData::Notifications
   end
 
   def prepare_notification_attributes(notification_data)
-    attributes = notification_data.except('updated_at')
+    attributes = notification_data.slice(*IMPORTABLE)
 
     attributes['user_id'] = user.id
 

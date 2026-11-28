@@ -17,6 +17,22 @@ describe 'Notes API', type: :request do
                 description: 'Filter by attachable ID'
       parameter name: :standalone, in: :query, type: :string, required: false,
                 description: 'Set to "true" to return only standalone notes'
+      parameter name: :start_at, in: :query, type: :string, format: :'date-time', required: false,
+                description: 'Return notes describing a moment at or after this time'
+      parameter name: :end_at, in: :query, type: :string, format: :'date-time', required: false,
+                description: 'Return notes describing a moment at or before this time'
+      parameter name: :min_lon, in: :query, type: :number, required: false,
+                description: 'Bounding box west edge. All four bounds are required for the box to apply'
+      parameter name: :min_lat, in: :query, type: :number, required: false, description: 'Bounding box south edge'
+      parameter name: :max_lon, in: :query, type: :number, required: false, description: 'Bounding box east edge'
+      parameter name: :max_lat, in: :query, type: :number, required: false, description: 'Bounding box north edge'
+      parameter name: :page, in: :query, type: :integer, required: false,
+                description: 'Page number. Without it the whole list is returned. With it the response ' \
+                             'carries X-Current-Page and X-Total-Pages headers'
+      parameter name: :per_page, in: :query, type: :integer, required: false,
+                description: 'Notes per page, 100 by default, 500 at most'
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out notes located inside a privacy zone'
 
       response '200', 'notes found' do
         let(:Authorization) { "Bearer #{api_key}" }

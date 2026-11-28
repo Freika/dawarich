@@ -9,7 +9,8 @@ describe 'Areas API', type: :request do
   path '/api/v1/areas' do
     post 'Creates an area' do
       tags 'Areas'
-      description 'Creates a new geographic area for the authenticated user'
+      deprecated true
+      description 'Deprecated compatibility adapter. Creates a canonical Place; use POST /api/v1/places.'
       consumes 'application/json'
       produces 'application/json'
       request_body_example value: {
@@ -68,7 +69,8 @@ description: 'The longitude of the area center' },
 
     get 'Retrieves all areas' do
       tags 'Areas'
-      description 'Returns all areas belonging to the authenticated user'
+      deprecated true
+      description 'Deprecated compatibility adapter backed by canonical Places; use GET /api/v1/places.'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
@@ -106,6 +108,7 @@ description: 'The longitude of the area center' },
 
     get 'Retrieves a specific area' do
       tags 'Areas'
+      deprecated true
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 
@@ -143,6 +146,7 @@ description: 'The longitude of the area center' },
 
     patch 'Updates an area' do
       tags 'Areas'
+      deprecated true
       consumes 'application/json'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
@@ -198,6 +202,7 @@ description: 'The longitude of the area center' },
 
     delete 'Deletes an area' do
       tags 'Areas'
+      deprecated true
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
 

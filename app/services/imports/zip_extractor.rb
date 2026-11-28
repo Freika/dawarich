@@ -14,6 +14,8 @@ module Imports
       %r{Location History.*/Timeline\.json}i => 'google_phone_takeout'
     }.freeze
 
+    SWARM_CHECKINS_PATTERN = /\Acheckins\d*\.json\z/i
+
     def initialize(import, user_id, file_path)
       @import = import
       @user_id = user_id
@@ -32,17 +34,21 @@ module Imports
         FileUtils.mkdir_p(temp_dir)
         FileUtils.cp(@file_path, @stable_zip_path)
 
-        extract_files(temp_dir)
-        entries = collect_supported_files(temp_dir)
-        known_entries = detect_google_takeout(entries) + detect_google_photos(entries)
+        extracted_dir = File.join(temp_dir, 'extracted')
+        extract_files(extracted_dir)
+        entries = collect_supported_files(extracted_dir)
+        known_entries = detect_google_takeout(entries) + detect_google_photos(entries) + detect_swarm(entries)
 
-        if known_entries.any?
-          create_imports_from_entries(known_entries)
-        else
-          create_imports_from_entries(entries)
+        new_imports = create_imports_from_entries(known_entries.any? ? known_entries : entries)
+
+        # Destroyed before its files are enqueued: an archive uploaded with
+        # other files shares their archive_import_id, and import_succeeded
+        # waits while any import of the upload is still processing.
+        begin
+          @import.destroy!
+        ensure
+          enqueue_processing(new_imports)
         end
-
-        @import.destroy!
       rescue StandardError => e
         @import.update(status: :failed, error_message: e.message) unless @import.destroyed?
         raise
@@ -65,27 +71,34 @@ module Imports
           next unless File.expand_path(dest).start_with?("#{File.expand_path(temp_dir)}/")
 
           FileUtils.mkdir_p(File.dirname(dest))
-          total_size += extract_entry(entry, dest)
-          raise "Archive too large (max #{@max_size} bytes)" if total_size > @max_size
+          total_size += extract_entry(entry, dest, total_size)
         end
       end
     end
 
     def extractable_entry?(entry)
-      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/')
+      !entry.directory? && !entry.name.include?('..') && !entry.name.start_with?('/') &&
+        SUPPORTED_EXTENSIONS.include?(File.extname(entry.name).downcase)
     end
 
-    def extract_entry(entry, dest)
+    def extract_entry(entry, dest, total_so_far = 0)
       bytes_written = 0
       File.open(dest, 'wb') do |out|
         entry.get_input_stream do |stream|
           while (chunk = stream.read(8192))
             bytes_written += chunk.bytesize
+            # Enforce the cap mid-stream so one deflated entry can't fill the disk
+            # before the per-archive check runs.
+            raise "Archive too large (max #{@max_size} bytes)" if total_so_far + bytes_written > @max_size
+
             out.write(chunk)
           end
         end
       end
       bytes_written
+    rescue StandardError
+      File.delete(dest) if File.exist?(dest)
+      raise
     end
 
     def collect_supported_files(temp_dir)
@@ -119,6 +132,15 @@ module Imports
       end
     end
 
+    def detect_swarm(entries)
+      entries.select do |entry|
+        entry[:source].nil? &&
+          File.basename(entry[:path]).match?(SWARM_CHECKINS_PATTERN) &&
+          Imports::SourceDetector.new_from_file_header(entry[:path]).detect_source == :swarm &&
+          (entry[:source] = 'swarm')
+      end
+    end
+
     def json_entry?(entry)
       File.extname(entry[:path]).downcase == '.json'
     end
@@ -127,15 +149,20 @@ module Imports
       user = User.find(@user_id)
       seen_names = user.imports.where(name: entries.map { |entry| import_name_for(entry) }).pluck(:name).to_set
 
-      new_imports = entries.filter_map do |entry|
-        name = import_name_for(entry)
-        next if seen_names.include?(name)
+      new_imports = []
+      begin
+        entries.each do |entry|
+          name = import_name_for(entry)
+          next if seen_names.include?(name)
 
-        seen_names << name
-        build_import(user, entry, name)
+          seen_names << name
+          new_imports << build_import(user, entry, name)
+        end
+      rescue StandardError
+        enqueue_processing(new_imports)
+        raise
       end
-
-      enqueue_processing(new_imports)
+      new_imports
     end
 
     def import_name_for(entry)
@@ -144,7 +171,8 @@ module Imports
 
     def build_import(user, entry, name)
       filename = File.basename(entry[:path])
-      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true)
+      new_import = user.imports.build(name: name, source: entry[:source], skip_background_processing: true,
+                                      archive_import_id: @import.archive_import_id || @import.id)
       new_import.file.attach(
         io: File.open(entry[:path]),
         filename: filename,

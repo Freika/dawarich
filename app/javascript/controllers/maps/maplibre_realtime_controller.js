@@ -6,13 +6,14 @@ import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_f
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 const LIVE_REFRESH_DELAY_MS = 1000
+const CONNECTION_PROBLEM_DELAY_MS = 10000
 
 /**
  * Real-time controller
  * Manages ActionCable connection and real-time updates
  */
 export default class extends Controller {
-  static targets = ["liveModeToggle"]
+  static targets = ["liveModeToggle", "connectionStatus"]
 
   static values = {
     enabled: { type: Boolean, default: true },
@@ -28,7 +29,7 @@ export default class extends Controller {
       this.connectedChannels = new Set()
       this.liveModeEnabled = this.liveModeValue
 
-      setTimeout(() => {
+      this.channelSetupTimer = setTimeout(() => {
         try {
           this.setupChannels()
         } catch (error) {
@@ -49,6 +50,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.channelSetupTimer)
+    clearTimeout(this.connectionProblemTimer)
     clearTimeout(this.liveRefreshTimer)
     this.liveRefreshTimer = null
     this.channels?.unsubscribeAll()
@@ -80,8 +83,6 @@ export default class extends Controller {
   toggleLiveMode(event) {
     this.liveModeEnabled = event.target.checked
 
-    this.updateRecentPointLayerVisibility()
-
     if (this.channels) {
       this.channels.unsubscribeAll()
     }
@@ -96,50 +97,23 @@ export default class extends Controller {
   }
 
   /**
-   * Update recent point layer visibility based on live mode state
-   */
-  updateRecentPointLayerVisibility() {
-    const mapsController = this.mapsV2Controller
-    if (!mapsController) {
-      return
-    }
-
-    const recentPointLayer =
-      mapsController.layerManager?.getLayer("recentPoint")
-    if (!recentPointLayer) {
-      return
-    }
-
-    if (this.liveModeEnabled) {
-      recentPointLayer.show()
-    } else {
-      recentPointLayer.hide()
-      recentPointLayer.clear()
-    }
-  }
-
-  /**
    * Handle connection
    */
   handleConnected(channelName) {
     this.connectedChannels.add(channelName)
-
-    if (this.connectedChannels.size === 1) {
-      Toast.success(translate("messages.connected_to_real_time_updates"))
-      this.updateConnectionIndicator(true)
-    }
+    clearTimeout(this.connectionProblemTimer)
+    this.connectionProblemTimer = null
+    this.updateConnectionIndicator(true)
   }
 
-  /**
-   * Handle disconnection
-   */
   handleDisconnected(channelName) {
     this.connectedChannels.delete(channelName)
-
-    if (this.connectedChannels.size === 0) {
-      Toast.warning(translate("messages.disconnected_from_real_time_updates"))
-      this.updateConnectionIndicator(false)
-    }
+    if (this.connectedChannels.size > 0 || this.connectionProblemTimer) return
+    this.connectionProblemTimer = setTimeout(() => {
+      this.connectionProblemTimer = null
+      if (this.connectedChannels.size === 0)
+        this.updateConnectionIndicator(false)
+    }, CONNECTION_PROBLEM_DELAY_MS)
   }
 
   /**
@@ -187,6 +161,8 @@ export default class extends Controller {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
+    mapsController.rangeStatistics?.refresh()
+
     mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
   }
@@ -214,6 +190,15 @@ export default class extends Controller {
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
+    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
+      id: parseInt(id, 10),
+      battery: parseFloat(battery) || null,
+      altitude: parseFloat(altitude) || null,
+      timestamp: timestamp,
+      velocity: parseFloat(velocity) || null,
+      country_name: countryName || null,
+    })
+
     if (
       !pointMatchesActiveDateRange(
         timestamp,
@@ -225,15 +210,6 @@ export default class extends Controller {
 
     mapsController.mapDataManager?.invalidatePoints({ appendOnly: true })
     this.scheduleLiveRefresh()
-
-    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
-      id: parseInt(id, 10),
-      battery: parseFloat(battery) || null,
-      altitude: parseFloat(altitude) || null,
-      timestamp: timestamp,
-      velocity: parseFloat(velocity) || null,
-      country_name: countryName || null,
-    })
 
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
@@ -255,20 +231,7 @@ export default class extends Controller {
 
     mapsController.layerManager?.getLayer("points-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
-    mapsController.layerManager
-      ?.getLayer("scratch")
-      ?.update()
-      .catch((error) => {
-        console.warn(
-          "[Realtime Controller] Failed to refresh visited countries:",
-          error,
-        )
-        Toast.retry(
-          translate("messages.failed_to_load_visited_countries"),
-          translate("messages.retry"),
-          () => mapsController.layerManager?.getLayer("scratch")?.update(),
-        )
-      })
+    mapsController.layerManager?.getLayer("scratch")?.retryMembership()
   }
 
   /**
@@ -288,13 +251,26 @@ export default class extends Controller {
 
   /**
    * Update the recent point marker
-   * This marker is always visible in live mode, independent of points layer visibility
+   * The marker shows the user's current position, independent of points layer visibility
    */
   updateRecentPoint(longitude, latitude, properties = {}) {
     const mapsController = this.mapsV2Controller
     if (!mapsController) {
       console.warn("[Realtime Controller] Maps controller not found")
       return
+    }
+
+    if (
+      Number(properties.timestamp) <
+      Number(mapsController.currentPositionValue?.timestamp)
+    ) {
+      return
+    }
+
+    mapsController.currentPositionValue = {
+      longitude,
+      latitude,
+      timestamp: properties.timestamp,
     }
 
     const recentPointLayer =
@@ -304,10 +280,8 @@ export default class extends Controller {
       return
     }
 
-    if (this.liveModeEnabled) {
-      recentPointLayer.show()
-      recentPointLayer.updateRecentPoint(longitude, latitude, properties)
-    }
+    recentPointLayer.show()
+    recentPointLayer.updateRecentPoint(longitude, latitude, properties)
   }
 
   /**
@@ -330,8 +304,16 @@ export default class extends Controller {
     })
   }
 
-  /**
-   * Update connection indicator (no-op, badge removed)
-   */
-  updateConnectionIndicator(_connected) {}
+  updateConnectionIndicator(connected) {
+    if (!this.hasConnectionStatusTarget) return
+    const indicator = this.connectionStatusTarget
+    const words = translate(
+      connected ? "ux_p3.realtime.connected" : "ux_p3.realtime.disconnected",
+    )
+    // The indicator is a dot: its words are a tooltip and screen-reader text.
+    indicator.dataset.tip = words
+    indicator.querySelector(".sr-only").textContent = words
+    indicator.dataset.state = connected ? "connected" : "disconnected"
+    indicator.classList.remove("hidden")
+  }
 }

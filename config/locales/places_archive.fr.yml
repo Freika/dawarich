@@ -1,0 +1,8 @@
+fr:
+  places:
+    archive:
+      badge: "Archivé"
+      archive: "Archiver"
+      unarchive: "Désarchiver"
+      hint: "Les visites confirmées et le masquage de confidentialité sont conservés ; pendant l’archivage, aucune nouvelle visite n’est attribuée et le géorepérage est suspendu."
+      show_on_map: "Afficher les lieux archivés"

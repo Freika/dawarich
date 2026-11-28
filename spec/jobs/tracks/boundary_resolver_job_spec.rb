@@ -48,7 +48,7 @@ RSpec.describe Tracks::BoundaryResolverJob do
   it 'does not report a session that expires during boundary resolution' do
     boundary_detector = instance_double(Tracks::BoundaryDetector, resolve_cross_chunk_tracks: 1)
     allow(Tracks::PerUserLock).to receive(:with_user_lock).with(user.id).and_yield
-    allow(Tracks::BoundaryDetector).to receive(:new).with(user).and_return(boundary_detector)
+    allow(Tracks::BoundaryDetector).to receive(:new).with(user, orphan_range: nil).and_return(boundary_detector)
     allow(session_manager).to receive_messages(get_session_data: nil, mark_completed: false)
 
     described_class.perform_now(user.id, session_id)

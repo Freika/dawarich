@@ -94,6 +94,8 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
 
   path '/api/v1/photos' do
     get 'Lists photos' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Photos'
       description 'Returns photos from connected photo services (Immich, PhotoPrism) within a date range'
       produces 'application/json'

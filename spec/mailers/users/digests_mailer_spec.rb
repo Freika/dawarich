@@ -192,6 +192,24 @@ RSpec.describe Users::DigestsMailer, type: :mailer do
       end
     end
 
+    context 'when the user starts weeks on Sunday' do
+      let(:user) { create(:user, email: 'test@example.com', settings: { 'first_day_of_week' => 'sunday' }) }
+      let(:digest) do
+        create(:users_digest,
+               user: user, year: 2026, month: 3, period_type: :monthly,
+               distance: 10_000,
+               monthly_distances: { '1' => 10_000, '2' => 4_000 },
+               time_spent_by_location: { 'countries' => [], 'cities' => [] },
+               first_time_visits: { 'countries' => [], 'cities' => [] },
+               year_over_year: {})
+      end
+
+      it 'lists the weekly pattern from Sunday' do
+        expect(mail.text_part.body.to_s).to match(/^Sun\s+█+\s+10 km\nMon\s+█+\s+4 km$/)
+        expect(mail.html_part.body.to_s).to match(/Sun\s+█+\s+10 km\nMon\s+█+\s+4 km/)
+      end
+    end
+
     context 'when the user prefers miles' do
       let(:user) do
         create(:user, email: 'test@example.com',

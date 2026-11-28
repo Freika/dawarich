@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'digest'
-require 'net/http'
-
 module Trek
   class Client
     class Error < StandardError
@@ -15,6 +12,11 @@ module Trek
     end
 
     TIMEOUT = 10.seconds
+    UNTRUSTED_CERTIFICATE = Regexp.union(
+      /self[- ]signed certificate/, 'unable to get local issuer certificate', 'unable to verify the first certificate'
+    )
+    SKIP_SSL_HINT = '. If TREK uses a self-signed or private CA certificate, reconnect it with ' \
+                    '"Skip SSL certificate verification" turned on'
 
     def initialize(source)
       @source = source
@@ -53,27 +55,27 @@ module Trek
     end
 
     def get(path)
-      uri = URI.parse("#{@source.base_url}#{path}")
-      ip_address = @source.resolved_base_url_ip!
-      http = Net::HTTP.new(uri.host, uri.port, nil)
-      http.ipaddr = ip_address
-      http.use_ssl = uri.scheme == 'https'
-      http.open_timeout = TIMEOUT
-      http.read_timeout = TIMEOUT
-      request = Net::HTTP::Get.new(
-        uri.request_uri,
-        'Authorization' => "Bearer #{@source.api_key}",
-        'Accept' => 'application/json'
+      response = Integrations::Transport.request(
+        :get, "#{@source.base_url}#{path}",
+        headers: { 'Authorization' => "Bearer #{@source.api_key}", 'Accept' => 'application/json' },
+        skip_ssl_verification: @source.skip_ssl_verification,
+        timeout: TIMEOUT
       )
-      response = http.start { |connection| connection.request(request) }
+      return response if response.success?
 
-      return response if response.is_a?(Net::HTTPSuccess)
+      raise Error.new("TREK request failed with HTTP #{response.code}", status: response.code)
+    rescue Integrations::Transport::Error => e
+      # Only a refused redirect carries a status here; its message says which URL to save.
+      raise Error.new("TREK request failed with HTTP #{e.status}. #{e.message}", status: e.status) if e.status
+      raise Error, "TREK URL was rejected: #{e.message}" if e.blocked? || e.unresolvable?
 
-      raise Error.new("TREK request failed with HTTP #{response.code}", status: response.code.to_i)
-    rescue UrlValidatable::BlockedUrlError => e
-      raise Error, "TREK URL was rejected: #{e.message}"
-    rescue *Photos::ConnectionErrors::HANDLED => e
-      raise Error, "TREK connection failed: #{e.message}"
+      raise Error, "TREK connection failed: #{e.message}#{skip_ssl_hint(e)}"
+    end
+
+    def skip_ssl_hint(error)
+      return unless error.certificate? && error.message.match?(UNTRUSTED_CERTIFICATE)
+
+      SKIP_SSL_HINT unless @source.skip_ssl_verification
     end
 
     def parse_json(response)

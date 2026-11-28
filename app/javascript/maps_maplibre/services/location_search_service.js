@@ -70,6 +70,7 @@ export class LocationSearchService {
         lon: lon.toString(),
         name,
         address,
+        mask_privacy_zones: "true",
       })
 
       const response = await fetch(`/api/v1/locations?${params}`, {

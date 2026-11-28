@@ -135,6 +135,8 @@ RSpec.describe Immich::RequestPhotos do
           :any,
           'http://immich.app/api/search/metadata'
         ).to_return(status: 200, body: mock_immich_data, headers: { 'content-type' => 'application/json' })
+          .then.to_return(status: 200, body: { assets: { total: 0, count: 0, items: [] } }.to_json,
+                          headers: { 'content-type' => 'application/json' })
       end
 
       it 'returns images and videos' do
@@ -163,5 +165,30 @@ RSpec.describe Immich::RequestPhotos do
         expect { service }.to raise_error(ArgumentError, 'Immich API key is missing')
       end
     end
+  end
+end
+
+RSpec.describe Immich::RequestPhotos, 'certificate verification' do
+  def verify_mode_with(setting)
+    user = create(:user, settings: { 'immich_url' => 'https://immich.example.com', 'immich_api_key' => 'key',
+                                     'immich_skip_ssl_verification' => setting })
+    stub_request(:post, 'https://immich.example.com/api/search/metadata')
+      .to_return(status: 200, body: { assets: { items: [] } }.to_json,
+                 headers: { 'Content-Type' => 'application/json' })
+    captured = nil
+    allow(Net::HTTP).to receive(:new).and_wrap_original do |original, *args|
+      original.call(*args).tap { |http| captured = http }
+    end
+
+    described_class.new(user).call
+    captured.verify_mode
+  end
+
+  it 'keeps verification on for a legacy "0" string stored by old versions' do
+    expect(verify_mode_with('0')).not_to eq(OpenSSL::SSL::VERIFY_NONE)
+  end
+
+  it 'turns verification off when the user opted out' do
+    expect(verify_mode_with(true)).to eq(OpenSSL::SSL::VERIFY_NONE)
   end
 end

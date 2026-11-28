@@ -28,6 +28,14 @@ RSpec.describe Users::ImportData::Places, type: :service do
   end
   let(:service) { described_class.new(user, places_data) }
 
+  it "drops the source instance's import id" do
+    data = places_data.first.merge('import_id' => 987_654)
+
+    described_class.new(user, [data]).call
+
+    expect(user.places.find_by!(name: 'Home').import_id).to be_nil
+  end
+
   describe '#call' do
     context 'with valid places data' do
       it 'creates new places' do
@@ -59,6 +67,10 @@ RSpec.describe Users::ImportData::Places, type: :service do
       it 'returns the number of places created' do
         result = service.call
         expect(result).to eq(2)
+      end
+
+      it 'does not enqueue one full-history reattribution per imported Place' do
+        expect { service.call }.not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
       end
     end
 

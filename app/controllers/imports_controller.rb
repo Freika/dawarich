@@ -81,6 +81,8 @@ status: :unprocessable_content and return
                   status: :unprocessable_content) and return
     end
 
+    queue_import_started_event
+
     redirect_to imports_url,
                 notice: I18n.t('controllers.imports.size_files_are_queued_to_be_imported_in_background',
                                size: @created_imports.size),
@@ -128,13 +130,34 @@ status: :unprocessable_content and return
     Array(files_params).reject(&:blank?)
   end
 
+  # The files of one upload share archive_import_id, the way the files of a
+  # ZIP do, so analytics counts the upload once. One transaction: the import
+  # jobs enqueue on commit, after the link is set.
   def process_raw_files(raw_files)
-    raw_files.each do |item|
-      next if item.is_a?(ActionDispatch::Http::UploadedFile)
+    Import.transaction do
+      raw_files.each do |item|
+        next if item.is_a?(ActionDispatch::Http::UploadedFile)
 
-      import = create_import_from_signed_id(item)
-      @created_imports << import if import.present?
+        import = create_import_from_signed_id(item)
+        @created_imports << import if import.present?
+      end
+      link_upload_imports
     end
+  end
+
+  def link_upload_imports
+    return if @created_imports.size < 2
+
+    Import.where(id: @created_imports.map(&:id)).update_all(archive_import_id: @created_imports.first.id)
+  end
+
+  # One import_started per accepted upload, sent by the next page's browser so
+  # it lands in the session that goes on to view the map.
+  def queue_import_started_event
+    return if DawarichSettings.self_hosted?
+
+    session[:analytics_events] = Array(session[:analytics_events]) +
+                                 [{ 'name' => 'import_started', 'props' => { 'files' => @created_imports.size } }]
   end
 
   def cleanup_failed_imports
@@ -159,7 +182,7 @@ status: :unprocessable_content and return
     original_filename = verified_original_filename(blob, descriptor)
     mark_client_wrapped(blob, original_filename.present?) if descriptor.key?('client_wrapped')
 
-    import_name = generate_unique_import_name(original_filename || blob.filename.to_s)
+    import_name = current_user.imports.unique_name(original_filename || blob.filename.to_s)
     import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
@@ -182,7 +205,7 @@ status: :unprocessable_content and return
 
     original_filename = File.basename(descriptor['original_filename'].to_s)
     return if original_filename.blank?
-    return unless blob.filename.to_s == "#{original_filename}.zip"
+    return unless blob.filename.to_s == ActiveStorage::Filename.new("#{original_filename}.zip").to_s
 
     original_filename
   end
@@ -191,18 +214,6 @@ status: :unprocessable_content and return
     metadata = blob.metadata.merge(CLIENT_WRAPPED_METADATA_KEY => wrapped)
     metadata[ORIGINAL_FILENAME_METADATA_KEY] = blob.filename.to_s.delete_suffix('.zip') if wrapped
     blob.update!(metadata:)
-  end
-
-  def generate_unique_import_name(original_name)
-    return original_name unless current_user.imports.exists?(name: original_name)
-
-    # Extract filename and extension
-    basename = File.basename(original_name, File.extname(original_name))
-    extension = File.extname(original_name)
-
-    # Add current datetime
-    timestamp = Time.current.strftime('%Y%m%d_%H%M%S')
-    "#{basename}_#{timestamp}#{extension}"
   end
 
   def validate_points_limit

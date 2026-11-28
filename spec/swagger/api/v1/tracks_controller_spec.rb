@@ -8,6 +8,8 @@ RSpec.describe 'Tracks API', type: :request do
 
   path '/api/v1/tracks' do
     get 'Retrieves tracks as GeoJSON' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Tracks'
       description 'Returns paginated tracks as a GeoJSON FeatureCollection with LineString geometries'
       produces 'application/json'
@@ -78,6 +80,8 @@ description: 'Emoji for transportation mode' }
     parameter name: :id, in: :path, type: :integer, required: true, description: 'Track ID'
 
     get 'Retrieves a single track as GeoJSON' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Tracks'
       description 'Returns a single track as a GeoJSON FeatureCollection, including track segment details'
       produces 'application/json'

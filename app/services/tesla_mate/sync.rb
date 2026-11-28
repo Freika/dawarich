@@ -221,10 +221,20 @@ module TeslaMate
       Tracks::RealtimeDebouncer.new(@user.id).trigger
       Tracks::BackfillScheduler.new(@user.id, @imported_range).call
       @imported_months.each { |year, month| Stats::CalculatingJob.perform_later(@user.id, year, month) }
+      schedule_visit_suggesting
+    end
+
+    def schedule_visit_suggesting
+      return unless @settings.visits_suggestions_enabled?
+
+      start_at, end_at = @imported_range.map { |timestamp| Time.zone.at(timestamp) }
+      Visits::TimeChunks.new(start_at:, end_at:).call.each do |chunk|
+        VisitSuggestingJob.perform_later(user_id: @user.id, start_at: chunk.first, end_at: chunk.last)
+      end
     end
 
     def payloads_within_point_limit(payloads)
-      return payloads if DawarichSettings.self_hosted?
+      return payloads if @user.entitlements.unlimited_points?
 
       existing_keys = existing_point_keys(payloads).index_with(true)
       slots = point_slots_remaining
@@ -258,14 +268,14 @@ module TeslaMate
     end
 
     def consume_point_slots(rows)
-      return if DawarichSettings.self_hosted?
+      return if @user.entitlements.unlimited_points?
 
       inserted = rows.count { |row| row['xmax'].to_i.zero? }
       @point_slots_remaining = [point_slots_remaining - inserted, 0].max
     end
 
     def point_limit_reached?
-      !DawarichSettings.self_hosted? && point_slots_remaining.zero?
+      !@user.entitlements.unlimited_points? && point_slots_remaining.zero?
     end
 
     def point_slots_remaining

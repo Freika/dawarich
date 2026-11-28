@@ -224,8 +224,8 @@ RSpec.describe Geojson::Params do
         expect(subject.first[:timestamp]).to eq(Time.zone.parse('2016-06-21T06:09:33Z').utc.to_i)
       end
 
-      it 'returns zero velocity when no speed field present' do
-        expect(subject.first[:velocity]).to eq(0.0)
+      it 'leaves velocity unknown when no speed field present' do
+        expect(subject.first[:velocity]).to be_nil
       end
 
       it 'returns nil for missing fields' do

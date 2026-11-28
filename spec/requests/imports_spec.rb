@@ -189,6 +189,24 @@ RSpec.describe 'Imports', type: :request do
       end
     end
 
+    context 'when the wrapped file has a non-ASCII name' do
+      let(:import) { create(:import, user:, name: 'Grüne Runde.gpx') }
+      let(:zip_path) { create_zip('Grüne Runde.gpx' => gpx_content) }
+
+      before do
+        import.file.purge
+        attach_file(import, zip_path, 'Grüne Runde.gpx.zip', client_wrapped: true)
+        sign_in user
+      end
+
+      it 'downloads the extracted inner file' do
+        prepare_and_download(import)
+
+        expect(response.headers['Content-Disposition']).to include('Gr%C3%BCne%20Runde.gpx')
+        expect(response.body).to eq(gpx_content)
+      end
+    end
+
     context 'when an unmarked legacy ZIP contains multiple files' do
       let(:import) { create(:import, user: user, name: 'renamed.gpx.zip') }
       let(:zip_path) { create_zip('a.gpx' => gpx_content, 'b.gpx' => gpx_content) }
@@ -339,6 +357,18 @@ RSpec.describe 'Imports', type: :request do
           post imports_path, params: { import: { files: [upload_descriptor(blob, 'route.kml', true)] } }
 
           expect(user.imports.order(:id).last.name).to eq('route.kml')
+        end
+
+        it 'keeps the original name and unwraps the download when the filename has reserved characters' do
+          content = '<gpx><trk><name>Ride</name></trk></gpx>'
+          blob = create_blob_from_zip('ride 12:30.gpx.zip', 'ride 12:30.gpx' => content)
+
+          post imports_path, params: { import: { files: [upload_descriptor(blob, 'ride 12:30.gpx', true)] } }
+          created_import = user.imports.order(:id).last
+          prepare_and_download(created_import)
+
+          expect(created_import.name).to eq('ride 12:30.gpx')
+          expect(response.body).to eq(content)
         end
 
         it 'keeps a genuine zip filename and marks it as unwrapped' do

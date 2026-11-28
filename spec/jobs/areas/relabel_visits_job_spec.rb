@@ -6,108 +6,58 @@ RSpec.describe Areas::RelabelVisitsJob do
   let(:user) { create(:user) }
   let(:lat0) { 51.3402 }
   let(:lon0) { 12.3712 }
-  let(:area) { create(:area, user: user, latitude: lat0, longitude: lon0, radius: 200) }
+  let(:area) { create(:area, user:, latitude: lat0, longitude: lon0, radius: 200, name: 'Home') }
 
   def north(meters) = meters / 111_320.0
 
-  def visit_at(lat, lon, **attrs)
-    place = create(:place, user: user, latitude: lat, longitude: lon)
-    create(:visit, { user: user, place: place, area: nil,
-                     started_at: Time.zone.now - 2.days, ended_at: Time.zone.now - 2.days + 1.hour,
-                     duration: 60 }.merge(attrs))
+  def point_backed_visit(lat, lon, **attributes)
+    visit = create(:visit, { user:, place: nil, status: :suggested,
+                             detection_version: Visits::Detection::VERSION,
+                             started_at: 2.days.ago, ended_at: 2.days.ago + 1.hour }.merge(attributes))
+    create(:point, user:, visit_id: visit.id, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")
+    visit
   end
 
-  it 'labels historical visits whose center lies inside the area' do
-    inside = visit_at(lat0 + north(50), lon0)
-    outside = visit_at(lat0 + north(900), lon0)
+  it 'forwards legacy Area attribution to its canonical Place' do
+    inside = point_backed_visit(lat0 + north(50), lon0)
+    outside = point_backed_visit(lat0 + north(900), lon0, started_at: 3.days.ago, ended_at: 3.days.ago + 1.hour)
 
     described_class.perform_now(area.id)
 
-    expect(inside.reload.area_id).to eq(area.id)
-    expect(outside.reload.area_id).to be_nil
+    place = LegacyAreaPlaceMapping.find_by!(area:).place
+    expect(inside.reload).to have_attributes(place_id: place.id, area_id: nil, location_label: 'Home')
+    expect(outside.reload).to have_attributes(place_id: nil, area_id: nil)
   end
 
-  it 'labels point-backed visits without a place' do
-    visit = create(:visit, user: user, place: nil, area: nil,
-                           started_at: Time.zone.now - 1.day, ended_at: Time.zone.now - 1.day + 1.hour,
-                           duration: 60)
-    create(:point, user: user, visit_id: visit.id, latitude: lat0, longitude: lon0,
-                   lonlat: "POINT(#{lon0} #{lat0})")
+  it 'migrates existing Area-only Visits without deleting them' do
+    visit = create(:visit, user:, area:, place: nil)
+
+    expect { described_class.perform_now(area.id) }.not_to change(Visit, :count)
+
+    expect(visit.reload).to have_attributes(
+      place_id: LegacyAreaPlaceMapping.find_by!(area:).place_id,
+      area_id: nil,
+      location_label: 'Home'
+    )
+  end
+
+  it 'does not reattribute a Confirmed Visit' do
+    existing = create(:place, user:, latitude: lat0, longitude: lon0, visit_radius: 50)
+    confirmed = point_backed_visit(lat0, lon0, status: :confirmed, place: existing)
 
     described_class.perform_now(area.id)
 
-    expect(visit.reload.area_id).to eq(area.id)
+    expect(confirmed.reload).to have_attributes(place_id: existing.id, area_id: nil)
   end
 
-  it 'renames suggested machine visits to the area name, leaving user rows alone' do
-    machine = create(:visit, user: user, place: nil, area: nil, status: :suggested,
-                             detection_version: Visits::Detection::VERSION, name: 'Some Street 5',
-                             started_at: Time.zone.now - 3.days, ended_at: Time.zone.now - 3.days + 1.hour,
-                             duration: 60)
-    create(:point, user: user, visit_id: machine.id, latitude: lat0, longitude: lon0,
-                   lonlat: "POINT(#{lon0} #{lat0})")
-    confirmed = visit_at(lat0, lon0, status: :confirmed, name: 'My spot')
-
-    described_class.perform_now(area.id)
-
-    expect(machine.reload.name).to eq(area.name)
-    expect(machine.area_id).to eq(area.id)
-    expect(confirmed.reload.name).to eq('My spot')
-    expect(confirmed.area_id).to eq(area.id)
-  end
-
-  it 'leaves a visit with no place and no points alone' do
-    bare = create(:visit, user: user, place: nil, area: nil,
-                          started_at: Time.zone.now - 1.day, ended_at: Time.zone.now - 1.day + 1.hour,
-                          duration: 60)
-
-    expect { described_class.perform_now(area.id) }.not_to raise_error
-    expect(bare.reload.area_id).to be_nil
-  end
-
-  it 'resolves point-backed centers in one grouped query, not one per visit' do
-    2.times do |i|
-      visit = create(:visit, user: user, place: nil, area: nil,
-                             started_at: Time.zone.now - (i + 1).days,
-                             ended_at: Time.zone.now - (i + 1).days + 1.hour, duration: 60)
-      create(:point, user: user, visit_id: visit.id, latitude: lat0, longitude: lon0,
-                     lonlat: "POINT(#{lon0} #{lat0})")
-    end
-
-    point_queries = []
-    listener = lambda do |_name, _start, _finish, _id, payload|
-      point_queries << payload[:sql] if payload[:sql].to_s.match?(/SELECT.*FROM "points"/m)
-    end
-
-    ActiveSupport::Notifications.subscribed(listener, 'sql.active_record') do
-      described_class.perform_now(area.id)
-    end
-
-    expect(user.visits.where(area_id: area.id).count).to eq(2)
-    expect(point_queries.length).to eq(1)
-  end
-
-  it 'never relabels visits already attributed to an area, tombstoned or declined' do
-    other_area = create(:area, user: user, latitude: lat0, longitude: lon0, radius: 300)
-    claimed = visit_at(lat0, lon0, area: other_area)
-    tombstoned = visit_at(lat0, lon0 + north(10), deleted_at: Time.zone.now)
-    declined = visit_at(lat0 + north(20), lon0, status: :declined)
-
-    described_class.perform_now(area.id)
-
-    expect(claimed.reload.area_id).to eq(other_area.id)
-    expect(tombstoned.reload.area_id).to be_nil
-    expect(declined.reload.area_id).to be_nil
-  end
-
-  it 'quietly skips a deleted area' do
+  it 'quietly skips a deleted Area' do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
-  describe 'enqueueing from Area lifecycle' do
-    it 'enqueues on create and on geometry changes, but not on rename' do
+  describe 'enqueueing from direct Area lifecycle writes' do
+    it 'enqueues on create and geometry changes, but not on rename' do
       new_area = nil
-      expect { new_area = create(:area, user: user, latitude: lat0, longitude: lon0, radius: 100) }
+      expect { new_area = create(:area, user:, latitude: lat0, longitude: lon0, radius: 100) }
         .to have_enqueued_job(described_class)
 
       expect { new_area.update!(radius: 250) }.to have_enqueued_job(described_class).with(new_area.id)

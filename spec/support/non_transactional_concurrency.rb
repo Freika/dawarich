@@ -1,21 +1,5 @@
 # frozen_string_literal: true
 
-module NonTransactionalConcurrency
-  # Only the tables that the duplicate-tracks regression specs mutate. Each
-  # spec creates its own user via `let(:user) { create(:user) }`, so leave
-  # `users` and unrelated tables alone — truncating them between examples
-  # would wipe state shared with other specs running in the same process.
-  TABLES_TO_TRUNCATE = %w[track_segments tracks points].freeze
-
-  def self.truncate_all
-    conn = ActiveRecord::Base.connection
-    existing = conn.tables & TABLES_TO_TRUNCATE
-    return if existing.empty?
-
-    conn.execute("TRUNCATE TABLE #{existing.join(', ')} RESTART IDENTITY CASCADE")
-  end
-end
-
 RSpec.configure do |config|
   # rspec-rails reads `use_transactional_tests` from the example class at
   # `setup_fixtures` time (via `before_setup`), which runs BEFORE any RSpec
@@ -46,14 +30,5 @@ RSpec.configure do |config|
         'in config/database.yml.'
       )
     end
-
-    # The first non_transactional example in a run can inherit data created by
-    # earlier transactional specs that wrote outside the wrapping transaction
-    # (e.g. via `before(:all)` or jobs). Start clean.
-    NonTransactionalConcurrency.truncate_all
-  end
-
-  config.after(:each, :non_transactional) do
-    NonTransactionalConcurrency.truncate_all
   end
 end

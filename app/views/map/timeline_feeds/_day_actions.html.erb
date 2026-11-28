@@ -1,0 +1,19 @@
+<%# locals: (selectable: false, note: true) %>
+<%# The day's own actions, as icons beside its date: pick visits to merge or
+    delete, and write a note on the map. %>
+<div class="timeline-day-header__actions">
+  <% if selectable %>
+    <button type="button" class="timeline-day-action day-select-toggle tooltip tooltip-left"
+            data-tip="<%= t('map.timeline_feeds.day.select') %>" aria-label="<%= t('map.timeline_feeds.day.select') %>"
+            data-testid="day-select-toggle" data-action="click->timeline-feed#enterSelection">
+      <%= icon 'circle-check', class: 'w-4 h-4' %>
+    </button>
+  <% end %>
+  <% if note %>
+    <button type="button" class="timeline-day-action tooltip tooltip-left"
+            data-tip="<%= t('map.maplibre.settings_panel.add_note') %>" aria-label="<%= t('map.maplibre.settings_panel.add_note') %>"
+            data-action="click->maps--maplibre#startCreateNote" data-testid="timeline-add-note">
+      <%= icon 'square-pen', class: 'w-4 h-4' %>
+    </button>
+  <% end %>
+</div>

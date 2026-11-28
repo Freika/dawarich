@@ -8,6 +8,8 @@ class Fit::Importer
   include Imports::FileLoader
   include Imports::ActivityTypeMapping
 
+  class ParseError < StandardError; end
+
   BATCH_SIZE = 1000
 
   attr_reader :import, :user_id, :file_path
@@ -24,15 +26,10 @@ class Fit::Importer
     begin
       activity = Fit4Ruby.read(path)
     rescue StandardError => e
-      import.update!(status: :failed,
-                     error_message: I18n.t('services.fit.importer.fit_parsing_error_message', message: e.message))
-      return
+      raise ParseError, I18n.t('services.fit.importer.fit_parsing_error_message', message: e.message)
     end
 
-    unless activity
-      import.update!(status: :failed, error_message: I18n.t('services.fit.importer.no_activities_found_in_fit_file'))
-      return
-    end
+    raise ParseError, I18n.t('services.fit.importer.no_activities_found_in_fit_file') unless activity
 
     points_data = []
 
@@ -104,6 +101,7 @@ class Fit::Importer
       velocity: extract_speed(record),
       user_id: user_id,
       import_id: import.id,
+      tracker_id: "import-#{import.id}",
       motion_data: motion_data,
       created_at: Time.current,
       updated_at: Time.current

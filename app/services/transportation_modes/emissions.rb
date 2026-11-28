@@ -67,6 +67,11 @@ module TransportationModes
     # @return [Hash{Symbol => Float}] log-likelihood per candidate mode
     def log_likelihoods(window, enabled:)
       enabled_set = enabled.map(&:to_sym)
+      authoritative_mode = window[:authoritative_mode]
+      if enabled_set.include?(authoritative_mode)
+        return { authoritative_mode => score_mode(authoritative_mode, window) }
+      end
+
       candidates = (INFERRED_MODES & enabled_set) +
                    (window[:hints].keys.map(&:to_sym) & (HINT_ONLY_MODES & enabled_set))
 
@@ -76,8 +81,17 @@ module TransportationModes
     def score_mode(mode, window)
       profile = MODE_PROFILES[mode] || MODE_PROFILES[:driving]
       total = profile.sum { |feature, spec| feature_score(spec, window, feature) }
-      total + MODE_PRIORS.fetch(mode, 0.0) +
+      total + altitude_support(mode, window) + MODE_PRIORS.fetch(mode, 0.0) +
         (window[:hints][mode] || window[:hints][mode.to_s] || 0.0)
+    end
+
+    # Sustained fast movement at high altitude strengthens an existing flight
+    # candidate. A mountain hike, missing altitude, or a lone spike adds nothing.
+    def altitude_support(mode, window)
+      return 0.0 unless mode == :flying && window[:altitude_p50].to_f >= 2500
+      return 0.0 unless window[:speed_p50].to_f >= 180 && window[:stop_fraction].to_f < 0.1
+
+      2.0
     end
 
     def feature_score(spec, window, feature)

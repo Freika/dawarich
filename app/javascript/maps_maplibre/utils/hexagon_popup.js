@@ -1,4 +1,4 @@
-import { translate } from "i18n"
+import { formatDate, formatTime, translate } from "i18n"
 
 // MapLibre v6 preserves nested GeoJSON properties, while older responses may
 // still contain JSON strings.
@@ -15,19 +15,19 @@ function parsedCenter(props) {
 }
 
 export function buildHexagonPopup(props, timezone) {
-  const locale = document.documentElement.lang || undefined
   const dateOptions = { timeZone: timezone || "UTC" }
+  const timeOptions = { ...dateOptions, seconds: true }
   const startDate = props.earliest_point
-    ? new Date(props.earliest_point).toLocaleDateString(locale, dateOptions)
+    ? formatDate(props.earliest_point, dateOptions)
     : translate("common.not_available")
   const endDate = props.latest_point
-    ? new Date(props.latest_point).toLocaleDateString(locale, dateOptions)
+    ? formatDate(props.latest_point, dateOptions)
     : translate("common.not_available")
   const startTime = props.earliest_point
-    ? new Date(props.earliest_point).toLocaleTimeString(locale, dateOptions)
+    ? formatTime(props.earliest_point, timeOptions)
     : ""
   const endTime = props.latest_point
-    ? new Date(props.latest_point).toLocaleTimeString(locale, dateOptions)
+    ? formatTime(props.latest_point, timeOptions)
     : ""
   const center = parsedCenter(props)
 

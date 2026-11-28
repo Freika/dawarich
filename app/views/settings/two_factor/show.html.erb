@@ -5,13 +5,13 @@
   <%= render 'settings/navigation' %>
 
   <div class="max-w-lg">
-    <div class="card bg-base-200 shadow-xl">
+    <div class="card bg-base-200">
       <div class="card-body">
         <% if current_user.otp_required_for_login? %>
           <div class="flex items-center gap-3 mb-4">
             <%= icon 'shield-check', class: "text-success w-8 h-8" %>
             <div>
-              <h2 class="text-xl font-bold"><%= t('.fa_is_enabled') %></h2>
+              <h2 class="text-xl font-medium"><%= t('.fa_is_enabled') %></h2>
               <p class="text-sm text-base-content/70"><%= t('.your_account_is_protected_with_two_factor_authentication') %></p>
             </div>
           </div>
@@ -43,7 +43,7 @@
           <div class="flex items-center gap-3 mb-4">
             <%= icon 'shield', class: "text-warning w-8 h-8" %>
             <div>
-              <h2 class="text-xl font-bold"><%= t('.fa_is_not_enabled') %></h2>
+              <h2 class="text-xl font-medium"><%= t('.fa_is_not_enabled') %></h2>
               <p class="text-sm text-base-content/70"><%= t('.add_an_extra_layer_of_security_to_your_account') %></p>
             </div>
           </div>

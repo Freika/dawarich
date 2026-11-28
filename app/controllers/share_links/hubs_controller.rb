@@ -5,14 +5,11 @@ module ShareLinks
     before_action :authenticate_user!
 
     def show
-      @hub = ShareLinks::HubData.new(current_user, start_date: params[:start_date], end_date: params[:end_date])
+      @hub = ShareLinks::HubData.new(current_user, start_date: params[:start_date], end_date: params[:end_date],
+                                            import_id: params[:import_id])
       @active_tab = resolve_active_tab
       @shared_link = SharedLink.new(
-        resource_type: :timeline,
-        settings: {
-          'start_date' => @hub.default_start_date.iso8601,
-          'end_date'   => @hub.default_end_date.iso8601
-        }
+        user: current_user, resource_type: :timeline, settings: @hub.timeline_settings
       )
     end
 

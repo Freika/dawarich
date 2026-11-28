@@ -6,7 +6,8 @@
     <%= f.text_field :magic_phrase, class: 'input input-bordered', value: SharedLink::PhraseGenerator.call %>
     <span class="label-text-alt mt-1"><%= t('.leave_blank_to_share_without_a_phrase_or_use_the') %></span>
   </div>
-  <%= render 'shared_links/expires_field', f: f %>
+  <%= render 'shared_links/expires_field', f: f, field_id: 'track-share-expiry' %>
+  <%= render 'shared_links/privacy_zones_note' %>
   <div class="form-control mt-4">
     <label class="label cursor-pointer">
       <span class="label-text"><%= t('.show_photos') %></span>
@@ -19,6 +20,7 @@
       <%= check_box_tag 'shared_link[settings][show_stats]', '1', false, class: 'checkbox' %>
     </label>
   </div>
+  <%= render 'shared_links/map_notes_toggle' %>
   <div class="modal-action">
     <%= link_to t('.cancel'), close_path, class: 'btn btn-ghost', data: { turbo_frame: '_top', action: 'share-link-modal#close' } %>
     <%= f.submit t('.create_share_link'), class: 'btn btn-primary' %>

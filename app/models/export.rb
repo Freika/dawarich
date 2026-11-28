@@ -2,6 +2,9 @@
 
 class Export < ApplicationRecord
   belongs_to :user
+  belongs_to :import, optional: true
+
+  attr_accessor :skip_background_processing
 
   enum :status, { created: 0, processing: 1, completed: 2, failed: 3 }
   # file_format describes the *payload* format inside the stored blob, not
@@ -12,13 +15,20 @@ class Export < ApplicationRecord
   enum :file_type, { points: 0, user_data: 1 }
 
   validates :name, presence: true
+  validate :import_belongs_to_owner, if: -> { new_record? || will_save_change_to_import_id? }
 
   has_one_attached :file
 
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
-  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
+  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: lambda {
+    skip_background_processing || user_data? || archive?
+  }
   after_commit -> { remove_attached_file }, on: :destroy
+
+  def import_scoped?
+    import_scope_unavailable? || import_id.present?
+  end
 
   def process!
     Exports::Create.new(export: self).call
@@ -28,19 +38,22 @@ class Export < ApplicationRecord
     return if file.attached?
     return if url.blank?
 
-    file_path = "public/#{url}"
-    return unless File.file?(file_path)
+    file_path = Exports::LegacyFilePath.new(url).call
+    return unless file_path
 
-    file.attach(io: File.open(file_path), filename: name)
-    old_url = url
+    File.open(file_path, 'rb') { |io| file.attach(io: io, filename: name) }
     update!(url: nil)
-
-    File.delete("public/#{old_url}") if File.exist?("public/#{old_url}")
   rescue StandardError => e
     Rails.logger.debug("Error migrating export #{id}: #{e.message}")
   end
 
   private
+
+  def import_belongs_to_owner
+    return if import_id.nil? || user&.imports&.exists?(id: import_id)
+
+    errors.add(:import_id, I18n.t('ux_p2.exports.unavailable_import'))
+  end
 
   def set_processing_started_at
     self.processing_started_at = Time.current
@@ -52,8 +65,6 @@ class Export < ApplicationRecord
 
   def remove_attached_file
     file.purge_later if file.attached?
-
-    File.delete("public/#{url}") if url.present? && File.exist?("public/#{url}")
   rescue StandardError => e
     Rails.logger.debug("Error removing export #{id}: #{e.message}")
   end

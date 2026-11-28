@@ -2,6 +2,9 @@
 
 class Stat < ApplicationRecord
   include DistanceConvertible
+  include PubliclyShareable
+
+  DEFAULT_SHARING_EXPIRATION = '1h'
 
   validates :year, :month, presence: true
   validates :month, inclusion: { in: 1..12 }
@@ -48,73 +51,13 @@ class Stat < ApplicationRecord
         .order(timestamp: :asc)
   end
 
-  def sharing_enabled?
-    sharing_settings.try(:[], 'enabled') == true
-  end
-
-  def sharing_expired?
-    expiration = sharing_settings.try(:[], 'expiration')
-    return false if expiration.blank?
-
-    expires_at_value = sharing_settings.try(:[], 'expires_at')
-    return true if expires_at_value.blank?
-
-    expires_at = begin
-      Time.zone.parse(expires_at_value)
-    rescue StandardError
-      nil
-    end
-
-    expires_at.present? ? Time.current > expires_at : true
-  end
-
-  def public_accessible?
-    sharing_enabled? && !sharing_expired?
-  end
-
   def hexagons_available?
     h3_hex_ids.present? &&
       (h3_hex_ids.is_a?(Hash) || h3_hex_ids.is_a?(Array)) &&
       h3_hex_ids.any?
   end
 
-  def generate_new_sharing_uuid!
-    update!(sharing_uuid: SecureRandom.uuid)
-  end
-
-  def enable_sharing!(expiration: '1h')
-    # Default to 24h if an invalid expiration is provided
-    expiration = '24h' unless %w[1h 12h 24h 1w 1m].include?(expiration)
-
-    expires_at = case expiration
-                 when '1h' then 1.hour.from_now
-                 when '12h' then 12.hours.from_now
-                 when '24h' then 24.hours.from_now
-                 when '1w' then 1.week.from_now
-                 when '1m' then 1.month.from_now
-                 end
-
-    update!(
-      sharing_settings: {
-        'enabled' => true,
-        'expiration' => expiration,
-        'expires_at' => expires_at.iso8601
-      },
-      sharing_uuid: sharing_uuid || SecureRandom.uuid
-    )
-  end
-
-  def disable_sharing!
-    update!(
-      sharing_settings: {
-        'enabled' => false,
-        'expiration' => nil,
-        'expires_at' => nil
-      }
-    )
-  end
-
-  def calculate_data_bounds
+  def calculate_data_bounds(privacy_zone_masker:)
     widened_start = (Date.new(year, month, 1).beginning_of_day - 2.days).to_i
     widened_end = (Date.new(year, month, 1).end_of_month.end_of_day + 2.days).to_i
     tz = user.timezone_iana
@@ -127,6 +70,7 @@ class Stat < ApplicationRecord
        WHERE user_id = $1
        AND timestamp BETWEEN $2 AND $3
        AND lonlat IS NOT NULL
+       #{"AND NOT #{privacy_zone_masker.within_sql('lonlat')}" if privacy_zone_masker.any?}
        AND EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $5
        AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $6",
       'data_bounds_query',
@@ -162,7 +106,7 @@ class Stat < ApplicationRecord
 
     report_malformed_toponyms(raw, sanitized) if raw.present? && raw != sanitized
 
-    sanitized
+    Countries::NameAliases.merge_toponyms(sanitized)
   end
 
   def report_malformed_toponyms(raw, sanitized)
@@ -200,11 +144,8 @@ class Stat < ApplicationRecord
       monthly_points,
       timespan,
       user.timezone_iana,
-      minutes_between_routes: user.safe_settings.minutes_between_routes
+      minutes_between_routes: user.safe_settings.minutes_between_routes,
+      user_id: user.id
     ).call
-  end
-
-  def user_timezone
-    user.timezone.presence || Time.zone.name
   end
 end

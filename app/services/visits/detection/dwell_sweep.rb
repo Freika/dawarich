@@ -78,12 +78,17 @@ module Visits
           end_ts: open[:last].timestamp,
           center_lat: open[:center_lat],
           center_lon: open[:center_lon],
+          first_fix: [open[:first].lat, open[:first].lon],
+          last_fix: [open[:last].lat, open[:last].lon],
+          # The mobile app's stop anchor: tracking paused here and wakes only
+          # when the device leaves its geofence.
+          paused_at_stop: open[:last].stationary_presence == true,
           count: open[:count]
         }
       end
 
       def distance_meters(lat1, lon1, lat2, lon2)
-        Geocoder::Calculations.distance_between([lat1, lon1], [lat2, lon2], units: :km) * 1000
+        GeoDistance.meters([lat1, lon1], [lat2, lon2])
       end
     end
   end

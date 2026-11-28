@@ -17,13 +17,13 @@ RSpec.describe UrlValidatable do
       before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
       it 'permits a container host-gateway hostname resolving to a link-local address' do
-        allow(Resolv).to receive(:getaddress).with('immich.mydomain').and_return('169.254.1.2')
+        stub_host_addresses('immich.mydomain', '169.254.1.2')
 
         expect { validator.validate_integration_url!('http://immich.mydomain') }.not_to raise_error
       end
 
       it 'still blocks the cloud metadata endpoint' do
-        allow(Resolv).to receive(:getaddress).with('metadata.host').and_return('169.254.169.254')
+        stub_host_addresses('metadata.host', '169.254.169.254')
 
         expect { validator.validate_integration_url!('http://metadata.host') }
           .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
@@ -34,14 +34,14 @@ RSpec.describe UrlValidatable do
       before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
       it 'still blocks the cloud metadata endpoint' do
-        allow(Resolv).to receive(:getaddress).with('metadata.host').and_return('169.254.169.254')
+        stub_host_addresses('metadata.host', '169.254.169.254')
 
         expect { validator.validate_integration_url!('http://metadata.host') }
           .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
       end
 
       it 'still blocks the wider link-local range' do
-        allow(Resolv).to receive(:getaddress).with('linklocal.host').and_return('169.254.1.2')
+        stub_host_addresses('linklocal.host', '169.254.1.2')
 
         expect { validator.validate_integration_url!('http://linklocal.host') }
           .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)

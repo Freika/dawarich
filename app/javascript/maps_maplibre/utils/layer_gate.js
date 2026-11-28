@@ -27,7 +27,9 @@ export function isGatedPlan(userPlan) {
 /**
  * Wraps a layer toggle with preview gating.
  *
- * @param {string}   layerName   - Display name matching GATED_MAP_LAYERS (e.g. "Heatmap", "Scratch map")
+ * @param {string}   layer       - Server layer name (Users::PlanSettingsGate::GATED_MAP_LAYERS)
+ * @param {string[]} gatedLayers - Layers the server gates for Lite
+ * @param {string}   layerName   - Display name for the preview messages
  * @param {string}   userPlan    - Current user plan string
  * @param {HTMLInputElement} toggle - The checkbox element
  * @param {Function} showFn      - Async function that shows/enables the layer
@@ -36,6 +38,8 @@ export function isGatedPlan(userPlan) {
  * @returns {boolean} true if the toggle was intercepted (Lite preview), false if normal flow
  */
 export function gatedToggle({
+  layer,
+  gatedLayers,
   layerName,
   userPlan,
   toggle,
@@ -43,7 +47,7 @@ export function gatedToggle({
   hideFn,
   upgradeUrl,
 }) {
-  if (!isGatedPlan(userPlan)) return false
+  if (!isGatedPlan(userPlan) || !gatedLayers.includes(layer)) return false
 
   const enabled = toggle.checked
 

@@ -63,11 +63,11 @@ RSpec.describe ApplicationHelper, type: :helper do
         expect(result).not_to include(' title=')
       end
 
-      it 'renders as a link to the subscription manager' do
+      it 'renders as a token-free link to the upgrade redirect' do
         result = helper.pro_badge_tag
         expect(result).to include('<a ')
-        expect(result).to include("#{MANAGER_URL}/auth/dawarich")
-        expect(result).to include('token=test_token')
+        expect(result).to include('href="/trial/upgrade?')
+        expect(result).not_to include('token=')
         expect(result).to include('target="_blank"')
         expect(result).to include('tabindex="0"')
       end
@@ -82,15 +82,27 @@ RSpec.describe ApplicationHelper, type: :helper do
       expect(helper.subscription_upgrade_url(user)).to eq(Rails.application.routes.url_helpers.trial_resume_path)
     end
 
-    it 'returns MANAGER_URL/auth/dawarich for non-pending_payment users' do
+    it 'returns trial_upgrade_path, so no checkout token is rendered into the page' do
       allow(user).to receive(:pending_payment?).and_return(false)
-      allow(user).to receive(:generate_subscription_token).and_return('fake_token')
-      stub_const('MANAGER_URL', 'https://manager.example.com')
-      expect(helper.subscription_upgrade_url(user)).to eq('https://manager.example.com/auth/dawarich?token=fake_token')
+      expect(helper.subscription_upgrade_url(user)).to eq(Rails.application.routes.url_helpers.trial_upgrade_path)
     end
   end
 
   describe '#upgrade_url' do
+    context 'on cloud instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'points at trial_upgrade_path with the UTM parameters and no token' do
+        url = helper.upgrade_url(utm_medium: 'badge', utm_content: 'pro_badge')
+
+        expect(url).to start_with('/trial/upgrade?')
+        expect(url).not_to include('token')
+        expect(Rack::Utils.parse_query(URI(url).query)).to eq(
+          'utm_source' => 'app', 'utm_medium' => 'badge', 'utm_campaign' => 'lite_upgrade', 'utm_content' => 'pro_badge'
+        )
+      end
+    end
+
     context 'on self-hosted instances' do
       before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
@@ -102,33 +114,16 @@ RSpec.describe ApplicationHelper, type: :helper do
   end
 
   describe '#family_upgrade_url' do
-    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
-
-    def token_from(url)
-      url[/token=([^&]+)/, 1]
-    end
-
-    def decode(token)
-      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
-    end
-
     context 'on cloud instances' do
-      let(:user) { create(:user) }
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
 
-      before do
-        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(helper).to receive(:current_user).and_return(user)
-        stub_const('MANAGER_URL', 'https://manager.example.com')
-      end
+      it 'points at trial_upgrade_path with the family plan, annual interval and no token' do
+        url = helper.family_upgrade_url(utm_medium: 'family')
 
-      it 'embeds a token whose payload carries the family plan and annual interval' do
-        url = helper.family_upgrade_url
-
-        expect(url).to start_with('https://manager.example.com/auth/dawarich?token=')
-        payload = decode(token_from(url))
-        expect(payload['plan']).to eq('family')
-        expect(payload['interval']).to eq('annual')
-        expect(payload['user_id']).to eq(user.id)
+        expect(url).not_to include('token')
+        expect(Rack::Utils.parse_query(URI(url).query)).to include(
+          'plan' => 'family', 'interval' => 'annual', 'utm_campaign' => 'family_upgrade', 'utm_medium' => 'family'
+        )
       end
     end
 

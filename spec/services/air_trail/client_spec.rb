@@ -32,6 +32,27 @@ RSpec.describe AirTrail::Client do
       expect { client.flights }.to raise_error(AirTrail::Client::Error)
     end
 
+    it 'refuses a URL that resolves to a blocked address without sending a request' do
+      stub_host_addresses('airtrail.example', '169.254.169.254')
+      request = stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error)
+      expect(request).not_to have_been_requested
+    end
+
+    # No status: a refused redirect is a connection-level failure, so the track
+    # sync stops instead of skipping flight after flight (it skips on a status).
+    it 'does not follow a redirect and reports it like a failed connection' do
+      stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+        .to_return(status: 301, headers: { 'Location' => 'https://elsewhere.example/' })
+      followed = stub_request(:get, 'https://elsewhere.example/')
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error, /redirect/) { |error|
+        expect(error.status).to be_nil
+      }
+      expect(followed).not_to have_been_requested
+    end
+
     it 'raises AirTrail::Client::Error when the connection is refused' do
       stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
         .to_raise(Errno::ECONNREFUSED)
@@ -52,6 +73,68 @@ RSpec.describe AirTrail::Client do
                    headers: { 'Content-Type' => 'application/json' })
 
       expect { client.flights }.to raise_error(AirTrail::Client::Error)
+    end
+  end
+
+  describe '#track_summaries' do
+    it 'pages through the v1 flight list and maps each flight id to its track summary' do
+      summary = { 'pointCount' => 120, 'updatedAt' => '2026-10-20T08:00:00.000Z' }
+      first = stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100')
+              .with(headers: { 'Authorization' => 'Bearer secret-key' })
+              .to_return(status: 200, body: { data: [{ id: 1, track: summary }], page: { nextCursor: 'c2' } }.to_json,
+                         headers: { 'Content-Type' => 'application/json' })
+      second = stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100&cursor=c2')
+               .to_return(status: 200, body: { data: [{ id: 2, track: nil }], page: { nextCursor: nil } }.to_json,
+                          headers: { 'Content-Type' => 'application/json' })
+
+      expect(client.track_summaries).to eq(1 => summary, 2 => nil)
+      expect(first).to have_been_requested
+      expect(second).to have_been_requested
+    end
+
+    it 'skips malformed flight entries and page data' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100')
+        .to_return(status: 200, headers: { 'Content-Type' => 'application/json' },
+                   body: { data: [{ id: 1, track: nil }, 'junk', [2]], page: ['oops'] }.to_json)
+
+      expect(client.track_summaries).to eq(1 => nil)
+    end
+
+    it 'raises AirTrail::Client::Error when the response is not a JSON object' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100')
+        .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })
+
+      expect { client.track_summaries }.to raise_error(AirTrail::Client::Error)
+    end
+
+    it 'raises AirTrail::Client::Error when AirTrail has no v1 API' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights?limit=100').to_return(status: 404)
+
+      expect { client.track_summaries }.to raise_error(AirTrail::Client::Error)
+    end
+  end
+
+  describe '#track' do
+    it 'returns the track of a flight' do
+      track = { 'flightId' => 7, 'coordinates' => [[13.5, 52.4, 30], [2.5, 49.0, 120]] }
+      stub_request(:get, 'https://airtrail.example/api/v1/flights/7/track')
+        .with(headers: { 'Authorization' => 'Bearer secret-key' })
+        .to_return(status: 200, body: { data: track }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      expect(client.track(7)).to eq(track)
+    end
+
+    it 'returns nil when the flight has no track' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights/7/track')
+        .to_return(status: 200, body: { data: nil }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      expect(client.track(7)).to be_nil
+    end
+
+    it 'raises AirTrail::Client::Error when the key lacks the tracks scope' do
+      stub_request(:get, 'https://airtrail.example/api/v1/flights/7/track').to_return(status: 403)
+
+      expect { client.track(7) }.to raise_error(AirTrail::Client::Error)
     end
   end
 end

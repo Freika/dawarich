@@ -16,25 +16,17 @@ class Polarsteps::Importer
   end
 
   def call
-    json = load_json_data
-    locations = extract_locations(json)
-
-    points_data = locations.filter_map { |loc| build_point(loc) }
-
-    points_data.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+    locations = Imports::JsonStream.new(resolve_file_path, keys: ['locations'], root_array: true)
+    records = locations.each.lazy.filter_map { |loc| build_point(loc) }
+    records.each_slice(BATCH_SIZE).each_with_index do |batch, batch_index|
       bulk_insert_points(batch)
       broadcast_import_progress(import, (batch_index + 1) * BATCH_SIZE)
     end
+  ensure
+    cleanup_temp_file
   end
 
   private
-
-  def extract_locations(json)
-    return json['locations'] if json.is_a?(Hash) && json['locations'].is_a?(Array)
-    return json if json.is_a?(Array)
-
-    []
-  end
 
   def build_point(loc)
     return nil unless loc.is_a?(Hash)

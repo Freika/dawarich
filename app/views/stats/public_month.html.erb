@@ -6,7 +6,7 @@
     <div class="hero-overlay bg-opacity-60"></div>
     <div class="hero-content text-center py-8">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold flex items-center justify-center gap-2">
+        <h1 class="text-4xl font-medium flex items-center justify-center gap-2 tracking-tight">
           <%= icon month_icon(@stat) %> <%= l(Date.new(@year, @month, 1), format: :month_year) %>
         </h1>
         <p class="pt-6 pb-2"><%= t('.monthly_digest') %></p>
@@ -25,7 +25,7 @@
       <div class="stat place-items-center text-center">
         <div class="stat-title"><%= t('.flight_distance') %></div>
         <div class="stat-value text-info"><%= flight_distance_traveled(@user, @stat) %></div>
-        <div class="stat-desc"><%= t('.from_airtrail_not_counted_in_distance') %></div>
+        <div class="stat-desc"><%= t('.from_airtrail_included_in_distance') %></div>
       </div>
     <% end %>
 
@@ -51,7 +51,7 @@
   </div>
 
   <!-- Map Summary - Hexagon View -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body p-0">
       <!-- Map Controls -->
       <div class="p-4 border-b border-base-300 bg-base-50">
@@ -87,7 +87,7 @@
   </div>
 
   <!-- Daily Activity Chart -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body">
       <h2 class="card-title">
         <%= icon 'trending-up' %> <%= t('.daily_activity') %>
@@ -95,7 +95,7 @@
       <div class="w-full h-48 bg-base-200 rounded-lg p-4 relative">
         <%= column_chart(
             @stat.daily_distance.map { |day, distance_meters|
-              [day, Stat.convert_distance(distance_meters, 'km').round]
+              [day, Stat.convert_distance(distance_meters, 'km').round.nonzero?]
             },
             height: '200px',
             suffix: t('units.kilometers_suffix'),
@@ -110,6 +110,7 @@
               '#757575', '#546e7a', '#d32f2f'
             ],
             library: {
+              datasets: { bar: { minBarLength: 5 } },
               plugins: {
                 legend: { display: false }
               },
@@ -131,13 +132,13 @@
   </div>
 
   <!-- Countries & Cities - General Info Only -->
-  <div class="card bg-base-100 shadow-xl mb-8">
+  <div class="card bg-base-100 mb-8">
     <div class="card-body">
       <h2 class="card-title">
         <%= icon 'earth' %> <%= t('.countries_cities') %>
       </h2>
       <div class="space-y-4">
-        <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? && t['cities']&.any? } %>
+        <% visited_toponyms = @stat.toponyms.select { |t| t['country'].present? } %>
         <% visited_toponyms.each_with_index do |country, index| %>
           <div class="space-y-2">
             <div class="flex justify-between items-center">

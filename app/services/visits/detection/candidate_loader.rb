@@ -10,8 +10,15 @@ module Visits
       MAX_CANDIDATE_POINTS = 100_000
       QUERY_TIMEOUT_MS = 30_000
 
-      Pt = Struct.new(:id, :lat, :lon, :timestamp, :accuracy)
+      Pt = Struct.new(:id, :lat, :lon, :timestamp, :accuracy, :stationary_presence)
       Seg = Struct.new(:mode, :confidence, :corrected, :start_ts, :end_ts)
+
+      def self.eligible_points(user)
+        Point.where(user_id: user.id)
+             .where.not(lonlat: nil)
+             .where('anomaly IS NULL OR anomaly = FALSE')
+             .where("NOT #{Points::NullIsland.sql_predicate}")
+      end
 
       def initialize(user, start_at:, end_at:, policy:)
         @user = user
@@ -38,11 +45,7 @@ module Visits
       attr_reader :user, :start_at, :end_at, :policy
 
       def candidate_scope
-        Point.where(user_id: user.id)
-             .where(timestamp: start_at..end_at)
-             .where.not(lonlat: nil)
-             .where('anomaly IS NULL OR anomaly = FALSE')
-             .where("NOT #{Points::NullIsland.sql_predicate}")
+        self.class.eligible_points(user).where(timestamp: start_at..end_at)
       end
 
       def count_candidate_points
@@ -57,7 +60,8 @@ module Visits
                      ST_Y(lonlat::geometry) AS lat,
                      ST_X(lonlat::geometry) AS lon,
                      timestamp,
-                     accuracy
+                     accuracy,
+                     COALESCE(motion_data->>'action' = 'stationary_presence', FALSE) AS stationary_presence
               FROM points
               WHERE user_id = ?
                 AND timestamp BETWEEN ? AND ?
@@ -76,7 +80,8 @@ module Visits
         conn.transaction do
           conn.exec_query("SET LOCAL statement_timeout = #{QUERY_TIMEOUT_MS}", 'CandidateLoader Timeout')
           conn.exec_query(sql, 'CandidateLoader Points').map do |row|
-            Pt.new(row['id'].to_i, row['lat'].to_f, row['lon'].to_f, row['timestamp'].to_i, row['accuracy']&.to_i)
+            Pt.new(row['id'].to_i, row['lat'].to_f, row['lon'].to_f, row['timestamp'].to_i, row['accuracy']&.to_i,
+                   row['stationary_presence'])
           end
         end
       end

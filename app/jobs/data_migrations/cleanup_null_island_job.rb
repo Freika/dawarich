@@ -8,7 +8,7 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
 
     user = find_user_or_skip(user_id) || return
 
-    rows = user.points.null_island.pluck(:id, :timestamp, :track_id)
+    rows = user.points.null_island.where(anomaly_override: false).pluck(:id, :timestamp, :track_id)
     track_ids = rows.filter_map(&:last).uniq
     affected_months = rows.filter_map do |_, timestamp, _|
       next if timestamp.nil?
@@ -18,7 +18,7 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
     end.uniq
 
     if rows.any?
-      Point.where(id: rows.map(&:first)).update_all(anomaly: true, updated_at: Time.current)
+      Point.where(id: rows.map(&:first), anomaly_override: false).update_all(anomaly: true, updated_at: Time.current)
       Points::TileEpoch.bump(user.id, timestamps: rows.map { |_, timestamp, _| timestamp })
     end
     destroyed_visits = destroy_null_island_visits(user)
