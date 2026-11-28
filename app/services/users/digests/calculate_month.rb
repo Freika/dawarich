@@ -117,6 +117,7 @@ module Users
         end_of_month = start_of_month.end_of_month
 
         user.points
+            .not_anomaly
             .not_flyover
             .joins(Countries::NameAliases.point_joins_sql)
             .where('timestamp >= ? AND timestamp <= ?', start_of_month.to_i, end_of_month.to_i)

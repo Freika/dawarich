@@ -150,6 +150,11 @@ export class MapDataManager {
       // their own fetch pipeline.
       this.layerManager.getLayer("fog")?.reloadHexagons()
 
+      // Dispatched as maps--maplibre:period-loaded; first_map_view listens.
+      this.controller.dispatch?.("period-loaded", {
+        detail: { startDate, endDate },
+      })
+
       return data
     } catch (error) {
       if (!isCurrent()) return null

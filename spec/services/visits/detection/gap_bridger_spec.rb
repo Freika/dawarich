@@ -107,6 +107,24 @@ RSpec.describe Visits::Detection::GapBridger do
     expect(result.size).to eq(2)
   end
 
+  describe 'after a smart tracking pause at a stop' do
+    def paused(fragment) = fragment.merge(paused_at_stop: true)
+
+    it 'stretches the stay to the moment tracking resumed at the wake geofence, without the way out' do
+      result = bridge([paused(fragment([1, 2, 3], 0, 600)), fragment([4, 5], 600 + 5400, 600 + 5520, deast: 200.0)])
+
+      expect(result.map { |f| f[:point_ids] }).to eq([[1, 2, 3], [4, 5]])
+      expect(result.first[:end_ts]).to eq(base_ts + 600 + 5400)
+      expect(result.first[:bridged_s]).to eq(5400)
+    end
+
+    it 'does not stretch it when tracking resumes far from the stop' do
+      result = bridge([paused(fragment([1, 2, 3], 0, 600)), fragment([4, 5], 600 + 5400, 600 + 5520, deast: 600.0)])
+
+      expect(seams(result)).to eq([[base_ts + 600, base_ts + 600 + 5400]])
+    end
+  end
+
   it 'chain-bridges through a lone same-place fix inside the silence' do
     result = bridge(
       [

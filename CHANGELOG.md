@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.24.0] - 2026-11-28, Berlin
+
+### ⚠️ Upgrade notes
+
+- Self-hosted: a background job re-checks imports without speed data, so countries you only flew over drop out of stats, trips and digests. It doesn't start with `SKIP_POINT_DIMENSION_BACKFILL=1` or if the upgrade log shows "Could not enqueue BackfillMissingVelocitiesJob"; start it later with `DataMigrations::BackfillMissingVelocitiesJob.perform_later`.
+- Self-hosted: a second job links points stored under a country name in another language, such as "Deutschland", to their country. It reads the points table twice, so it is slow on a large history. `SKIP_POINT_DIMENSION_BACKFILL=1` skips it; start it later with `DataMigrations::LinkCountryNamesJob.perform_later`. Stats catch up over a few days; digests already built stay as they are.
+
+### Added
+
+- Achievements in the mobile app: collections with search and filters, unlock celebrations, and public links that are off until you turn one on. `GET /api/v1/users/me` advertises them as `features.achievements_api`; they answer 404 when achievements are off. Thanks @kpriemchenko! (#3796)
+- Places: "Add home" and "Add work" buttons, an "I live here" button while you have no Home, and optional "From" and "Until" dates. A Place whose period has ended is dimmed; a new Home's dates become the time you lived there.
+
+### Fixed
+
+- A GPS noise re-check rebuilds tracks, stats and digests only for the years that changed, and says so when nothing did.
+- Trip routes are drawn like map tracks: no break at midnight or at a pause on a single-device trip, and a preview whose only segment crosses midnight is no longer empty. Thanks @binnichtaktiv! (#4026, #4027)
+- The nightly stats cache no longer scans every point of a user to count geocoded points. Thanks @sylvainmetayer! (#4028)
+- Small bars stay visible next to large ones in the Daily Activity and year-digest distance charts; a day or month without movement has no bar. Thanks @binnichtaktiv! (#4029)
+- Two short stops next to each other no longer become overlapping visits. Thanks @Mason10198! (#4023)
+- A stop during which Android smart tracking turned GPS off becomes one visit instead of a gap (Android app 2.9.155 or newer). Thanks @Toastie! (#3989)
+- The "link your account" email after an OAuth sign-in starts its one-hour resend limit only once it was actually queued. Thanks @fernandezbaptiste! (#4060)
+- Countries only flown over no longer count as visited for imports without speed data: KML (including Flightradar24), GPX, GeoJSON, CSV, TCX, FIT, Google Takeout, OwnTracks and Polarsteps. Only flight speeds are derived now.
+- Digests leave out points flagged as anomalies, as stats and trips already do.
+- `/metrics` answers with web metrics only when the Sidekiq exporter takes longer than 3 seconds, instead of outlasting Prometheus' scrape timeout.
+- Trips explains that a tag named Home doesn't set your Home and links to the places with that tag.
+- Sidekiq logs at the level `RAILS_LOG_LEVEL` sets. At `warn`, failed jobs appear only under Retries and Dead in the Sidekiq dashboard. Thanks @benc-git! (#4040)
+- Trip route tiles on multi-day trips no longer time out. Thanks @A82FF! (#4024)
+- A selected track that crosses the 180° meridian is drawn the short way. Thanks @peterbess! (#4022)
+- The timeline shows the arrival time on the first day of a visit lasting 23 hours or more, instead of "All day". Thanks @lomky! (#4044)
+- Setting a user's password in Settings → Users unlocks an account locked after failed sign-ins. Thanks @sim642! (#4013)
+- Achievements count countries visited on a small island or near a coast. Thanks @TheRealNox! (#4012)
+- A day's distance and its per-mode chips no longer count "stayed" tracks. Thanks @lomky! (#4057)
+- Points stored under a country name in another language are linked to their country when the points that already have a country agree on it, so they no longer count as a separate country.
+- Printed posters get the 4 mm bleed the print service requires; downloaded PDFs are unchanged.
+- "Back to trips" returns to the trips list page, search, filters and sort order you came from. Thanks @binnichtaktiv! (#4058)
+
 ## [1.23.0] - 2026-11-14, Berlin
 
 ### ⚠️ Upgrade notes

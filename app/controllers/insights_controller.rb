@@ -10,6 +10,7 @@ class InsightsController < ApplicationController
     authorize :insights, :index?
 
     load_selected_year
+    @viewed_state = viewed_state
     return if @year_locked || !@has_insight_data
 
     load_year_totals
@@ -48,6 +49,15 @@ class InsightsController < ApplicationController
   end
 
   private
+
+  # The insights_viewed state: whether the screen opened empty, with
+  # statistics for the selected period, or with data but no statistics yet.
+  def viewed_state
+    return 'empty' unless @has_insight_data
+    return 'insufficient_data' if @year_locked || !@year_stats.exists?
+
+    'with_data'
+  end
 
   # Read only when the cached Insights card is rendered anew.
   def time_shares

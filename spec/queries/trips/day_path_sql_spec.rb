@@ -20,16 +20,23 @@ RSpec.describe Trips::DayPathSql do
     rows.group_by { |row| row['day'] }.sort.map { |day, parts| { day => parts.map { |part| part['wkt'] }.sort } }
   end
 
-  it 'cuts a track at local midnight without joining the two days' do
+  it 'splits a track at local midnight, giving the crossing segment to the day it started' do
     record(Time.utc(2026, 1, 1, 23, 0), -140.0)
     record(Time.utc(2026, 1, 1, 23, 30), -140.01)
     record(Time.utc(2026, 1, 2, 0, 30), -140.02)
     record(Time.utc(2026, 1, 2, 1, 0), -140.03)
 
     expect(day_paths).to eq([
-                              { '2026-01-01' => ['LINESTRING(-140 -40,-140.01 -40)'] },
+                              { '2026-01-01' => ['LINESTRING(-140 -40,-140.01 -40,-140.02 -40)'] },
                               { '2026-01-02' => ['LINESTRING(-140.02 -40,-140.03 -40)'] }
                             ])
+  end
+
+  it 'keeps a pause inside a track joined, as the map draws it' do
+    record(Time.utc(2026, 1, 1, 8, 0), -140.0)
+    record(Time.utc(2026, 1, 1, 11, 0), -140.01)
+
+    expect(day_paths(gap_seconds: 3600)).to eq([{ '2026-01-01' => ['LINESTRING(-140 -40,-140.01 -40)'] }])
   end
 
   it 'breaks the line where a point is excluded instead of bridging it' do

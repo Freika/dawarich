@@ -104,7 +104,7 @@
           <div class="w-full h-64 bg-base-100 rounded-lg p-4">
             <%= column_chart(
               @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
-                [I18n.t('date.abbr_month_names')[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
+                [I18n.t('date.abbr_month_names')[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round.nonzero?]
               },
               height: '250px',
               suffix: " #{@distance_unit}",
@@ -115,7 +115,8 @@
                 '#7BC96F', '#FFD54F', '#FFA94D',
                 '#FF6B6B', '#FF8C42', '#C97E4F',
                 '#8B4513', '#5A2E2E', '#265d7d'
-              ]
+              ],
+              library: { datasets: { bar: { minBarLength: 5 } } }
             ) %>
           </div>
         </div>
@@ -223,7 +224,7 @@
         <p class="text-gray-600 mb-4">
           <%= t('.upgrade_to_pro_to_see_your_full_year_in_review') %>
         </p>
-        <a href="<%= upgrade_url(utm_medium: 'digest', utm_content: 'year_in_review') %>"
+        <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'digest', utm_content: 'year_in_review') %>"
            class="btn btn-primary">
           <%= t('.upgrade_to_pro') %>
         </a>

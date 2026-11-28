@@ -43,6 +43,11 @@ zh:
       remove_confirm: "删除这段时间？其日期将被删除，这段时间内自动发现的旅行也可能被删除。"
       add: "添加时间段"
       end_before_start: "“至”不能早于“从”。"
+      # The one-click Home: a button on each row of the Places list and a checkbox on the new Place form.
+      live_here: "我住在这里"
+      live_here_at: "我住在%{place}"
+      live_here_help: "Dawarich 会根据您的住所自动发现您的旅行。"
+      open_home_note_html: "您已有一个没有结束日期的住所：%{places}。如果您已搬家，请在那里设置您离开的时间。"
     # The origin filter on the Trips list. Managed Trips count as created by the user.
     filter:
       label: "显示"
@@ -52,8 +57,14 @@ zh:
     # Hints on the Trips page; each ends with a link to the Places page.
     hints:
       no_home: "添加您的住所，Dawarich 就能自动发现您的旅行。"
+      # A Place carries a tag named Home, which does not make it a Home.
+      tagged_home: "“%{place}”带有“%{tag}”标签，但标签不会设置您的住所。请点击它旁边的“我住在这里”。"
+      tagged_home_link: "查看带有“%{tag}”标签的地点"
       long_absence: "Dawarich 跳过了一段离家超过 %{days} 天的时间。如果您当时住在别处，请添加那个更早的住所。"
       add_home: "在“地点”页面添加住所"
+      # On the Places list while there is no Home; the second is a link to the new Place form.
+      pick_home: "在列表中您的住所旁点击“我住在这里”。"
+      new_home_place: "不在列表中？将其添加为新地点。"
     # The name of the Place created for a Home picked in onboarding.
     home_place_name: "家"
     # The optional "Add your home" screen of the onboarding modal.

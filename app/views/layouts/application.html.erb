@@ -26,7 +26,7 @@
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
       <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
+      <script src="<%= Rybbit::HOST %>/api/script.js" data-site-id="<%= Rybbit::SITE_ID %>" defer></script>
       <script async src="https://cdn.paddle.com/paddle/v2/paddle.js" onload="
         Paddle.Environment.set(<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production').to_json.html_safe %>);
         Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
@@ -67,6 +67,7 @@
       <%= render 'shared/navbar' %>
       <%= render 'shared/locale_suggestion' %>
       <%= render 'shared/flash' %>
+      <%= queued_analytics_event_tags %>
       <div class="layout-content w-full px-4 sm:px-5 flex-1 flex flex-col">
         <div class="flex w-full min-w-0 gap-5">
           <%= yield %>

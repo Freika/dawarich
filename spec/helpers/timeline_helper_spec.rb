@@ -91,9 +91,23 @@ RSpec.describe TimelineHelper, type: :helper do
   end
 
   describe '#visit_entry_all_day?' do
-    it 'returns true when duration >= 23 hours' do
+    it 'returns false on the arrival day of a long visit that starts during the day' do
       entry = { started_at: '2026-01-01T10:00:00Z', ended_at: '2026-01-02T09:00:00Z', duration: 23 * 60 }
+      expect(helper.visit_entry_all_day?(entry)).to be false
+    end
+
+    it 'returns true on a later day the visit covers completely' do
+      entry = { started_at: '2026-01-01T19:00:00Z', ended_at: '2026-01-03T09:00:00Z', duration: 38 * 60,
+                continuation_of_date: '2026-01-01', day_duration: 24 * 60,
+                day_started_at: '2026-01-02T00:00:00Z' }
       expect(helper.visit_entry_all_day?(entry)).to be true
+    end
+
+    it 'returns false on the departure day of a visit that ends during the day' do
+      entry = { started_at: '2026-01-01T19:00:00Z', ended_at: '2026-01-02T09:00:00Z', duration: 14 * 60,
+                continuation_of_date: '2026-01-01', day_duration: 9 * 60,
+                day_started_at: '2026-01-02T00:00:00Z' }
+      expect(helper.visit_entry_all_day?(entry)).to be false
     end
 
     it 'returns true when starts at midnight and spans >= 23 hours' do

@@ -142,9 +142,9 @@
                   <p class="text-sm text-base-content/70"><%= t('.your_trial_period_ends_at') %> <span class="font-medium text-base-content"><%= human_datetime current_user.active_until, current_user.safe_settings.timezone %></span>.</p>
                   <div class="mt-2">
                     <% if current_user.auto_converting_trial? %>
-                      <%= link_to t('.manage_subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm glass' %>
+                      <%= link_to t('.manage_subscription'), trial_upgrade_path, data: { turbo: false }, class: 'btn btn-primary btn-sm glass' %>
                     <% else %>
-                      <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-primary btn-sm' %>
+                      <%= link_to t('.subscribe'), trial_upgrade_path, data: { turbo: false }, class: 'btn btn-primary btn-sm' %>
                     <% end %>
                   </div>
                 </div>
@@ -179,7 +179,7 @@
                     </p>
                   </div>
                   <%= link_to t('.manage_subscription'),
-                              "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}",
+                              trial_upgrade_path, data: { turbo: false },
                               class: 'btn btn-primary btn-sm whitespace-nowrap' %>
                 </div>
               </div>

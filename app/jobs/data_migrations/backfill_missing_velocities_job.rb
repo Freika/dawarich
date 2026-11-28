@@ -3,7 +3,10 @@
 class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
   queue_as :low_priority
 
-  SOURCES = %i[kml gpx geojson].freeze
+  SOURCES = Points::VelocityFiller::TRACK_SOURCES
+  # Imports whose speeds 1.22-1.23 derived from adjacent fixes at import time.
+  LEGACY_SOURCES = %w[kml gpx geojson].freeze
+  NOTHING_FILLED = Points::VelocityFiller::Result.new(updated: 0, flyover_timestamps: []).freeze
 
   def perform(import_id = nil)
     return enqueue_imports if import_id.nil?
@@ -11,11 +14,6 @@ class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
     import = Import.find_by(id: import_id)
     user = import && find_user_or_skip(import.user_id)
     return unless user
-
-    if Points::VelocityFiller.recorded_speed?(import.id)
-      Rails.logger.info("[DataMigrations::BackfillMissingVelocities] import_id=#{import.id} skipped=recorded_speeds")
-      return
-    end
 
     filled = Point.transaction(requires_new: true) do
       fill_flyovers(import).tap do |result|
@@ -36,8 +34,13 @@ class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
   end
 
   def fill_flyovers(import)
-    flyover_speed = CountriesAndCities::FLYOVER_VELOCITY_THRESHOLD_KMH / CountriesAndCities::MS_TO_KMH
-    Points::VelocityFiller.new(import.id, zero_is_missing: true, minimum_speed: flyover_speed).call
+    if LEGACY_SOURCES.include?(import.source)
+      zero_is_missing = !Points::VelocityFiller.recorded_speed?(import.id)
+      return Points::VelocityFiller.new(import.id, upgrade_flyovers: true, zero_is_missing:).call
+    end
+    return NOTHING_FILLED unless import.points.where(velocity: nil).exists?
+
+    Points::VelocityFiller.new(import.id).call
   end
 
   def recalculate_months(user, timestamps)

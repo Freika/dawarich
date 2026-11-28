@@ -2,6 +2,8 @@
 
 module Trial
   class UpgradesController < ApplicationController
+    UTM_PARAMS = %i[utm_source utm_medium utm_campaign utm_content].freeze
+
     before_action :authenticate_user!
     before_action :redirect_if_self_hosted
 
@@ -16,7 +18,8 @@ module Trial
           plan: sanitized_plan,
           interval: sanitized_interval }.to_json
       )
-      redirect_to "#{MANAGER_URL}/auth/dawarich?token=#{token}", allow_other_host: true
+      query = { token: }.merge(params.permit(*UTM_PARAMS).to_h.symbolize_keys).to_query
+      redirect_to "#{MANAGER_URL}/auth/dawarich?#{query}", allow_other_host: true
     end
 
     private
@@ -26,7 +29,7 @@ module Trial
     end
 
     def sanitized_plan
-      %w[pro lite].include?(params[:plan]) ? params[:plan] : nil
+      %w[pro lite family].include?(params[:plan]) ? params[:plan] : nil
     end
 
     def sanitized_interval

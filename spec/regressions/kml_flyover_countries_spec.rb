@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'tempfile'
 
 RSpec.describe 'Countries flown over in KML imports' do
   let(:user) { create(:user) }
@@ -33,11 +32,9 @@ RSpec.describe 'Countries flown over in KML imports' do
       </kml>
     XML
 
-    Tempfile.create(['synthetic-flight', '.kml'], Rails.root.join('tmp')) do |file|
-      file.write(kml)
-      file.flush
-      expect { Kml::Importer.new(import, user.id, file.path).call }.to change { user.points.count }.by(samples.size)
-    end
+    # Through Imports::Create: speeds are derived after the importer has run.
+    import.file.attach(io: StringIO.new(kml), filename: 'synthetic-flight.kml')
+    expect { Imports::Create.new(user, import).call }.to change { user.points.count }.by(samples.size)
   end
 
   def geocode_samples

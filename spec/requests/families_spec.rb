@@ -63,7 +63,7 @@ RSpec.describe 'Family', type: :request do
 
         expect(response).to have_http_status(:ok)
         expect(response.body).to include('Upgrade to Family')
-        expect(response.body).to include('https://manager.example.com/auth/dawarich')
+        expect(response.body).to include('/trial/upgrade?interval=annual&amp;plan=family')
         expect(response.body).not_to include('name="family[name]"')
       end
     end

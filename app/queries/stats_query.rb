@@ -21,14 +21,17 @@ class StatsQuery
     }
   end
 
-  # No index serves these filters since the 2026-08 points index consolidation,
-  # so both are daily-cached counts that scan the user's rows via the
-  # (user_id, ...) composite index. The empty-result count is only computed
-  # where it is actually rendered: the stats panel is wrapped in
-  # DawarichSettings.store_geodata?, so without this guard every Cloud user
-  # paid for a scan whose result was never displayed.
+  # Both are daily-cached counts. The geocoded count is the total minus the
+  # points still waiting for geocoding. The partial index on
+  # reverse_geocoded_at IS NULL serves that while the instance's backlog is
+  # small; otherwise the planner reads the user's rows, as counting the
+  # geocoded rows directly always did. The empty-result count has no index and
+  # scans, so it is only computed where it is actually rendered: the stats
+  # panel is wrapped in DawarichSettings.store_geodata?, so without this guard
+  # every Cloud user paid for a scan whose result was never displayed.
   def cached_points_geocoded_stats
-    stats = { geocoded: count_points('reverse_geocoded_at IS NOT NULL') }
+    # Clamped: points_count is a counter cache and can briefly run behind.
+    stats = { geocoded: [user.points_count.to_i - count_points('reverse_geocoded_at IS NULL'), 0].max }
     return stats unless DawarichSettings.store_geodata?
 
     # Deliberately not `geodata = '{}'`: geodata is dropped in the points table

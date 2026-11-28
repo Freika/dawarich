@@ -278,6 +278,25 @@ RSpec.describe Visits::Detection::Runner do
       expect(user.visits.first.ended_at).to be >= resumed_at + 3.minutes
     end
 
+    it 'bridges it when the app paused at the stop and resumed at its wake geofence' do
+      user.points.order(:timestamp).last.update!(motion_data: { 'action' => 'stationary_presence' })
+      run_realtime_window(arrived_at + 6.minutes)
+      # About 160 m away: the first fix once the device left the geofence.
+      (0..3).each { |i| fix(resumed_at + i.minutes, home[0] + 0.0015 + (i * 0.0005), home[1]) }
+      run_realtime_window(resumed_at + 3.minutes)
+
+      expect(user.visits.pluck(:started_at, :ended_at)).to eq([[arrived_at, resumed_at]])
+    end
+
+    it 'does not bridge it when tracking woke far from the stop' do
+      user.points.order(:timestamp).last.update!(motion_data: { 'action' => 'stationary_presence' })
+      run_realtime_window(arrived_at + 6.minutes)
+      (0..3).each { |i| fix(resumed_at + i.minutes, home[0] + 0.05, home[1]) }
+      run_realtime_window(resumed_at + 3.minutes)
+
+      expect(user.visits.order(:started_at).first.ended_at).to eq(arrived_at + 6.minutes)
+    end
+
     it 'keeps the stay apart when tracking resumed elsewhere first' do
       fix(arrived_at + 4.hours, 51.35, 12.38)
       resume_at_home

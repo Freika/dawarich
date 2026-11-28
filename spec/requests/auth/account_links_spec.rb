@@ -337,6 +337,24 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       end.not_to have_enqueued_job(Users::MailerSendingJob)
     end
 
+    it 'lets the user resend at once when the previous resend could not be queued' do
+      trigger_collision
+      attempts = 0
+      allow(Users::MailerSendingJob).to receive(:perform_later).and_wrap_original do |original, *args, **kwargs|
+        attempts += 1
+        raise Redis::CannotConnectError, 'queue down' if attempts == 1
+
+        original.call(*args, **kwargs)
+      end
+
+      expect { post email_fallback_auth_account_link_path }.to raise_error(Redis::CannotConnectError)
+
+      expect do
+        post email_fallback_auth_account_link_path
+      end.to have_enqueued_job(Users::MailerSendingJob)
+      expect(flash[:notice]).to match(/we sent a confirmation link/i)
+    end
+
     it 'flashes a distinct rate-limit alert (not the affirmative notice) when the resend is rate-limited' do
       trigger_collision
       # Pre-seed the per-account rate-limit cache key, as if a prior send within

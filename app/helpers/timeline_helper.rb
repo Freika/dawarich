@@ -143,12 +143,12 @@ module TimelineHelper
   end
 
   # Duration-based heuristic for hash entries. Avoids N+1 Visit lookups.
+  # A later day uses its own share of the visit. On the arrival day the whole
+  # visit's duration says nothing about that day, so only a midnight start counts.
   def visit_entry_all_day?(entry)
-    times = visit_entry_times(entry)
-    duration_minutes = visit_entry_duration(entry).to_i
-    return true if duration_minutes >= 23 * 60
-    return false if entry[:continuation_of_date]
+    return visit_entry_duration(entry).to_i >= 23 * 60 if entry[:continuation_of_date]
 
+    times = visit_entry_times(entry)
     times[:start_at].hour.zero? && (times[:ended_at] - times[:start_at]) >= 23.hours
   end
 

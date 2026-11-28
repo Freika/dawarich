@@ -15,7 +15,7 @@
         <p class="text-gray-600 mb-4">
           <%= t('.share_your_monthly_stats_publicly_with_friends_and_family_public') %>
         </p>
-        <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: 'sharing') %>"
+        <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'stats', utm_content: 'sharing') %>"
            class="btn btn-primary">
           <%= t('.upgrade_to_pro') %>
         </a>

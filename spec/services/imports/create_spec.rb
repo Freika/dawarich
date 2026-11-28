@@ -40,6 +40,14 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.status).to eq('completed')
         end
+
+        it 'records import_succeeded for Dawarich Cloud with the import' do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+          expect { service.call }.to have_enqueued_job(Analytics::DeliverEventJob)
+          expect(AnalyticsEvent.sole).to have_attributes(event: 'import_succeeded',
+                                                         dedup_key: "import_succeeded:#{import.id}")
+        end
       end
 
       context 'when the file holds no points at all' do
@@ -403,6 +411,36 @@ RSpec.describe Imports::Create do
         expect { service.call }.to change { import.points.count }.from(0)
 
         expect(import.reload.status).to eq('completed')
+      end
+    end
+
+    describe 'speeds for fixes recorded without one' do
+      # Invented fixes on the equator, mid-Atlantic, 15 km a minute apart (900 km/h).
+      let(:fixes) { [[-30.0, 0], [-29.865, 60], [-29.73, 120]] }
+
+      it 'derives them for track files so flights are recognised' do
+        import = create(:import, user:, source: 'csv')
+        rows = fixes.map { |lon, seconds| "0.0,#{lon},#{1_718_444_200 + seconds}" }
+        import.file.attach(io: StringIO.new("lat,lon,timestamp\n#{rows.join("\n")}\n"), filename: 'flight.csv',
+                           content_type: 'text/csv')
+
+        described_class.new(user, import).call
+
+        expect(import.points.order(:timestamp).pluck(:velocity).map { |speed| speed&.to_f.to_f * 3.6 })
+          .to match([0, be_within(10).of(900), 0])
+      end
+
+      it 'leaves photo locations without a speed' do
+        import = create(:import, user:, source: 'immich_api')
+        photos = fixes.map do |lon, seconds|
+          { latitude: 0.0, longitude: lon, lonlat: "POINT(#{lon} 0.0)", timestamp: 978_296_400 + seconds }
+        end
+        import.file.attach(io: StringIO.new(photos.to_json), filename: 'geodata.json',
+                           content_type: 'application/json')
+
+        described_class.new(user, import).call
+
+        expect(import.points.pluck(:velocity).uniq).to eq([nil])
       end
     end
 

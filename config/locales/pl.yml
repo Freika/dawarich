@@ -4142,6 +4142,9 @@ pl:
       import_flights_job:
         airtrail_sync_failed: Synchronizacja AirTrail nie powiodła się
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Synchronizacja lotów AirTrail nie powiodła się z błędem: %{message}. Sprawdź ustawienia AirTrail i spróbuj ponownie.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Twoje punkty zostały ponownie sprawdzone filtrem szumu GPS. Nic się nie zmieniło, więc trasy, statystyki i podsumowania pozostały bez zmian."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: Ponowne sprawdzenie szumu GPS zakończone

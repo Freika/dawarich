@@ -35,6 +35,7 @@ RSpec.configure do |config|
         }
       ],
       components: {
+        schemas: YAML.load_file(Rails.root.join('spec/support/achievement_api_schemas.yml')),
         securitySchemes: {
           api_key: {
             type: :apiKey,

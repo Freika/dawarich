@@ -64,6 +64,40 @@ RSpec.describe Dawarich::AggregatingMetrics do
     end
   end
 
+  describe 'when the remote endpoint responds slower than the total deadline' do
+    let(:middleware) do
+      described_class.new(
+        local_app,
+        remote_url: 'http://sidekiq.internal:9394/metrics',
+        remote_user: 'prometheus',
+        remote_password: 'secret',
+        deadline: 0.2
+      )
+    end
+
+    before do
+      stub_request(:get, 'http://sidekiq.internal:9394/metrics')
+        .to_return do
+          sleep 2
+          { status: 200, body: remote_body }
+        end
+    end
+
+    it 'returns local metrics within the deadline instead of waiting for the remote' do
+      allow(Rails.logger).to receive(:warn)
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      status, _headers, body = request
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      out = body.each.to_a.join
+      expect(status).to eq(200)
+      expect(elapsed).to be < 1
+      expect(out).to include('rails_requests_total')
+      expect(out).not_to include('sidekiq_jobs_executed_total')
+      expect(Rails.logger).to have_received(:warn).with(/exceeded the 0.2s deadline/)
+    end
+  end
+
   describe 'when remote endpoint is unreachable' do
     before do
       stub_request(:get, 'http://sidekiq.internal:9394/metrics')
