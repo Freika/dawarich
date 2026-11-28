@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - GPX imports skip track points with an unreadable time instead of failing the whole import.
+- Real-time track generation retries up to three times after a database timeout or deadlock, instead of leaving recent points without a track until the next upload.
 
 ## [1.24.0] - 2026-11-28, Berlin
 
