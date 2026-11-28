@@ -9,7 +9,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -29,7 +29,7 @@ jobs:
             echo "ref=HEAD~1" >> "$GITHUB_OUTPUT"
           fi
       - name: Setup Biome
-        uses: biomejs/setup-biome@v2
+        uses: biomejs/setup-biome@77af1e9ce0cc32955e83b0c3e30c28ae3b81cab7 # v2.8.0
         with:
           version: 2.3.11
       - name: Run Biome
