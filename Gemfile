@@ -62,6 +62,8 @@ gem 'rgeo-geojson'
 gem 'rqrcode', '~> 3.2'
 gem 'rswag-api'
 gem 'rswag-ui'
+# rswag-ui requires ostruct, no longer a default gem in Ruby 4.0, and oj stopped depending on it.
+gem 'ostruct'
 gem 'rubyzip', '~> 3.7'
 gem 'sentry-rails', '>= 5.27.0'
 gem 'sentry-ruby'
