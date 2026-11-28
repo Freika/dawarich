@@ -4005,6 +4005,9 @@ ca:
         weekday_preference: Viatges més entre setmana que els caps de setmana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    enhanced_import:
+      extract_job:
+        invalid_json: el fitxer no és un JSON vàlid. Torna a exportar les dades i importa el fitxer nou.
     tesla_mate:
       sync_job:
         teslamate_sync_failed: La sincronització amb TeslaMateApi ha fallat
