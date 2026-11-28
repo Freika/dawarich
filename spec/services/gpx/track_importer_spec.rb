@@ -109,7 +109,7 @@ RSpec.describe Gpx::TrackImporter do
             <trk><trkseg>
               <trkpt lat="52.5200" lon="13.4050"><time>not-a-timestamp</time></trkpt>
               <trkpt lat="51.5072" lon="-0.1276"><time>2026-00-00T00:00:00Z</time></trkpt>
-              <trkpt lat="40.7128" lon="-74.0060"><time>2026-02-30T00:00:00Z</time></trkpt>
+              <trkpt lat="40.7128" lon="-74.0060"><time zone="UTC">2026-08-06T15:00:00Z</time></trkpt>
               <trkpt lat="48.8566" lon="2.3522"><time>2026-08-06T15:56:21Z</time></trkpt>
             </trkseg></trk>
           </gpx>
@@ -122,6 +122,32 @@ RSpec.describe Gpx::TrackImporter do
       it 'skips the invalid point and imports valid points' do
         expect { parser }.to change { Point.count }.by(1)
         expect(user.points.last.timestamp).to eq(Time.zone.parse('2026-08-06T15:56:21Z').to_i)
+      end
+    end
+
+    context 'when timestamps use a space separator or no UTC offset' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "gpx_loose_timestamp_#{SecureRandom.hex(4)}.gpx")
+        File.write(path, <<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <gpx version="1.1" creator="Synthetic Export" xmlns="http://www.topografix.com/GPX/1/1">
+            <trk><trkseg>
+              <trkpt lat="52.5200" lon="13.4050"><time>2026-08-06 15:56:21Z</time></trkpt>
+              <trkpt lat="48.8566" lon="2.3522"><time>2026-08-06T19:00:00</time></trkpt>
+            </trkseg></trk>
+          </gpx>
+        XML
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'imports them, reading offset-less times in the app time zone' do
+        Time.use_zone('Europe/Berlin') { parser }
+
+        expect(user.points.order(:timestamp).pluck(:timestamp)).to eq(
+          [Time.utc(2026, 8, 6, 15, 56, 21).to_i, Time.utc(2026, 8, 6, 17, 0, 0).to_i]
+        )
       end
     end
 

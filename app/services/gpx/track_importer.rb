@@ -113,7 +113,7 @@ class Gpx::TrackImporter
   end
 
   def parse_timestamp(value)
-    DateTime.iso8601(value).to_time
+    Time.zone.parse(value)
   rescue ArgumentError, TypeError
     nil
   end
