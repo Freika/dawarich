@@ -106,14 +106,18 @@ class Users::RegistrationsController < Devise::RegistrationsController
     resource.skip_auto_trial = true if @signup_variant == 'reverse_trial'
   end
 
+  # An account created through a provider has a random password nobody knows, so
+  # it may edit its profile without one; email and password changes still need it.
   def update_resource(resource, params)
-    return super unless resource.oauth_user?
+    return super if !resource.oauth_user? || credential_change?(resource, params)
 
-    if params[:password].present?
-      resource.update(params.except(:current_password))
-    else
-      resource.update_without_password(params)
-    end
+    resource.update_without_password(params.except(:current_password))
+  end
+
+  def credential_change?(resource, params)
+    params[:password].present? ||
+      # Normalise like Devise (strip + downcase); casecmp? folds "ß" to "ss" and would miss a real change.
+      (params.key?(:email) && params[:email].to_s.strip.downcase != resource.email)
   end
 
   def after_sign_up_path_for(resource)
