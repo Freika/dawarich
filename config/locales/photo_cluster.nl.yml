@@ -1,0 +1,15 @@
+nl:
+  javascript:
+    photo_cluster:
+      title: "Foto's in deze groep"
+      close: "Sluiten"
+      previous: "Vorige"
+      next: "Volgende"
+      loading: "Foto's worden geladen…"
+      range: "%{start}-%{end} van %{total} foto's"
+      empty: "Geen foto's in deze groep."
+      error: "De foto's konden niet worden geladen. Probeer het opnieuw."
+      retry: "Opnieuw proberen"
+      back: "Terug naar de thumbnails"
+      image_error: "Thumbnail niet beschikbaar"
+      keyboard_hint: "Druk op Enter om de fotogroep te bekijken die het dichtst bij het midden van de kaart ligt."
