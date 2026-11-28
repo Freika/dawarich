@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Real-time track generation now retries transient database failures before reporting a failure.
+- Real-time track generation retries up to three times after a database timeout or deadlock, instead of leaving recent points without a track until the next upload.
 
 ## [1.15.1] - 2026-09-21, Berlin
 
