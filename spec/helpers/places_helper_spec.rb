@@ -13,7 +13,7 @@ RSpec.describe PlacesHelper, type: :helper do
         stats = helper.place_dwell_stats(placeless)
 
         expect(stats[:visit_count]).to eq(0)
-        expect(stats[:total_hours]).to eq(0.0)
+        expect(stats[:total_label]).to eq('0h 0m')
         expect(stats[:avg_label]).to eq('0h 0m')
         expect(stats[:location_line]).to eq('')
       end
@@ -22,7 +22,7 @@ RSpec.describe PlacesHelper, type: :helper do
         stats = helper.place_dwell_stats(place)
 
         expect(stats[:visit_count]).to eq(0)
-        expect(stats[:total_hours]).to eq(0.0)
+        expect(stats[:total_label]).to eq('0h 0m')
         expect(stats[:avg_label]).to eq('0h 0m')
       end
     end
@@ -34,11 +34,11 @@ RSpec.describe PlacesHelper, type: :helper do
                        started_at: 2.days.ago, ended_at: 2.days.ago + 30.minutes)
       end
 
-      it 'computes visit count, total hours, and average dwell label' do
+      it 'computes visit count, total dwell, and average dwell label' do
         stats = helper.place_dwell_stats(place)
 
         expect(stats[:visit_count]).to eq(2)
-        expect(stats[:total_hours]).to eq(2.0)
+        expect(stats[:total_label]).to eq('2h 0m')
         expect(stats[:avg_label]).to eq('1h 0m')
       end
 
@@ -49,8 +49,14 @@ RSpec.describe PlacesHelper, type: :helper do
         stats = helper.place_dwell_stats(place)
 
         expect(stats[:visit_count]).to eq(2)
-        expect(stats[:total_hours]).to eq(2.0)
+        expect(stats[:total_label]).to eq('2h 0m')
       end
+    end
+
+    it 'formats total dwell as whole hours and minutes without decimals' do
+      create(:visit, place:, user:, duration: 4815)
+
+      expect(helper.place_dwell_stats(place)[:total_label]).to eq('80h 15m')
     end
 
     it 'joins city and country with a comma' do
@@ -78,6 +84,14 @@ RSpec.describe PlacesHelper, type: :helper do
     end
   end
 
+  describe '#place_tag_text_color' do
+    it 'chooses an AA foreground for light and dark tag colours' do
+      expect(helper.place_tag_text_color('#f59e0b')).to eq('black')
+      expect(helper.place_tag_text_color('#1e3a8a')).to eq('white')
+      expect(helper.place_tag_text_color('#6ab0a4')).to eq('black')
+    end
+  end
+
   describe '#place_visit_time_range' do
     let(:user) { create(:user) }
     let(:place) { create(:place, user: user) }
@@ -91,7 +105,7 @@ RSpec.describe PlacesHelper, type: :helper do
 
       expect(result[:start_label]).to eq('09:30')
       expect(result[:end_label]).to eq('12:00')
-      expect(result[:date_label]).to eq('2026-03-15')
+      expect(result[:date_label]).to eq('Mar 15, 2026')
       expect(result[:duration_label]).to eq('2h 30m')
     end
   end

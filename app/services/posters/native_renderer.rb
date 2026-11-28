@@ -55,7 +55,7 @@ module Posters
           distance: @distance
         },
         size: SIZE,
-        text: { title: poster_title, subtitle: @subtitle, coords: true },
+        text: { title: poster_title, subtitle: @subtitle, stats: @poster.settings['stats'].to_s, coords: true },
         output: {
           png: png_path,
           pdf: pdf_path,
@@ -118,9 +118,10 @@ module Posters
       readers&.each { |reader| reader.join(TERMINATE_TIMEOUT) || reader.kill }
     end
 
+    # macOS answers EPERM instead of ESRCH once the group leader has exited.
     def signal_process_group(signal, process_group_id)
       Process.kill(signal, -process_group_id)
-    rescue Errno::ESRCH
+    rescue Errno::ESRCH, Errno::EPERM
       nil
     end
 

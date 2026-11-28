@@ -39,17 +39,28 @@ class Families::Locations
   def family_members_with_sharing_enabled
     user.family.members
         .includes(:family_membership)
+        .reject { _1.id == user.id }
         .select(&:family_sharing_enabled?)
   end
 
   def build_family_locations(sharing_members)
+    # Mask each sharer's own privacy zones, exactly as their own map reads do,
+    # so family sharing never leaks a point inside a privacy zone.
     latest_points =
-      sharing_members.map { _1.points.without_raw_data.complete.order(timestamp: :desc).first }.compact
+      sharing_members.filter_map do |member|
+        Maps::PrivacyZoneMasker.new(member)
+                               .mask_points(member.points.without_raw_data.complete.not_anomaly)
+                               .order(timestamp: :desc).first
+      end
+
+    with_address = Geocoding::Config.for(user).enabled?
 
     latest_points.map do |point|
       {
         user_id: point.user_id,
+        address: (point.address_line if with_address),
         email: point.user.email,
+        name: point.user.display_name,
         email_initial: point.user.email.first.upcase,
         latitude: point.lat,
         longitude: point.lon,
@@ -63,7 +74,8 @@ class Families::Locations
 
   def build_family_history(sharing_members, start_at:, end_at:)
     sharing_members.filter_map do |member|
-      points = member.family_history_points(start_at: start_at, end_at: end_at)
+      points = Maps::PrivacyZoneMasker.new(member)
+                                      .mask_points(member.family_history_points(start_at: start_at, end_at: end_at))
       total = points.count
       next if total.zero?
 
@@ -80,6 +92,7 @@ class Families::Locations
       {
         user_id: member.id,
         email: member.email,
+        name: member.display_name,
         email_initial: member.email.first.upcase,
         sharing_since: member.family_sharing_started_at&.iso8601,
         points: sampled.pluck(

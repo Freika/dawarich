@@ -6,13 +6,14 @@ class TrackSegments::GeometryRecalculator
   end
 
   def self.distance(points)
-    points.each_cons(2).sum { |first, second| distance_between(first, second) }
+    route_points = points.reject do |point|
+      point.respond_to?(:stationary_presence?) && point.stationary_presence?
+    end
+    route_points.each_cons(2).sum { |first, second| distance_between(first, second) }
   end
 
   def self.distance_between(first, second)
-    Geocoder::Calculations.distance_between(
-      [first.lat, first.lon], [second.lat, second.lon], units: :km
-    ) * 1000
+    GeoDistance.meters([first.lat, first.lon], [second.lat, second.lon])
   end
 
   def initialize(track, points)
@@ -40,6 +41,9 @@ class TrackSegments::GeometryRecalculator
   end
 
   def update(segment, segment_points)
+    segment_points = segment_points.reject do |point|
+      point.respond_to?(:stationary_presence?) && point.stationary_presence?
+    end
     segment_distance = self.class.distance(segment_points).round
     duration = segment_duration(segment, segment_points)
     speeds = pair_speeds(segment_points)

@@ -3,12 +3,10 @@
 
 .timeline-rail {
   display: flex;
+  flex: none;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-width: 0;
-  min-height: 0;
-  max-height: 100%;
-  overflow-y: auto;
 }
 
 .timeline-rail__section {
@@ -18,11 +16,9 @@
 }
 
 .timeline-rail__section-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: oklch(var(--bc) / 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  color: oklch(var(--bc) / 0.6);
 }
 
 .timeline-rail__section-header {
@@ -33,11 +29,9 @@
 }
 
 .timeline-rail__section-link {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: oklch(var(--p));
+  color: oklch(var(--bc) / 0.6);
   text-decoration: none;
 }
 
@@ -133,6 +127,12 @@
   color: oklch(var(--bc) / 0.6);
   font-size: 0.85rem;
   padding: 2rem 1rem;
+}
+
+/* Another day is on its way: dim the one still showing. */
+#timeline-feed-frame[busy] > * {
+  opacity: 0.5;
+  transition: opacity 0.15s;
 }
 
 .visit-row--hidden {

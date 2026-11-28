@@ -3,9 +3,12 @@
 module TransportationModes
   # Cleans FeatureExtractor rows into per-point speeds the classifier can
   # trust: stored velocity wins (including 0.0 — parked points must not
-  # inherit GPS-drift speeds), derived dist/dt is the fallback, and samples
+  # inherit GPS-drift speeds — unless the displacement clearly contradicts
+  # it), derived dist/dt is the fallback, and samples
   # are invalidated on poor accuracy, zero dt, or implausible acceleration.
   class Preprocessor
+    ZERO_VELOCITY_DRIFT_M = 50.0
+
     def self.call(rows)
       SpeedCalibrator.call(rows)
 
@@ -32,11 +35,21 @@ module TransportationModes
       stored = row[:velocity]
       return if stored&.negative?
 
+      stored = nil if stored&.zero? && zero_velocity_contradicted?(row)
       speed = stored || derived_speed(row)
       return if speed.nil?
 
       row[:speed_mps] = speed
       row[:speed_valid] = valid_sample?(row, speed, previous_valid_speed, stored)
+    end
+
+    # Trackers without a speed fix (OwnTracks, background Android) report 0.0
+    # while moving. Displacement beyond both the fix accuracy and normal GPS
+    # drift means the zero is a missing reading, not a parked point.
+    def self.zero_velocity_contradicted?(row)
+      return false if derived_speed(row).nil?
+
+      row[:dist_m] > [row[:accuracy].to_f, ZERO_VELOCITY_DRIFT_M].max
     end
 
     # Displacement across a tracking gap says nothing about how the user

@@ -5,6 +5,11 @@ class Api::V1::Traccar::PointsController < ApiController
   before_action :validate_points_limit, only: %i[create]
 
   def create
+    if heartbeat?
+      Rails.logger.info("Traccar heartbeat accepted without a position: #{request.request_parameters.keys.join(', ')}")
+      return render json: [], status: :ok
+    end
+
     result = Traccar::PointCreator.new(point_params, current_api_user.id).call
 
     if result.blank?
@@ -24,6 +29,12 @@ class Api::V1::Traccar::PointsController < ApiController
   end
 
   private
+
+  COORDINATE_KEYS = %w[location lat lon lng latitude longitude coords].freeze
+
+  def heartbeat?
+    params[:id].present? && COORDINATE_KEYS.none? { |key| params.key?(key) }
+  end
 
   def point_params
     params.permit(

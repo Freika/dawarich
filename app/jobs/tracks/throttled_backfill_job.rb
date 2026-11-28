@@ -28,25 +28,29 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
     "track_throttled_backfill:user:#{user_id}"
   end
 
-  def self.schedule(user)
+  def self.schedule(user, floor_timestamp: nil, wait: 0, force: false)
     newly_scheduled = Sidekiq.redis do |redis|
-      redis.set(redis_key(user.id), 1, nx: true, ex: DEDUP_KEY_TTL.to_i)
+      if force
+        redis.set(redis_key(user.id), 1, ex: DEDUP_KEY_TTL.to_i)
+      else
+        redis.set(redis_key(user.id), 1, nx: true, ex: DEDUP_KEY_TTL.to_i)
+      end
     end
 
-    perform_later(user.id, nil) if newly_scheduled
+    set(wait:).perform_later(user.id, nil, *floor_timestamp) if newly_scheduled
 
     newly_scheduled
   end
 
-  def perform(user_id, cursor_timestamp = nil)
+  def perform(user_id, cursor_timestamp = nil, floor_timestamp = nil)
     user = User.find_by(id: user_id)
     return release_key(user_id) unless user
 
     cursor = cursor_timestamp || Time.current.to_i
-    slice_end = user.points.where(timestamp: ...cursor).maximum(:timestamp)
+    slice_end = user.points.where(timestamp: floor_timestamp...cursor).maximum(:timestamp)
     return complete(user_id) if slice_end.nil?
 
-    slice_start = slice_end - SLICE.to_i
+    slice_start = [slice_end - SLICE.to_i, floor_timestamp].compact.max
 
     Tracks::ParallelGenerator.new(
       user,
@@ -58,7 +62,7 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
     ).call
 
     refresh_key(user_id)
-    self.class.set(wait: PAUSE).perform_later(user_id, slice_start)
+    self.class.set(wait: PAUSE).perform_later(user_id, slice_start, *floor_timestamp)
   end
 
   private

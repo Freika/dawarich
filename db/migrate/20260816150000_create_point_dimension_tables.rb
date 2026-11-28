@@ -13,11 +13,9 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
 
   # Adding a nullable column without a default is metadata-only, but it still
   # needs ACCESS EXCLUSIVE, and a queued request blocks every points reader and
-  # writer behind it. Keep the wait short: the lock is either free almost
-  # immediately or held by a long transaction a longer wait will not outlast.
-  ADD_LOCK_TIMEOUT = '1s'
+  # writer behind it, so each wait stays bounded.
+  ADD_LOCK_TIMEOUT = '5s'
   ADD_MAX_ATTEMPTS = 5
-  ADD_BACKOFF_SECONDS = 2
 
   def up
     create_table :point_sources, id: :serial, if_not_exists: true do |t|
@@ -47,7 +45,9 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
 
   # SET LOCAL keeps the timeout on the same backend as the ALTER under PgBouncer
   # transaction pooling; a bare SET can land on another connection and leave the
-  # ALTER unbounded.
+  # ALTER unbounded. Losing every attempt fails the migration so the next boot
+  # retries it: recording it without the column left instances short of
+  # source_id for good (#3972).
   def add_dimension_column
     attempts = 0
 
@@ -57,29 +57,14 @@ class CreatePointDimensionTables < ActiveRecord::Migration[8.0]
         execute "SET LOCAL lock_timeout = '#{ADD_LOCK_TIMEOUT}'"
         execute 'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer'
       end
-      Rails.logger.info '[CreatePointDimensionTables] source_id added'
     rescue ActiveRecord::LockWaitTimeout, ActiveRecord::QueryAborted => e
-      if attempts < ADD_MAX_ATTEMPTS
-        Rails.logger.warn(
-          "[CreatePointDimensionTables] could not acquire lock (attempt #{attempts}/#{ADD_MAX_ATTEMPTS}): #{e.message}"
-        )
-        sleep(ADD_BACKOFF_SECONDS * attempts)
-        retry
+      if attempts >= ADD_MAX_ATTEMPTS
+        raise e.class, "points.source_id could not be added in #{ADD_MAX_ATTEMPTS} attempts (#{e.message}). " \
+                       'A long transaction holds points: stop Sidekiq and restart.'
       end
 
-      # Deliberately no enqueue here. Aborting would fail the boot and replay
-      # the migration on the next start, which is the crash loop the
-      # mirror-image drop in 20260714090000_drop_legacy_lat_lon_from_points.rb
-      # was rewritten to avoid — so boot continues either way. The handoff is
-      # left to 20260816150200, which is the single place that decides what to
-      # enqueue: if this migration and that one could both start work, the slow
-      # DROP INDEX CONCURRENTLY between them gives a handoff job time to land
-      # the columns first, and two backfill chains would then walk identical id
-      # ranges at identical pace.
-      Rails.logger.warn(
-        "[CreatePointDimensionTables] could not acquire lock in #{ADD_MAX_ATTEMPTS} attempts; " \
-        'leaving the column to DataMigrations::AddPointDimensionColumnsJob'
-      )
+      sleep(attempts * 5)
+      retry
     end
   end
 end

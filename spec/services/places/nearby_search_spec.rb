@@ -143,13 +143,19 @@ RSpec.describe Places::NearbySearch do
 
       it 'does not cache the empty result of a rate limiter skip' do
         allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
+        skipped = described_class.new(user: user, latitude: lat, longitude: lon, cache: true)
 
-        expect(described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call).to eq([])
+        expect(skipped.call).to eq([])
+        expect(skipped).to be_throttled
 
         allow(Geocoding::RateLimiter).to receive(:throttle).and_call_original
         allow(Geocoder).to receive(:search).and_return([photon_result])
 
         expect(described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call.size).to eq(1)
+
+        cached = described_class.new(user: user, latitude: lat, longitude: lon, cache: true)
+        expect(cached.call.size).to eq(1)
+        expect(cached).not_to be_throttled
       end
 
       it 'does not cache the empty result of a handled provider error' do

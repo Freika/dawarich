@@ -1,45 +1,6 @@
 import assert from "node:assert/strict"
-import { readFile } from "node:fs/promises"
 import test from "node:test"
-
-const source = await readFile(
-  new URL(
-    "../../app/javascript/controllers/maps/maplibre_controller.js",
-    import.meta.url,
-  ),
-  "utf8",
-)
-
-const importedNames = []
-const body = source.replace(
-  /^import\s+([\s\S]*?)\s+from\s+"[^"]+"\n/gm,
-  (_statement, clause) => {
-    const named = clause.match(/\{([\s\S]*)\}/)?.[1] ?? ""
-    for (const part of named.split(",")) {
-      const name = part
-        .trim()
-        .split(/\s+as\s+/)
-        .pop()
-      if (name) importedNames.push(name)
-    }
-    const defaultName = clause
-      .replace(/\{[\s\S]*\}/, "")
-      .replace(",", "")
-      .trim()
-    if (defaultName) importedNames.push(defaultName)
-    return ""
-  },
-)
-const stubs = importedNames
-  .map((name) =>
-    name === "Controller"
-      ? "class Controller {}"
-      : `const ${name} = new Proxy(function () {}, { get: () => () => {} })`,
-  )
-  .join("\n")
-const { default: MapController } = await import(
-  `data:text/javascript;base64,${Buffer.from(`${stubs}\n${body}`).toString("base64")}`
-)
+import { TimelineMapBridge } from "controllers/maps/maplibre/timeline_map_bridge"
 
 const fullTrack = {
   type: "Feature",
@@ -57,7 +18,8 @@ const fullTrack = {
 function buildController({ selectedFeature, segmentsActive = false }) {
   const fits = []
   const selections = []
-  const controller = Object.create(MapController.prototype)
+  const controller = new TimelineMapBridge({})
+  const host = controller.controller
   const tracksLayer = {
     sourceId: "tracks-selection-source",
     selectedFeature,
@@ -67,14 +29,14 @@ function buildController({ selectedFeature, segmentsActive = false }) {
       selections.push({ feature, options })
     },
   }
-  controller.map = {
+  host.map = {
     getSource: () => null,
     fitBounds: (bounds) => fits.push(bounds),
   }
-  controller.layerManager = {
+  host.layerManager = {
     getLayer: (name) => (name === "tracks" ? tracksLayer : null),
   }
-  controller.api = { fetchTrackWithSegments: async () => fullTrack }
+  host.api = { fetchTrackWithSegments: async () => fullTrack }
   return { controller, fits, selections }
 }
 
@@ -140,4 +102,22 @@ test("opening the card of a different track drops the previous segments", async 
   await controller.handleEntryClick({ detail: { trackId: 39 } })
 
   assert.notEqual(selections.at(-1).options.preserveSegments, true)
+})
+
+test("opening a track from the timeline fetches it within the map's date range", async () => {
+  const { controller } = buildController({ selectedFeature: null })
+  const range = {
+    startAt: "2026-09-17T00:00+02:00",
+    endAt: "2026-09-17T23:59+02:00",
+  }
+  controller.layerManager.pointTileRange = range
+  const fetches = []
+  controller.api.fetchTrackWithSegments = async (...args) => {
+    fetches.push(args)
+    return fullTrack
+  }
+
+  await controller.handleEntryClick({ detail: { trackId: 39 } })
+
+  assert.deepEqual(fetches, [[39, range]])
 })

@@ -226,4 +226,23 @@ RSpec.describe 'POST /api/v1/auth/apple', type: :request do
       expect(user.active_until).to be > 900.years.from_now
     end
   end
+
+  context 'returning Apple user with 2FA' do
+    before do
+      create(:user, email: 'apple@example.com', provider: 'apple', uid: '000123.apple',
+                    otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+      allow(verifier_double).to receive(:call).and_return(sub: '000123.apple', email: 'apple@example.com')
+    end
+
+    it 'asks a client that can enter a code for one instead of handing out the api_key' do
+      post '/api/v1/auth/apple', params: { id_token: 'fake_token' },
+                                 headers: { 'X-Dawarich-Client-Capabilities' => 'otp_challenge' }
+
+      expect(response).to have_http_status(:accepted)
+      body = JSON.parse(response.body)
+      expect(body['two_factor_required']).to be(true)
+      expect(body).not_to have_key('api_key')
+    end
+  end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'aws-sdk-s3'
 
 RSpec.describe PendingImports::CleanupJob do
   it 'runs on the low_priority queue' do
@@ -23,6 +24,53 @@ RSpec.describe PendingImports::CleanupJob do
       blob = expired.file.blob
       described_class.perform_now
       expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+    end
+
+    it 'keeps an upload whose storage deletion fails and purges it on the next run' do
+      failing = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      healthy = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      blob = failing.file.blob
+      storage_down = true
+
+      allow(blob.service).to receive(:delete).and_wrap_original do |original, key|
+        raise Aws::S3::Errors::InternalError.new(nil, 'Please try again') if storage_down && key == blob.key
+
+        original.call(key)
+      end
+
+      expect { described_class.perform_now }.not_to raise_error
+      expect(PendingImport.exists?(healthy.id)).to be false
+      expect(failing.reload.file).to be_attached
+      expect(blob.service.exist?(blob.key)).to be true
+
+      storage_down = false
+      described_class.perform_now
+
+      expect(PendingImport.exists?(failing.id)).to be false
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+      expect(blob.service.exist?(blob.key)).to be false
+    end
+
+    it 'keeps an upload that is claimed after the sweep has loaded it' do
+      pending = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      blob = pending.file.blob
+      claimer = create(:user)
+      claim_after_load = Module.new do
+        define_method(:find_each) do |**options, &block|
+          super(**options) do |record|
+            PendingImport.where(id: record.id).update_all(claimed_at: Time.current, claimed_by_user_id: claimer.id)
+            block.call(record)
+          end
+        end
+      end
+      allow(PendingImport).to receive(:expired).and_wrap_original do |original|
+        original.call.extending(claim_after_load)
+      end
+
+      described_class.perform_now
+
+      expect(pending.reload.file).to be_attached
+      expect(blob.service.exist?(blob.key)).to be true
     end
   end
 

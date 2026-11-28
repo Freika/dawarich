@@ -5,6 +5,7 @@ class Import::UpdatePointsCountJob < ApplicationJob
 
   def perform(import_id)
     import = Import.find(import_id)
+    return unless import.user
 
     import.update(processed: import.points.count)
   rescue ActiveRecord::RecordNotFound

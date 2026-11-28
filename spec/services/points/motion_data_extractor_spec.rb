@@ -4,6 +4,28 @@ require 'rails_helper'
 
 RSpec.describe Points::MotionDataExtractor do
   describe '.from_overland_properties' do
+    it 'preserves a boolean authoritative motion flag from symbol keys' do
+      properties = { motion: ['driving'], motion_authoritative: true }
+
+      expect(described_class.from_overland_properties(properties))
+        .to eq('motion' => ['driving'], 'motion_authoritative' => true)
+    end
+
+    it 'normalizes a string authoritative motion flag from string keys' do
+      properties = { 'motion' => ['driving'], 'motion_authoritative' => 'true' }
+
+      expect(described_class.from_overland_properties(properties))
+        .to eq('motion' => ['driving'], 'motion_authoritative' => true)
+    end
+
+    it 'omits absent, false or invalid authoritative motion flags' do
+      [nil, false, 'false', 1, 'yes'].each do |flag|
+        properties = { motion: ['driving'], motion_authoritative: flag }
+
+        expect(described_class.from_overland_properties(properties)).to eq('motion' => ['driving'])
+      end
+    end
+
     it 'extracts motion, activity, action with string keys' do
       properties = { motion: ['driving'], activity: 'other_navigation', action: 'moving' }
       result = described_class.from_overland_properties(properties)
@@ -174,6 +196,12 @@ RSpec.describe Points::MotionDataExtractor do
   end
 
   describe '.from_raw_data' do
+    it 'preserves authoritative motion for backfill' do
+      raw = { 'properties' => { 'motion' => ['driving'], 'motion_authoritative' => true } }
+
+      expect(described_class.from_raw_data(raw)).to eq('motion' => ['driving'], 'motion_authoritative' => true)
+    end
+
     it 'detects Overland data from properties' do
       raw = { 'properties' => { 'motion' => ['driving'], 'activity' => 'other_navigation' } }
       result = described_class.from_raw_data(raw)

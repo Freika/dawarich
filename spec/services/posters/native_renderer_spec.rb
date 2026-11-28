@@ -74,6 +74,20 @@ RSpec.describe Posters::NativeRenderer do
       expect(job['text']['title']).to eq('')
     end
 
+    it 'carries the saved trip stats line into the job text' do
+      poster.settings['stats'] = '27.4 km'
+
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['stats']).to eq('27.4 km')
+    end
+
+    it 'renders no stats line when the poster was saved without one' do
+      job = JSON.parse(build_renderer.call[:png])
+
+      expect(job['text']['stats']).to eq('')
+    end
+
     it 'raises when the renderer process fails' do
       renderer = build_renderer(command: ['ruby', '-e', 'warn "boom"; exit 1'])
 
@@ -82,6 +96,16 @@ RSpec.describe Posters::NativeRenderer do
 
     it 'terminates a renderer that exceeds the timeout' do
       stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
+    end
+
+    it 'still reports the timeout when the OS refuses to signal the process group' do
+      # macOS answers EPERM when the group leader has already exited.
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      allow(Process).to receive(:kill).and_call_original
+      allow(Process).to receive(:kill).with('TERM', anything).and_raise(Errno::EPERM)
       renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
 
       expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)

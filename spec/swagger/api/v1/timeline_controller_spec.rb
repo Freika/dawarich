@@ -8,9 +8,13 @@ RSpec.describe 'Timeline API', type: :request do
 
   path '/api/v1/timeline' do
     get 'Retrieves timeline data for a date range' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Timeline'
       description 'Returns day-by-day timeline data including visits, tracks, and photos for the authenticated user. ' \
-                  'Maximum date range is 31 days.'
+                  'Maximum date range is 31 days. Each visit and journey entry carries local_timezone: the IANA ' \
+                  'time zone of the visit location or of the journey start (null when unknown), for showing its ' \
+                  'times as local time there.'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
       parameter name: :start_at, in: :query, type: :string, required: true,

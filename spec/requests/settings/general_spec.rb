@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'settings/general', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   context 'when user is authenticated' do
     let!(:user) { create(:user, settings: {}) }
 
@@ -22,12 +24,57 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to be_successful
       end
 
+      context 'when the user bought self-hosted Pro in the mobile app' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+        end
+
+        it 'names the Dawarich app as the supporter platform' do
+          get settings_general_index_url
+
+          expect(response.body).to include('Thank you for supporting Dawarich via Dawarich app!')
+          expect(response.body).not_to include('translation_missing')
+        end
+      end
+
       it 'renders both digest toggles and the email-digests anchor' do
         get settings_general_index_url
 
         expect(response.body).to include('id="email-digests"')
         expect(response.body).to include('name="monthly_digest_emails_enabled"')
         expect(response.body).to include('name="yearly_digest_emails_enabled"')
+      end
+
+      it 'renders the date and time selects with the saved values and example labels' do
+        user.update!(
+          settings: { 'date_format' => 'dd.mm.yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday' }
+        )
+
+        travel_to(Time.zone.local(2026, 10, 24, 14, 5)) { get settings_general_index_url }
+
+        page = Nokogiri::HTML(response.body)
+        date_select = page.at_css('select[name="date_format"]')
+        expect(date_select.at_css('option[selected]')['value']).to eq('dd.mm.yyyy')
+        expect(date_select.css('option').to_h { |option| [option['value'], option.text.strip] })
+          .to include('auto' => 'Automatic (Oct 24, 2026)', 'dd.mm.yyyy' => '24.10.2026', 'yyyy-mm-dd' => '2026-10-24')
+        expect(page.at_css('select[name="time_format"] option[selected]')['value']).to eq('12h')
+        expect(page.at_css('select[name="first_day_of_week"] option[selected]')['value']).to eq('sunday')
+      end
+
+      it 'preserves the effective timezone when a new user submits the rendered form' do
+        effective_timezone = user.timezone_iana
+        get settings_general_index_url
+
+        select = Nokogiri::HTML(response.body).at_css('select[name="timezone"]')
+        selected = select.at_css('option[selected]') || select.at_css('option')
+        expect(selected['value']).to eq(effective_timezone)
+
+        patch settings_general_path, params: { timezone: selected['value'], date_format: 'yyyy-mm-dd' }
+
+        get settings_general_index_url
+        select = Nokogiri::HTML(response.body).at_css('select[name="timezone"] option[selected]')
+        expect(select['value']).to eq(effective_timezone)
       end
 
       it 'shows a not-configured notice instead of preferences when SMTP is unset' do
@@ -131,9 +178,66 @@ RSpec.describe 'settings/general', type: :request do
         expect(response).to redirect_to(settings_general_index_path)
         expect(user.reload.settings['timezone']).to eq('UTC')
       end
+
+      it 'saves the date, time and week-start preferences' do
+        patch settings_general_path,
+              params: { date_format: 'dd.mm.yyyy', time_format: '12h', first_day_of_week: 'sunday' }
+
+        expect(response).to redirect_to(settings_general_index_path)
+        expect(user.reload.settings.slice('date_format', 'time_format', 'first_day_of_week'))
+          .to eq('date_format' => 'dd.mm.yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday')
+      end
+
+      it 'ignores unknown date, time and week-start values' do
+        user.update!(settings: user.settings.merge('date_format' => 'yyyy-mm-dd'))
+
+        patch settings_general_path,
+              params: { date_format: 'nonsense', time_format: '25h', first_day_of_week: 'friday' }
+
+        expect(user.reload.settings['date_format']).to eq('yyyy-mm-dd')
+        expect(user.settings).not_to have_key('time_format')
+        expect(user.settings).not_to have_key('first_day_of_week')
+      end
+    end
+
+    describe 'Find trips automatically' do
+      it 'shows the trip detection toggle, checked by default' do
+        get settings_general_index_url
+
+        toggle = Nokogiri::HTML(response.body).at_css('input[type="checkbox"][name="trip_detection_enabled"]')
+        expect(toggle).to be_present
+        expect(toggle['checked']).to be_present
+      end
+
+      it 'switches trip detection off and removes no Detected Trip' do
+        trip = create(:trip, user:, origin: :detected)
+
+        patch settings_general_path, params: { trip_detection_enabled: '0' }
+
+        expect(user.reload.settings['trip_detection_enabled']).to be(false)
+        expect(user.safe_settings.trip_detection_enabled?).to be(false)
+        expect(Trip.exists?(trip.id)).to be(true)
+      end
+
+      it 'schedules Trip Detection when it is switched back on' do
+        user.update!(settings: user.settings.merge('trip_detection_enabled' => false))
+        clear_trip_detection_schedule(user.id)
+
+        expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
+          .to have_enqueued_job(Trips::DetectJob).with(user.id).at(a_value > Time.current)
+        expect(user.reload.safe_settings.trip_detection_enabled?).to be(true)
+      end
+
+      it 'does not run Trip Detection when the page is saved while it stays on' do
+        clear_trip_detection_schedule(user.id)
+        expect { patch settings_general_path, params: { trip_detection_enabled: '1' } }
+          .not_to have_enqueued_job(Trips::DetectJob)
+      end
     end
 
     describe 'POST /test_email' do
+      let!(:user) { create(:user, :admin, settings: {}) }
+
       around do |example|
         original_from = UsersMailer.default_params[:from]
         UsersMailer.default from: 'hi@dawarich.app'
@@ -149,14 +253,33 @@ RSpec.describe 'settings/general', type: :request do
         ActionMailer::Base.deliveries.clear
       end
 
-      it 'delivers a test email to the current user' do
+      it 'queues the test email through the same worker as system emails' do
         expect do
           post settings_test_email_path
-        end.to change { ActionMailer::Base.deliveries.size }.by(1)
+        end.to have_enqueued_job(ActionMailer::MailDeliveryJob).with(
+          'UsersMailer', 'test_email', 'deliver_now', params: { user: user }, args: []
+        )
 
-        expect(ActionMailer::Base.deliveries.last.to).to include(user.email)
+        expect(ActionMailer::Base.deliveries).to be_empty
         expect(response).to redirect_to(settings_general_index_path)
         expect(flash[:notice]).to include(user.email)
+      end
+
+      it 'delivers from the queued worker when SMTP works' do
+        perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob) { post settings_test_email_path }
+
+        expect(ActionMailer::Base.deliveries.last.to).to eq([user.email])
+      end
+
+      it 'surfaces SMTP errors in the worker even when normal mail suppresses them' do
+        allow_any_instance_of(Mail::TestMailer).to receive(:deliver!)
+          .and_raise(Net::SMTPAuthenticationError.new('worker configuration failed'))
+
+        post settings_test_email_path
+
+        expect do
+          perform_enqueued_jobs(only: ActionMailer::MailDeliveryJob)
+        end.to raise_error(Net::SMTPAuthenticationError)
       end
 
       it 'shows an alert when SMTP is not configured' do
@@ -169,14 +292,14 @@ RSpec.describe 'settings/general', type: :request do
         expect(flash[:alert]).to be_present
       end
 
-      it 'shows an alert with the error when delivery fails' do
-        allow_any_instance_of(Mail::Message).to receive(:deliver)
-          .and_raise(Net::SMTPAuthenticationError.new('authentication failed'))
+      it 'shows an alert when enqueueing fails' do
+        allow_any_instance_of(ActionMailer::Parameterized::MessageDelivery).to receive(:deliver_later)
+          .and_raise(Redis::CannotConnectError.new('connection failed'))
 
         post settings_test_email_path
 
         expect(response).to redirect_to(settings_general_index_path)
-        expect(flash[:alert]).to include('Net::SMTPAuthenticationError')
+        expect(flash[:alert]).to include('Redis::CannotConnectError')
       end
 
       it 'responds with turbo stream when requested' do
@@ -189,12 +312,12 @@ RSpec.describe 'settings/general', type: :request do
       it 'renders the button as a Turbo POST link' do
         get settings_general_index_path
 
-        link = response.body.scan(/<a[^>]*settings\/general\/test_email[^>]*>/).first
+        link = response.body.scan(%r{<a[^>]*settings/general/test_email[^>]*>}).first
         expect(link).to be_present
         expect(link).to include('data-turbo="true"')
         expect(link).to include('data-turbo-method="post"')
         expect(response.body).to include(
-          '>Sends a test message to your account email to verify SMTP settings</span>'
+          '>Queues a test message through the same background worker as system emails</span>'
         )
       end
 
@@ -240,6 +363,21 @@ RSpec.describe 'settings/general', type: :request do
           expect(response).to redirect_to(settings_general_index_path)
           expect(flash[:notice]).to include('Verified!')
           expect(user.reload.settings['supporter_github_username']).to eq('octocat')
+        end
+      end
+
+      context 'when an App Store supporter submits an email that is not a supporter' do
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          user.update!(settings: { 'app_store_supporter' => true })
+          allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return({ supporter: false })
+        end
+
+        it 'reports the email as not found' do
+          post settings_verify_supporter_path, params: { supporter_email: 'typo@example.com' }
+
+          expect(flash[:notice]).to be_nil
+          expect(flash[:alert]).to be_present
         end
       end
 

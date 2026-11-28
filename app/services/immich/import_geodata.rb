@@ -21,7 +21,10 @@ class Immich::ImportGeodata
     file_name         = file_name(immich_data_json)
     import            = user.imports.find_or_initialize_by(name: file_name, source: :immich_api)
 
-    create_import_failed_notification(import.name) and return unless import.new_record?
+    unless import.new_record?
+      create_import_failed_notification(import.name)
+      return
+    end
 
     import.file.attach(
       io: StringIO.new(immich_data_json.to_json),
@@ -76,7 +79,8 @@ class Immich::ImportGeodata
         kind: :info,
         title: I18n.t('services.immich.import_geodata.import_was_not_created'),
         content: I18n.t('services.immich.import_geodata.import_with_the_same_name_import_name_already_exists_if',
-                        import_name: import_name)
+                        import_name: import_name),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end

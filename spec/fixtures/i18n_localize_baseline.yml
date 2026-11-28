@@ -1,0 +1,596 @@
+---
+ca:
+  date.abbreviated_month_name:
+    single_digit_day: març
+    two_digit_day: oct.
+  date.day_month_year:
+    single_digit_day: 5 de març de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5 març 2026
+    two_digit_day: 24 oct. 2026
+  date.day_year:
+    single_digit_day: 5 del 2026
+    two_digit_day: 24 del 2026
+  date.default:
+    single_digit_day: 05/03/2026
+    two_digit_day: 24/10/2026
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 5 de març de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.medium:
+    single_digit_day: 5 març 2026
+    two_digit_day: 24 oct. 2026
+  date.medium_padded:
+    single_digit_day: 05 març 2026
+    two_digit_day: 24 oct. 2026
+  date.month_day:
+    single_digit_day: 5 de març
+    two_digit_day: 24 de octubre
+  date.month_day_padded:
+    single_digit_day: 05 de març
+    two_digit_day: 24 de octubre
+  date.month_day_year:
+    single_digit_day: 5 de març de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.month_name:
+    single_digit_day: març
+    two_digit_day: octubre
+  date.month_year:
+    single_digit_day: març del 2026
+    two_digit_day: octubre del 2026
+  date.short:
+    single_digit_day: 5 de març
+    two_digit_day: 24 de oct.
+  date.short_month_day:
+    single_digit_day: 5 març
+    two_digit_day: 24 oct.
+  date.short_month_day_padded:
+    single_digit_day: 05 març
+    two_digit_day: 24 oct.
+  date.short_month_day_weekday:
+    single_digit_day: 5 març, dijous
+    two_digit_day: 24 oct., dissabte
+  date.short_weekday_month_day:
+    single_digit_day: dj., 5 març
+    two_digit_day: ds., 24 oct.
+  date.weekday_month_day:
+    single_digit_day: dijous, 5 de març
+    two_digit_day: dissabte, 24 de octubre
+  time.default:
+    morning: dijous, 5 de març de 2026 09:07:04 +0000
+    afternoon: dissabte, 24 de octubre de 2026 14:05:30 +0000
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: " 5 març 2026, 09:07"
+    afternoon: 24 oct. 2026, 14:05
+  time.human_with_seconds:
+    morning: " 5 març 2026, 09:07:04"
+    afternoon: 24 oct. 2026, 14:05:30
+  time.long:
+    morning: 5 de març de 2026 09:07
+    afternoon: 24 de octubre de 2026 14:05
+  time.long_with_time:
+    morning: 5 de març de 2026 a les 09:07
+    afternoon: 24 de octubre de 2026 a les 14:05
+  time.short:
+    morning: 5 de març 09:07
+    afternoon: 24 de oct. 14:05
+  time.short_with_time:
+    morning: 05 març a les 09:07
+    afternoon: 24 oct. a les 14:05
+de:
+  date.abbreviated_month_name:
+    single_digit_day: Mär
+    two_digit_day: Okt
+  date.day_month_year:
+    single_digit_day: 5. März 2026
+    two_digit_day: 24. Oktober 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5. Mär 2026
+    two_digit_day: 24. Okt 2026
+  date.day_year:
+    single_digit_day: 5. 2026
+    two_digit_day: 24. 2026
+  date.default:
+    single_digit_day: 05.03.2026
+    two_digit_day: 24.10.2026
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 5. März 2026
+    two_digit_day: 24. Oktober 2026
+  date.medium:
+    single_digit_day: 5. Mär 2026
+    two_digit_day: 24. Okt 2026
+  date.medium_padded:
+    single_digit_day: 05. Mär 2026
+    two_digit_day: 24. Okt 2026
+  date.month_day:
+    single_digit_day: 5. März
+    two_digit_day: 24. Oktober
+  date.month_day_padded:
+    single_digit_day: 05. März
+    two_digit_day: 24. Oktober
+  date.month_day_year:
+    single_digit_day: 5. März 2026
+    two_digit_day: 24. Oktober 2026
+  date.month_name:
+    single_digit_day: März
+    two_digit_day: Oktober
+  date.month_year:
+    single_digit_day: März 2026
+    two_digit_day: Oktober 2026
+  date.short:
+    single_digit_day: 05.03.
+    two_digit_day: 24.10.
+  date.short_month_day:
+    single_digit_day: 5. Mär
+    two_digit_day: 24. Okt
+  date.short_month_day_padded:
+    single_digit_day: 05. Mär
+    two_digit_day: 24. Okt
+  date.short_month_day_weekday:
+    single_digit_day: 5. Mär, Donnerstag
+    two_digit_day: 24. Okt, Samstag
+  date.short_weekday_month_day:
+    single_digit_day: Do, 5. Mär
+    two_digit_day: Sa, 24. Okt
+  date.weekday_month_day:
+    single_digit_day: Donnerstag, 5. März
+    two_digit_day: Samstag, 24. Oktober
+  time.default:
+    morning: Donnerstag, 5. März 2026, 09:07 Uhr
+    afternoon: Samstag, 24. Oktober 2026, 14:05 Uhr
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: 5. Mär 2026, 09:07
+    afternoon: 24. Okt 2026, 14:05
+  time.human_with_seconds:
+    morning: 5. Mär 2026, 09:07:04
+    afternoon: 24. Okt 2026, 14:05:30
+  time.long:
+    morning: Donnerstag, 5. März 2026, 09:07 Uhr
+    afternoon: Samstag, 24. Oktober 2026, 14:05 Uhr
+  time.long_with_time:
+    morning: 5. März 2026 um 09:07 Uhr
+    afternoon: 24. Oktober 2026 um 14:05 Uhr
+  time.short:
+    morning: 5. Mär, 09:07 Uhr
+    afternoon: 24. Okt, 14:05 Uhr
+  time.short_with_time:
+    morning: 5. Mär um 09:07 Uhr
+    afternoon: 24. Okt um 14:05 Uhr
+en:
+  date.abbreviated_month_name:
+    single_digit_day: Mar
+    two_digit_day: Oct
+  date.day_month_year:
+    single_digit_day: " 5 March 2026"
+    two_digit_day: 24 October 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5 Mar 2026
+    two_digit_day: 24 Oct 2026
+  date.day_year:
+    single_digit_day: 5, 2026
+    two_digit_day: 24, 2026
+  date.default:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: March 05, 2026
+    two_digit_day: October 24, 2026
+  date.medium:
+    single_digit_day: Mar 5, 2026
+    two_digit_day: Oct 24, 2026
+  date.medium_padded:
+    single_digit_day: Mar 05, 2026
+    two_digit_day: Oct 24, 2026
+  date.month_day:
+    single_digit_day: March 5
+    two_digit_day: October 24
+  date.month_day_padded:
+    single_digit_day: March 05
+    two_digit_day: October 24
+  date.month_day_year:
+    single_digit_day: March 5, 2026
+    two_digit_day: October 24, 2026
+  date.month_name:
+    single_digit_day: March
+    two_digit_day: October
+  date.month_year:
+    single_digit_day: March 2026
+    two_digit_day: October 2026
+  date.short:
+    single_digit_day: Mar 05
+    two_digit_day: Oct 24
+  date.short_month_day:
+    single_digit_day: Mar 5
+    two_digit_day: Oct 24
+  date.short_month_day_padded:
+    single_digit_day: Mar 05
+    two_digit_day: Oct 24
+  date.short_month_day_weekday:
+    single_digit_day: Mar 5, Thursday
+    two_digit_day: Oct 24, Saturday
+  date.short_weekday_month_day:
+    single_digit_day: Thu, Mar 5
+    two_digit_day: Sat, Oct 24
+  date.weekday_month_day:
+    single_digit_day: Thursday, March 5
+    two_digit_day: Saturday, October 24
+  time.default:
+    morning: Thu, 05 Mar 2026 09:07:04 +0000
+    afternoon: Sat, 24 Oct 2026 14:05:30 +0000
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: " 5 Mar 2026, 09:07"
+    afternoon: 24 Oct 2026, 14:05
+  time.human_with_seconds:
+    morning: " 5 Mar 2026, 09:07:04"
+    afternoon: 24 Oct 2026, 14:05:30
+  time.long:
+    morning: March 05, 2026 09:07
+    afternoon: October 24, 2026 14:05
+  time.long_with_time:
+    morning: March 05, 2026 at 09:07 AM
+    afternoon: October 24, 2026 at 02:05 PM
+  time.short:
+    morning: 05 Mar 09:07
+    afternoon: 24 Oct 14:05
+  time.short_with_time:
+    morning: Mar 05 at 09:07 AM
+    afternoon: Oct 24 at 02:05 PM
+es:
+  date.abbreviated_month_name:
+    single_digit_day: mar
+    two_digit_day: oct
+  date.day_month_year:
+    single_digit_day: 5 de marzo de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 oct 2026
+  date.day_year:
+    single_digit_day: 5 de 2026
+    two_digit_day: 24 de 2026
+  date.default:
+    single_digit_day: 5/3/2026
+    two_digit_day: 24/10/2026
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 5 de marzo de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.medium:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 oct 2026
+  date.medium_padded:
+    single_digit_day: 05 mar 2026
+    two_digit_day: 24 oct 2026
+  date.month_day:
+    single_digit_day: 5 de marzo
+    two_digit_day: 24 de octubre
+  date.month_day_padded:
+    single_digit_day: 05 de marzo
+    two_digit_day: 24 de octubre
+  date.month_day_year:
+    single_digit_day: 5 de marzo de 2026
+    two_digit_day: 24 de octubre de 2026
+  date.month_name:
+    single_digit_day: marzo
+    two_digit_day: octubre
+  date.month_year:
+    single_digit_day: marzo de 2026
+    two_digit_day: octubre de 2026
+  date.short:
+    single_digit_day: 5 de mar
+    two_digit_day: 24 de oct
+  date.short_month_day:
+    single_digit_day: 5 mar
+    two_digit_day: 24 oct
+  date.short_month_day_padded:
+    single_digit_day: 05 mar
+    two_digit_day: 24 oct
+  date.short_month_day_weekday:
+    single_digit_day: 5 mar, jueves
+    two_digit_day: 24 oct, sábado
+  date.short_weekday_month_day:
+    single_digit_day: jue, 5 mar
+    two_digit_day: sáb, 24 oct
+  date.weekday_month_day:
+    single_digit_day: jueves, 5 de marzo
+    two_digit_day: sábado, 24 de octubre
+  time.default:
+    morning: jueves, 5 de marzo de 2026 09:07:04 +0000
+    afternoon: sábado, 24 de octubre de 2026 14:05:30 +0000
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: " 5 mar 2026, 09:07"
+    afternoon: 24 oct 2026, 14:05
+  time.human_with_seconds:
+    morning: " 5 mar 2026, 09:07:04"
+    afternoon: 24 oct 2026, 14:05:30
+  time.long:
+    morning: 5 de marzo de 2026 09:07
+    afternoon: 24 de octubre de 2026 14:05
+  time.long_with_time:
+    morning: 5 de marzo de 2026 a las 09:07
+    afternoon: 24 de octubre de 2026 a las 14:05
+  time.short:
+    morning: 5 de mar 09:07
+    afternoon: 24 de oct 14:05
+  time.short_with_time:
+    morning: 05 mar a las 09:07
+    afternoon: 24 oct a las 14:05
+fr:
+  date.abbreviated_month_name:
+    single_digit_day: mars
+    two_digit_day: oct.
+  date.day_month_year:
+    single_digit_day: " 5 mars 2026"
+    two_digit_day: 24 octobre 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5 mars 2026
+    two_digit_day: 24 oct. 2026
+  date.day_year:
+    single_digit_day: 5 2026
+    two_digit_day: 24 2026
+  date.default:
+    single_digit_day: 05/03/2026
+    two_digit_day: 24/10/2026
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 5 mars 2026
+    two_digit_day: 24 octobre 2026
+  date.medium:
+    single_digit_day: 5 mars 2026
+    two_digit_day: 24 oct. 2026
+  date.medium_padded:
+    single_digit_day: 05 mars 2026
+    two_digit_day: 24 oct. 2026
+  date.month_day:
+    single_digit_day: 5 mars
+    two_digit_day: 24 octobre
+  date.month_day_padded:
+    single_digit_day: 05 mars
+    two_digit_day: 24 octobre
+  date.month_day_year:
+    single_digit_day: 5 mars 2026
+    two_digit_day: 24 octobre 2026
+  date.month_name:
+    single_digit_day: mars
+    two_digit_day: octobre
+  date.month_year:
+    single_digit_day: mars 2026
+    two_digit_day: octobre 2026
+  date.short:
+    single_digit_day: 5 mars
+    two_digit_day: 24 oct.
+  date.short_month_day:
+    single_digit_day: 5 mars
+    two_digit_day: 24 oct.
+  date.short_month_day_padded:
+    single_digit_day: 05 mars
+    two_digit_day: 24 oct.
+  date.short_month_day_weekday:
+    single_digit_day: 5 mars, jeudi
+    two_digit_day: 24 oct., samedi
+  date.short_weekday_month_day:
+    single_digit_day: jeu 5 mars
+    two_digit_day: sam 24 oct.
+  date.weekday_month_day:
+    single_digit_day: jeudi 5 mars
+    two_digit_day: samedi 24 octobre
+  time.default:
+    morning: 05 mars 2026 09h 07min 04s
+    afternoon: 24 octobre 2026 14h 05min 30s
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: " 5 mars 2026, 09:07"
+    afternoon: 24 oct. 2026, 14:05
+  time.human_with_seconds:
+    morning: " 5 mars 2026, 09:07:04"
+    afternoon: 24 oct. 2026, 14:05:30
+  time.long:
+    morning: jeudi 05 mars 2026 09h07
+    afternoon: samedi 24 octobre 2026 14h05
+  time.long_with_time:
+    morning: 5 mars 2026 à 09:07
+    afternoon: 24 octobre 2026 à 14:05
+  time.short:
+    morning: 05 mars 09h07
+    afternoon: 24 oct. 14h05
+  time.short_with_time:
+    morning: 05 mars à 09:07
+    afternoon: 24 oct. à 14:05
+pl:
+  date.abbreviated_month_name:
+    single_digit_day: mar
+    two_digit_day: paź
+  date.day_month_year:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 paź 2026
+  date.day_month_year_abbreviated:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 paź 2026
+  date.day_year:
+    single_digit_day: 5 2026
+    two_digit_day: 24 2026
+  date.default:
+    single_digit_day: 05.03.2026
+    two_digit_day: 24.10.2026
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 paź 2026
+  date.medium:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 paź 2026
+  date.medium_padded:
+    single_digit_day: 05 mar 2026
+    two_digit_day: 24 paź 2026
+  date.month_day:
+    single_digit_day: 5 mar
+    two_digit_day: 24 paź
+  date.month_day_padded:
+    single_digit_day: 05 mar
+    two_digit_day: 24 paź
+  date.month_day_year:
+    single_digit_day: 5 mar 2026
+    two_digit_day: 24 paź 2026
+  date.month_name:
+    single_digit_day: marzec
+    two_digit_day: październik
+  date.month_year:
+    single_digit_day: marzec 2026
+    two_digit_day: październik 2026
+  date.short:
+    single_digit_day: 5 mar
+    two_digit_day: 24 paź
+  date.short_month_day:
+    single_digit_day: 5 mar
+    two_digit_day: 24 paź
+  date.short_month_day_padded:
+    single_digit_day: 05 mar
+    two_digit_day: 24 paź
+  date.short_month_day_weekday:
+    single_digit_day: 5 mar, czwartek
+    two_digit_day: 24 paź, sobota
+  date.short_weekday_month_day:
+    single_digit_day: czw, 5 mar
+    two_digit_day: sob, 24 paź
+  date.weekday_month_day:
+    single_digit_day: czwartek, 5 mar
+    two_digit_day: sobota, 24 paź
+  time.default:
+    morning: czw, 5 mar 2026, 09:07:04 +0000
+    afternoon: sob, 24 paź 2026, 14:05:30 +0000
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: 5 mar 2026, 09:07
+    afternoon: 24 paź 2026, 14:05
+  time.human_with_seconds:
+    morning: 5 mar 2026, 09:07:04
+    afternoon: 24 paź 2026, 14:05:30
+  time.long:
+    morning: czwartek, 5 mar 2026, 09:07
+    afternoon: sobota, 24 paź 2026, 14:05
+  time.long_with_time:
+    morning: 5 mar 2026 o 09:07
+    afternoon: 24 paź 2026 o 14:05
+  time.short:
+    morning: 5 mar, 09:07
+    afternoon: 24 paź, 14:05
+  time.short_with_time:
+    morning: 5 mar o 09:07
+    afternoon: 24 paź o 14:05
+zh:
+  date.abbreviated_month_name:
+    single_digit_day: 3月
+    two_digit_day: 10月
+  date.day_month_year:
+    single_digit_day: 2026年03月5日
+    two_digit_day: 2026年10月24日
+  date.day_month_year_abbreviated:
+    single_digit_day: 2026年03月5日
+    two_digit_day: 2026年10月24日
+  date.day_year:
+    single_digit_day: 2026年3月5日
+    two_digit_day: 2026年10月24日
+  date.default:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.iso:
+    single_digit_day: '2026-03-05'
+    two_digit_day: '2026-10-24'
+  date.long:
+    single_digit_day: 2026年03月05日
+    two_digit_day: 2026年10月24日
+  date.medium:
+    single_digit_day: 2026年03月5日
+    two_digit_day: 2026年10月24日
+  date.medium_padded:
+    single_digit_day: 2026年03月05日
+    two_digit_day: 2026年10月24日
+  date.month_day:
+    single_digit_day: 03月5日
+    two_digit_day: 10月24日
+  date.month_day_padded:
+    single_digit_day: 03月05日
+    two_digit_day: 10月24日
+  date.month_day_year:
+    single_digit_day: 2026年03月5日
+    two_digit_day: 2026年10月24日
+  date.month_name:
+    single_digit_day: 三月
+    two_digit_day: 十月
+  date.month_year:
+    single_digit_day: 2026年三月
+    two_digit_day: 2026年十月
+  date.short:
+    single_digit_day: 03月05日
+    two_digit_day: 10月24日
+  date.short_month_day:
+    single_digit_day: 03月5日
+    two_digit_day: 10月24日
+  date.short_month_day_padded:
+    single_digit_day: 03月05日
+    two_digit_day: 10月24日
+  date.short_month_day_weekday:
+    single_digit_day: 03月5日 星期四
+    two_digit_day: 10月24日 星期六
+  date.short_weekday_month_day:
+    single_digit_day: 周四 03月5日
+    two_digit_day: 周六 10月24日
+  date.weekday_month_day:
+    single_digit_day: 星期四 03月5日
+    two_digit_day: 星期六 10月24日
+  time.default:
+    morning: 2026年03月05日 09:07
+    afternoon: 2026年10月24日 14:05
+  time.hour_minute:
+    morning: '09:07'
+    afternoon: '14:05'
+  time.human:
+    morning: 2026年03月5日 09:07
+    afternoon: 2026年10月24日 14:05
+  time.human_with_seconds:
+    morning: 2026年03月5日 09:07:04
+    afternoon: 2026年10月24日 14:05:30
+  time.long:
+    morning: 2026年03月05日 09:07
+    afternoon: 2026年10月24日 14:05
+  time.long_with_time:
+    morning: 2026年03月05日 09:07
+    afternoon: 2026年10月24日 14:05
+  time.short:
+    morning: 03月05日 09:07
+    afternoon: 10月24日 14:05
+  time.short_with_time:
+    morning: 03月05日 09:07
+    afternoon: 10月24日 14:05

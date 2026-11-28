@@ -64,6 +64,40 @@ RSpec.describe Dawarich::AggregatingMetrics do
     end
   end
 
+  describe 'when the remote endpoint responds slower than the total deadline' do
+    let(:middleware) do
+      described_class.new(
+        local_app,
+        remote_url: 'http://sidekiq.internal:9394/metrics',
+        remote_user: 'prometheus',
+        remote_password: 'secret',
+        deadline: 0.2
+      )
+    end
+
+    before do
+      stub_request(:get, 'http://sidekiq.internal:9394/metrics')
+        .to_return do
+          sleep 2
+          { status: 200, body: remote_body }
+        end
+    end
+
+    it 'returns local metrics within the deadline instead of waiting for the remote' do
+      allow(Rails.logger).to receive(:warn)
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      status, _headers, body = request
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      out = body.each.to_a.join
+      expect(status).to eq(200)
+      expect(elapsed).to be < 1
+      expect(out).to include('rails_requests_total')
+      expect(out).not_to include('sidekiq_jobs_executed_total')
+      expect(Rails.logger).to have_received(:warn).with(/exceeded the 0.2s deadline/)
+    end
+  end
+
   describe 'when remote endpoint is unreachable' do
     before do
       stub_request(:get, 'http://sidekiq.internal:9394/metrics')
@@ -104,5 +138,20 @@ RSpec.describe Dawarich::AggregatingMetrics do
       expect(status).to eq(404)
       expect(WebMock).not_to have_requested(:get, 'http://sidekiq.internal:9394/metrics')
     end
+  end
+
+  it 'serves embedded worker metrics locally without fetching a separate container' do
+    stub_const('ENV', ENV.to_h.merge('SIDEKIQ_EMBEDDED' => 'true').except('SIDEKIQ_METRICS_URL'))
+    embedded_body = local_body + remote_body
+    app = described_class.new(->(_env) { [200, { 'Content-Type' => 'text/plain' }, [embedded_body]] },
+                              remote_url: 'http://sidekiq.internal:9394/metrics',
+                              remote_user: 'prometheus', remote_password: 'secret')
+    stub_request(:get, 'http://sidekiq.internal:9394/metrics').to_return(body: remote_body)
+
+    status, _headers, body = app.call(Rack::MockRequest.env_for('/metrics'))
+
+    expect(status).to eq(200)
+    expect(body.join).to eq(embedded_body)
+    expect(WebMock).not_to have_requested(:get, 'http://sidekiq.internal:9394/metrics')
   end
 end

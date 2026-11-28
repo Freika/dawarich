@@ -50,7 +50,7 @@ module Insights
           next unless toponym.is_a?(Hash)
           next unless toponym['cities'].is_a?(Array)
 
-          countries.add(toponym['country']) if toponym['country'].present? && toponym['cities'].any?
+          countries.add(toponym['country']) if toponym['country'].present?
 
           toponym['cities'].each do |city|
             cities.add(city['city']) if city.is_a?(Hash) && city['city'].present?

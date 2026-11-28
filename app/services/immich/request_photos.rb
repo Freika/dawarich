@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class Immich::RequestPhotos
-  include SslConfigurable
   include DayBoundable
 
   attr_reader :user, :immich_api_base_url, :immich_api_key, :start_date, :end_date
@@ -34,15 +33,10 @@ class Immich::RequestPhotos
 
     # TODO: Handle pagination using nextPage
     while page <= max_pages
-      response = HTTParty.post(
-        immich_api_base_url,
-        http_options_with_ssl(
-          @user, :immich, {
-            headers: headers,
-            body: request_body(page).to_json,
-            timeout: 10
-          }
-        )
+      response = Integrations::Transport.request(
+        :post, immich_api_base_url,
+        headers: headers, body: request_body(page).to_json,
+        skip_ssl_verification: user.safe_settings.immich_skip_ssl_verification
       )
 
       result = Immich::ResponseValidator.validate_and_parse(response)
@@ -63,10 +57,10 @@ class Immich::RequestPhotos
       page += 1
     end
 
-    data.flatten
+    data.flatten.reject { |photo| photo['isArchived'] == true || photo['visibility'] == 'archive' }
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
-    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.reportable?(e)
 
     nil
   end
@@ -85,7 +79,9 @@ class Immich::RequestPhotos
       size: 1000,
       page: page,
       order: 'asc',
-      withExif: true
+      withExif: true,
+      isArchived: false,
+      visibility: 'timeline'
     }
 
     return body unless end_date
@@ -111,13 +107,16 @@ class Immich::RequestPhotos
     parsed ? parsed.iso8601 : value
   end
 
-  # A bare date names a whole day, so an end bound written that way has to
-  # reach its last instant before the shift to UTC. Only the end bound is
-  # widened; the start bound keeps the parsing it has always had.
+  # A bare date names a whole day in the application time zone, so both bounds
+  # written that way are read in that zone before the shift to UTC, and an end
+  # bound reaches the day's last instant.
   def parse_time(value, end_of_day: false)
     return if value.blank?
 
-    return Time.zone.parse(value.to_s).end_of_day.utc if end_of_day && date_only?(value)
+    if date_only?(value)
+      day = Time.zone.parse(value.to_s)
+      return (end_of_day ? day.end_of_day : day).utc
+    end
 
     Time.parse(value.to_s).utc
   rescue ArgumentError, TypeError

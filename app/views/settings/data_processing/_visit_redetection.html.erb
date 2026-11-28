@@ -1,0 +1,14 @@
+<% cooldown_active = current_user.visits_redetected_at.present? && current_user.visits_redetected_at > 1.hour.ago %>
+<div class="flex flex-col gap-2 rounded-box border border-base-content/10 p-3">
+  <p class="text-xs text-base-content/70 grow"><%= t('.replaces_all_suggested_visits_across_your_entire_history_with_fresh') %></p>
+  <% if current_user.plan_restricted? %>
+    <p class="text-xs text-base-content/60"><%= t('.on_the_lite_plan_re_detection_covers_your_visible_12') %></p>
+  <% end %>
+  <%= button_to t('.re_run_detection_on_full_history'), visits_redetections_path,
+                method: :post, disabled: cooldown_active, class: 'btn btn-outline btn-sm w-fit',
+                form: { data: { turbo_confirm: t('.replace_all_suggested_visits_across_your_full_history_confirmed_visits') } },
+                data: { testid: 'visit-redetection-button' } %>
+  <% if cooldown_active %>
+    <span class="text-xs text-base-content/60"><%= t('.available_again_at') %> <%= l(current_user.visits_redetected_at + 1.hour, format: :short_with_time) %>.</span>
+  <% end %>
+</div>

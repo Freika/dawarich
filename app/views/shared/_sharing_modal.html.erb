@@ -5,7 +5,7 @@
       <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
     </form>
 
-    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+    <h3 class="font-medium text-lg mb-4 flex items-center gap-2">
       <%= icon 'link' %> <%= t('.sharing_settings') %>
     </h3>
 
@@ -15,13 +15,14 @@
         <p class="text-gray-600 mb-4">
           <%= t('.share_your_monthly_stats_publicly_with_friends_and_family_public') %>
         </p>
-        <a href="<%= upgrade_url(utm_medium: 'stats', utm_content: 'sharing') %>"
+        <a data-turbo="false" href="<%= upgrade_url(utm_medium: 'stats', utm_content: 'sharing') %>"
            class="btn btn-primary">
           <%= t('.upgrade_to_pro') %>
         </a>
       </div>
     <% else %>
       <div data-controller="sharing-modal">
+        <%= render 'shared_links/privacy_zones_note' %>
         <%= form_with(url: sharing_stats_path(year: @year, month: @month), method: :patch,
                       data: { sharing_modal_target: "form" }) do %>
 
@@ -75,7 +76,7 @@
         <div class="alert alert-info mb-4">
           <%= icon 'info' %>
           <div>
-            <h3 class="font-bold"><%= t('.privacy_protection') %></h3>
+            <h3 class="font-medium"><%= t('.privacy_protection') %></h3>
             <div class="text-sm">
               <%= t('.exact_coordinates_are_hidden') %><br>
               <%= t('.personal_information_is_not_included') %>

@@ -166,17 +166,17 @@ RSpec.describe 'malformed persisted toponyms' do
       result = helper.countries_and_cities_stat_for_year(2026, stats)
 
       expect(result).to include(
-        countries_count: 1,
+        countries_count: 3,
         cities_count: 1,
-        grouped_by_country: { 'France' => ['Paris'] }
+        grouped_by_country: { 'France' => ['Paris'], 'Italy' => [], 'Spain' => [] }
       )
     end
 
     it 'skips malformed values in monthly statistics' do
       stat = create_stat_with_toponyms(user, malformed_toponyms)
 
-      expect(helper.countries_and_cities_stat_for_month(stat)).to eq('1 countries, 1 cities')
-      expect(helper.countries_visited(stat)).to eq(1)
+      expect(helper.countries_and_cities_stat_for_month(stat)).to eq('3 countries, 1 cities')
+      expect(helper.countries_visited(stat)).to eq(3)
     end
   end
 
@@ -194,7 +194,7 @@ RSpec.describe 'malformed persisted toponyms' do
     end
   end
 
-  describe 'stats index page', type: :request do
+  describe 'all-time insights page', type: :request do
     before do
       sign_in user
       configure_instance_geocoding
@@ -203,7 +203,7 @@ RSpec.describe 'malformed persisted toponyms' do
     it 'renders the yearly aggregation when a month holds malformed toponyms' do
       create_stat_with_toponyms(user, malformed_toponyms)
 
-      get '/stats'
+      get insights_path(year: 'all')
 
       expect(response.status).to eq(200)
       expect(response.body).to include('France')

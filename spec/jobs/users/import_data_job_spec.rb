@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Users::ImportDataJob, type: :job do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :user_data_archive, name: 'test_export.zip') }
-  let(:archive_path) { Rails.root.join('tmp/test_export.zip') }
+  let(:archive_path) { Rails.root.join("tmp/test_export_#{SecureRandom.hex(4)}.zip") }
   let(:job) { described_class.new }
 
   before do
@@ -72,6 +72,12 @@ RSpec.describe Users::ImportDataJob, type: :job do
 
         job.perform(import.id)
       end
+
+      it 'holds a shared user-data lock while importing' do
+        expect(Users::DataLock).to receive(:with_shared).with(user.id).and_call_original
+
+        job.perform(import.id)
+      end
     end
 
     context 'when import fails' do
@@ -122,17 +128,28 @@ RSpec.describe Users::ImportDataJob, type: :job do
       end
     end
 
+    context 'when the import owner is soft-deleted' do
+      before { user.mark_as_deleted! }
+
+      it 'skips the import without notifying' do
+        expect(Users::ImportData).not_to receive(:new)
+        expect(::Notifications::Create).not_to receive(:new)
+
+        job.perform(import.id)
+      end
+    end
+
     context 'when import does not exist' do
       let(:non_existent_import_id) { 999_999 }
 
-      it 'raises ActiveRecord::RecordNotFound' do
-        expect { job.perform(non_existent_import_id) }.to raise_error(ActiveRecord::RecordNotFound)
+      it 'skips processing' do
+        expect { job.perform(non_existent_import_id) }.not_to raise_error
       end
 
       it 'does not create a notification when import is not found' do
         expect(::Notifications::Create).not_to receive(:new)
 
-        expect { job.perform(non_existent_import_id) }.to raise_error(ActiveRecord::RecordNotFound)
+        job.perform(non_existent_import_id)
       end
     end
 

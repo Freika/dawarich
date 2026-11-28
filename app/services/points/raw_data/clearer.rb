@@ -76,7 +76,9 @@ module Points
           return
         end
 
-        cleared_count = clear_points_in_batches(point_ids)
+        raise StandardError, "Archive #{archive.id} file is missing from storage" unless archive.file_stored?
+
+        cleared_count = clear_points_in_batches(archive.id, point_ids)
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
@@ -89,12 +91,14 @@ module Points
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
       end
 
-      def clear_points_in_batches(point_ids)
+      def clear_points_in_batches(archive_id, point_ids)
         total_cleared = 0
 
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
-            cleared = Point.where(id: batch, raw_data_archived: true).update_all(
+            # Re-checks the link: a point restored and re-archived since the
+            # pluck now belongs to an archive that may not be verified yet.
+            cleared = Point.where(id: batch, raw_data_archived: true, raw_data_archive_id: archive_id).update_all(
               raw_data: {},
               lock_version: Arel.sql('lock_version')
             )

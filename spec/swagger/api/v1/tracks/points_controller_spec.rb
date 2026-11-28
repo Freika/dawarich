@@ -10,6 +10,8 @@ RSpec.describe 'Track Points API', type: :request do
     parameter name: :track_id, in: :path, type: :integer, required: true, description: 'Track ID'
 
     get 'Retrieves points for a track' do
+      parameter name: :mask_privacy_zones, in: :query, type: :boolean, required: false,
+                description: 'Leave out data inside the user\'s privacy zones'
       tags 'Tracks'
       description 'Returns location points belonging to a specific track, ordered by timestamp ascending'
       produces 'application/json'

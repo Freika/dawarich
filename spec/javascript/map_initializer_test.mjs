@@ -18,6 +18,14 @@ const tileFreshnessSource = await readFile(
   "utf8",
 )
 
+const globeProjectionSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/globe_projection.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+
 // Date.now() collides when two loads land in the same millisecond, and the
 // cached module keeps the previous test's fakes.
 let moduleLoadCount = 0
@@ -30,17 +38,18 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     ),
     "utf8",
   )
-  const withoutImports = source
-    .replace('import.meta.resolve("mapbox-gl-rtl-text")', '"/assets/rtl.js"')
-    .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
   const dependencies = `
     const maplibregl = globalThis.__mapInitializerMaplibre
     const getMapStyle = globalThis.__mapInitializerGetMapStyle
     const Toast = globalThis.__mapInitializerToast
-    const registerRTLTextPlugin = () => {}
     const translate = (key) => key
+    const startMapLoading = () => {}
+    const finishMapLoadingOn = () => {}
+    const collapsedAttributionControl = () => new maplibregl.AttributionControl()
     ${basemapUrlSource.replace(/^export /gm, "")}
     ${tileFreshnessSource}
+    ${globeProjectionSource.replace(/^export /gm, "")}
   `
   globalThis.__mapInitializerGetMapStyle = getMapStyle
   globalThis.__mapInitializerToast = Toast
@@ -243,4 +252,28 @@ test("a refreshed tile layer is requested with a fresh version", async (t) => {
     ).searchParams.get("_"),
     null,
   )
+})
+
+test("a map without a chosen style uses the light style", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const requested = []
+  globalThis.__mapInitializerMaplibre = {
+    Map: FakeMap,
+    NavigationControl: class {},
+    AttributionControl: class {},
+  }
+  const { MapInitializer } = await loadMapInitializer({
+    getMapStyle: async (styleName) => {
+      requested.push(styleName)
+      return { version: 8, sources: {}, layers: [] }
+    },
+    Toast: { error: () => {} },
+  })
+  globalThis.window = { location: { origin: "https://app.example" } }
+
+  await MapInitializer.initialize({}, {})
+
+  assert.deepEqual(requested, ["light"])
 })

@@ -5,12 +5,22 @@ class Trip < ApplicationRecord
   include Calculateable
   include DistanceConvertible
   include Notable
+  include TripDetectionOrigin
 
   RECALCULATE_COOLDOWN = 60.seconds
   # A stamped point reads its device from point_sources exclusively; the
   # legacy column serves unstamped rows (see PointDimensionReads).
   DEVICE_SQL = 'COALESCE(CASE WHEN points.source_id IS NULL THEN points.tracker_id ' \
                "ELSE point_sources.tracker_id END, '')"
+
+  DAY_ENDPOINT_COLUMNS = [
+    'ST_XMin(ST_Extent(points.lonlat::geometry))', 'ST_YMin(ST_Extent(points.lonlat::geometry))',
+    'ST_XMax(ST_Extent(points.lonlat::geometry))', 'ST_YMax(ST_Extent(points.lonlat::geometry))',
+    '(ARRAY_AGG(ST_X(points.lonlat::geometry) ORDER BY points.timestamp))[1]',
+    '(ARRAY_AGG(ST_Y(points.lonlat::geometry) ORDER BY points.timestamp))[1]',
+    '(ARRAY_AGG(ST_X(points.lonlat::geometry) ORDER BY points.timestamp DESC))[1]',
+    '(ARRAY_AGG(ST_Y(points.lonlat::geometry) ORDER BY points.timestamp DESC))[1]'
+  ].map { |column| Arel.sql(column) }.freeze
 
   has_rich_text :description
 
@@ -31,11 +41,44 @@ class Trip < ApplicationRecord
 
   attr_accessor :skip_calculation_enqueue
 
+  scope :with_route_summary, lambda {
+    select(
+      *(column_names - ['path']).map { |column| arel_table[column] },
+      Arel.sql('trips.path IS NOT NULL AS route_present'),
+      Arel.sql('ST_XMin(trips.path) AS route_min_lon'), Arel.sql('ST_YMin(trips.path) AS route_min_lat'),
+      Arel.sql('ST_XMax(trips.path) AS route_max_lon'), Arel.sql('ST_YMax(trips.path) AS route_max_lat')
+    )
+  }
+
+  def route_present?
+    return self[:route_present] if has_attribute?(:route_present)
+
+    path.present?
+  end
+
+  def route_bounds
+    return unless route_present?
+
+    if has_attribute?(:route_min_lon)
+      [[self[:route_min_lon], self[:route_min_lat]], [self[:route_max_lon], self[:route_max_lat]]].map do |pair|
+        pair.map(&:to_f)
+      end
+    else
+      xs = path.points.map(&:x)
+      ys = path.points.map(&:y)
+      [[xs.min, ys.min], [xs.max, ys.max]]
+    end
+  end
+
   after_create :enqueue_calculation_jobs, if: :should_enqueue_calculation_jobs?
   after_update :enqueue_calculation_jobs, if: :should_recalculate_after_update?
 
   def enqueue_calculation_jobs
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
+  end
+
+  def calculation_missing?
+    !route_present? || distance.blank?
   end
 
   def source_imported?
@@ -54,33 +97,55 @@ class Trip < ApplicationRecord
     @primary_device_windows ||= build_primary_device_windows
   end
 
+  def cached_primary_device_windows
+    recording_devices[:windows]
+  end
+
+  def multiple_recording_devices?
+    recording_devices[:multiple]
+  end
+
+  def recording_devices_cache_key
+    @recording_devices_cache_key ||= begin
+      range = { start_at: started_at.to_i, end_at: ended_at.to_i }
+      ['trip_recording_devices/v3', id, started_at.to_i, ended_at.to_i,
+       Points::Revision.for_user(user_id, **range), Tracks::Revision.for_user(user_id, **range),
+       user.safe_settings.minutes_between_routes]
+    end
+  end
+
   def plan_geojson
     Trips::PlanGeojson.new(self).call
   end
 
-  def day_stats(timezone)
+  def day_stats(timezone, points_scope: primary_device_points)
     day_expr = "(to_timestamp(points.timestamp) AT TIME ZONE #{self.class.connection.quote(timezone)})::date"
-    rows = primary_device_points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+    rows = points_scope.route_observations.reorder(nil).group(Arel.sql(day_expr)).pluck(
       Arel.sql(day_expr),
       Arel.sql('MIN(points.timestamp)'),
       Arel.sql('MAX(points.timestamp)'),
-      Arel.sql('COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)')
+      Arel.sql('COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)'),
+      *DAY_ENDPOINT_COLUMNS
     )
 
-    rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), stats|
+    rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m, *geometry), stats|
       stats[day] = {
         first_time: Time.at(first_ts).in_time_zone(timezone),
         last_time: Time.at(last_ts).in_time_zone(timezone),
         distance_m: distance_m.to_f
-      }
+      }.merge(day_geometry(geometry))
     end
+  end
+
+  def plan_scoped_route_points
+    user.plan_restricted? ? primary_device_points.merge(user.scoped_points) : primary_device_points
   end
 
   def primary_device_points
     scope = points.left_joins(:source)
-    return scope if device_windows.map(&:first).uniq.size <= 1
+    return scope unless multiple_recording_devices?
 
-    windows = primary_device_windows.map do |window|
+    windows = cached_primary_device_windows.map do |window|
       self.class.sanitize_sql_array(['(?, ?::bigint, ?::bigint)',
                                      window[:tracker_id], window[:start_at], window[:end_at]])
     end
@@ -113,7 +178,17 @@ class Trip < ApplicationRecord
   end
 
   def calculate_countries
-    self.visited_countries = points.pluck(:country_name).uniq.compact
+    country = Countries::NameAliases::POINT_NAME_SQL
+
+    self.visited_countries = points.not_flyover.where.not(country_name: nil)
+                                   .joins(Countries::NameAliases.point_joins_sql)
+                                   .group(country).reorder(Arel.sql('MIN(points.timestamp)'))
+                                   .pluck(Arel.sql(country))
+  end
+
+  # Rows calculated before the names were unified can hold both spellings.
+  def canonical_visited_countries
+    Array(visited_countries).map { |country| Countries::NameAliases.canonical(country) }.uniq
   end
 
   private
@@ -147,6 +222,21 @@ class Trip < ApplicationRecord
     else
       windows << { tracker_id:, start_at:, end_at: }
     end
+  end
+
+  def recording_devices
+    @recording_devices ||= Rails.cache.fetch(recording_devices_cache_key, expires_in: 1.hour) do
+      { windows: primary_device_windows, multiple: device_windows.map(&:first).uniq.size > 1 }
+    end
+  end
+
+  def day_geometry(values)
+    min_lon, min_lat, max_lon, max_lat, first_lon, first_lat, last_lon, last_lat = values.map(&:to_f)
+    {
+      bounds: [[min_lon, min_lat], [max_lon, max_lat]],
+      first_coordinates: [first_lon, first_lat],
+      last_coordinates: [last_lon, last_lat]
+    }
   end
 
   def device_windows

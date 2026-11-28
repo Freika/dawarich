@@ -15,6 +15,7 @@ class Photos::CacheCleaner
     return unless Rails.cache.respond_to?(:delete_matched)
 
     Rails.cache.delete_matched("photos_#{user.id}_*")
+    Rails.cache.delete_matched("photos_search/#{user.id}/*")
     Rails.cache.delete_matched("photo_thumbnail_#{user.id}_*")
   end
 end

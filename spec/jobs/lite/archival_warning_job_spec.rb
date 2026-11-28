@@ -49,6 +49,21 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       end
     end
 
+    context 'when the oldest point is hidden by the window but not yet 12 months old' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      it 'tells the user that data has been archived' do
+        travel_to Time.utc(2026, 10, 25, 10) do
+          point = create(:point, user: lite_user, timestamp: Time.utc(2025, 10, 25, 20).to_i)
+          expect(lite_user.scoped_points).not_to include(point)
+
+          described_class.perform_now
+
+          expect(Notification.find_by!(user: lite_user).title).to eq('Data has been archived')
+        end
+      end
+    end
+
     context 'when a Lite user has data approaching 11 months old' do
       before do
         create(:point, user: lite_user, timestamp: 11.months.ago.to_i)
@@ -60,6 +75,13 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(notification.user).to eq(lite_user)
         expect(notification.kind).to eq('warning')
         expect(notification.title).to include('archive')
+      end
+
+      it 'does not repeat the warning when the sent-marker is lost while it is unread' do
+        described_class.perform_now
+        lite_user.reload.update!(settings: lite_user.settings.except('archival_warnings'))
+
+        expect { described_class.perform_now }.not_to change(Notification, :count)
       end
 
       it 'uses the recipient saved locale for the persisted notification' do
@@ -183,11 +205,21 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
 
       it 'notifies again when the user upgrades and is downgraded again' do
         described_class.perform_now
+        downgraded.notifications.update_all(read_at: Time.current)
         downgraded.update!(plan: :pro)
         downgraded.update!(plan: :lite)
 
         expect { described_class.perform_now }
           .to change { Notification.where(user: downgraded).count }.by(1)
+      end
+
+      it 'keeps a single notice when the first one was never read before the second downgrade' do
+        described_class.perform_now
+        downgraded.update!(plan: :pro)
+        downgraded.update!(plan: :lite)
+
+        expect { described_class.perform_now }
+          .not_to(change { Notification.where(user: downgraded).unread.count })
       end
     end
   end

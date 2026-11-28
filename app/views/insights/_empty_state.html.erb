@@ -1,0 +1,8 @@
+<section class="rounded-xl border border-base-300 bg-base-200 p-8 text-center" data-testid="insights-empty">
+  <h2 class="text-2xl font-semibold"><%= t('ux_p2.insights.empty_title') %></h2>
+  <p class="text-base-content/70 max-w-lg mx-auto my-4"><%= t('ux_p2.insights.empty_help') %></p>
+  <div class="flex flex-wrap justify-center gap-3">
+    <%= link_to t('ux_p2.insights.import'), new_import_path, class: 'btn btn-primary' %>
+    <%= link_to t('ux_p2.insights.connect'), map_v2_path(onboarding: 'track'), class: 'btn btn-outline' %>
+  </div>
+</section>

@@ -20,7 +20,7 @@ RSpec.describe 'Timezone Switching', type: :request do
 
     context 'when user is not authenticated' do
       it 'does not crash and uses default timezone' do
-        get root_path
+        get new_user_session_path
 
         expect(response).to have_http_status(:success)
       end

@@ -2,28 +2,17 @@
 
 require 'rails_helper'
 
-class ThumbnailFakeResponse
-  attr_reader :body, :code
-
-  def initialize(body)
-    @body = body
-    @code = 200
-  end
-
-  def success?
-    true
-  end
-end
-
 RSpec.describe 'Photo thumbnail does not cache binary blobs in Rails.cache', type: :request do
   let(:user) { create(:user, :with_immich_integration) }
   let(:photo_id) { 'asset-abc-123' }
   let(:body) { 'X' * 100_000 }
 
-  before do
-    allow(HTTParty).to receive(:get).and_return(ThumbnailFakeResponse.new(body))
-    Rails.cache.clear
+  let!(:upstream) do
+    stub_request(:get, "https://immich.example.com/api/assets/#{photo_id}/thumbnail?size=preview")
+      .to_return(status: 200, body: body)
   end
+
+  before { Rails.cache.clear }
 
   it 'never writes a photo_thumbnail_* entry into Rails.cache' do
     expect(Rails.cache).not_to receive(:write)
@@ -46,11 +35,11 @@ RSpec.describe 'Photo thumbnail does not cache binary blobs in Rails.cache', typ
   end
 
   it 'fetches upstream every request (no server-side memoization between calls)' do
-    expect(HTTParty).to receive(:get).twice.and_return(ThumbnailFakeResponse.new(body))
-
     2.times do
       get "/api/v1/photos/#{photo_id}/thumbnail",
           params: { api_key: user.api_key, source: 'immich' }
     end
+
+    expect(upstream).to have_been_requested.twice
   end
 end

@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { PhotoClusterGallery } from "../components/photo_cluster_gallery"
 import {
   escapeAttribute,
   escapeHtml,
@@ -7,6 +8,7 @@ import {
 } from "../utils/geojson_transformers"
 import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 import { BaseLayer } from "./base_layer"
+import { photoSpider } from "./photos/spider"
 
 /**
  * Photos layer with clustering and thumbnail markers
@@ -19,7 +21,6 @@ export class PhotosLayer extends BaseLayer {
     this.timezone = options.timezone || "UTC"
     this.markerCache = new Map() // keyed by feature id for efficient reuse
     this.legCache = new Map() // spider leg layer ids keyed by feature id
-    this._spiderfiedMarkers = []
     this._syncMarkers = this._syncMarkers.bind(this)
     this._onClusterClick = this._onClusterClick.bind(this)
     this._onMoveEnd = this._onMoveEnd.bind(this)
@@ -28,6 +29,34 @@ export class PhotosLayer extends BaseLayer {
     }
     this._onClusterLeave = () => {
       this.map.getCanvas().style.cursor = ""
+    }
+    this._closeGallery = this._closeGallery.bind(this)
+    this._onKeyDown = (event) => {
+      if (event.key !== "Enter" || !this.visible) return
+      const canvas = this.map.getCanvas()
+      const center = { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 }
+      const features = this.map.queryRenderedFeatures({
+        layers: ["photos-clusters"],
+      })
+      features.sort((a, b) => {
+        const distance = (feature) => {
+          const point = this.map.project(feature.geometry.coordinates)
+          return Math.hypot(point.x - center.x, point.y - center.y)
+        }
+        return distance(a) - distance(b)
+      })
+      if (features.length) {
+        event.preventDefault()
+        this._openCluster(features[0])
+      }
+    }
+    this._onStyleData = () => {
+      if (
+        this.gallery &&
+        this.map.getSource(this.sourceId) !== this.gallerySource
+      ) {
+        this._closeGallery()
+      }
     }
     this._onSourceData = (event) => {
       if (event.sourceId === this.sourceId && event.isSourceLoaded) {
@@ -42,7 +71,9 @@ export class PhotosLayer extends BaseLayer {
       data: this.data || { type: "FeatureCollection", features: [] },
       cluster: true,
       clusterRadius: 60,
-      clusterMaxZoom: 15,
+      // Keep identical coordinates browsable throughout the map zoom range.
+      maxzoom: 24,
+      clusterMaxZoom: 23,
     }
   }
 
@@ -89,21 +120,44 @@ export class PhotosLayer extends BaseLayer {
     return ["photos-clusters", "photos-cluster-count"]
   }
 
+  // Stack cluster counts over circles, directly above the given layer, so
+  // layers that already sit higher (live and replay markers) stay on top.
+  raiseAbove(layerId) {
+    const ownIds = this.getLayerIds()
+    const otherIds = (this.map.getStyle?.()?.layers ?? [])
+      .map((layer) => layer.id)
+      .filter((id) => !ownIds.includes(id))
+    const index = otherIds.indexOf(layerId)
+    const beforeId = index === -1 ? undefined : otherIds[index + 1]
+    for (const id of ownIds) {
+      if (this.map.getLayer(id)) this.map.moveLayer(id, beforeId)
+    }
+  }
+
   async add(data) {
     this.data = data
 
     // Register source and cluster layers via BaseLayer
     super.add(data)
 
-    // Cluster click → zoom in
+    // Cluster click → bounded gallery
     this.map.on("click", "photos-clusters", this._onClusterClick)
 
     // Cursor changes on cluster hover
     this.map.on("mouseenter", "photos-clusters", this._onClusterEnter)
     this.map.on("mouseleave", "photos-clusters", this._onClusterLeave)
 
-    // Sync DOM markers when data loads or map moves;
-    // also clear any spiderfied cluster expansion on move
+    const canvas = this.map.getCanvas()
+    this._canvasDescription = canvas.getAttribute("aria-description")
+    canvas.setAttribute(
+      "aria-description",
+      translate("photo_cluster.keyboard_hint"),
+    )
+    canvas.addEventListener("keydown", this._onKeyDown)
+    this.map.on("styledata", this._onStyleData)
+    this.map.on("remove", this._closeGallery)
+
+    // Sync DOM markers when data loads or map moves
     this.map.on("moveend", this._onMoveEnd)
 
     // Also sync when source data finishes loading
@@ -114,6 +168,7 @@ export class PhotosLayer extends BaseLayer {
   }
 
   async update(data) {
+    this._closeGallery()
     this.data = data
     const source = this.map.getSource(this.sourceId)
     if (source?.setData) {
@@ -123,7 +178,6 @@ export class PhotosLayer extends BaseLayer {
   }
 
   _onMoveEnd() {
-    this._clearSpiderfiedMarkers()
     this._syncMarkers()
   }
 
@@ -133,102 +187,32 @@ export class PhotosLayer extends BaseLayer {
     })
     if (!features.length) return
 
-    const clusterId = features[0].properties.cluster_id
+    this._openCluster(features[0])
+  }
+
+  _closeGallery() {
+    this.gallery?.close()
+    this.gallery = null
+    this.gallerySource = null
+  }
+
+  _openCluster(feature) {
     const source = this.map.getSource(this.sourceId)
-
-    source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-      if (err) return
-
-      // If expansion zoom exceeds max zoom, the cluster can't split further
-      // (all points share the same coordinates). Spiderfy them directly.
-      if (zoom > this.map.getMaxZoom()) {
-        this._spiderfyCluster(
-          source,
-          clusterId,
-          features[0].geometry.coordinates,
-        )
-        return
-      }
-
-      this.map.easeTo({
-        center: features[0].geometry.coordinates,
-        zoom: zoom,
-      })
-    })
-  }
-
-  /**
-   * Expand a cluster that can't be split by zooming (same-coordinate points).
-   * Fetches all leaves and displays them as spiderfied DOM markers.
-   */
-  _spiderfyCluster(source, clusterId, center) {
-    source.getClusterLeaves(clusterId, Infinity, 0, (err, leaves) => {
-      if (err || !leaves?.length) return
-
-      // Remove any existing spiderfied markers
-      this._clearSpiderfiedMarkers()
-
-      const centerPx = this.map.project(center)
-      const positions = this._computeSpiralPositions(leaves.length, centerPx)
-
-      this._spiderfiedMarkers = []
-
-      leaves.forEach((leaf, i) => {
-        const lngLat = this.map.unproject([positions[i].x, positions[i].y])
-
-        // Draw a thin line from the original position to the spiderfied position
-        const line = this._createSpiderLeg(center, [lngLat.lng, lngLat.lat])
-        if (line) this._spiderfiedMarkers.push({ type: "leg", id: line })
-
-        const marker = this._createPhotoMarker(leaf, [lngLat.lng, lngLat.lat])
-        this._spiderfiedMarkers.push({ type: "marker", ref: marker })
-      })
-    })
-  }
-
-  /**
-   * Create a spider leg line between the cluster center and an offset marker
-   */
-  _createSpiderLeg(from, to) {
-    const legId = `spider-leg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    try {
-      this.map.addSource(legId, {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: [from, to] },
-        },
-      })
-      this.map.addLayer({
-        id: legId,
-        type: "line",
-        source: legId,
-        paint: {
-          "line-color": "rgba(59, 130, 246, 0.4)",
-          "line-width": 1.5,
-        },
-      })
-      return legId
-    } catch (_e) {
-      return null
-    }
-  }
-
-  /**
-   * Remove all spiderfied markers and legs
-   */
-  _clearSpiderfiedMarkers() {
-    if (!this._spiderfiedMarkers) return
-
-    for (const item of this._spiderfiedMarkers) {
-      if (item.type === "marker") {
-        item.ref.remove()
-      } else if (item.type === "leg") {
-        if (this.map.getLayer(item.id)) this.map.removeLayer(item.id)
-        if (this.map.getSource(item.id)) this.map.removeSource(item.id)
-      }
-    }
-    this._spiderfiedMarkers = []
+    if (!source || !this.visible) return
+    const { cluster_id: clusterId, point_count: total } = feature.properties
+    this._closeGallery()
+    this.gallerySource = source
+    this.gallery = new PhotoClusterGallery({
+      total,
+      timezone: this.timezone,
+      returnFocus: this.map.getCanvas(),
+      loadPage: (limit, offset) =>
+        source.getClusterLeaves(clusterId, limit, offset),
+      onClose: () => {
+        this.gallery = null
+        this.gallerySource = null
+      },
+    }).open()
   }
 
   /**
@@ -283,7 +267,7 @@ export class PhotosLayer extends BaseLayer {
     // Add or update markers and legs
     for (const [id, feature] of visibleFeatures) {
       const offset = offsets.get(id)
-      const origin = feature.geometry.coordinates
+      const origin = this._originalCoordinates(feature)
 
       if (this.markerCache.has(id)) {
         if (offset) {
@@ -303,177 +287,6 @@ export class PhotosLayer extends BaseLayer {
           this._updateLeg(id, origin, offset)
         }
       }
-    }
-  }
-
-  /**
-   * Group nearby features and compute offset positions so markers don't overlap.
-   * Uses a spiral layout that scales well for large groups (60+ photos).
-   * Returns a Map of featureId -> [offsetLng, offsetLat] for features that need moving.
-   */
-  _computeSpiderOffsets(visibleFeatures) {
-    const offsets = new Map()
-    const OVERLAP_PX = 40
-
-    // Convert each feature to screen coordinates for proximity grouping
-    const entries = []
-    for (const [id, feature] of visibleFeatures) {
-      const [lng, lat] = feature.geometry.coordinates
-      const point = this.map.project([lng, lat])
-      entries.push({ id, lng, lat, px: point.x, py: point.y })
-    }
-
-    // Group features by proximity using a simple greedy approach
-    const assigned = new Set()
-    const groups = []
-
-    for (let i = 0; i < entries.length; i++) {
-      if (assigned.has(entries[i].id)) continue
-
-      const group = [entries[i]]
-      assigned.add(entries[i].id)
-
-      for (let j = i + 1; j < entries.length; j++) {
-        if (assigned.has(entries[j].id)) continue
-
-        const dx = entries[i].px - entries[j].px
-        const dy = entries[i].py - entries[j].py
-        if (Math.sqrt(dx * dx + dy * dy) < OVERLAP_PX) {
-          group.push(entries[j])
-          assigned.add(entries[j].id)
-        }
-      }
-
-      if (group.length > 1) {
-        groups.push(group)
-      }
-    }
-
-    // For each overlapping group, compute spiral positions
-    for (const group of groups) {
-      const centerPx = {
-        x: group.reduce((s, e) => s + e.px, 0) / group.length,
-        y: group.reduce((s, e) => s + e.py, 0) / group.length,
-      }
-
-      const positions = this._computeSpiralPositions(group.length, centerPx)
-
-      group.forEach((entry, i) => {
-        const lngLat = this.map.unproject([positions[i].x, positions[i].y])
-        offsets.set(entry.id, [lngLat.lng, lngLat.lat])
-      })
-    }
-
-    return offsets
-  }
-
-  /**
-   * Compute spiral positions for N items around a center point.
-   * Places items in concentric rings, each ring fitting more items,
-   * with enough spacing so 50px markers don't overlap.
-   */
-  _computeSpiralPositions(count, center) {
-    const MARKER_SIZE = 50
-    const SPACING = 8
-    const step = MARKER_SIZE + SPACING // distance between marker centers
-    const positions = []
-
-    if (count <= 8) {
-      // Small group: single circle
-      const radius = Math.max(step, (count * step) / (2 * Math.PI))
-      for (let i = 0; i < count; i++) {
-        const angle = (2 * Math.PI * i) / count - Math.PI / 2
-        positions.push({
-          x: center.x + radius * Math.cos(angle),
-          y: center.y + radius * Math.sin(angle),
-        })
-      }
-    } else {
-      // Large group: concentric rings
-      let placed = 0
-      let ring = 1
-
-      while (placed < count) {
-        const radius = ring * step
-        const circumference = 2 * Math.PI * radius
-        const fitInRing = Math.min(
-          Math.floor(circumference / step),
-          count - placed,
-        )
-
-        for (let i = 0; i < fitInRing; i++) {
-          const angle = (2 * Math.PI * i) / fitInRing - Math.PI / 2
-          positions.push({
-            x: center.x + radius * Math.cos(angle),
-            y: center.y + radius * Math.sin(angle),
-          })
-          placed++
-        }
-        ring++
-      }
-    }
-
-    return positions
-  }
-
-  /**
-   * Create or update a spider leg line from a photo's original position to its offset position.
-   * Reuses existing source/layer if one already exists for this feature id.
-   */
-  _updateLeg(featureId, origin, offset) {
-    const lineData = {
-      type: "Feature",
-      geometry: { type: "LineString", coordinates: [origin, offset] },
-    }
-
-    const legId = this.legCache.get(featureId)
-    if (legId) {
-      // Update existing leg
-      const source = this.map.getSource(legId)
-      if (source) {
-        source.setData(lineData)
-        return
-      }
-    }
-
-    // Create new leg
-    const newLegId = `photo-leg-${featureId}`
-    try {
-      this.map.addSource(newLegId, { type: "geojson", data: lineData })
-      this.map.addLayer({
-        id: newLegId,
-        type: "line",
-        source: newLegId,
-        paint: {
-          "line-color": "rgba(59, 130, 246, 0.4)",
-          "line-width": 1.5,
-          "line-dasharray": [2, 2],
-        },
-      })
-      this.legCache.set(featureId, newLegId)
-    } catch (_e) {
-      // Silently ignore if source/layer already exists from a race
-    }
-  }
-
-  /**
-   * Remove a spider leg line for a given feature id
-   */
-  _removeLeg(featureId) {
-    const legId = this.legCache.get(featureId)
-    if (!legId) return
-
-    if (this.map.getLayer(legId)) this.map.removeLayer(legId)
-    if (this.map.getSource(legId)) this.map.removeSource(legId)
-    this.legCache.delete(featureId)
-  }
-
-  /**
-   * Remove all spider leg lines
-   */
-  _clearAllLegs() {
-    for (const [id] of this.legCache) {
-      this._removeLeg(id)
     }
   }
 
@@ -535,6 +348,7 @@ export class PhotosLayer extends BaseLayer {
    * @param {Object} feature - GeoJSON feature with photo properties
    */
   showPhotoPopup(feature) {
+    this._closeGallery()
     const {
       thumbnail_url,
       taken_at,
@@ -545,7 +359,7 @@ export class PhotosLayer extends BaseLayer {
       type,
       source,
     } = feature.properties
-    const [lng, lat] = feature.geometry.coordinates
+    const [lng, lat] = this._originalCoordinates(feature)
 
     const takenDate = taken_at
       ? formatTimestamp(taken_at, this.timezone)
@@ -627,9 +441,9 @@ export class PhotosLayer extends BaseLayer {
    * Hide cluster layers and all cached DOM markers
    */
   hide() {
+    this._closeGallery()
     this.visible = false
     this.setVisibility(false)
-    this._clearSpiderfiedMarkers()
     for (const [, marker] of this.markerCache) {
       marker.getElement().style.display = "none"
     }
@@ -644,8 +458,15 @@ export class PhotosLayer extends BaseLayer {
    * Remove layer, clean up markers and event listeners
    */
   remove() {
+    this._closeGallery()
+    const canvas = this.map.getCanvas()
+    canvas.removeEventListener("keydown", this._onKeyDown)
+    if (this._canvasDescription == null)
+      canvas.removeAttribute("aria-description")
+    else canvas.setAttribute("aria-description", this._canvasDescription)
+    this.map.off("styledata", this._onStyleData)
+    this.map.off("remove", this._closeGallery)
     this.clearMarkers()
-    this._clearSpiderfiedMarkers()
     this.map.off("moveend", this._onMoveEnd)
     this.map.off("click", "photos-clusters", this._onClusterClick)
     this.map.off("mouseenter", "photos-clusters", this._onClusterEnter)
@@ -654,3 +475,5 @@ export class PhotosLayer extends BaseLayer {
     super.remove()
   }
 }
+
+Object.assign(PhotosLayer.prototype, photoSpider)

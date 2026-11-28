@@ -5,7 +5,6 @@
 # release of Photoprism.
 
 class Photoprism::RequestPhotos
-  include SslConfigurable
   include DayBoundable
 
   attr_reader :user, :photoprism_api_base_url, :photoprism_api_key, :start_date, :end_date
@@ -59,21 +58,16 @@ class Photoprism::RequestPhotos
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Photoprism photo fetch failed: #{e.message}")
     @connection_failed = true
-    raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
+    raise if @raise_on_connection_error && Photos::ConnectionErrors.reportable?(e)
 
     []
   end
 
   def fetch_page(offset)
-    response = HTTParty.get(
-      photoprism_api_base_url,
-      http_options_with_ssl(
-        @user, :photoprism, {
-          headers: headers,
-          query: request_params(offset),
-          timeout: 10
-        }
-      )
+    response = Integrations::Transport.request(
+      :get, photoprism_api_base_url,
+      headers: headers, query: request_params(offset),
+      skip_ssl_verification: user.safe_settings.photoprism_skip_ssl_verification
     )
 
     result = Photoprism::ResponseValidator.validate_and_parse(response)
@@ -100,7 +94,7 @@ class Photoprism::RequestPhotos
 
   def request_params(offset = 0)
     params = offset.zero? ? default_params : default_params.merge(offset: offset)
-    params[:before] = (utc_date(end_date) + 1.day).iso8601 if end_date.present?
+    params[:before] = (utc_date(end_date) + 2.days).iso8601 if end_date.present?
     params
   end
 
@@ -115,7 +109,9 @@ class Photoprism::RequestPhotos
   end
 
   # Photoprism filters after/before on the UTC TakenAt date, while the bounds it
-  # is given arrive rendered in the application time zone.
+  # is given arrive rendered in the application time zone. A Photoprism server
+  # running east of UTC reads both dates one day early, so before carries an
+  # extra day of slack and time_framed_data trims the result to the exact range.
   def utc_date(value)
     value.to_datetime.utc.to_date
   end

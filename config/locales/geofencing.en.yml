@@ -1,0 +1,123 @@
+en:
+  activerecord:
+    errors:
+      models:
+        webhook:
+          attributes:
+            url:
+              https_required: must use https
+            base:
+              too_many: You can have up to %{count} webhooks.
+  webhooks:
+    notifications:
+      deactivated:
+        title: Webhook switched off
+        content: Webhook “%{name}” failed five deliveries in a row and was switched off. Check the receiving URL, then switch it back on in Settings → Geofencing.
+  settings:
+    navigation:
+      geofencing: Geofencing
+    geofencing:
+      show:
+        title: Geofencing
+        intro: "Dawarich records when you enter or leave a place with “Notify on enter and leave” turned on, reported by your phone or worked out from the points it receives, and can send each event to your own services."
+        webhooks: Webhooks
+        webhooks_intro: Each event is sent as a signed JSON POST. Compare the X-Dawarich-Signature header with an HMAC-SHA256 of the body made with your secret.
+        no_webhooks: No webhooks yet.
+        new_webhook: New webhook
+        upgrade_title: Webhooks are part of Pro
+        upgrade_text: Send enter and leave events to Home Assistant, Node-RED, n8n or your own service.
+        upgrade: Upgrade to Pro
+        events: Events
+        no_events: "No enter or leave events yet. They appear when your phone or tracking app reports a point inside one of these places."
+        no_places: "No place reports enter and leave yet. Open a place and turn on “Notify on enter and leave”."
+        open_places: "Open Places"
+        place: "Place"
+        all_places: "All places"
+        from: From
+        to: To
+        filter: Filter
+        time: Time
+        event: Event
+        source: Source
+        deliveries: Deliveries
+        event_types:
+          enter: Entered
+          leave: Left
+        sources:
+          native_app: Phone
+          server_inferred: Location points
+          owntracks_native: OwnTracks
+        delivered: '%{count} delivered'
+        failed: '%{count} failed'
+        in_progress: '%{count} in progress'
+        not_sent_late: "Not sent: arrived more than %{minutes} min late"
+        not_sent_throttled: "Not sent: more than %{count} enter and leave events in an hour"
+    webhooks:
+      form:
+        name: Name
+        url: URL
+        events: Events
+        places: "Places"
+        places_hint: "Leave all unchecked to get events for every place that notifies."
+        home_assistant_hint: "Home Assistant answers every request with 200, even when the webhook ID is wrong, so “Delivered” here does not prove your automation ran: check its trace in Home Assistant. Home Assistant cannot check the signature; the webhook ID in the URL is what keeps it private."
+        home_assistant_cloud_hint: "By default, Home Assistant only accepts webhooks from its own network. Use a Nabu Casa webhook URL, or switch off local_only in the trigger’s webhook settings."
+        active: Active
+        save: Save
+        create: Add webhook
+      webhook:
+        active: Active
+        inactive: Switched off
+        failing: Failing
+        every_place: "Every place"
+        places_count:
+          one: "%{count} place"
+          other: "%{count} places"
+        last_success: Last delivered %{time} ago
+        never_delivered: Nothing delivered yet
+        failures:
+          one: '%{count} failed delivery in a row'
+          other: '%{count} failed deliveries in a row'
+        test: Send test
+        deliveries: Deliveries
+        regenerate: New secret
+        delete: Delete
+        edit: Edit
+        confirm_regenerate: Generate a new secret? The old one stops working right away.
+        confirm_delete: Delete this webhook?
+      secret:
+        title: Signing secret for %{name}
+        text: Copy it now — it will not be shown again.
+        copy: Copy
+      show:
+        title: 'Deliveries: %{name}'
+        back: Back to geofencing
+        empty: No deliveries yet.
+        time: Time
+        event: Event
+        status: Status
+        attempts: Attempts
+        response: Response
+        retry: Retry
+        test: Test
+        statuses:
+          pending: Pending
+          success: Delivered
+          failure: Failed
+          retrying: Retrying
+      create:
+        created: Webhook added.
+      update:
+        updated: Webhook saved.
+      destroy:
+        deleted: Webhook deleted.
+      test:
+        sent: Test event sent.
+        no_place: "Turn on “Notify on enter and leave” for a place first to send a test event."
+        rate_limited: "Too many test sends. Wait a minute and try again."
+      retry_delivery:
+        queued: Delivery queued again.
+  places:
+    drawer:
+      geofence: "Notify on enter and leave"
+      geofence_hint: "Uses the Visit Radius (%{radius} m)."
+      geofence_link: "Events and webhooks"

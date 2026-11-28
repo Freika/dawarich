@@ -7,6 +7,19 @@ require 'active_support/core_ext/integer/time'
 # your test database is "scratch space" for the test suite and is wiped
 # and recreated between test runs. Don't rely on the data there!
 
+# parallel_tests runs one process per TEST_ENV_NUMBER ('', '2', '3', …). Each one
+# needs Redis dbs of its own: Rails.cache.clear flushes the cache db before every
+# example, and Sidekiq keeps the geocoding cooldown in its db. Process N gets the
+# cache db 2(N-1) and shares 2(N-1)+1 for Sidekiq, Rack::Attack and Action Cable,
+# so a default 16-db Redis fits 8 processes.
+if ENV['PARALLEL_TEST_GROUPS']
+  raise 'Run at most 8 parallel test processes (parallel_rspec -n 8)' if ENV['PARALLEL_TEST_GROUPS'].to_i > 8
+
+  slot = [ENV['TEST_ENV_NUMBER'].to_i, 1].max - 1
+  ENV['RAILS_CACHE_DB'] = (slot * 2).to_s
+  %w[RAILS_JOB_QUEUE_DB RACK_ATTACK_REDIS_DB RAILS_WS_DB].each { |key| ENV[key] = ((slot * 2) + 1).to_s }
+end
+
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 

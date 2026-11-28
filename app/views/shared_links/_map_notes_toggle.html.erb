@@ -1,0 +1,10 @@
+<%# Off by default. The hint is the warning: notes are read when the link is opened. %>
+<div class="form-control mt-4">
+  <label class="label cursor-pointer gap-3">
+    <span class="label-text min-w-0"><%= t('shared_links.map_notes_toggle.label') %></span>
+    <%= hidden_field_tag 'shared_link[settings][show_map_notes]', '0', id: nil %>
+    <%= check_box_tag 'shared_link[settings][show_map_notes]', '1', false, class: 'checkbox',
+                      aria: { describedby: 'show-map-notes-hint' } %>
+  </label>
+  <p class="text-xs opacity-70 min-w-0" id="show-map-notes-hint"><%= t('shared_links.map_notes_toggle.hint') %></p>
+</div>

@@ -35,6 +35,15 @@ class Points::AnomalyFilter
   # leg then reads as ordinary air travel while the round trip needs hundreds of
   # extra km/h. Well above any road or rail speed, well below a plausible flight.
   MAX_DETOUR_SPEED_KMH = 300
+  # Airliners pass 1000 km/h over the ground in a jet stream, so two fast legs
+  # alone do not condemn a run: a fix that leaves the route adds a detour, which
+  # the detour test catches. Only legs faster than any aircraft a phone rides in
+  # still convict on their own.
+  # ponytail: at cruise speed a sideways error up to about three quarters of a
+  # leg (some 15 km on fixes a minute apart) stays below the detour ceiling and
+  # is kept; a speed-scaled ceiling would catch it if that ever matters more
+  # than keeping real flights.
+  MAX_CRUISE_SPEED_KMH = 2_500
   # A stale fix can sit hours from its neighbours, where the round trip it
   # implies is slow enough to be physically possible and no speed test can
   # condemn it. What condemns it is the shape: the fixes either side are the
@@ -63,6 +72,22 @@ class Points::AnomalyFilter
   # hours spans any GPS dropout inside a tracked day without reaching into a
   # neighbouring coarse-only era.
   SENTINEL_PRECISE_NEIGHBOR_SECONDS = 6 * 60 * 60
+  # An idle phone on network positioning (most often Android) sometimes
+  # reports a fix from a distant cell tower and is home again on the next fix.
+  # Any tracker is judged, not only the Android no-motion signature: OwnTracks
+  # leaves those fields out of network fixes. Each leg looks like driving, so
+  # only the shape condemns it — and the shape is kept narrow because a real
+  # short errand looks similar. The fix must be coarse (PRECISE_FIX_METERS), it
+  # must be the only fix away, its neighbours from the same tracker must each
+  # be at most TOWER_JUMP_MAX_LEG_SECONDS from it and agree with each other on
+  # where the stay is, and it must land between TOWER_JUMP_MIN_METERS and
+  # MIN_EXCURSION_METERS from both — beyond that contradicts_stay? owns it —
+  # and further than TOWER_JUMP_ACCURACY_MULTIPLE radii, so a cell fix whose
+  # own radius almost reaches home is left alone.
+  TOWER_JUMP_MAX_LEG_SECONDS = 15 * 60
+  TOWER_JUMP_RETURN_METERS = 500
+  TOWER_JUMP_MIN_METERS = 1_000
+  TOWER_JUMP_ACCURACY_MULTIPLE = 3
   # Where a visit report keeps its departure date. motion_data first: raw_data
   # is emptied by archival, and a flag that cannot be re-derived would silently
   # return on the next reset re-run. Both values are untrusted client strings,
@@ -95,6 +120,7 @@ class Points::AnomalyFilter
     count += filter_by_accuracy
     count += filter_visit_reports
     count += filter_sentinel_fixes
+    count += filter_tower_jumps
     count += filter_by_speed
     # Anomalies are excluded from vector tiles, so flipping the flag changes
     # tile content without a point write. Bump only the window's years — this
@@ -108,6 +134,12 @@ class Points::AnomalyFilter
     bump_tile_epoch if @flagged_for_rebuild.any?
     enqueue_dependent_rebuilds if @invalidate_dependents && @flagged_for_rebuild.any?
     count
+  end
+
+  # Tracks the last #call detached flagged points from. A caller that passed
+  # invalidate_dependents: false owns their rebuild.
+  def detached_track_ids
+    (@flagged_for_rebuild || []).filter_map { |_id, track_id, _timestamp| track_id }.uniq
   end
 
   private
@@ -131,15 +163,23 @@ class Points::AnomalyFilter
   end
 
   # Pass 1: Mark points whose reported accuracy radius is so large the reading
-  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why this is not
-  # the user's gps_accuracy_threshold.
+  # cannot be a position at all. See ABSURD_ACCURACY_METERS for why the user's
+  # gps_accuracy_threshold is opt-in: phone tracking needs it to hide slow
+  # sideways noise no speed pass can see, Google Timeline imports lose real
+  # route geometry to it.
   def filter_by_accuracy
     flag_anomalies(
       Point.where(user_id: @user_id, timestamp: @start_time..@end_time)
            .not_anomaly
            .where.not(accuracy: nil)
-           .where('accuracy > ?', ABSURD_ACCURACY_METERS)
+           .where('accuracy > ?', accuracy_limit)
     )
+  end
+
+  def accuracy_limit
+    return ABSURD_ACCURACY_METERS unless user_settings.gps_accuracy_filter_enabled?
+
+    [user_settings.gps_accuracy_threshold, ABSURD_ACCURACY_METERS].min
   end
 
   # Visit-report pass: iOS visit monitoring (Overland `action: visit`) delivers
@@ -182,18 +222,32 @@ class Points::AnomalyFilter
   # is the only record there is. The neighbour must come from the same device
   # — a second tracker on reduced-accuracy permission stays coarse even when
   # the account's other device is precise, the same per-stream rule the speed
-  # pass applies. Imported histories are untouched because their points do
-  # not carry the sentinel combination.
+  # pass applies. The Android app has no sentinels: it reports zero vertical
+  # accuracy and zero speed for every fix, so there a coarse fix only counts
+  # when the same position repeats nearby, which is how a cell tower shows up.
+  # A one-off coarse fix may be the only record of a real move and stays.
   def filter_sentinel_fixes
     # The candidate window reaches back past the caller's range: a wake-up
     # tower fix often arrives in a batch of one, before the precise fixes
     # that condemn it exist, and the batch that brings those fixes starts
     # after it. Each run therefore re-judges the recent past.
+    sentinel_conditions = <<~SQL.squish
+      (vertical_accuracy < 0 AND velocity LIKE '-%') OR (
+        vertical_accuracy = 0 AND velocity ~ '^0+(\\.0+)?$' AND
+        EXISTS (SELECT 1 FROM points repeated
+          WHERE repeated.user_id = points.user_id
+          AND repeated.tracker_id IS NOT DISTINCT FROM points.tracker_id
+          AND repeated.timestamp BETWEEN points.timestamp - :repeat_window
+          AND points.timestamp + :repeat_window
+          AND repeated.id <> points.id
+          AND repeated.lonlat = points.lonlat)
+      )
+    SQL
+
     relation = Point.where(user_id: @user_id,
                            timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
                     .not_anomaly
-                    .where(vertical_accuracy: ...0)
-                    .where("velocity LIKE '-%'")
+                    .where(sentinel_conditions, repeat_window: SENTINEL_PRECISE_NEIGHBOR_SECONDS)
                     .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
                     .where(
                       'EXISTS (SELECT 1 FROM points precise ' \
@@ -209,17 +263,66 @@ class Points::AnomalyFilter
     flag_anomalies(relation)
   end
 
+  # Tower-jump pass: see TOWER_JUMP_MAX_LEG_SECONDS. Like the sentinel pass it
+  # re-judges the recent past, because the fix back home that condemns a jump
+  # arrives in the batch after it. Chunked by month like the speed pass, so a
+  # large import never sorts its whole history at once.
+  def filter_tower_jumps
+    count = 0
+
+    each_monthly_chunk do |chunk_start, chunk_end|
+      count += flag_anomalies(Point.where(id: tower_jump_ids(chunk_start, chunk_end)))
+    end
+
+    count
+  end
+
+  def tower_jump_ids(chunk_start, chunk_end)
+    sql = <<~SQL.squish
+      WITH stream AS (
+        SELECT id, timestamp, accuracy, lonlat::geography AS here,
+               LAG(lonlat::geography) OVER per_device AS before,
+               LAG(timestamp) OVER per_device AS before_at,
+               LEAD(lonlat::geography) OVER per_device AS after,
+               LEAD(timestamp) OVER per_device AS after_at
+        FROM points
+        WHERE user_id = :user_id AND anomaly IS NOT TRUE
+          AND timestamp BETWEEN :stream_from AND :stream_to
+        WINDOW per_device AS (PARTITION BY COALESCE(tracker_id, '') ORDER BY timestamp, id)
+      )
+      SELECT id FROM stream
+      WHERE timestamp BETWEEN :judged_from AND :judged_to
+        AND accuracy > :coarse
+        AND timestamp - before_at <= :leg AND after_at - timestamp <= :leg
+        AND ST_DWithin(before, after, :return_meters)
+        AND ST_Distance(here, before) > GREATEST(:min_meters, accuracy * :multiple)
+        AND ST_Distance(here, after) > GREATEST(:min_meters, accuracy * :multiple)
+        AND ST_Distance(here, before) <= :max_meters
+        AND ST_Distance(here, after) <= :max_meters
+    SQL
+
+    leg = TOWER_JUMP_MAX_LEG_SECONDS
+    Point.connection.select_values(
+      Point.sanitize_sql(
+        [sql, { user_id: @user_id, stream_from: chunk_start - (2 * leg), stream_to: chunk_end + leg,
+                judged_from: chunk_start - leg, judged_to: chunk_end, coarse: PRECISE_FIX_METERS,
+                leg: leg, return_meters: TOWER_JUMP_RETURN_METERS, min_meters: TOWER_JUMP_MIN_METERS,
+                multiple: TOWER_JUMP_ACCURACY_MULTIPLE, max_meters: MIN_EXCURSION_METERS }]
+      )
+    )
+  end
+
   # A flagged point leaves its track in the same UPDATE: recalculation reads
   # track.points, so a stale track_id would keep feeding the leap back into
   # the geometry it exists to fix. The rows are collected across passes and
   # their tracks and months rebuilt once, at the end of the run.
   def flag_anomalies(relation, extra_set = nil)
-    flagged = relation.pluck(:id, :track_id, :timestamp)
+    flagged = relation.where(anomaly_override: false).pluck(:id, :track_id, :timestamp)
     return 0 if flagged.empty?
 
     set_clause = 'anomaly = TRUE, track_id = NULL, updated_at = NOW()'
     set_clause = "#{set_clause}, #{extra_set}" if extra_set
-    Point.where(id: flagged.map(&:first)).update_all(set_clause)
+    Point.where(id: flagged.map(&:first), anomaly_override: false).update_all(set_clause)
 
     @flagged_for_rebuild.concat(flagged)
 
@@ -242,6 +345,9 @@ class Points::AnomalyFilter
                                      .map { |year, month| Stats::CalculatingJob.new(@user_id, year, month) }
 
     jobs = track_jobs + stats_jobs
+    oldest_timestamp = @flagged_for_rebuild.filter_map { |_, _, timestamp| timestamp }.min
+    Achievements::CheckJob.defer(@user_id, oldest_timestamp: oldest_timestamp)
+
     jobs.each { |job| job.queue_name = @job_queue.to_s } if @job_queue
     ActiveJob.perform_all_later(jobs)
   end
@@ -269,7 +375,7 @@ class Points::AnomalyFilter
   end
 
   def filter_speed_chunk(chunk_start, chunk_end)
-    points, main_points = fetch_points_with_context(chunk_start, chunk_end)
+    points, judged_points = fetch_points_with_context(chunk_start, chunk_end)
     return 0 if points.size < 3
 
     speeds_by_point = calculate_all_speeds(points.map(&:id))
@@ -278,15 +384,14 @@ class Points::AnomalyFilter
     threshold = speed_threshold(speeds_by_point)
     return 0 if threshold.nil?
 
-    # Only check points in the main range (not context points)
-    main_range_ids = main_points.map(&:id).to_set
+    judged_ids = judged_points.map(&:id).to_set
     frozen_ids = frozen_range_ids(points, chunk_start, chunk_end)
 
     # Each device is its own stream. Interleaving them by timestamp invents
     # journeys between devices that nobody made — the same reason track
     # generation groups by tracker_id (Tracks::TimeChunkProcessorJob).
     anomaly_ids = points.group_by { |point| point.tracker_id.to_s }.values.flat_map do |stream|
-      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids) +
+      displaced_run_ids(stream, speeds_by_point, threshold, judged_ids) +
         frozen_fix_run_ids(stream, speeds_by_point, threshold, frozen_ids)
     end
 
@@ -310,7 +415,7 @@ class Points::AnomalyFilter
   # and its return leg is often slow enough to look like an ordinary flight.
   # Each candidate excursion is therefore judged on the distance it ADDS versus
   # going straight from the fix before it to the fix after it.
-  def displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids)
+  def displaced_run_ids(stream, speeds_by_point, threshold, judged_ids)
     displaced = Set.new
 
     # Slide a window of every allowed run length over the stream, judging each
@@ -327,13 +432,13 @@ class Points::AnomalyFilter
 
         next if run.any? { |point| displaced.include?(point.id) }
         next unless suspicious_boundary?(run, speeds_by_point, threshold)
-        unless both_legs_impossible?(run, speeds_by_point, threshold) ||
+        unless (both_legs_impossible?(run, speeds_by_point, threshold) && !cruise_speed?(run, speeds_by_point)) ||
                detour_speed(run, previous_point, next_point) > detour_ceiling ||
                contradicts_stay?(run, previous_point, next_point)
           next
         end
 
-        run.each { |point| displaced << point.id if main_range_ids.include?(point.id) }
+        run.each { |point| displaced << point.id if judged_ids.include?(point.id) }
       end
     end
 
@@ -388,15 +493,23 @@ class Points::AnomalyFilter
       distance_meters(anchor, point) <= FROZEN_FIX_EXTENT_METERS
   end
 
-  # Impossible on both sides convicts on its own: nothing legitimate arrives and
-  # departs faster than any aircraft. This catches excursions with no detour to
-  # measure — a straight-line hop where the timestamps themselves are wrong.
+  # Impossible on both sides: this catches excursions with no detour to measure,
+  # a straight-line hop where the timestamps themselves are wrong. A displaced
+  # run also needs a leg above MAX_CRUISE_SPEED_KMH to convict on this alone
+  # (cruise_speed?), so a hop slower than that passes like a real flight.
   def both_legs_impossible?(run, speeds_by_point, threshold)
     entry_speed = speeds_by_point.dig(run.first.id, :incoming)
     exit_speed  = speeds_by_point.dig(run.last.id, :outgoing)
     return false if entry_speed.nil? || exit_speed.nil?
 
     entry_speed > threshold && exit_speed > threshold
+  end
+
+  def cruise_speed?(run, speeds_by_point)
+    entry_speed = speeds_by_point.dig(run.first.id, :incoming)
+    exit_speed  = speeds_by_point.dig(run.last.id, :outgoing)
+
+    [entry_speed, exit_speed].max <= MAX_CRUISE_SPEED_KMH / 3.6
   end
 
   def detour_ceiling = MAX_DETOUR_SPEED_KMH / 3.6
@@ -452,29 +565,36 @@ class Points::AnomalyFilter
     kilometers * 1_000
   end
 
+  # Every speed and distance calculation requires a usable position, including context.
+  def speed_points
+    Point.where.not(lonlat: nil)
+  end
+
   def fetch_points_with_context(start_time, end_time)
     # Tie order must match the per-device window in calculate_all_speeds
     # (ORDER BY timestamp, id), or points sharing a timestamp get speeds
     # attached to the wrong neighbour.
     before_ctx = before_context(start_time)
 
-    main = Point.where(user_id: @user_id, timestamp: start_time..end_time)
-                .not_anomaly.order(:timestamp, :id)
-                .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+    main = speed_points.where(user_id: @user_id, timestamp: start_time..end_time)
+                       .not_anomaly.order(:timestamp, :id)
+                       .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
-    after_ctx = Point.where(user_id: @user_id).not_anomaly
-                     .where('timestamp > ?', end_time)
-                     .order(:timestamp, :id).limit(CONTEXT_POINTS)
-                     .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
+    after_ctx = speed_points.where(user_id: @user_id).not_anomaly
+                            .where('timestamp > ?', end_time)
+                            .order(:timestamp, :id).limit(CONTEXT_POINTS)
+                            .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
-    [before_ctx + main + after_ctx, main]
+    recent_ctx = before_ctx.select { |point| point.timestamp >= start_time - MAX_FROZEN_FIX_SPAN_SECONDS }
+
+    [before_ctx + main + after_ctx, recent_ctx + main]
   end
 
   def before_context(start_time)
-    scope = Point.where(user_id: @user_id).not_anomaly
-                 .where('timestamp < ?', start_time)
-                 .order(timestamp: :desc, id: :desc)
-                 .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
+    scope = speed_points.where(user_id: @user_id).not_anomaly
+                        .where('timestamp < ?', start_time)
+                        .order(timestamp: :desc, id: :desc)
+                        .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy)
 
     widened = scope.where('timestamp >= ?', start_time - MAX_FROZEN_FIX_SPAN_SECONDS)
                    .limit(FROZEN_FIX_CONTEXT_POINTS).to_a

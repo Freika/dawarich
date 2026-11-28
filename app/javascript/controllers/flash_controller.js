@@ -23,6 +23,30 @@ const ICON_PATHS = {
 const CLOSE_PATH = "M6 18L18 6M6 6l12 12"
 
 export default class extends Controller {
+  static targets = ["message", "dismissAll"]
+
+  connect() {
+    this.updateDismissAll()
+  }
+
+  messageTargetConnected() {
+    this.updateDismissAll()
+  }
+
+  messageTargetDisconnected() {
+    this.updateDismissAll()
+  }
+
+  dismissAll() {
+    for (const message of this.messageTargets) message.remove()
+  }
+
+  updateDismissAll() {
+    if (this.hasDismissAllTarget) {
+      this.dismissAllTarget.hidden = this.messageTargets.length < 2
+    }
+  }
+
   static show(type, message) {
     const container = document.getElementById("flash-messages")
     if (!container) return
@@ -32,19 +56,22 @@ export default class extends Controller {
     const autoRemove = type === "notice" || type === "success"
 
     const div = document.createElement("div")
+    div.setAttribute("data-flash-target", "message")
     div.setAttribute("data-controller", "removals")
     div.setAttribute("data-removals-timeout-value", autoRemove ? "5000" : "0")
     div.setAttribute("role", "alert")
-    div.className = `alert ${alertClass} shadow-lg z-[6000]`
+    div.className = `alert ${alertClass} flash-message`
     div.innerHTML = `
-      <div class="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
-        </svg>
-        <span></span>
+      <div class="flash-message__body">
+        <span class="flash-message__icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}" />
+          </svg>
+        </span>
+        <span class="flash-message__text"></span>
       </div>
-      <button type="button" data-action="click->removals#remove" class="btn btn-sm btn-circle btn-ghost">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <button type="button" data-action="click->removals#remove" class="btn btn-sm btn-square btn-ghost flash-message__close">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${CLOSE_PATH}" />
         </svg>
       </button>
@@ -53,7 +80,7 @@ export default class extends Controller {
       .querySelector("button")
       .setAttribute("aria-label", translate("common.close"))
     // Set message text safely (no innerHTML for user content)
-    div.querySelector("span").textContent = message
+    div.querySelector(".flash-message__text").textContent = message
 
     container.appendChild(div)
   }

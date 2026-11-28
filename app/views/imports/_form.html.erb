@@ -1,66 +1,74 @@
-<%# Supported Formats Info Card %>
-<div class="card bg-base-200 w-full max-w-md mb-5 mt-5">
-  <div class="card-body p-4">
-    <h3 class="card-title text-sm"><%= t('.supported_import_formats') %></h3>
-    <ul class="text-xs space-y-1.5">
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.google_maps') %></strong> <%= t('.records_json_semantic_history_phone_takeout_json') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.google_photos') %></strong> <%= t('.takeout_metadata_sidecars_json') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.mobile_photo_library') %></strong> <%= t('.dawarich_mobile_app_export_json') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.gpx') %></strong> <%= t('.track_files_gpx') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.geojson') %></strong> <%= t('.feature_collections_json_geojson') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.owntracks') %></strong> <%= t('.recorder_files_rec') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.kml') %></strong> <%= t('.kml_files_kml_kmz') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.fit') %></strong> <%= t('.garmin_activity_files_fit') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.tcx') %></strong> <%= t('.training_center_files_tcx') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.csv') %></strong> <%= t('.location_data_csv') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.polarsteps') %></strong> <%= t('.locations_json_json') %></li>
-      <li class="flex items-center gap-1.5"><%= icon 'circle-check', class: 'w-3.5 h-3.5 text-success shrink-0' %> <strong><%= t('.zip') %></strong> <%= t('.archives_containing_any_of_the_above_zip') %></li>
-    </ul>
-    <div class="text-xs text-base-content/50 mt-2">
-      <%= t('.file_format_is_automatically_detected_during_upload') %>
-    </div>
-    <div class="flex items-start gap-2 text-xs text-info mt-2">
-      <%= icon 'info', class: 'w-3.5 h-3.5 shrink-0 mt-0.5' %>
-      <span><%= t('.for_files_larger_than_200mb_consider_compressing_them_into_a') %></span>
-    </div>
-    <% if current_user.legacy_trial? %>
-      <div class="text-xs text-warning mt-2 font-medium">
-        <%= t('.trial_limitations_max_5_imports_10mb_per_file') %>
-        <br>
-        <%= t('.current_imports') %> <%= current_user.imports.count %>/5
+<%# Upload on the left; where each kind of file comes from on the right. %>
+<div class="grid gap-6 lg:grid-cols-5 mt-5">
+  <div class="lg:col-span-3 min-w-0">
+    <%= form_with model: import, class: "space-y-4", data: {
+      controller: "upload",
+      upload_url_value: rails_direct_uploads_url,
+      upload_field_name_value: "import[files][]",
+      upload_multiple_value: true,
+      upload_user_trial_value: current_user.legacy_trial?,
+      upload_max_imports_value: 5,
+      upload_current_imports_count_value: current_user.imports.count,
+      upload_preserve_original_filename_value: true,
+      upload_target: "form"
+    } do |form| %>
+      <p class="text-sm text-base-content/70"><%= t('.each_file_becomes_its_own_import') %></p>
+
+      <%# The file input covers the whole zone, so dropping files on it and
+          clicking it both use the browser's own file picker. %>
+      <label class="relative flex flex-col items-center justify-center gap-2 rounded-box border-2 border-dashed border-base-content/20 bg-base-200/40 px-4 py-12 text-center transition hover:border-primary focus-within:border-primary">
+        <%= icon 'file-up', class: 'w-8 h-8 opacity-60' %>
+        <span class="font-medium"><%= t('.drop_files_here') %></span>
+        <span class="text-xs text-base-content/60"><%= t('.files_will_be_uploaded_directly_to_storage_please_be_patient') %></span>
+        <%= form.file_field :files,
+            multiple: true,
+            direct_upload: true,
+            class: "absolute inset-0 h-full w-full cursor-pointer opacity-0",
+            aria: { label: t('.select_one_or_multiple_files') },
+            data: { upload_target: "input", testid: "import-file-input" } %>
+      </label>
+
+      <p class="flex items-start gap-2 text-xs text-base-content/60">
+        <%= icon 'info', class: 'w-3.5 h-3.5 shrink-0 mt-0.5' %>
+        <span><%= t('.for_files_larger_than_200mb_consider_compressing_them_into_a') %></span>
+      </p>
+      <% if current_user.legacy_trial? %>
+        <p class="text-xs text-warning font-medium">
+          <%= t('.trial_limitations_max_5_imports_10mb_per_file') %>
+          <br>
+          <%= t('.current_imports') %> <%= current_user.imports.count %>/5
+        </p>
+      <% end %>
+
+      <div>
+        <%= form.submit class: "btn btn-primary", data: { upload_target: "submit" } %>
       </div>
     <% end %>
   </div>
+
+  <aside class="lg:col-span-2 min-w-0">
+    <h2 id="supported-formats" class="font-semibold mb-2"><%= t('.where_do_i_get_my_data') %></h2>
+    <% guide = 'https://dawarich.app/docs/getting-started/import-existing-data/' %>
+    <ul class="divide-y divide-base-content/10 text-sm">
+      <% [
+        [:google_maps, :records_json_semantic_history_phone_takeout_json, 'google-maps-app-export'],
+        [:gpx, :track_files_gpx, 'gpx-routes'],
+        [:owntracks, :recorder_files_rec, 'owntracks-and-dawarich'],
+        [:google_photos, :takeout_metadata_sidecars_json, 'importing-gps-coordinates-from-photos']
+      ].each do |format, description, anchor| %>
+        <li class="flex items-start justify-between gap-3 py-2">
+          <span class="min-w-0">
+            <span class="font-medium"><%= t("imports.form.#{format}").sub(/\s*[:：]\z/, "") %></span>
+            <span class="block text-xs text-base-content/60"><%= t("imports.form.#{description}") %></span>
+          </span>
+          <%= link_to "#{t('.how_to_export')} →", "#{guide}##{anchor}", target: '_blank', rel: 'noopener',
+                      class: 'link link-primary text-xs whitespace-nowrap shrink-0' %>
+        </li>
+      <% end %>
+    </ul>
+    <details class="mt-3">
+      <summary class="cursor-pointer text-sm font-medium"><%= t('.all_supported_formats') %></summary>
+      <div class="mt-2"><%= render "imports/supported_formats" %></div>
+    </details>
+  </aside>
 </div>
-
-<%= form_with model: import, class: "contents", data: {
-  controller: "upload",
-  upload_url_value: rails_direct_uploads_url,
-  upload_field_name_value: "import[files][]",
-  upload_multiple_value: true,
-  upload_user_trial_value: current_user.legacy_trial?,
-  upload_max_imports_value: 5,
-  upload_current_imports_count_value: current_user.imports.count,
-  upload_preserve_original_filename_value: true,
-  upload_target: "form"
-} do |form| %>
-  <label class="form-control w-full max-w-xs my-5">
-    <div class="label">
-      <span class="label-text"><%= t('.select_one_or_multiple_files') %></span>
-    </div>
-    <%= form.file_field :files,
-        multiple: true,
-        direct_upload: true,
-        accept: ".json,.geojson,.gpx,.kml,.kmz,.tcx,.fit,.csv,.rec,.zip,application/json,application/geo+json,application/gpx+xml,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz,application/zip",
-        class: "file-input file-input-bordered w-full max-w-xs",
-        data: { upload_target: "input" } %>
-    <div class="text-sm text-gray-500 mt-2">
-      <%= t('.files_will_be_uploaded_directly_to_storage_please_be_patient') %>
-    </div>
-  </label>
-
-  <div class="inline">
-    <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer",
-        data: { upload_target: "submit" } %>
-  </div>
-<% end %>

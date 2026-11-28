@@ -29,16 +29,16 @@ RSpec.describe Users::SafeSettings do
             live_map_enabled: true,
             track_color: '#6366F1',
             immich_url: nil,
-            immich_api_key: nil,
+            immich_configured: false,
             photoprism_url: nil,
-            photoprism_api_key: nil,
+            photoprism_configured: false,
             airtrail_url: nil,
-            airtrail_api_key: nil,
+            airtrail_configured: false,
             maps: { 'distance_unit' => 'km' },
             distance_unit: 'km',
             visits_suggestions_enabled: true,
             fog_of_war_threshold: 50,
-            fog_of_war_mode: 'points',
+            fog_of_war_mode: 'hexagons',
             enabled_map_layers: %w[Tracks Heatmap],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
@@ -58,11 +58,16 @@ RSpec.describe Users::SafeSettings do
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             min_minutes_spent_in_city: 60,
             gps_filtering_enabled: true,
+            gps_accuracy_filter_enabled: false,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            family_enabled: true,
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end
@@ -97,12 +102,14 @@ RSpec.describe Users::SafeSettings do
           {
             'fog_of_war_meters' => 100,
             'fog_of_war_threshold' => 50,
-          'fog_of_war_mode' => 'points',
+            'fog_of_war_mode' => 'hexagons',
             'meters_between_routes' => 1000,
             'preferred_map_layer' => 'Satellite',
             'speed_colored_routes' => true,
+            'speed_color_scale' => '0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300',
             'points_rendering_mode' => 'simplified',
             'minutes_between_routes' => 60,
+            'split_tracks_at_midnight' => false,
             'time_threshold_minutes' => 45,
             'merge_threshold_minutes' => 20,
             'live_map_enabled' => false,
@@ -151,12 +158,20 @@ RSpec.describe Users::SafeSettings do
             'show_supporter_badge' => true,
             'min_minutes_spent_in_city' => 60,
             'gps_filtering_enabled' => true,
+            'gps_accuracy_filter_enabled' => false,
+            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
+            'date_format' => 'auto',
+            'time_format' => 'auto',
+            'first_day_of_week' => 'monday',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
             'point_dragging_enabled' => false,
-            'points_tiled_rendering' => true
+            'points_tiled_rendering' => true,
+            'family_enabled' => true,
+            'achievements_enabled' => true,
+            'trip_detection_enabled' => true
           }
         )
       end
@@ -171,17 +186,17 @@ RSpec.describe Users::SafeSettings do
             live_map_enabled: false,
             track_color: '#0000ff',
             immich_url: 'https://immich.example.com',
-            immich_api_key: 'immich-key',
+            immich_configured: true,
             photoprism_url: 'https://photoprism.example.com',
-            photoprism_api_key: 'photoprism-key',
+            photoprism_configured: true,
             airtrail_url: nil,
-            airtrail_api_key: nil,
+            airtrail_configured: false,
             maps: { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             distance_unit: 'km',
             visits_suggestions_enabled: false,
             fog_of_war_threshold: 50,
-            fog_of_war_mode: 'points',
-            enabled_map_layers: %w[Points Areas Photos Tracks],
+            fog_of_war_mode: 'hexagons',
+            enabled_map_layers: ['Points', 'Photos', 'Tracks', 'Places', 'Place boundaries'],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
@@ -200,11 +215,16 @@ RSpec.describe Users::SafeSettings do
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
             min_minutes_spent_in_city: 60,
             gps_filtering_enabled: true,
+            gps_accuracy_filter_enabled: false,
+            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            family_enabled: true,
+            achievements_enabled: true,
+            trip_detection_enabled: true
           }
         )
       end
@@ -255,6 +275,31 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#date_time_preferences' do
+    it 'defaults to auto date, auto time and a Monday week start' do
+      preferences = described_class.new({}).date_time_preferences
+
+      expect(preferences).to eq(Users::DateTimePreferences::DEFAULT)
+    end
+
+    it 'reads the stored preferences' do
+      preferences = described_class.new(
+        { 'date_format' => 'mm/dd/yyyy', 'time_format' => '12h', 'first_day_of_week' => 'sunday' }
+      ).date_time_preferences
+
+      expect([preferences.date_format, preferences.time_format, preferences.first_day_of_week])
+        .to eq(%w[mm/dd/yyyy 12h sunday])
+    end
+
+    it 'falls back to the defaults for unknown stored values' do
+      safe_settings = described_class.new(
+        { 'date_format' => 'bogus', 'time_format' => '25h', 'first_day_of_week' => 'x' }
+      )
+
+      expect(safe_settings.date_time_preferences).to eq(Users::DateTimePreferences::DEFAULT)
+    end
+  end
+
   describe '#timezone' do
     let(:safe_settings) { described_class.new(settings) }
 
@@ -280,6 +325,20 @@ RSpec.describe Users::SafeSettings do
       it 'returns the Tokyo timezone' do
         expect(safe_settings.timezone).to eq('Asia/Tokyo')
       end
+    end
+  end
+
+  describe '#meters_between_routes' do
+    it 'falls back to the default for unusable saved values' do
+      [0, -5, '', 'abc', nil].each do |value|
+        safe_settings = described_class.new({ 'meters_between_routes' => value })
+
+        expect(safe_settings.meters_between_routes).to eq(500), value.inspect
+      end
+    end
+
+    it 'returns saved distances as integers without an upper limit' do
+      expect(described_class.new({ 'meters_between_routes' => '25000' }).meters_between_routes).to eq(25_000)
     end
   end
 
@@ -357,6 +416,26 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#visits_suggestions_enabled?' do
+    it 'reads legacy strings, JSON booleans, missing and blank opt-ins consistently' do
+      cases = [
+        [{}, true],
+        [{ 'visits_suggestions_enabled' => 'true' }, true],
+        [{ 'visits_suggestions_enabled' => 'false' }, false],
+        [{ 'visits_suggestions_enabled' => true }, true],
+        [{ 'visits_suggestions_enabled' => false }, false],
+        [{ 'visits_suggestions_enabled' => nil }, false],
+        [{ 'visits_suggestions_enabled' => '' }, false]
+      ]
+
+      aggregate_failures do
+        cases.each do |settings, expected|
+          expect(described_class.new(settings).visits_suggestions_enabled?).to be(expected)
+        end
+      end
+    end
+  end
+
   describe '#distance_unit' do
     let(:safe_settings) { described_class.new(settings) }
 
@@ -415,6 +494,14 @@ RSpec.describe Users::SafeSettings do
 
   describe 'plan-aware filtering' do
     describe '#enabled_map_layers' do
+      context 'when the retired Areas layer is enabled' do
+        let(:safe_settings) { described_class.new({ 'enabled_map_layers' => %w[Tracks Areas] }) }
+
+        it 'carries it over to Places with their boundaries' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Places', 'Place boundaries'])
+        end
+      end
+
       context 'when plan is lite' do
         let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
         let(:safe_settings) { described_class.new(settings, plan: :lite) }
@@ -684,6 +771,46 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#gps_accuracy_filter_enabled?' do
+    it 'defaults to false' do
+      expect(described_class.new({}).gps_accuracy_filter_enabled?).to be false
+    end
+
+    it 'stays off when only a threshold value is stored' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 100 }).gps_accuracy_filter_enabled?).to be false
+    end
+
+    it 'casts string "true"' do
+      expect(described_class.new({ 'gps_accuracy_filter_enabled' => 'true' }).gps_accuracy_filter_enabled?).to be true
+    end
+  end
+
+  describe '#gps_accuracy_threshold' do
+    it 'defaults to 100' do
+      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
+    end
+
+    it 'returns the user-provided integer' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
+    end
+
+    it 'clamps below the minimum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
+    end
+
+    it 'clamps above the maximum' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
+    end
+
+    it 'coerces string values' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
+    end
+
+    it 'falls back to the default for a blank value' do
+      expect(described_class.new({ 'gps_accuracy_threshold' => '' }).gps_accuracy_threshold).to eq(100)
+    end
+  end
+
   describe '#visit_radius_meters' do
     it 'returns 50 when missing' do
       expect(described_class.new({}).visit_radius_meters).to eq(100)
@@ -778,20 +905,16 @@ RSpec.describe Users::SafeSettings do
   end
 
   describe '#fog_of_war_mode' do
-    it 'defaults to points' do
-      expect(described_class.new.fog_of_war_mode).to eq('points')
+    it 'defaults to hexagons' do
+      expect(described_class.new.fog_of_war_mode).to eq('hexagons')
     end
 
-    it 'returns hexagons when set' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'hexagons' }).fog_of_war_mode).to eq('hexagons')
+    it 'keeps points when chosen' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'points' }).fog_of_war_mode).to eq('points')
     end
 
-    it 'falls back to points for invalid values' do
-      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('points')
-    end
-
-    it 'is included in config' do
-      expect(described_class.new.config[:fog_of_war_mode]).to eq('points')
+    it 'falls back to the default for invalid values' do
+      expect(described_class.new({ 'fog_of_war_mode' => 'octagons' }).fog_of_war_mode).to eq('hexagons')
     end
   end
 
@@ -896,6 +1019,90 @@ RSpec.describe Users::SafeSettings do
 
       expect(config).not_to have_key(:route_color)
       expect(config[:track_color]).to eq('#6366F1')
+    end
+  end
+
+  describe '.feature_enabled?' do
+    it 'treats a missing key as on and boolean-like false values as off' do
+      expect(described_class.feature_enabled?({}, 'family')).to be true
+      expect(described_class.feature_enabled?({ 'family_enabled' => true }, 'family')).to be true
+      %w[false 0 off].push(false, 0).each do |value|
+        expect(described_class.feature_enabled?({ 'family_enabled' => value }, 'family')).to be false
+      end
+    end
+  end
+
+  describe '#trip_detection_enabled?' do
+    it 'is on when the key is absent and off when switched off' do
+      expect(described_class.new({}).trip_detection_enabled?).to be true
+      expect(described_class.new({ 'trip_detection_enabled' => 'false' }).trip_detection_enabled?).to be false
+    end
+  end
+
+  describe '#trip_detection_long_absence?' do
+    it 'is false when the key is absent and true when recorded' do
+      expect(described_class.new({}).trip_detection_long_absence?).to be false
+      expect(described_class.new({ 'trip_detection_long_absence' => true }).trip_detection_long_absence?).to be true
+    end
+  end
+
+  describe 'integration credentials in the API settings' do
+    let(:stored) do
+      { 'immich_url' => 'https://immich.example.com', 'immich_api_key' => 'immich-key',
+        'photoprism_url' => 'https://photoprism.example.com',
+        'airtrail_url' => 'https://airtrail.example.com', 'airtrail_api_key' => 'airtrail-key' }
+    end
+
+    it 'never includes an integration API key' do
+      keys = described_class.new(stored).api_config.keys
+
+      expect(keys).not_to include(:immich_api_key, :photoprism_api_key, :airtrail_api_key)
+    end
+
+    it 'says whether each integration has both a URL and a key' do
+      config = described_class.new(stored).api_config
+
+      expect(config).to include(immich_configured: true, photoprism_configured: false, airtrail_configured: true)
+    end
+
+    it 'leaves credentials embedded in an integration URL out of the API settings' do
+      config = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan:2283/base' }).api_config
+
+      expect(config[:immich_url]).to eq('http://immich.lan:2283/base')
+      expect(config.to_json).not_to include('proxypass')
+    end
+
+    it 'still gives server-side code the stored URL with its credentials' do
+      settings = described_class.new({ 'immich_url' => 'http://proxyuser:proxypass@immich.lan' })
+
+      expect(settings.immich_url).to eq('http://proxyuser:proxypass@immich.lan')
+    end
+
+    it 'still gives server-side code the stored key' do
+      expect(described_class.new(stored).immich_api_key).to eq('immich-key')
+    end
+  end
+
+  describe 'settings defaults' do
+    it 'matches the shared defaults fixture for a fresh account' do
+      fixture = JSON.parse(Rails.root.join('spec/fixtures/user_settings_defaults.json').read)
+      effective = described_class.new({}).api_config.except(:timezone).as_json
+
+      expect(effective).to eq(fixture)
+    end
+
+    it 'returns fog radius and threshold as integers' do
+      safe_settings = described_class.new({ 'fog_of_war_meters' => '120', 'fog_of_war_threshold' => '7' })
+
+      expect(safe_settings.fog_of_war_meters).to eq(120)
+      expect(safe_settings.fog_of_war_threshold).to eq(7)
+    end
+
+    it 'falls back to defaults for unusable fog radius and threshold' do
+      safe_settings = described_class.new({ 'fog_of_war_meters' => 'abc', 'fog_of_war_threshold' => '0' })
+
+      expect(safe_settings.fog_of_war_meters).to eq(50)
+      expect(safe_settings.fog_of_war_threshold).to eq(50)
     end
   end
 end

@@ -83,7 +83,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
                           radius_override: nil,
                           place_name: nil,
                           address: nil
-                        ))
+                        ), privacy_zone_masker: kind_of(Maps::PrivacyZoneMasker))
             .and_return(double(call: mock_search_result))
 
           get '/api/v1/locations', params: { lat: latitude, lon: longitude }, headers: headers
@@ -113,7 +113,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
                             radius_override: 200,
                             place_name: nil,
                             address: nil
-                          ))
+                          ), privacy_zone_masker: kind_of(Maps::PrivacyZoneMasker))
               .and_return(double(call: mock_search_result))
 
             get '/api/v1/locations', params: params, headers: headers
@@ -127,7 +127,7 @@ RSpec.describe Api::V1::LocationsController, type: :request do
               .with(user, hash_including(
                             place_name: 'Kaufland Mitte',
                             address: 'Alexanderplatz 1, Berlin'
-                          ))
+                          ), privacy_zone_masker: kind_of(Maps::PrivacyZoneMasker))
               .and_return(double(call: mock_search_result))
 
             get '/api/v1/locations', params: {

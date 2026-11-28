@@ -4,7 +4,6 @@ class Geojson::Importer
   include Imports::Broadcaster
   include Imports::BulkInsertable
   include Imports::FileLoader
-  include PointValidation
 
   BATCH_SIZE = 1000
   attr_reader :import, :user_id, :file_path
@@ -19,7 +18,7 @@ class Geojson::Importer
     path = resolve_file_path
     validate_json(path)
     initialize_stream
-    ActiveRecord::Base.transaction do
+    Revisions::ImportTransaction.call(user_id, import_id: import.id) do
       stream_features(path)
       flush_batch
     end
@@ -34,7 +33,6 @@ class Geojson::Importer
     parser = Oj::Parser.new(:validate)
     File.open(path, 'rb') { |io| parser.load(io) }
   rescue EncodingError, JSON::ParserError
-    @legacy_parser_required = true
     File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
   end
 
@@ -47,13 +45,7 @@ class Geojson::Importer
   def stream_features(path)
     handler = Geojson::StreamHandler.new { |feature| process_feature(feature) }
 
-    File.open(path, 'rb') do |io|
-      if @legacy_parser_required
-        Oj.saj_parse(handler, io)
-      else
-        Oj::Parser.new(:saj, handler:).load(io)
-      end
-    end
+    File.open(path, 'rb') { |io| Imports::SajParser.parse(io, handler) }
   end
 
   def process_feature(feature)
@@ -103,7 +95,8 @@ class Geojson::Importer
         kind: :warning,
         title: I18n.t('services.imports.geojson_importer.points_skipped_title'),
         content: I18n.t('services.imports.geojson_importer.points_skipped',
-                        name: import.name, skipped: @skipped_timeless)
+                        name: import.name, skipped: @skipped_timeless),
+        action_path: Notifications.paths.imports_path
       ).call
     end
   end

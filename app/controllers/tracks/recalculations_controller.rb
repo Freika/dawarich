@@ -8,7 +8,9 @@ class Tracks::RecalculationsController < ApplicationController
   def create
     status = Tracks::TransportationRecalculationStatus.new(current_user.id)
 
-    if status.in_progress?
+    enqueued = status.enqueue { TransportationModes::UserReclassifyJob.perform_later(current_user.id) }
+
+    if !enqueued
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(
@@ -22,7 +24,6 @@ class Tracks::RecalculationsController < ApplicationController
         end
       end
     else
-      TransportationModes::UserReclassifyJob.perform_later(current_user.id)
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(

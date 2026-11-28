@@ -1,17 +1,24 @@
 <% content_for :title, @trip.name %>
 
 <%= turbo_stream_from @trip %>
-<% plan_toggle = @trip.path.present? && @trip_plan.present? %>
+<% plan_toggle = @trip.route_present? && @trip_plan.present? %>
 
-<div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
+<div class="w-full my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
      data-trip-maplibre-timezone-value="<%= current_user.timezone_iana %>"
+     data-trip-maplibre-distance-unit-value="<%= current_user.safe_settings.distance_unit %>"
      data-trip-maplibre-started-at-value="<%= @trip.started_at.iso8601 %>"
      data-trip-maplibre-ended-at-value="<%= @trip.ended_at.iso8601 %>"
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
-     data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
-     data-trip-maplibre-device-windows-value="<%= @trip.primary_device_windows.to_json %>"
+     data-trip-maplibre-meters-between-routes-value="<%= current_user.safe_settings.meters_between_routes %>"
+     data-trip-maplibre-minutes-between-routes-value="<%= current_user.safe_settings.minutes_between_routes %>"
+     data-trip-maplibre-tiles-url-value="<%= trip_routes_tile_template(@trip) %>"
+     data-trip-maplibre-day-keys-value="<%= @day_stats.keys.map(&:iso8601).to_json %>"
+     data-trip-maplibre-day-bounds-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, stats[:bounds]] }.to_json %>"
+     data-trip-maplibre-day-endpoints-value="<%= @day_stats.to_h { |day, stats| [day.iso8601, { first: stats[:first_coordinates], last: stats[:last_coordinates] }] }.to_json %>"
+     data-trip-maplibre-full-bounds-value="<%= trip_full_bounds.to_json %>"
+     data-trip-maplibre-device-windows-value="<%= @trip.cached_primary_device_windows.to_json %>"
      <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 
@@ -19,7 +26,7 @@
   <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
     <%# Left: Map card (static, fits between navbar and footer) %>
     <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-      <% if @trip.path.present? %>
+      <% if @trip.route_present? %>
         <div class="w-full h-full rounded-lg overflow-hidden relative"
              data-trip-maplibre-target="map">
           <div data-trip-maplibre-target="loadingIndicator"
@@ -57,8 +64,10 @@
               <p class="font-medium"><%= t('.no_locations_recorded') %></p>
               <p class="mt-1 text-sm text-base-content/60"><%= t('.no_locations_recorded_hint') %></p>
             <% else %>
-              <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
-              <div class="loading loading-spinner loading-lg mt-4"></div>
+              <div data-trip-maplibre-target="pathPending">
+                <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
+                <div class="loading loading-spinner loading-lg mt-4"></div>
+              </div>
             <% end %>
           </div>
         </div>
@@ -69,10 +78,15 @@
     <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
       <%# Trip header %>
       <div class="mb-6">
-        <div class="flex items-start justify-between gap-3 mb-1">
-          <h1 class="text-3xl font-bold leading-tight"><%= @trip.name %></h1>
-          <div class="flex items-center gap-1 shrink-0" data-testid="trip-header-actions">
-            <div class="dropdown dropdown-end">
+        <div class="flex flex-wrap items-start justify-between gap-3 mb-1">
+          <h1 class="text-3xl font-medium tracking-tight leading-tight min-w-0 break-words"><%= @trip.name %></h1>
+          <div class="flex flex-wrap items-center gap-1 min-w-0" data-testid="trip-header-actions">
+            <%= link_to preferred_map_path(start_at: @trip.started_at.iso8601, end_at: @trip.ended_at.iso8601),
+                        class: 'btn btn-sm btn-ghost', data: { testid: 'trip-open-map' },
+                        title: t('trips.show.open_in_map'), aria: { label: t('trips.show.open_in_map') } do %>
+              <%= icon 'map', class: 'w-4 h-4' %>
+            <% end %>
+            <div class="dropdown">
               <label tabindex="0" class="btn btn-sm btn-ghost" title="<%= t('.download_trip') %>">
                 <%= icon 'download', class: 'w-4 h-4' %>
               </label>
@@ -94,19 +108,20 @@
                     data-trip-maplibre-target="posterBtn"
                     data-action="click->trip-maplibre#openPosterStudio"
                     aria-label="<%= t('.create_poster') %>"
-                    title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_poster' : '.poster_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'image', class: 'w-4 h-4' %>
             </button>
             <button type="button"
                     class="btn btn-sm btn-ghost"
+                    data-trip-maplibre-target="videoBtn"
                     data-action="click->trip-maplibre#openVideoStudio"
                     aria-label="<%= t('.create_video') %>"
-                    title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
-                    <% if @trip.path.blank? %>disabled<% end %>>
+                    title="<%= t(@trip.route_present? ? '.create_video' : '.video_unavailable') %>"
+                    <% unless @trip.route_present? %>disabled<% end %>>
               <%= icon 'video', class: 'w-4 h-4' %>
             </button>
-            <%= link_to edit_trip_path(@trip),
+            <%= link_to edit_trip_path(@trip, trip_list_state),
                 class: "btn btn-sm btn-ghost",
                 title: t('.edit_trip') do %>
               <%= icon 'square-pen', class: 'w-4 h-4' %>
@@ -116,9 +131,9 @@
                 class: "btn btn-sm btn-ghost relative",
                 title: t('.share_trip'),
                 data: { turbo_frame: "share-link-modal" } do %>
-              <%= icon 'share', class: 'w-4 h-4' %>
+              <%= icon 'share-2', class: 'w-4 h-4' %>
               <% if trip_share %>
-                <span class="badge badge-success badge-xs" aria-label="<%= t('.currently_shared') %>"><%= t('.public') %></span>
+                <span class="absolute top-1 right-1 size-1.5 rounded-full bg-success" role="img" aria-label="<%= t('.currently_shared') %>" title="<%= t('.public') %>"></span>
               <% end %>
             <% end %>
             <%= button_to trip_path(@trip),
@@ -130,7 +145,7 @@
             <% end %>
           </div>
         </div>
-        <p class="text-md text-base-content/60 mb-4">
+        <p class="text-base-content/60 mb-4">
           <%= human_date(@trip.started_at) %> <%= t('.ndash') %> <%= human_date(@trip.ended_at) %>
         </p>
 
@@ -242,7 +257,7 @@
               <% if day_photos.present? %>
                 <div class="grid grid-cols-3 gap-2 mt-3">
                   <% day_photos.each do |photo| %>
-                    <div class="aspect-square overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105 hover:shadow-lg">
+                    <div class="aspect-square overflow-hidden rounded-lg transition-opacity duration-150 hover:opacity-90">
                       <img src="<%= photo[:url] %>"
                            loading="lazy"
                            alt=""
@@ -259,7 +274,7 @@
       <%# Trip description %>
       <% if @trip.description.body.present? %>
         <div class="mb-6">
-          <h3 class="text-lg font-semibold mb-2"><%= t('.trip_notes') %></h3>
+          <h3 class="text-lg font-medium mb-2"><%= t('.trip_notes') %></h3>
           <div class="prose max-w-none">
             <%= @trip.description.body %>
           </div>
@@ -284,7 +299,7 @@
 
       <%# Back link %>
       <div class="mb-6">
-        <%= link_to trips_path, class: "btn btn-sm btn-ghost gap-1" do %>
+        <%= link_to trips_path(trip_list_state), class: "btn btn-sm btn-ghost gap-1" do %>
           <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('.back_to_trips') %>
         <% end %>
       </div>
@@ -295,6 +310,7 @@
 
 <%= render 'posters/studio',
            show_date_controls: false,
-           date_range_label: "#{human_date(@trip.started_at)} – #{human_date(@trip.ended_at)}" %>
+           date_range_label: "#{human_date(@trip.started_at)} – #{human_date(@trip.ended_at)}",
+           stats_label: trip_poster_stats(@trip, current_user.safe_settings.distance_unit) %>
 
 <%= render 'route_videos/studio' %>

@@ -1,0 +1,67 @@
+            <div id="family-member-<%= member.id %>" class="px-4 py-3 hover:bg-base-200/50 transition-colors
+                        <%= 'cursor-pointer' if location %>"
+                 <% if location %>
+                   data-action="click->family-map#flyToMember"
+                   data-lon="<%= location[:longitude] %>"
+                   data-lat="<%= location[:latitude] %>"
+                 <% end %>>
+              <div class="flex items-center gap-3">
+                <%# Avatar %>
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold
+                     <%= member == current_user ? 'bg-primary text-primary-content' : 'bg-base-200 text-base-content/60' %>">
+                  <%= member.email&.first&.upcase || '?' %>
+                </div>
+
+                <%# Info %>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium truncate"><%= member.email %></span>
+                    <% if member.family_membership.role == 'owner' %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning"><%= t('families.show.owner') %></span>
+                    <% end %>
+                    <% if member == current_user %>
+                      <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary"><%= t('families.show.you') %></span>
+                    <% end %>
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <% if member.family_sharing_enabled? %>
+                      <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                      <span class="text-xs text-success">
+                        <% duration = member.family_sharing_duration == 'permanent' ? t('families.show.always') : t('families.show.for_duration', duration: member.family_sharing_duration) %>
+                        <%= t('families.show.sharing_status', duration: duration) %>
+                      </span>
+                      <% if location %>
+                        <span class="text-xs text-base-content/40">
+                          <%= t('families.show.middot') %> <%= t('common.time_ago', time: relative_distance_in_words(Time.zone.at(location[:timestamp]))) %>
+                        </span>
+                      <% end %>
+                    <% else %>
+                      <div class="w-2 h-2 bg-base-300 rounded-full"></div>
+                      <span class="text-xs text-base-content/40"><%= t('families.show.not_sharing') %></span>
+                      <% if member != current_user %>
+                        <% pending_req = pending_requests[member.id] %>
+                        <% if pending_req %>
+                          <span class="text-xs text-info"><%= t('families.show.requested') %></span>
+                        <% else %>
+                          <%= button_to t('families.show.request'),
+                              family_location_requests_path(target_user_id: member.id),
+                              method: :post,
+                              class: "btn btn-outline btn-xs btn-info ml-auto" %>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+                <% if current_user.family_owner? && member != current_user && !member.family_membership.owner? %>
+                  <%= link_to family_member_path(member.family_membership),
+                        method: :delete,
+                        data: {
+                          turbo_confirm: t('families.show.remove_email_from_the_family', email: member.email),
+                          turbo_method: :delete
+                        },
+                        class: "btn btn-ghost btn-xs text-error ml-auto" do %>
+                    <%= icon 'x', class: 'w-3.5 h-3.5' %> <%= t('families.show.remove') %>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>

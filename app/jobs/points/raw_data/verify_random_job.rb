@@ -4,8 +4,8 @@ module Points
   module RawData
     # Daily spot-check: verifies a random sample of archives.
     # Unverified archives get a chance to become clearable; already-verified
-    # archives are re-checked for storage bit rot (failures alert via Sentry
-    # without touching verified_at).
+    # archives are re-checked for storage bit rot. An integrity failure alerts
+    # via Sentry and unsets verified_at, which blocks clearing until investigated.
     class VerifyRandomJob < ApplicationJob
       queue_as :archival
 

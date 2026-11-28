@@ -14,6 +14,16 @@ RSpec.describe 'Api::V1::Countries::VisitedCities', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'returns a visited country without a city name' do
+      create(:point, user: user, country_name: 'Germany', city: nil,
+                     timestamp: Time.utc(2023, 6, 1, 12).to_i)
+
+      get "/api/v1/countries/visited_cities?api_key=#{user.api_key}&start_at=#{start_at}&end_at=#{end_at}"
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['data']).to eq([{ 'country' => 'Germany', 'cities' => [] }])
+    end
+
     it 'ignores anomalous points the way the statistics do' do
       base = Time.utc(2023, 6, 1, 12).to_i
       create(:point, user: user, city: 'Berlin', country: 'Germany', timestamp: base)

@@ -1,8 +1,8 @@
 <!-- Location Clusters Card -->
 <div class="card bg-base-200">
   <div class="card-body p-5">
-    <h2 class="card-title text-lg flex items-center gap-2">
-      <%= icon 'map-pin', class: 'w-5 h-5 text-primary' %>
+    <h2 class="card-title text-lg font-medium flex items-center gap-2">
+      <%= icon 'map-pin', class: 'w-4 h-4 text-base-content/60' %>
       <%= t('.top_visited_locations') %>
     </h2>
 
@@ -12,7 +12,7 @@
           <div class="p-3 bg-base-300 rounded-lg">
             <div class="flex justify-between items-center mb-2">
               <div class="flex items-center gap-2">
-                <span class="w-6 h-6 bg-primary text-primary-content rounded-full flex items-center justify-center text-xs font-bold">
+                <span class="w-4 text-sm tabular-nums text-base-content/50">
                   <%= index + 1 %>
                 </span>
                 <span class="font-medium"><%= location[:name] %></span>
@@ -20,11 +20,11 @@
             </div>
             <div class="grid grid-cols-2 gap-2 text-center">
               <div>
-                <div class="text-xl font-bold"><%= location[:visit_count] %></div>
+                <div class="text-xl font-medium tabular-nums"><%= location[:visit_count] %></div>
                 <div class="text-xs text-base-content/60"><%= t('.visit_count', count: location[:visit_count]) %></div>
               </div>
               <div>
-                <div class="text-xl font-bold"><%= format_location_time(location[:total_duration]) %></div>
+                <div class="text-xl font-medium tabular-nums"><%= format_location_time(location[:total_duration]) %></div>
                 <div class="text-xs text-base-content/60"><%= t('.total_time') %></div>
               </div>
             </div>

@@ -4,7 +4,7 @@
   <div class="max-w-2xl mx-auto">
     <div class="bg-base-200 rounded-lg p-6">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-base-content">
+        <h1 class="text-2xl font-medium text-base-content tracking-tight">
           <%= t('families.edit.title') %>
         </h1>
         <%= link_to family_path,
@@ -75,8 +75,8 @@
           </dl>
         </div>
 
-        <div class="flex items-center justify-between pt-4">
-          <div class="flex space-x-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-4">
+          <div class="flex flex-wrap gap-3">
             <%= form.submit t('families.edit.save_changes'),
                   class: "btn btn-primary" %>
             <%= link_to family_path,

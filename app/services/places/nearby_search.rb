@@ -14,6 +14,7 @@ module Places
       @radius = radius
       @limit = limit
       @cache = cache
+      @throttled = false
     end
 
     def call
@@ -37,6 +38,10 @@ module Places
         ExceptionReporter.call(e, 'Places::NearbySearch failed')
       end
       []
+    end
+
+    def throttled?
+      @throttled
     end
 
     private
@@ -68,7 +73,10 @@ module Places
         radius: @radius,
         units: :km
       )
-      return if results.nil?
+      if results.nil?
+        @throttled = true
+        return
+      end
 
       format_results(results)
     end

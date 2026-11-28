@@ -12,6 +12,12 @@ RSpec.describe Users::Destroy do
     end
 
     context 'with minimal user data' do
+      it 'holds an exclusive user-data lock while deleting associated records' do
+        expect(Users::DataLock).to receive(:with_exclusive).with(user.id).and_call_original
+
+        service.call
+      end
+
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
       end
@@ -26,6 +32,50 @@ RSpec.describe Users::Destroy do
         service.call
 
         expect(Rails.logger).to have_received(:info).with(/User \d+ \(.+\) and all associated data deleted/)
+      end
+    end
+
+    context 'with trip detection dismissals' do
+      it 'deletes the dismissals with the user' do
+        user.trip_detection_dismissals.create!(started_at: 2.months.ago, ended_at: 1.month.ago)
+
+        service.call
+
+        expect(User.exists?(user.id)).to be(false)
+        expect(TripDetectionDismissal.where(user_id: user.id)).to be_empty
+      end
+    end
+
+    context 'with geofencing records' do
+      it 'deletes events, webhooks and deliveries with the user' do
+        delivery = create(:webhook_delivery, webhook: create(:webhook, user:))
+
+        service.call
+
+        expect(GeofenceEvent.where(user_id: user.id)).to be_empty
+        expect(Webhook.where(user_id: user.id)).to be_empty
+        expect(WebhookDelivery.where(id: delivery.id)).to be_empty
+      end
+
+      it 'forgets the user\'s geofence state' do
+        GeofenceEvents::StateStore.new(user).advance_evaluated_at!(Time.current.to_i)
+
+        service.call
+
+        expect(Sidekiq.redis_pool.with { |redis| redis.call('EXISTS', "geofence:evaluated_at:#{user.id}") }).to eq(0)
+      end
+    end
+
+    context 'when points span several deletion batches' do
+      before do
+        stub_const('Users::Destroy::POINT_BATCH_SIZE', 2)
+        create_list(:point, 5, user:)
+      end
+
+      it 'deletes every point' do
+        service.call
+
+        expect(Point.where(user_id: user.id)).to be_empty
       end
     end
 
@@ -88,9 +138,38 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with point and track revisions' do
+      before do
+        create(:point, user:, timestamp: Time.utc(2026, 9, 10).to_i)
+        create(:track, user:, start_at: Time.utc(2026, 9, 10), end_at: Time.utc(2026, 9, 10, 1))
+      end
+
+      it 'leaves no revision rows for the deleted user' do
+        service.call
+
+        expect(Points::Revision.where(user_id: user.id)).to be_empty
+        expect(Tracks::Revision.where(user_id: user.id)).to be_empty
+      end
+    end
+
+    context 'with achievement records' do
+      let!(:progress) { create(:achievement_progress, user: user) }
+      let!(:achievement) { create(:user_achievement, user: user) }
+
+      before { user.service_settings.delete_all }
+
+      it 'deletes both achievement tables before hard deleting the user' do
+        service.call
+
+        expect(Achievements::Progress.where(id: progress.id)).not_to exist
+        expect(UserAchievement.where(id: achievement.id)).not_to exist
+        expect(User.unscoped.where(id: user.id)).not_to exist
+      end
+    end
+
     context 'with TREK sources and itineraries' do
       before do
-        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        stub_host_addresses('trek.example.test', '93.184.216.34')
       end
 
       it 'deletes a connected source even when no trips were imported' do
@@ -121,6 +200,74 @@ RSpec.describe Users::Destroy do
         end
         expect(User.unscoped.exists?(user.id)).to be(false)
         expect(TripSource.exists?(other_source.id)).to be(true)
+      end
+    end
+
+    context 'with a poster' do
+      let!(:poster) { create(:poster, user:) }
+
+      before do
+        poster.image.attach(
+          io: StringIO.new('image'),
+          filename: 'poster.png',
+          content_type: 'image/png'
+        )
+        poster.print_pdf.attach(
+          io: StringIO.new('pdf'),
+          filename: 'poster.pdf',
+          content_type: 'application/pdf'
+        )
+      end
+
+      it 'deletes the poster and its attachments before the user' do
+        user_id = user.id
+        poster_id = poster.id
+        blob_ids = [poster.image.blob_id, poster.print_pdf.blob_id]
+
+        expect { perform_enqueued_jobs { service.call } }.not_to raise_error
+
+        expect(User.unscoped.where(id: user_id)).not_to exist
+        expect(Poster.where(id: poster_id)).not_to exist
+        expect(ActiveStorage::Blob.where(id: blob_ids)).to be_empty
+      end
+
+      it 'preserves the poster and its attachments when deletion rolls back' do
+        blob_ids = [poster.image.blob_id, poster.print_pdf.blob_id]
+        allow(user).to receive(:delete).and_raise(ActiveRecord::StatementInvalid, 'delete failed')
+
+        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid, 'delete failed')
+
+        expect(Poster.where(id: poster.id)).to exist
+        expect(ActiveStorage::Blob.where(id: blob_ids).count).to eq(2)
+      end
+    end
+
+    context 'with other FK-backed user records missing from the cleanup list' do
+      let!(:flight) { create(:flight, user:) }
+      let!(:note) { create(:note, user:) }
+      let!(:route_video) { create(:route_video, :with_file, user:) }
+      let!(:service_setting) { create(:service_setting, user:) }
+
+      it 'deletes the records before the user' do
+        user_id = user.id
+        flight_id = flight.id
+        note_id = note.id
+
+        expect { service.call }.not_to raise_error
+
+        expect(User.unscoped.where(id: user_id)).not_to exist
+        expect(Flight.where(id: flight_id)).not_to exist
+        expect(Note.where(id: note_id)).not_to exist
+      end
+
+      it 'deletes route videos with their files and service settings' do
+        blob_id = route_video.file.blob_id
+
+        expect { perform_enqueued_jobs { service.call } }.not_to raise_error
+
+        expect(RouteVideo.where(id: route_video.id)).not_to exist
+        expect(ActiveStorage::Blob.where(id: blob_id)).not_to exist
+        expect(ServiceSetting.where(id: service_setting.id)).not_to exist
       end
     end
 
@@ -217,8 +364,8 @@ RSpec.describe Users::Destroy do
         # Populate cache with user data
         Rails.cache.write("dawarich/user_#{user.id}_countries_visited", %w[US CA])
         Rails.cache.write("dawarich/user_#{user.id}_cities_visited", %w[NYC SF])
-        Rails.cache.write("dawarich/user_#{user.id}_total_distance", 1000)
         Rails.cache.write("dawarich/user_#{user.id}_years_tracked", [2023, 2024])
+        Rails.cache.write("dawarich/user_#{user.id}_points_geocoded_stats", { geocoded: 1 })
       end
 
       it 'clears all user-specific cache keys' do
@@ -226,8 +373,8 @@ RSpec.describe Users::Destroy do
 
         expect(Rails.cache.read("dawarich/user_#{user.id}_countries_visited")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_cities_visited")).to be_nil
-        expect(Rails.cache.read("dawarich/user_#{user.id}_total_distance")).to be_nil
         expect(Rails.cache.read("dawarich/user_#{user.id}_years_tracked")).to be_nil
+        expect(Rails.cache.read("dawarich/user_#{user.id}_points_geocoded_stats")).to be_nil
       end
 
       it 'logs cache cleanup' do
@@ -286,6 +433,19 @@ RSpec.describe Users::Destroy do
         expect(PlaceVisit.where(id: place_visit_id).count).to eq(0)
         expect(Visit.where(id: visit_id).count).to eq(0)
       end
+
+      it "removes another user's links to the deleted user's place" do
+        other_user = create(:user)
+        direct_visit = create(:visit, user: other_user, place:)
+        suggested_visit = create(:visit, user: other_user)
+        other_place_visit = create(:place_visit, place:, visit: suggested_visit)
+
+        expect { service.call }.not_to raise_error
+
+        expect(PlaceVisit.where(id: other_place_visit.id)).not_to exist
+        expect(Visit.where(id: [direct_visit.id, suggested_visit.id]).count).to eq(2)
+        expect(direct_visit.reload.place_id).to be_nil
+      end
     end
 
     context 'with family associations' do
@@ -313,6 +473,24 @@ RSpec.describe Users::Destroy do
           # Family and memberships should still exist
           expect(Family.where(id: family.id).count).to eq(1)
           expect(Family::Membership.where(family_id: family.id).count).to eq(2)
+        end
+
+        it 'keeps every point when deletion is aborted' do
+          create_list(:point, 3, user:)
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(Point.where(user_id: user.id).count).to eq(3)
+        end
+
+        it 'keeps archive files when deletion is aborted' do
+          archive = create(:points_raw_data_archive, user: user)
+          blob = archive.file.blob
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(ActiveStorage::Blob.exists?(blob.id)).to be true
+          expect(blob.service.exist?(blob.key)).to be true
         end
 
         it 'logs the validation failure' do
@@ -519,5 +697,17 @@ RSpec.describe Users::Destroy do
         expect(User.unscoped.find_by(id: user.id)).to be_nil
       end
     end
+  end
+
+  it 'deletes retained placeless events and deliveries with their user', :place_retention do
+    user = create(:user)
+    event = create(:geofence_event, user:, place: nil, place_name: 'Former home')
+    delivery = create(:webhook_delivery, webhook: create(:webhook, user:), geofence_event: event)
+    user.mark_as_deleted!
+
+    described_class.new(user).call
+
+    expect(GeofenceEvent.exists?(event.id)).to be(false)
+    expect(WebhookDelivery.exists?(delivery.id)).to be(false)
   end
 end

@@ -17,6 +17,17 @@
 class Tracks::RealtimeGenerationJob < ApplicationJob
   queue_as :tracks
 
+  retry_on ActiveRecord::QueryCanceled,
+           ActiveRecord::Deadlocked,
+           wait: :polynomially_longer,
+           attempts: 3 do |job, error|
+    user_id = job.arguments.first
+    Rails.logger.error(
+      "Tracks::RealtimeGenerationJob database retries exhausted user_id=#{user_id}: #{error.message}"
+    )
+    ExceptionReporter.call(error, "Failed real-time track generation for user #{user_id} after retries")
+  end
+
   def perform(user_id)
     # Always clear debounce key first so new triggers aren't blocked
     Tracks::RealtimeDebouncer.new(user_id).clear
@@ -29,6 +40,8 @@ class Tracks::RealtimeGenerationJob < ApplicationJob
 
     # Enqueue reverse geocoding for recent ungeocoded points
     enqueue_reverse_geocoding(user)
+  rescue ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked
+    raise
   rescue Tracks::PerUserLock::AcquisitionTimeout => e
     # Expected contention: another generation/visit job already holds this user's
     # lock. Re-arm the debouncer so the points are retried once it releases,

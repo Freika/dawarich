@@ -180,8 +180,7 @@ app/javascript/
 │   │   ├── heatmap_layer.js    # Heatmap visualization
 │   │   ├── visits_layer.js     # Visit markers
 │   │   ├── photos_layer.js     # Photo markers
-│   │   ├── places_layer.js     # Places markers
-│   │   ├── areas_layer.js      # User-defined areas
+│   │   ├── places_layer.js     # Place centers and Visit Radius boundaries
 │   │   ├── fog_layer.js        # Fog of war overlay
 │   │   └── scratch_layer.js    # Scratch map
 │   ├── services/               # API and external services
@@ -285,15 +284,14 @@ Layers are rendered in specific order (bottom to top):
 
 1. **Scratch Layer** - Visited countries/regions overlay
 2. **Heatmap Layer** - Point density visualization
-3. **Areas Layer** - User-defined circular areas
-4. **Tracks Layer** - Imported GPS tracks
-5. **Routes Layer** - Generated routes from points
-6. **Visits Layer** - Detected visits to places
-7. **Places Layer** - Named locations
-8. **Photos Layer** - Photos with geolocation
-9. **Family Layer** - Real-time family member locations
-10. **Points Layer** - Individual location points
-11. **Fog Layer** - Canvas overlay showing unexplored areas
+3. **Tracks Layer** - Imported GPS tracks
+4. **Routes Layer** - Generated routes from points
+5. **Visits Layer** - Detected visits to places
+6. **Places Layer** - Place centers and Visit Radius boundaries
+7. **Photos Layer** - Photos with geolocation
+8. **Family Layer** - Real-time family member locations
+9. **Points Layer** - Individual location points
+10. **Fog Layer** - Canvas overlay showing unexplored areas
 
 ### BaseLayer Pattern
 
@@ -386,8 +384,7 @@ All data is transformed to GeoJSON before rendering:
 - `pointsToGeoJSON(points)` - Convert points array
 - `visitsToGeoJSON(visits)` - Convert visits
 - `photosToGeoJSON(photos)` - Convert photos
-- `placesToGeoJSON(places)` - Convert places
-- `areasToGeoJSON(areas)` - Convert circular areas to polygons
+- `placesToGeoJSON(places)` - Convert Places to center points and Visit Radius polygons
 
 ## Creating New Features
 

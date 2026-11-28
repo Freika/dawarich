@@ -2,10 +2,13 @@
 
 module ApplicationHelper
   def javascript_translations
-    translations = I18n.t('javascript', default: {}).merge(
+    base = I18n.t('javascript', locale: I18n.default_locale, default: {})
+    translations = base.deep_merge(I18n.t('javascript', default: {}))
+    translations = translations.merge(
       transportation_modes: I18n.t('transportation_modes', default: {}),
       visit_statuses: I18n.t('visit_statuses', default: {}),
-      battery_statuses: I18n.t('battery_statuses', default: {})
+      battery_statuses: I18n.t('battery_statuses', default: {}),
+      date_time_preferences: I18n.t('date_time_preferences', default: {})
     )
     tag.script(
       json_escape(translations.to_json).html_safe,
@@ -13,6 +16,10 @@ module ApplicationHelper
       type: 'application/json',
       data: { turbo_track: 'reload' }
     )
+  end
+
+  def date_time_preferences_meta_tag
+    tag.meta(name: 'date-time-preferences', content: Current.date_time_preferences.to_h.to_json)
   end
 
   def show_plan_data_window_alert?
@@ -75,7 +82,8 @@ module ApplicationHelper
   end
 
   def onboarding_modal_showable?(user)
-    !user.settings&.dig('onboarding_completed')
+    settings = user.settings
+    settings.nil? || (settings.is_a?(Hash) && !settings['onboarding_completed'])
   end
 
   def trial_button_class(user)
@@ -104,11 +112,7 @@ module ApplicationHelper
   end
 
   def subscription_upgrade_url(user)
-    if user.pending_payment?
-      trial_resume_path
-    else
-      "#{MANAGER_URL}/auth/dawarich?token=#{user.generate_subscription_token}"
-    end
+    user.pending_payment? ? trial_resume_path : trial_upgrade_path
   end
 
   def subscription_button_label(user)
@@ -204,26 +208,24 @@ module ApplicationHelper
     map_v2_path(params)
   end
 
-  # Generates a user-specific upgrade URL that authenticates the user
-  # with the external subscription service via JWT token.
-  # Accepts optional UTM parameters for tracking.
+  # Links to /trial/upgrade, which mints the checkout token at redirect time:
+  # a token rendered into the page would reach analytics through outbound
+  # click tracking, and expire 30 minutes after the page was rendered.
+  # Accepts optional UTM parameters, which the redirect forwards.
   # Returns an empty string on self-hosted instances — there is no
   # upgrade flow there, and the JWT secret is not configured.
   def upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'lite_upgrade', utm_content: nil)
     return '' if DawarichSettings.self_hosted?
 
-    base = "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}"
-    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
-    utm.any? ? "#{base}&#{utm.to_query}" : base
+    trial_upgrade_path({ utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact)
   end
 
   def family_upgrade_url(utm_source: 'app', utm_medium: nil, utm_campaign: 'family_upgrade', utm_content: nil)
     return '' if DawarichSettings.self_hosted?
 
-    token = current_user.generate_subscription_token(plan: 'family', interval: 'annual')
-    base = "#{MANAGER_URL}/auth/dawarich?token=#{token}"
-    utm = { utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
-    utm.any? ? "#{base}&#{utm.to_query}" : base
+    trial_upgrade_path(
+      { plan: 'family', interval: 'annual', utm_source:, utm_medium:, utm_campaign:, utm_content: }.compact
+    )
   end
 
   def pro_badge_tag(preview: true)
@@ -276,10 +278,23 @@ module ApplicationHelper
 
     return badge unless record.failed? && record.respond_to?(:error_message) && record.error_message.present?
 
-    error_icon = content_tag(:span, icon('circle-alert', class: %w[w-3.5 h-3.5 text-error]),
-                             class: 'tooltip tooltip-left cursor-help inline-flex items-center',
-                             data: { tip: record.error_message })
-    content_tag(:span, safe_join([badge, error_icon]),
+    content_tag(:span, safe_join([badge, failure_reason_icon(record)]),
                 class: 'inline-flex items-center gap-1 whitespace-nowrap')
+  end
+
+  private
+
+  # An import explains its failure in words and links to its page, which has
+  # the reference and next steps; the raw exception stays on that page.
+  def failure_reason_icon(record)
+    alert_icon = icon('circle-alert', class: %w[w-3.5 h-3.5 text-error])
+    tooltip_class = 'tooltip tooltip-left inline-flex items-center whitespace-normal'
+    if record.respond_to?(:failure_summary_in_list)
+      summary = record.failure_summary_in_list
+      return link_to(alert_icon, record, class: tooltip_class, aria: { label: summary },
+                                         data: { tip: summary, testid: 'import-failure-link' })
+    end
+
+    content_tag(:span, alert_icon, class: "#{tooltip_class} cursor-help", data: { tip: record.error_message })
   end
 end

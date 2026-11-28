@@ -16,7 +16,10 @@ class Settings::TrekSourcesController < ApplicationController
                          alert: t('settings.trek_sources.sync.source_importing')
     end
 
-    connection_attributes = { api_key: attributes[:api_key], status: :active, last_error: nil }
+    connection_attributes = {
+      api_key: attributes[:api_key], skip_ssl_verification: attributes[:skip_ssl_verification] == '1',
+      status: :active, last_error: nil
+    }
     source.assign_attributes(connection_attributes)
     unless source.valid?
       return redirect_to settings_integrations_path(service: 'trek'), alert: source.errors.full_messages.to_sentence
@@ -118,7 +121,7 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def source_params
-    params.require(:trip_source).permit(:base_url, :api_key)
+    params.require(:trip_source).permit(:base_url, :api_key, :skip_ssl_verification)
   end
 
   def source_disabled_redirect

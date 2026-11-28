@@ -29,30 +29,6 @@ export function flightWindows(flights) {
     .filter(Boolean)
 }
 
-function inAnyWindow(timestamp, windows) {
-  return windows.some(([start, end]) => timestamp >= start && timestamp <= end)
-}
-
-/**
- * Hide point features whose timestamp falls inside any flight window.
- * @param {Object} featureCollection
- * @param {Array<[number, number]>} windows
- * @returns {Object} filtered FeatureCollection
- */
-export function maskPoints(featureCollection, windows) {
-  if (!windows || windows.length === 0 || !featureCollection) {
-    return featureCollection
-  }
-
-  return {
-    ...featureCollection,
-    features: (featureCollection.features || []).filter((feature) => {
-      const timestamp = feature.properties?.timestamp
-      return timestamp == null || !inAnyWindow(timestamp, windows)
-    }),
-  }
-}
-
 function toUnixSeconds(value) {
   if (value == null) return null
   if (typeof value === "number") return value

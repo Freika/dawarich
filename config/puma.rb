@@ -66,3 +66,17 @@ if ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
   activate_control_app
   plugin :yabeda
 end
+
+require_relative '../lib/dawarich/embedded_sidekiq'
+
+if Dawarich::EmbeddedSidekiq.enabled?
+  raise_exception_on_sigterm false
+  if ENV.fetch('WEB_CONCURRENCY', 2).to_i.positive?
+    before_worker_boot { Dawarich::EmbeddedSidekiq.start }
+    before_worker_shutdown { Dawarich::EmbeddedSidekiq.stop }
+  else
+    after_booted { Dawarich::EmbeddedSidekiq.start }
+    after_stopped { Dawarich::EmbeddedSidekiq.stop }
+    before_restart { Dawarich::EmbeddedSidekiq.stop }
+  end
+end

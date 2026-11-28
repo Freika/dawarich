@@ -30,6 +30,7 @@ de:
           komoot_warning: "photon.komoot.io ist ein gemeinsam genutzter öffentlicher Server mit strengen Limits. Anfragen werden auf eine pro Sekunde gedrosselt, Massen-Geokodierung ist daher langsam. Erwäge, eine eigene Photon-Instanz zu betreiben."
           https_locked: "Für diesen Host ist HTTPS immer aktiv."
           legacy_user_settings: "Einige Nutzer hatten die Geokodierung selbst eingerichtet, bevor sie hierher verschoben wurde. Ihre Einstellungen wurden nicht übernommen, weil nicht alle Nutzer eine hatten oder sie sich unterschieden. Richte unten einen Anbieter ein, um die Geokodierung für alle wieder einzuschalten."
+          paused: "Abfragen pausieren %{minutes} Min., weil der Anbieter sie wegen seines Limits abgelehnt hat."
         providers:
           photon: "Open-Source-Geocoder. Nutze einen gehosteten Server oder betreibe deinen eigenen."
           geoapify: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
@@ -37,10 +38,13 @@ de:
           locationiq: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
         points:
           title: "Punkte"
+        imports:
+          title: "Importe"
         fields:
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
           photon_api_use_https: "HTTPS verwenden"
+          photon_api_language: "Sprache"
           nominatim_api_host: "Host"
           nominatim_api_key: "API-Schlüssel"
           nominatim_api_use_https: "HTTPS verwenden"
@@ -50,12 +54,18 @@ de:
           store_geodata: "Neue Punkte sofort geokodieren"
           host_hint: "Hostname mit optionalem Port, z. B. photon.example.com:2322"
           rps_hint: "Leer lassen für kein Limit. Trage ein, was dein Server oder Tarif erlaubt."
+          photon_api_language_hint: "Sprachcode aus zwei Buchstaben für Ortsnamen oder default für Namen in der Landessprache. Dein Photon-Index muss diese Sprache enthalten. Eine Änderung gilt nur für neue Abfragen, danach kann eine Stadt in der Statistik doppelt erscheinen."
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
+          import_max_file_size_mb: "Größte Datei, die am Stück gelesen wird (MB)"
+          kml_max_file_size_mb: "Größte KML-Datei (MB)"
+          import_max_file_size_mb_hint: "JSON-, GeoJSON-, TCX- und ähnliche Dateien werden vollständig in den Speicher gelesen und belegen dort etwa das Dreifache ihrer Größe. Erhöhe den Wert nur, wenn der Import-Worker genug Speicher hat. Standard: 512."
+          kml_max_file_size_mb_hint: "Eine KML-Datei braucht beim Lesen weit mehr Speicher, als sie groß ist. Standard: 64."
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
+        language_invalid: "Die Sprache muss ein Code aus zwei Buchstaben wie en oder nl sein oder default."
         chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
@@ -63,6 +73,7 @@ de:
         empty: "Der Anbieter hat geantwortet, aber keine Ergebnisse für die Testkoordinaten geliefert."
         failure: "Test fehlgeschlagen: %{error}"
         rate_limited: "Das Anfragelimit des Anbieters ist gerade ausgeschöpft. Versuche es gleich noch einmal."
+        paused: "Der Anbieter hat Abfragen wegen seines Limits abgelehnt. Sie pausieren noch %{seconds} s, deshalb wurde kein Test gesendet."
   route_videos:
     route_video:
       download: "MP4 herunterladen"
@@ -140,12 +151,6 @@ de:
         link_provider_to_your_dawarich_account: "%{provider} mit deinem Dawarich-Konto verknüpfen"
         existing_account_link_instructions_html: "Wir haben ein bestehendes Dawarich-Konto für %{email} gefunden. Gib dein Passwort ein, um deine %{provider}-Identität mit diesem Konto zu verknüpfen und dich anzumelden."
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Bestätigungslink erneut senden
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Gib deine E-Mail-Adresse ein, und wir senden dir die Bestätigungsanweisungen erneut.
-        email: E-Mail
-        resend_confirmation_instructions: Bestätigungsanweisungen erneut senden
     mailer:
       confirmation_instructions:
         welcome: Willkommen
@@ -174,7 +179,6 @@ de:
         change_your_password: Passwort ändern
         enter_your_new_password_below: Gib dein neues Passwort unten ein.
         new_password: Neues Passwort
-        characters_minimum: Zeichen erforderlich)
         confirm_new_password: Neues Passwort bestätigen
         change_my_password: Passwort ändern
       new:
@@ -212,7 +216,7 @@ de:
         current_password: Aktuelles Passwort
         required_to_confirm_your_changes: "(erforderlich, um deine Änderungen zu bestätigen)"
         import_your_data: Daten importieren
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Lade eine ZIP-Datei mit deinen exportierten Dawarich-Daten hoch, um deine Punkte, Reisen und Einstellungen wiederherzustellen. Verbindungen zu Integrationen (Immich, Photoprism, AirTrail, TeslaMate) werden nicht wiederhergestellt; verbinde sie unter Einstellungen → Integrationen neu."
         select_zip_archive: ZIP-Archiv auswählen
         file_will_be_uploaded_directly_to_storage_please_be_patient: Die Datei wird direkt in den Speicher hochgeladen. Bitte habe während des Uploads etwas Geduld.
         cancel: Abbrechen
@@ -248,17 +252,24 @@ de:
         importing: Wird importiert …
         delete_my_account: Mein Konto löschen
         email_me_the_confirmation_link: Sende mir den Bestätigungslink per E-Mail
+        first_name: Vorname
+        last_name: Nachname
       new:
         join: Beitreten
         you_ve_been_invited_by: Du wurdest von
         to_join_their_family_create_your_account_to_accept_the: eingeladen, der Familie beizutreten. Erstelle dein Konto, um die Einladung anzunehmen und Standortdaten zu teilen.
-        almost_there: Fast fertig!
-        only_a_few_steps_left_until_you_get_control_over: Nur noch wenige Schritte, bis du Kontrolle über deine Standortdaten hast!
-        create_your_account: Erstelle dein Konto
-        configure_your_mobile_app: Konfiguriere deine mobile App
-        start_tracking_your_location_data_securely: Beginne mit der sicheren Aufzeichnung deiner Standortdaten
-        ellipsis: "…"
-        you_re_beautiful: Du bist wunderschön!
+        almost_there: "Fast fertig"
+        only_a_few_steps_left_until_you_get_control_over: "Nur noch wenige Schritte, bis du Kontrolle über deine Standortdaten hast."
+        steps:
+          account:
+            title: "Erstelle dein Konto"
+            body: "Nutze das Formular auf dieser Seite."
+          mobile_app:
+            title: "Konfiguriere deine mobile App"
+            body: "Zeichne neue Standorte mit der Dawarich-App oder OwnTracks auf."
+          import:
+            title: "Importiere deinen Verlauf"
+            body: "Füge deinen Google-Timeline-Export und ältere GPX- oder GeoJSON-Dateien hinzu."
         invitation_email_notice: Deine E-Mail (%{email}) wird für dieses Konto verwendet
         email: E-Mail
         password: Passwort
@@ -278,6 +289,19 @@ de:
         don_t_have_an_account_yet: Du hast noch kein Konto?
         login_now: Jetzt anmelden
         and_take_control_over_your_location_data: und übernimm die Kontrolle über deine Standortdaten.
+        benefits:
+          map:
+            title: "Dein gesamter Verlauf auf einer Karte"
+            body: "Sieh jeden Punkt, jede Route und jeden Besuch auf einer interaktiven Karte."
+          import:
+            title: "Nimm deine Daten mit"
+            body: "Importiere aus Google Timeline, OwnTracks, GPX, GeoJSON und mehr."
+          stats:
+            title: "Sieh, wo du überall warst"
+            body: "Länder, Städte und Distanz, aufgeschlüsselt nach Jahr und Monat."
+          privacy:
+            title: "Deine Daten gehören dir"
+            body: "Keine Werbung, und dein Standortverlauf wird niemals verkauft."
         email: E-Mail
         password: Passwort
         remember_me: Angemeldet bleiben
@@ -298,7 +322,6 @@ de:
         log_in: Anmelden
         register: Registrieren
         forgot_your_password: Passwort vergessen?
-        didn_t_receive_confirmation_instructions: Keine Bestätigungsanweisungen erhalten?
         didn_t_receive_unlock_instructions: Keine Entsperranweisungen erhalten?
     unlocks:
       new:
@@ -474,6 +497,7 @@ de:
         create_account_join_family: Konto erstellen & Familie beitreten →
         already_have_an_account: Bereits ein Konto?
         sign_in_to_accept_invitation: Anmelden, um Einladung anzunehmen
+        open_in_the_dawarich_app: "In der Dawarich-App öffnen"
         not_interested_you_can_simply_close_this_page: Nicht interessiert? Du kannst diese Seite einfach schließen.
       index:
         invited: Eingeladen
@@ -585,24 +609,6 @@ de:
       stay_connected_with_your_growing_family_2: "• Mit deiner wachsenden Familie in Verbindung bleiben"
       manage_family_members_and_settings_from_your_family_page_2: "• Familie und Einstellungen von deiner Familien-Übersicht verwalten"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: Du kannst deine Familie und Privatsphäre-Einstellungen jederzeit von deiner Familien-Übersicht verwalten.'
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: Der einzige Standortverlaufstracker, den du je benötigen wirst.
-      or: oder
-      location_history_visualisation: Visualisierung des Standortverlaufs
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Importiere deinen Standortverlauf mühelos aus Google Maps Timeline und OwnTracks. Erkunde deine Wege auf einer interaktiven Karte und passe Ebenen wie Heatmap, Punkte und Verbindungslinien an.
-      comprehensive_travel_statistics: Umfassende Reisestatistiken
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Erhalte Einblicke in deine Reisemuster mit detaillierten Statistiken. Verfolge die Anzahl der besuchten Länder und Städte sowie die Gesamtstrecke. Teile deine Daten nach Jahren und Monaten für einen klaren Überblick über deine Reisen.
-      self_hosted_and_private: Selbst gehostet und privat
-      maintain_complete_control_over_your_data_with_our_self_hosted: Mit der selbst gehosteten Lösung behältst du die volle Kontrolle über deine Daten. Dein Standortverlauf bleibt privat und sicher, während dir alle Funktionen eines leistungsfähigen Tracking-Systems zur Verfügung stehen.
-      find_more_on: Mehr erfährst du auf
-      the_website: der Website
-      or_check_out_the: ", oder sieh dir den"
-      source_code: Quellcode
-      on_github: auf GitHub an.
-      sign_up: Registrieren
-      sign_in: Anmelden
   imports:
     extraction_card:
       additional_data: Zusätzliche Daten
@@ -641,7 +647,11 @@ de:
       remove_extracted_data: Extrahierte Daten entfernen
       remove_the_visits_places_and_tracks_this_extraction_created_your: Entferne die Aufenthalte, Orte und Tracks, die diese Extraktion erstellt hat? Deine importierten GPS-Punkte werden beibehalten.
     form:
-      supported_import_formats: Unterstützte Importformate
+      drop_files_here: "Dateien hierher ziehen oder klicken"
+      each_file_becomes_its_own_import: "Jede Datei wird ein eigener Import. Das Format wird automatisch erkannt."
+      where_do_i_get_my_data: "Woher bekomme ich meine Daten?"
+      how_to_export: "So exportierst du"
+      all_supported_formats: "Alle unterstützten Formate"
       google_maps: 'Google Maps:'
       records_json_semantic_history_phone_takeout_json: records.json, Semantic History, Phone Takeout (.json)
       google_photos: 'Google Fotos:'
@@ -664,9 +674,10 @@ de:
       dawarich_mobile_app_export_json: Export der Dawarich-App (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Datenexport (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archive mit einem der oben genannten Formate (.zip)
-      file_format_is_automatically_detected_during_upload: Dateiformat wird während des Uploads automatisch erkannt.
       for_files_larger_than_200mb_consider_compressing_them_into_a: Dateien über 200 MB solltest du vor dem Upload in ein ZIP-Archiv packen. Das verkürzt die Uploadzeit deutlich und vermeidet Verbindungsabbrüche.
       trial_limitations_max_5_imports_10mb_per_file: 'Testlimitierungen: Max. 5 Importe, 10MB pro Datei.'
       current_imports: 'Aktuelle Importe:'
@@ -722,6 +733,24 @@ de:
       back_to_imports: Zurück zu den Importen
       import: Importieren
   insights:
+    time_shares:
+      title: "Wohin deine Zeit ging"
+      days_title: "Wohin die Tage gingen"
+      hours_title: "Wohin die Stunden gingen"
+      modes_title: "Wie du unterwegs warst"
+      home: "Zuhause"
+      out: "Unterwegs"
+      trip: "Auf Reisen"
+      untracked: "Nicht erfasst"
+      places: "Andere Orte"
+      moving: "In Bewegung"
+      no_data: "Keine Daten"
+      by_time: "nach Zeit"
+      note: "Tage und Stunden stammen aus deinen Aufenthalten, Tracks, Reisen und den Orten, an denen du gewohnt hast."
+      other: "Sonstige"
+      day_count:
+        one: "%{count} Tag"
+        other: "%{count} Tage"
     activity_breakdown:
       activity_breakdown: Aktivitätsauflistung
       no_activity_data_available_for_this_period: Keine Aktivitätsdaten für diese Periode verfügbar
@@ -750,7 +779,28 @@ de:
       day:
         one: "Tag"
         other: "Tage"
+    distance_race:
+      title: "%{year} vs. %{previous}"
+      title_single: "Strecke im Jahr %{year}"
+      aria: "Kumulierte Strecke %{year} im Vergleich zu %{previous}"
+      so_far: "Bisher in %{year}"
+      by_date: "bis %{date}"
+      same_day: "Am selben Tag %{year}"
+      ended_at: "%{year} endete bei %{distance}"
+      ahead: "%{distance} mehr"
+      behind: "%{distance} weniger"
+      no_previous: "Keine Daten aus %{year} zum Vergleich."
+    country_ribbon:
+      title: "Wo du %{year} warst"
+      today: "Heute"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} Tag"
+        other: "%{country}, %{from} – %{to}, %{count} Tage"
+      more_countries:
+        one: "+%{count} weiteres Land"
+        other: "+%{count} weitere Länder"
     header:
+      period: "Zeitraum"
       insights: Einblicke
       your_personal_movement_analytics_and_travel_patterns: Deine persönlichen Bewegungsanalysen und Reisemuster
       by_year: Nach Jahr
@@ -769,28 +819,30 @@ de:
       active_days: Aktive Tage
       countries: Länder
       cities: Städte
-      weekly_pattern: WÖCHENTLICHER ABLAUF
-      top_locations: TOP ORTE
+      weekly_pattern: Wöchentlicher Ablauf
+      top_locations: Top-Orte
       no_location_data: Keine Standortdaten
-      first_visits: ERSTE AUFENTHALTE
+      first_visits: Erste Aufenthalte
       country: Land
       city: Stadt
       no_new_places_this_month: Keine neuen Orte in diesem Monat
-      vs_previous_month: IM VERGLEICH ZUM VORMONAT
+      vs_previous_month: Im Vergleich zum Vormonat
       distance: Distanz
       countries_2: Länder
       monthly_digest: Monatlicher Überblick
       select_a_month_to_view_its_digest: 'Wähle einen Monat aus, um seinen Überblick anzuzeigen:'
+    months:
+      title: "Strecke nach Monat"
     movement_wellness:
       movement_wellness: Bewegung & Wohlbefinden
-      active_time: AKTIVE ZEIT
+      active_time: Aktive Zeit
       walking: Gehen
       total: gesamt
       running: Laufen
       cycling: Radfahren
       driving: Fahren
       no_activity_data_available_for_this_period: Keine Aktivitätsdaten für diese Periode verfügbar
-      sedentary_vs_active: SITZEND VS AKTIV
+      sedentary_vs_active: Sitzend vs. aktiv
       in_transport: Im Transport
       stationary: Stationär
       active_movement: Aktive Bewegung
@@ -824,9 +876,9 @@ de:
         other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
-      time_of_day_distribution: TAGESZEIT
-      day_of_week: WOCHENTAG
-      seasonality: SAISONALITÄT
+      time_of_day_distribution: Tageszeit
+      day_of_week: Wochentag
+      seasonality: Saisonalität
       insight: Erkenntnis
     travel_story:
       your_travel_story: Deine Reiseerzählung
@@ -878,6 +930,16 @@ de:
       rome_rarr_amalfi: Rom → Amalfi
       favorites_marked: Favoriten markiert
       places: Orte
+    year_cards:
+      flown: "davon %{distance} geflogen"
+      title: "Jahre"
+    year_calendar:
+      mode: "Kalenderansicht"
+      mode_both: "Länder + Strecke"
+      mode_distance: "Strecke"
+      mode_countries: "Länder"
+      no_data: "Keine Daten"
+      timezone_note: "Länder werden pro UTC-Tag gezählt, Strecken pro Tag in deiner Zeitzone (%{zone}). Ein Tag kurz vor oder nach Mitternacht kann daher das Land eines Tages neben der Strecke eines anderen zeigen."
     year_comparison:
       your_journey: 'Deine Reise:'
       vs: vs
@@ -886,7 +948,7 @@ de:
       days_traveling: Tagen unterwegs
       days: Tage (
       days_2: Tage
-      biggest_month: GRÖSSTER MONAT
+      biggest_month: Größter Monat
     details:
       year_comparison: Jahresvergleich
       activity_breakdown: Aktivitätsübersicht
@@ -895,7 +957,6 @@ de:
       travel_patterns: Reisemuster
       movement_wellness: Bewegung & Wohlbefinden
     index:
-      geodata_insights_bull_powered_by_your_location_history: Geodaten-Insights • Erlebt durch deinen Standortverlauf
       activity_heatmap: Aktivitätsheatmap
       activity_streak: Aktivitätsreihe
       year_comparison: Jahresvergleich
@@ -937,7 +998,21 @@ de:
       shared_on_dawarich: Auf Dawarich geteilt
       dawarich_logo: Dawarich-Logo
   map:
+    keyboard_shortcuts:
+      title: "Tastenkürzel"
+      open_timeline: "Zeitleiste öffnen"
+      open_layers: "Ebenen öffnen"
+      search_places: "Orte suchen"
+      open_family: "Familie öffnen"
+      open_tools: "Werkzeuge öffnen"
+      open_settings: "Karteneinstellungen öffnen"
+      toggle_replay: "Wiedergabe starten oder stoppen"
+      previous_next_day: "Vorheriger oder nächster Tag, solange die Zeitleiste offen ist"
+      show_shortcuts: "Diese Liste anzeigen"
+      close: "Schließen"
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Du weißt nicht, wo deine App den Export versteckt?"
+      step_by_step_export_guides: "Schritt-für-Schritt-Anleitungen zum Export"
       invite_your_family: "Lade deine Familie ein"
       add_your_family_and_see_each_other_on_the_map: "Füge deine Familie hinzu und seht euch auf der Karte."
       welcome_to_dawarich: Willkommen bei Dawarich!
@@ -952,16 +1027,6 @@ de:
       skip_for_now: Jetzt überspringen
       import_your_data: Importiere deine Daten
       supported_formats: Unterstützte Formate
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Track-Dateien (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Feature-Sammlungen (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Recorder-Dateien (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: KML-Dateien (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: Das Dateiformat wird beim Hochladen automatisch erkannt.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Testzeitraum-Begrenzungen: Maximal 5 Importe, 10 MB pro Datei. Aktuelle Importe:'
       select_one_or_multiple_files: Wähle eine oder mehrere Dateien
@@ -981,16 +1046,6 @@ de:
       settings: Einstellungen
       setup_guide: Einrichtungsanleitung
     maplibre:
-      area_creation_modal:
-        create_new_area: Neues Gebiet erstellen
-        area_name: Gebietsname *
-        radius: Radius
-        meters: Meter
-        cancel: Abbrechen
-        e_g_home_office_gym: z. B. Zuhause, Büro, Fitnessstudio …
-        radius_in_meters: Radius in Metern
-        create_area: Gebiet erstellen
-        creating: Wird erstellt...
       button_cluster:
         video_studio: "Video-Studio"
         map_controls: Kartensteuerung
@@ -998,10 +1053,12 @@ de:
         timeline_t: Zeitleiste (T)
         layers: Ebenen
         layers_l: Ebenen (L)
+        family: "Familie"
+        family_f: "Familie (F)"
         search: Suche
         search_2: Suche (/)
-        create: Erstellen
-        create_c: Erstellen (C)
+        tools: "Werkzeuge"
+        tools_c: "Werkzeuge (C)"
         replay: Wiedergabe
         replay_points_for_the_current_date_range_r: Standortpunkte für den aktuellen Zeitraum wiedergeben (R)
         poster_studio: Poster-Studio
@@ -1009,13 +1066,16 @@ de:
         settings_s: Einstellungen (S)
         links: Links
       settings_panel:
+        data_processing_link: "Einstellungen für Tracks, GPS-Rauschen, Städte und Fortbewegungsarten findest du unter Einstellungen → Datenverarbeitung"
+        speed_colored_tracks: Tracks nach Geschwindigkeit einfärben
+        edit_speed_colors: Geschwindigkeitsfarben bearbeiten
         close_panel: Fenster schließen
         layers: Ebenen
         search_for_a_place: Suche nach einem Ort
         enter_name_of_a_place: Gib den Namen eines Ortes ein
         search_for_a_location_to_find_places_you_visited: Suche nach einem Ort, um Orte zu finden, die du besucht hast
         points: Punkte
-        show_individual_location_points: Zeige einzelne Standortpunkte
+        show_individual_location_points: "Jede Position, die deine Geräte aufgezeichnet haben, als einzelner Punkt."
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
         editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
@@ -1027,36 +1087,37 @@ de:
         anomalies: Anomalien
         show_filtered_gps_noise_points: Zeige gefilterte GPS-Rauschpunkte
         tracks: Tracks
-        show_backend_calculated_tracks: Im Hintergrund berechnete Tracks anzeigen
+        show_backend_calculated_tracks: "Deine Punkte, verbunden zu den Wegen, die du zurückgelegt hast."
         flights: Flüge
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Flüge von AirTrail als Bögen anzeigen (überlappende GPS-Daten verbergen)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Deine AirTrail-Flüge als Bögen. Sie verdecken die GPS-Punkte, die sie überlagern."
         heatmap: Heatmap
-        show_density_heatmap: Dichtegradienten-Heatmap anzeigen
+        show_density_heatmap: "Leuchtet heller, wo du mehr Punkte hast."
         hexagons: Hexagone
-        show_point_density_as_hexagonal_cells: Punktdichte als hexagonale Zellen anzeigen
+        show_point_density_as_hexagonal_cells: "Zählt deine Punkte pro Sechseck-Zelle für einen gröberen Überblick."
         visits: Aufenthalte
-        show_detected_area_visits: Erkannte Aufenthaltsorte anzeigen
+        show_detected_area_visits: "Von Dawarich erkannte Aufenthalte: Zeiten, in denen du an einem Ort geblieben bist."
         filter_by_name: Nach Namen filtern...
         all_visits: Alle Aufenthalte
         confirmed_only: Nur bestätigte
         suggested_only: Nur vorgeschlagene
         places: Orte
-        show_your_saved_places: Deine gespeicherten Orte anzeigen
+        show_your_saved_places: "Benannte Orte, die du gespeichert hast. Aufenthalte werden ihnen zugeordnet."
         enable_all_tags: Alle Tags aktivieren
-        filter_by_tags: Nach Tags filtern
+        show_place_boundaries: Ortsgrenzen anzeigen
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern
         photos: Fotos
-        show_geotagged_photos: Geotagte Fotos anzeigen
+        show_geotagged_photos: "Deine Fotos mit Geotag, dort angeheftet, wo sie aufgenommen wurden."
         areas: Gebiete
         show_defined_areas: Definierte Gebiete anzeigen
         fog_of_war: Kartennebel
-        show_explored_areas: Erkundete Flächen anzeigen
+        show_explored_areas: "Verdunkelt die Karte, außer dort, wo du schon warst."
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
         scratch_map: Besuchte Länder
-        show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
+        show_scratched_countries: "Die Länder, die du im gewählten Zeitraum besucht hast, ausgefüllt."
         family_members: Familienmitglieder
+        manage_family: "Familie verwalten"
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen
         click_to_center_on_member: Klicke, um auf Mitglied zu zoomen
         appearance: Erscheinungsbild
@@ -1089,7 +1150,6 @@ de:
         points_of_interest: Sehenswürdigkeiten
         choose_which_poi_categories_appear_on_the_map: Wähle aus, welche POI-Kategorien auf der Karte angezeigt werden.
         distance_threshold_for_route_splitting: Schwellenwert für die Routenunterteilung
-        min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
@@ -1103,19 +1163,23 @@ de:
         gps_noise_filtering: GPS-Rauschfilterung
         track_generation: Track-Erstellung
         track_split_distance: Entfernungsabstand zwischen Tracks
-        track_split_distance_hint: Einen neuen Track beginnen, wenn aufeinanderfolgende Punkte weiter auseinanderliegen.
+        track_split_distance_unit: m
+        track_split_distance_hint: "Tracks verschiedener Geräte werden verbunden, wenn einer innerhalb dieser Entfernung vom Start des nächsten endet. Der Abstand zwischen Punkten beginnt keinen neuen Track."
         track_split_time: Zeitabstand zwischen Tracks
+        track_split_time_unit: 'Min.'
         track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
+        split_tracks_at_midnight: "Tracks um Mitternacht trennen"
+        split_tracks_at_midnight_hint: "Beendet jeden Track um Mitternacht in der Zeitzone aus deinen allgemeinen Einstellungen, sodass kein Track zwei Tage umfasst. Um es auf frühere Tracks anzuwenden, zuerst „Einstellungen anwenden“ und dann unten „Tracks & Statistiken neu berechnen“ drücken."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
+        hide_inaccurate_points: "Ungenaue Punkte ausblenden"
+        hide_inaccurate_points_hint: "Blendet zusätzlich Punkte aus, deren gemeldete Genauigkeit schlechter als der Schwellenwert unten ist. Hilft bei Handy-Tracking mit seitlichem Rauschen; für Google-Timeline-Importe ausgeschaltet lassen, deren grobe Punkte trotzdem auf der Straße liegen. Um es auf den Verlauf anzuwenden, zuerst „Einstellungen anwenden“ und dann „Vergangene Daten erneut prüfen“ drücken."
+        accuracy_threshold: "Genauigkeitsschwelle"
         re_evaluate_past_data: Vergangene Daten erneut prüfen
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Entfernt vorhandene Anomaliemarkierungen und prüft alle Punkte mit den aktuellen Einstellungen erneut. Tracks, Statistiken und Zusammenfassungen werden anschließend im Hintergrund neu erstellt.
         recalculate_tracks_stats: Tracks & Statistiken neu berechnen
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Speichere diese Schwellenwerte zuerst. Neue Tracks verwenden sie automatisch; wähle „Tracks und Statistiken neu berechnen“, um sie auf bestehende Daten anzuwenden.
         city_statistics: Stadtstatistiken
         min_minutes_in_city: Min. Minuten in der Stadt
-        min_5: 60 min
-        min_6: 5 min
-        min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Wie lange du in einer Stadt bleiben musst, damit sie in den Statistiken gezählt wird
         min_12: 720 min
         live_mode: Live-Modus
@@ -1123,7 +1187,6 @@ de:
         apply_settings: Einstellungen anwenden
         reset_to_defaults_2: Zurücksetzen auf Standardwerte
         transportation_mode_detection: Verkehrsmittel-Erkennung
-        checking_status: Status prüfen...
         settings_are_locked_while_recalculation_is_in_progress: Einstellungen werden während der Neuberechnung gesperrt.
         note: 'Hinweis:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Wenn du diese Schwellenwerte änderst, werden die Fortbewegungsarten aller Tracks neu berechnet. Je nach Anzahl der Tracks kann dies einige Zeit dauern.
@@ -1154,7 +1217,6 @@ de:
         sec_2: 180 sec
         min_flight_distance: Minimale Flugdistanz
         km: 100 km
-        make_changes_to_enable_the_apply_button: Nimm Änderungen vor, um die Schaltfläche „Anwenden“ zu aktivieren
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Führt die automatische Klassifizierung für alle Tracks erneut aus. Manuell korrigierte Abschnitte bleiben erhalten. Der Vorgang kann mehrere Minuten dauern.
         loading_calendar: Kalender wird geladen…
         less: weniger
@@ -1164,11 +1226,10 @@ de:
         suggested: Vorgeschlagen
         search_visits_places: Suche Aufenthalte, Orte…
         tags: Tags
-        pick_a_day_in_the_calendar_to_see_visits: Wähle einen Tag im Kalender aus, um Aufenthalte zu sehen.
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
-        select_area: Bereich auswählen
-        create_area: Bereich erstellen
+        select_data_on_map: Daten auf der Karte auswählen
+        select_data_all_time: Daten aus dem gesamten Zeitraum auswählen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
         close: Schließen
@@ -1266,6 +1327,10 @@ de:
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
+        no_data_in_period: "Keine Standortdaten in diesem Zeitraum"
+        jump_to_latest_data: "Zu den neuesten Daten springen"
+        nothing_recorded_yet: "Bisher wurde nichts aufgezeichnet oder importiert."
+        get_started: "Loslegen"
         map: Karte
     residency:
       show:
@@ -1304,6 +1369,16 @@ de:
         previous_day: Vorheriger Tag
         next_day: Nächster Tag
       feed:
+        latest_days_only:
+          one: "Der letzte %{count} Tag eines längeren Zeitraums"
+          other: "Die letzten %{count} Tage eines längeren Zeitraums"
+        all_days: Alle Tage
+        day_count:
+          one: "%{count} Tag"
+          other: "%{count} Tage"
+        note_count:
+          one: "%{count} Notiz"
+          other: "%{count} Notizen"
         no_visits_tracked_this_day: Keine Aufenthalte dieses Tag verfolgt.
         visits_are_auto_detected_daily_from_your_location_data: Aufenthalte werden täglich automatisch aus deinen Standortdaten erkannt.
       gap_entry:
@@ -1350,31 +1425,84 @@ de:
       and: und
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker containers. Danke!
+      contact_support_html: "Wenn das wieder passiert, schreib uns an %{email}."
     index:
       notifications: Benachrichtigungen
       mark_all_as_read: Alle markieren als gelesen
       delete_all: Alle löschen
       are_you_sure_you_want_to_delete_all_notifications: Bist du sicher, dass du alle Benachrichtigungen löschen möchtest?
+      read_are_deleted: "Gelesene Benachrichtigungen werden nach %{days} Tagen gelöscht."
     show:
       back_to_notifications: Zurück zu den Benachrichtigungen
       destroy_this_notification: Diese Benachrichtigung entfernen
       are_you_sure: Bist du sicher?
+      open: Öffnen
   places:
+    management:
+      create: "Ort erstellen"
+      duplicates: "Mögliche Duplikate"
+      search: "Namen durchsuchen"
+      sort: "Sortieren nach"
+      last_visit: "Letzter Besuch"
+      active_visits: "Aktive Besuche"
+      status: "Status"
+      apply: "Anwenden"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Quelle"
+      badges: "Schutz"
+      geofence: "Geofence"
+      privacy: "Privatsphärezone"
+      selected: "Ausgewählte Orte"
+      add_tag: "Tag hinzufügen"
+      remove_tag: "Tag entfernen"
+      survivor: "Diesen Ort behalten"
+      include_in_merge: "In den behaltenen Ort zusammenführen"
+      merge: "Orte zusammenführen"
+      delete: "Orte löschen"
+      select_all: "Alle Orte auf dieser Seite auswählen"
+      select_place: "%{name} auswählen"
+      no_results: "Keine Orte entsprechen diesen Filtern."
+      duplicates_description: "Orte mit überlappenden Besuchsradien werden hier gruppiert. Prüfe jede Gruppe und wähle den Ort, der erhalten bleiben soll. Es wird nichts automatisch zusammengeführt."
+      no_duplicates: "Keine möglichen Duplikate gefunden."
+      cluster: "Gruppe %{number}"
+      distance_reference: "Entfernungen vom empfohlenen Ort: %{name}"
+      distance: "Entfernung"
+      meters: "%{distance} m"
+      bulk_success: "Aktualisierte Orte: %{count}"
+      invalid_selection: "Wähle Orte und einen gültigen Tag oder einen der ausgewählten Orte zum Behalten."
+      merge_confirmation: "Diese Orte mit dem gewählten Ort zusammenführen? Besuche, Tags und Notizen werden dorthin verschoben. Dies kann nicht rückgängig gemacht werden."
+      delete_confirmation: "Diese Orte löschen? Orte: %{places}. Aktive Besuche, die ihren Ort verlieren: %{visits}; ihre Standortbezeichnungen bleiben erhalten. Orte mit Geofences: %{geofences}; Geofencing-Ereignisse bleiben mit dem Ortsnamen erhalten; Webhook-Abonnements werden entfernt. Orte mit Privatsphäre-Tags: %{privacy}; Daten in der Nähe können sichtbar werden, auch in geteilten Links. Dies kann nicht rückgängig gemacht werden."
+      sources:
+        manual: "Manuell"
+        photon: "Automatisch erkannt"
+        gpx_waypoint: "GPX-Wegpunkt"
+    edit_on_map: "Auf der Karte bearbeiten"
+    drag_to_edit: "Ziehe die Markierung, um den Ort zu verschieben, und den Griff, um den Besuchsradius zu ändern."
+    cancel_edit: "Abbrechen"
+    place_details: "Ortsdetails"
+    close_panel: "Ortsdetails schließen"
     drawer:
+      delete_consequences: "Diesen Ort löschen?\nAktive Besuche: %{visits}. Ihre Ortsbezeichnung bleibt erhalten.\nTags mit Privatsphärezone: %{privacy_tags}.\nWebhooks, aus denen dieser Ort entfernt wird: %{webhooks}.\nGeofencing-Ereignisse bleiben mit dem Ortsnamen erhalten. Dies kann nicht rückgängig gemacht werden."
       source: 'Quelle:'
       total_hours: Gesamtstunden
       avg_dwell: Durchschnittlicher Aufenthaltszeitraum
       no_tags: Keine Tags
+      edit_details: "Details bearbeiten"
       recent_visits: Letzte Aufenthalte
       rarr: "→"
       'on': auf
       no_visits_yet: Noch keine Aufenthalte
-      rename: Umbenennen
       merge: Verbinden
+      select_place_to_merge: Doppelten Ort auswählen
+      no_matching_places: Keine passenden Orte gefunden
+      search_places: Orte suchen
+      search: Suchen
+      merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
       delete: Löschen
-      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Dies kann nicht rückgängig gemacht werden.
+      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
       manual_name_title: Du hast diesen Ort benannt, daher wird der automatische Name nicht geändert. Benenne ihn um zu „%{default_name}“, um ihn wieder der automatischen Namensgebung zu übergeben.
       visit_count:
         one: "%{count} Aufenthalt"
@@ -1383,6 +1511,9 @@ de:
       no_nearby_places_found: Keine nahen Orte gefunden
       load_more_search_up_to_distance_m: Weitere laden (Suche bis zu %{distance}m)
     index:
+      filters: Ortsfilter
+      all_places: Alle Orte
+      unconfirmed_places: Unbestätigt
       hello_there: Hallo!
       here_you_ll_find_your_places_created_by_visits_suggestion: Hier findest du deine Orte, die durch den Visits-Vorschlagsprozess erstellt wurden. Aber jetzt gibt es keine.
       name: Name
@@ -1392,7 +1523,7 @@ de:
       timeline: Zeitleiste
       places: Orte
       delete: Löschen
-      are_you_sure_deleting_a_place_will_result_in_deleting: Bist du sicher? Das Löschen eines Ortes wird dazu führen, dass alle Aufenthalte für diesen Ort gelöscht werden.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
   points:
     address:
       address: 'Adresse:'
@@ -1437,6 +1568,7 @@ de:
       subtitle: Untertitel
       germany: Deutschland
       coordinates_line: Koordinatenlinie
+      trip_stats: Reisestatistik
       font: Schriftart
       layers: Ebenen
       track_opacity: Deckkraft des Tracks
@@ -1472,6 +1604,7 @@ de:
       buildings: Gebäude
       railways: Schienenwege
       boundaries: Grenzen
+      detail_layers_zoom_hint: "Gebäude und Eisenbahnen erscheinen erst, wenn du bis auf Stadtebene heranzoomst."
       theme_aria_label: "%{theme} Thema"
       background: Hintergrund
       motorway_roads: Autobahnstraßen
@@ -1481,6 +1614,40 @@ de:
       residential_roads: Wohnstraßen
       track: Track
   settings:
+    data_processing:
+      show:
+        title: "Datenverarbeitung"
+        intro: "Wie Dawarich aus deinen Punkten Tracks macht, welche Messungen als GPS-Rauschen gelten und wie lange ein Aufenthalt für eine Stadt zählt. Änderungen hier können bereits vorhandene Daten neu berechnen; Kartenfarben und Ebenen bleiben in den Einstellungen der Karte."
+        existing_data: "Auf vorhandene Daten anwenden"
+        existing_data_hint: "Die Änderungen oben gelten für neue Punkte. Damit sie auch für deinen Verlauf gelten, berechne ihn neu. Beides läuft im Hintergrund und kann bei einem großen Konto dauern."
+        rebuilds_need_pro: "Das Neuberechnen vorhandener Daten gehört zu Dawarich Pro."
+        rebuild_what: "Was neu berechnen"
+        rebuild_all: "Alles"
+        rebuild_tracks: "Nur Tracks"
+        rebuild_stats: "Nur Statistiken und Rückblicke"
+        rebuild_year: "Jahr"
+        all_years: "Alle Jahre"
+        find_trips: "Reisen in meinem Verlauf finden"
+        find_trips_hint: "Sucht im gesamten Verlauf nach Reisen mit Übernachtung fern von zu Hause. Läuft außerdem jede Nacht und nach Importen."
+        find_trips_off: "Schalte zuerst „Reisen automatisch finden“ unter Allgemein ein."
+        these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
+        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Ein Aufenthalt in diesem Radius beendet auch einen Track (mindestens 100 m). Standard 100.
+        lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5. Ein so langer Halt beendet auch einen Track, wenn er mindestens 5 Minuten dauert."
+        visit_detection: Aufenthaltserkennung
+        visit_radius_meters: Aufenthaltsradius (Meter)
+        minimum_points_to_count_as_a_visit: Mindestanzahl an Punkten für einen Aufenthalt
+        minimum_visit_duration_minutes: Mindestdauer eines Aufenthalts (Minuten)
+      detect_trips:
+        trip_detection_queued: "Reisesuche gestartet. Neue Reisen erscheinen in wenigen Minuten auf der Seite Reisen."
+        trip_detection_is_off: "Die Reisesuche ist aus. Schalte sie unter Einstellungen → Allgemein ein."
+      visit_redetection:
+        re_run_detection_on_full_history: Erneut Erkennung auf vollständigen Historie ausführen
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Ersetzt alle vorgeschlagenen Aufenthalte über deine gesamte Historie mit frischen Erkennungen unter Verwendung der Einstellungen oben. Bestätigte Aufenthalte und die Orte, die du benannt hast, bleiben erhalten. Kleine Konten benötigen normalerweise einige Minuten; mehrjährige Historien können 30–60 Minuten dauern und erhöhen vorübergehend den Serverlast.
+        on_the_lite_plan_re_detection_covers_your_visible_12: Im Lite-Tarif umfasst die erneute Erkennung nur deinen sichtbaren 12-Monats-Zeitraum.
+        available_again_at: Verfügbar wieder ab
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Ersetze alle vorgeschlagenen Aufenthalte über deine gesamte Historie. Bestätigte Aufenthalte bleiben. Fortfahren?
+    geofencing_paused_while_archived: pausiert, solange der Ort archiviert ist
     trek_sources:
       select_trips:
         title: "TREK-Reisen auswählen"
@@ -1503,10 +1670,10 @@ de:
       destroy:
         source_removed_trips_kept: "TREK wurde getrennt. Deine verwalteten Reisen bleiben erhalten und werden nicht mehr synchronisiert."
     navigation:
+      data_processing: "Datenverarbeitung"
       general: Allgemein
       integrations: Integrationen
       map: Karte
-      visits: Aufenthalte
       two_factor_authentication: Zwei-Faktor-Authentifizierung
       users: Benutzer
       instance: "Instanz"
@@ -1522,7 +1689,9 @@ de:
         background_jobs_dashboard: Hintergrundaufgaben-Übersicht
         this_will_open_the_background_jobs_dashboard_in_a_new: Dies öffnet die Hintergrundaufgaben-Übersicht in einem neuen Tab.
         visits_suggestions: Aufenthaltsvorschläge
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Aktiviere oder deaktiviere Aufenthaltsvorschläge. Es handelt sich um eine Hintergrundaufgabe, die täglich um Mitternacht läuft. Deaktivieren kann sinnvoll sein, wenn du keine Aufenthaltsvorschläge erhalten möchtest oder wenn du die Dawarich iOS-App verwendest, die ihre eigenen Aufenthaltsvorschläge hat.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Aufenthaltsvorschläge werden automatisch kurz nach dem Eingang neuer Punkte erstellt und jede Nacht erneut geprüft. Durch Deaktivieren wird die gesamte automatische Erkennung von Aufenthalten gestoppt, auch nach Importen. Die Dawarich iOS-App hat eigene Aufenthaltsvorschläge.
+        enabled: Aktiviert
+        disabled: Deaktiviert
         background_jobs: Hintergrundaufgaben
         start_job: Aufgabe starten
         are_you_sure: Bist du sicher?
@@ -1573,11 +1742,28 @@ de:
         timezone: Zeitzone
         your_timezone: Deine Zeitzone
         all_dates_and_times_will_be_displayed_in_this_timezone: Alle Daten und Uhrzeiten werden in dieser Zeitzone angezeigt
+        date_and_time: "Datum und Uhrzeit"
+        date_format: "Datumsformat"
+        time_format: "Zeitformat"
+        first_day_of_week: "Erster Tag der Woche"
+        format_auto: "Automatisch (%{example})"
+        time_format_12h: "12 Stunden (%{example})"
+        time_format_24h: "24 Stunden (%{example})"
+        date_and_time_hint: "Gilt für Datums- und Zeitangaben in der App, in E-Mails und auf der Karte."
         supporter_badge: Supporter-Badge
         show_supporter_badge_in_navbar: Unterstützer-Abzeichen in der Navigationsleiste anzeigen
         display_a_gem_icon_next_to_your_profile_to_show: Zeigt ein Edelstein-Symbol neben deinem Profil an, das deinen Unterstützerstatus kennzeichnet
         general_settings: Allgemeine Einstellungen
         save_changes: Änderungen speichern
+        test_email_worker_hint: Stellt eine Testnachricht über denselben Hintergrundprozess wie System-E-Mails in die Warteschlange
+        features: "Funktionen"
+        features_hint: "Schalte Teile von Dawarich aus, die du nicht nutzt. Sie verschwinden aus der Oberfläche, und ihre Hintergrundverarbeitung wird beendet."
+        family_feature: "Familie"
+        family_feature_hint: "Standortfreigabe mit Familienmitgliedern. Wenn du sie ausschaltest, werden dein Standort und nur für die Familie geteilte Reiselinks nicht mehr geteilt; du bleibst Mitglied. Wenn du sie wieder einschaltest, ist die Standortfreigabe zunächst aus."
+        achievements_feature: "Erfolge"
+        achievements_feature_hint: "Erkundete Regionen und Abzeichen. Wenn du sie ausschaltest, wird der Fortschritt nicht mehr berechnet und deine öffentlichen Erfolgslinks werden deaktiviert."
+        trip_detection_feature: "Reisen automatisch finden"
+        trip_detection_feature_hint: "Findet Reisen in deinem Standortverlauf und fügt sie zu deinen Reisen hinzu. Wenn du es ausschaltest, wird nicht mehr gesucht und bereits gefundene Reisen bleiben erhalten. Wenn du es wieder einschaltest, wird sofort erneut gesucht."
     integrations:
       trek:
         title: "TREK-Integration"
@@ -1595,6 +1781,7 @@ de:
         sync_now: "Jetzt synchronisieren"
         disconnect: "Trennen"
         disconnect_confirmation: "TREK trennen? Verwaltete Reisen und ihre aufgezeichneten Daten bleiben in Dawarich, werden aber nicht mehr synchronisiert."
+        ssl_verification_off: "SSL-Prüfung aus"
       index:
         services_nav: Integrationsdienste
         geocoding: "Geokodierung"
@@ -1632,9 +1819,10 @@ de:
         found_in_your_photoprism_settings_under_library: Finde den Schlüssel in den Einstellungen deiner Photoprism-Instanz unter Library
         airtrail_integration: AirTrail-Integration
         airtrail_url: AirTrail-URL
-        the_base_url_of_your_airtrail_instance_your_flights_are: Die Basis-URL deiner AirTrail-Instanz. Deine Flüge werden als Bögen auf der Karte angezeigt.
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'Die Basis-URL deiner AirTrail-Instanz. Deine Flüge werden auf der Karte angezeigt.'
         airtrail_api_key: AirTrail-API-Schlüssel
         create_an_api_key_in_airtrail_under_settings_rarr_security: Erstelle einen API-Schlüssel in AirTrail unter Einstellungen → Sicherheit.
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Flüge mit einer aufgezeichneten Spur in AirTrail werden entlang dieser Spur gezeichnet, andere als Bögen. Spuren brauchen AirTrail 3.13 oder neuer und einen API-Schlüssel mit dem Scope tracks.read.'
         teslamate_integration: TeslaMateApi-Integration
         teslamate_url: TeslaMateApi-URL
         the_base_url_of_your_teslamateapi_instance: Die Basis-URL deiner TeslaMateApi-Instanz.
@@ -1744,7 +1932,7 @@ de:
         tracks: Tracks
         imports: Importe
         exports: Exporte
-        areas: Gebiete
+        places: Orte
         sign_in_history: Anmeldehistorie
         total_sign_ins: Gesamtanzahl Anmeldungen
         last_sign_in: Letzte Anmeldung
@@ -1762,28 +1950,10 @@ de:
         send_password_reset_email: Passwort-zurücksetzen-E-Mail senden
         edit_user: Benutzer bearbeiten
         user_email: 'Benutzer: %{email}'
-    visits:
-      redetect_panel:
-        re_run_detection_on_full_history: Erneut Erkennung auf vollständigen Historie ausführen
-        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Ersetzt alle vorgeschlagenen Aufenthalte über deine gesamte Historie mit frischen Erkennungen unter Verwendung der Einstellungen oben. Bestätigte Aufenthalte und die Orte, die du benannt hast, bleiben erhalten. Kleine Konten benötigen normalerweise einige Minuten; mehrjährige Historien können 30–60 Minuten dauern und erhöhen vorübergehend den Serverlast.
-        on_the_lite_plan_re_detection_covers_your_visible_12: Im Lite-Tarif umfasst die erneute Erkennung nur deinen sichtbaren 12-Monats-Zeitraum.
-        available_again_at: Verfügbar wieder ab
-        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Ersetze alle vorgeschlagenen Aufenthalte über deine gesamte Historie. Bestätigte Aufenthalte bleiben. Fortfahren?
-      show:
-        tune_how_dawarich_decides_where_you_actually_were: Anpassen, wie Dawarich entscheidet, wo du tatsächlich warst
-        these_settings_control_how_the_app_groups_your_gps_points: Diese Einstellungen steuern, wie die App deine GPS-Punkte in Aufenthalte zu Orten gruppieren wird.
-        points_within_this_radius_are_treated_as_the_same_visit: Punkte innerhalb dieses Radius werden als der gleiche Aufenthalt betrachtet. Standard 100.
-        lower_more_visits_suggested_including_brief_stops_default_3: Niedriger = mehr Aufenthalte werden vorgeschlagen, einschließlich kurzer Halte. Standard 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Übergehe Halte, die kürzer als dies sind. Erhöhe, um kurze Durchfahrten zu ignorieren; senke, um kurze Einkäufe zu erfassen. Standard 5.
-        visit_detection: Aufenthaltserkennung
-        visit_radius_meters: Aufenthaltsradius (Meter)
-        minimum_points_to_count_as_a_visit: Mindestanzahl an Punkten für einen Aufenthalt
-        minimum_visit_duration_minutes: Mindestdauer eines Aufenthalts (Minuten)
-        save_settings: Einstellungen speichern
   share_links:
     hubs:
       body:
-        make_something: "Etwas erstellen"
+        make_something: "Video & Poster"
         make_something_intro: "Ein Link teilt deine Daten dauerhaft. Hiermit entsteht eine Datei, die du einmal postest — geteilt bleibt nichts."
         make_video: "Routen-Video"
         make_video_hint: "Eine animierte Wiedergabe dieses Zeitraums als MP4."
@@ -1862,6 +2032,8 @@ de:
         no_thanks: Danke, nein
         yes_notify_me: Ja, benachrichtige mich
       help_links:
+        documentation: "Dokumentation"
+        keyboard_shortcuts: "Tastenkürzel"
         need_help_ping_us: Hilfe benötigt? Ping uns!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -1902,6 +2074,8 @@ de:
     place_creation_modal:
       create_new_place: Neuer Ort erstellen
       place_name: Ortsname *
+      visit_radius: Besuchsradius (Meter) *
+      visit_radius_hint: Besuche, deren Mittelpunkt in diesem Radius liegt, können dem Ort zugeordnet werden. Dies hat keinen Einfluss auf den Datenschutz.
       note: Notiz
       optional_add_any_notes_or_details_about_this_place: Optional - Füge hier beliebige Notizen oder Details über diesen Ort hinzu
       tags: Tags
@@ -1953,6 +2127,7 @@ de:
       done: Fertig
     links:
       live:
+        last_known: "Zuletzt bekannt"
         live: "● Live"
         connecting: Verbinden…
       missing_resource:
@@ -1996,6 +2171,8 @@ de:
         shared_from_dawarich: Von Dawarich geteilt
     map:
       date_navigation_v2:
+        note_days: "Tag mit Notizen"
+        choose_period: Zeitraum wählen
         share: Teilen
         start_date_and_time: Startdatum und -zeit
         end_date_and_time: Enddatum und -zeit
@@ -2010,6 +2187,17 @@ de:
         upgrade_to_pro: Auf Pro upgraden
         dismiss: Verwerfen
   shared_links:
+    privacy_zones_note:
+      text: "Deine Privatsphäre-Zonen bleiben bei diesem Link verborgen. Jeder verborgene Bereich ist vom Ort versetzt, sodass niemand erkennen kann, wo der Ort liegt."
+      manage: "Privatsphäre-Zonen"
+    live_freshness_field:
+      label: "Letzte bekannte Position sichtbar lassen für"
+      hint: "Wenn dein Gerät keine Daten mehr sendet, kann jeder, der den Link öffnet, deine letzte bekannte Position noch so lange sehen."
+      windows:
+        s900: "15 Minuten"
+        s3600: "1 Stunde"
+        s21600: "6 Stunden"
+        s86400: "24 Stunden"
     expires_field:
       expires_optional: Verfällt (optional)
       stays_active_through_the_end_of_the_day_before_the: Aktiv bis zum Ende des Tages vor dem ausgewählten Datum.
@@ -2040,7 +2228,7 @@ de:
         other: "%{count} Ansichten"
     modal_live_create_form:
       this_shares_your: Dies teilt deine
-      current_location_in_real_time: aktuelle Position in Echtzeit
+      latest_known_location: "deine letzte bekannte Position"
       with_anyone_who_has_the_link_until_it_expires_or: mit jedem, der den Link hat, bis er abläuft oder du ihn widerrufst.
       magic_phrase_optional: Magische Phrase (optional)
       leave_blank_to_share_without_a_phrase_or_use_the: Lass es leer, um ohne Phrase zu teilen, oder verwende die automatisch generierte.
@@ -2076,13 +2264,30 @@ de:
       photos_on_map: Fotos auf Karte
       route_map: Route-Karte
       trip_description: Reisebeschreibung
+    family:
+      audience: Wer kann diese Reise ansehen?
+      public_link: Alle mit dem Link
+      only: Nur Familienmitglieder
+      label: Familie
+      link: Familienlink
+      shared_trip: '%{trip} wird mit deiner Familie geteilt.'
+      trips: Mit deiner Familie geteilte Reisen
+      hint: Familienreisen erscheinen in der Reiseliste deiner Familie. Mitglieder müssen sich anmelden. Die Geheimphrase wird nur für öffentliche Links verwendet.
+      choose_audience: Wähle, wer diese Reise ansehen kann und welche Details angezeigt werden.
+      sections: Inhalt der geteilten Seite
+      unavailable: Tritt einer aktiven Familie bei, bevor du eine Reise mit Familienmitgliedern teilst.
+      back_to_trips: Zurück zu den Reisen
+      your_map: Deine Karte für diese Daten
+    timeline_scope:
+      only_import: Nur Punkte aus %{name} im gewählten Zeitraum werden geteilt. Fotos sind ausgeschlossen.
+      unavailable: Der gewählte Import ist nicht mehr verfügbar.
   stats:
     locked_year_card:
       available_on_pro: Verfügbar auf Pro
       upgrade_to_pro: Auf Pro upgraden
     month:
       flight_distance: Flugdistanz
-      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
+      from_airtrail_included_in_distance: Aus AirTrail, in der Distanz enthalten
       monthly_digest: Monatsrückblick
       share: Teilen
       distance_traveled: Gefahrene Strecke
@@ -2114,7 +2319,6 @@ de:
       cities_visited: Besuchte Städte
     stat:
       total_distance: Gesamte Entfernung
-      year_month: "%{year}/%{month}"
     year:
       map: "[Karte]"
       days: Tage
@@ -2135,7 +2339,7 @@ de:
       countries_count_countries_cities_count_cities: "%{countries_count} Länder, %{cities_count} Städte"
     public_month:
       flight_distance: Flugdistanz
-      from_airtrail_not_counted_in_distance: Aus AirTrail, nicht in der Distanz enthalten
+      from_airtrail_included_in_distance: Aus AirTrail, in der Distanz enthalten
       monthly_digest: Monatlicher Überblick
       distance_traveled: Gesamtstrecke
       total_distance_for_this_month: Gesamtstrecke für diesen Monat
@@ -2160,6 +2364,19 @@ de:
     show:
       statistics_for_year_year: Statistiken für %{year} Jahr
   tags:
+    confirm_delete:
+      title: "Tag für Privatsphäre-Zone löschen"
+      covered_places: "Diese Privatsphäre-Zone schützt %{count} deiner Orte."
+      visibility: "Daten rund um diese Orte werden auf der Karte, in Reisen und in Statistiken wieder sichtbar."
+      shared_links:
+        one: "Das gilt auch für deinen %{count} aktiven Freigabelink."
+        other: "Das gilt auch für alle deine aktiven Freigabelinks (%{count})."
+    places:
+      title: "Orte mit diesem Tag"
+      empty: "Noch keine Orte mit diesem Tag."
+      visits:
+        one: "%{count} Besuch"
+        other: "%{count} Besuche"
     form:
       prohibited_this_tag_from_being_saved: 'Dieses Tag wurde verweigert, gespeichert zu werden:'
       click_to_select_an_emoji: Klicke, um ein Emoji auszuwählen
@@ -2167,7 +2384,7 @@ de:
       choose_from_swatches_or_pick_a_custom_color: Wähle aus den Farbkarten oder wähle eine benutzerdefinierte Farbe
       privacy_zone: Privatsphäre-Zone
       hide_map_data_around_places_with_this_tag: Karte-Daten um Orte mit diesem Tag verbergen
-      data_within_this_radius_will_be_hidden_from_the_map: Daten innerhalb dieses Radius werden von der Karte versteckt
+      hidden_area_hint: "Alles innerhalb dieses Radius wird immer verborgen. Der verborgene Kreis ist bis zu 1,6-mal größer und um einen festen Betrag vom Ort versetzt, damit niemand den Ort an der Stelle erkennt, an der deine Daten enden."
       home_work_restaurant: Zuhause, Arbeit, Restaurant...
       privacy_radius: Privatsphäre-Radius
       cancel: Abbrechen
@@ -2186,6 +2403,7 @@ de:
       actions: Aktionen
       no_tags_yet: Noch keine Tags
       create_tags_to_organize_your_places_and_add_privacy_zones: Tags erstellen, um deine Orte zu organisieren und Privatsphäre-Zonen hinzuzufügen.
+      privacy_zone_badge_hint: "Verborgener Bereich: vom Ort versetzt, bis zu 1,6-mal dieser Radius"
       create_your_first_tag: Erstes Tag erstellen
       tags: Tags
       edit_tag: Tag bearbeiten
@@ -2262,12 +2480,33 @@ de:
         other: "%{count} Länder"
     edit:
       editing_trip: Reise bearbeiten
+    filters:
+      search: "Suche"
+      search_placeholder: "Name, Beschreibung, Orte oder Notizen"
+      sort: "Sortierung"
+      sorts:
+        newest: "Neueste zuerst"
+        oldest: "Älteste zuerst"
+        name: "Name (A–Z)"
+        distance: "Längste Strecke"
+      year: "Jahr"
+      all_years: "Alle Jahre"
+      month: "Monat"
+      all_months: "Alle Monate"
+      choose_year_first: "Wähle zuerst ein Jahr"
+      country: "Land"
+      all_countries: "Alle Länder"
+      apply: "Anwenden"
+      reset: "Zurücksetzen"
     index:
       new_trip: Neue Reise
       no_trips_yet: Noch keine Reisen
       create_your_first_trip_to_see_your_journeys_visualized_with: Erstelle deine erste Reise, um deine Reisen mit Karten, Fotos und Statistiken visuell darzustellen.
       create_your_first_trip: Erstelle deine erste Reise
       trips: Reisen
+      no_matching_trips: "Keine Reisen passen zu diesen Filtern"
+      try_other_filters: "Versuche eine andere Suche, ein anderes Jahr oder Land."
+      show_all_trips: "Alle Reisen anzeigen"
     new:
       new_trip: Neue Reise
     notes:
@@ -2352,6 +2591,7 @@ de:
       poster_unavailable: Verfügbar sobald der Reiseweg berechnet ist
       create_poster: Poster dieser Reise erstellen
       more_on_source: Weitere Informationen zu %{source}
+      open_in_map: Auf der Karte öffnen
     share_links:
       new:
         share_trip: Teile %{trip}
@@ -2447,7 +2687,7 @@ de:
           other: "%{count} Städte"
     digests_mailer:
       monthly_digest:
-        flights: Flüge
+        flights: Davon Flüge
         your: Dein
         in_review: im Rückblick
         here_s_what_your_location_history_looked_like_last_month: Hier ist ein Überblick, wie dein Standortverlauf im letzten Monat aussah.
@@ -2517,6 +2757,19 @@ de:
       we_received_a_request_to_delete_your_dawarich_account_this_2: Wir haben eine Anfrage erhalten, dein Dawarich-Konto zu löschen. Dies ist dein letzter Versuch, die Löschung zu stoppen. Sobald bestätigt, werden alle deine Standortverläufe, Tracks, Gebiete, Aufenthalte, Reisen und Familienmitgliedschaften dauerhaft entfernt.
       permanently_delete_my_account_2: 'Dauerhaftes Konto löschen:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: Du hast das nicht angefordert? Ignoriere diese E-Mail — der Link läuft in 1 Stunde ab und dein Konto bleibt unangetastet. Wenn du weiterhin diese E-Mails erhältst, ändere dein Passwort sofort.
+    account_deletion_warning:
+      title: "Dein Dawarich-Konto wird gelöscht"
+      greeting: "Hallo %{email},"
+      deletion_notice: "Dein Dawarich-Konto und alle zugehörigen Daten – Standortverlauf, Importe, Reisen und Orte – werden am %{date} endgültig gelöscht."
+      reason: "Dein Konto hat kein aktives Dawarich-Abo. Laut unserer Datenschutzerklärung speichern wir Daten inaktiver Konten höchstens 12 Monate."
+      keep_account: "Um dein Konto zu behalten, schließe vor dem %{date} wieder ein Abo ab:"
+      resubscribe: "Abo erneuern"
+      keep_copy: "Um eine Kopie deiner Daten zu behalten, melde dich an und exportiere sie:"
+      export: "Meine Daten exportieren"
+      nothing_to_do: "Wenn du das Konto nicht mehr brauchst, musst du nichts tun."
+      policy: "Datenschutzerklärung:"
+      questions: "Fragen? Antworte einfach auf diese E-Mail oder schreib an hi@dawarich.app."
+      signoff: "Evgenii von Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Deine Datenhistorie füllt sich auf
       hi: Hallo
@@ -2738,6 +2991,7 @@ de:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Mobile Fotomediathek
     place:
@@ -2761,6 +3015,7 @@ de:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: Dawarich-App
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -2815,6 +3070,8 @@ de:
       pro_badge: " Pro"
     timeline:
       unnamed: Unbenannt
+      local_time: "%{time} Ortszeit"
+      local_time_on_date: "%{date}, %{time} Ortszeit"
     datetime_formatting:
       expires_on: Verfällt am %{date}
     insights:
@@ -3093,6 +3350,7 @@ de:
             visit_not_found: Aufenthalt nicht gefunden
           invalid_place: Ungültiger Ort
           invalid_area: Ungültiger Bereich
+          conflicting_place_and_area: place_id und area_id können nicht gemeinsam angegeben werden
           at_least_2_visits_must_be_selected_for_merging: Mindestens 2 Aufenthalte müssen ausgewählt werden, um sie zu verbinden
           one_or_more_visits_not_found: Ein oder mehrere Aufenthalte wurden nicht gefunden
           count_visits_updated_successfully: "%{count} Aufenthalte wurden erfolgreich aktualisiert"
@@ -3119,6 +3377,7 @@ de:
       your_account_has_been_deleted: Dein Konto wurde gelöscht.
       you_are_not_authorized_to_perform_this_action: Du bist nicht berechtigt, diese Aktion auszuführen.
       family_plan_required: Für diese Funktion ist der Family-Tarif erforderlich.
+      feature_disabled_in_settings: "Diese Funktion ist in deinen Einstellungen ausgeschaltet."
     areas:
       created: Bereich erfolgreich erstellt!
       updated: Bereich erfolgreich aktualisiert!
@@ -3172,6 +3431,7 @@ de:
         this_invitation_is_no_longer_valid: Diese Einladung ist nicht mehr gültig.
         invitation_sent_successfully: Einladung erfolgreich gesendet!
         invitation_cancelled: Einladung abgebrochen
+        too_many_invitations: "Zu viele Einladungen, versuche es später erneut."
         failed_to_cancel_invitation_please_try_again: Einladung konnte nicht abgebrochen werden. Versuche es erneut
         an_unexpected_error_occurred_while_cancelling_the_invitation: Unerwartter Fehler beim Abbrechen der Einladung
         you_are_not_in_a_family: Du bist nicht in einer Familie
@@ -3219,6 +3479,8 @@ de:
       place_was_successfully_destroyed: Ort wurde erfolgreich gelöscht.
       created: Ort erfolgreich erstellt!
       updated: Ort erfolgreich aktualisiert!
+      merged: '„%{duplicate}“ wurde mit „%{survivor}“ zusammengeführt.'
+      merge_visit_conflict: "Diese Orte können nicht zusammengeführt werden, weil Besuch #%{first_id} und Besuch #%{second_id} beide um %{started_at} beginnen. Löse zuerst diese Besuche auf."
     points:
       no_points_selected: Keine Punkte ausgewählt.
       points_were_successfully_destroyed: Punkte wurden erfolgreich gelöscht.
@@ -3243,6 +3505,7 @@ de:
         smtp_not_configured_link: die selbst gehosteten SMTP-Einstellungen
         test_email_sent: Test-E-Mail an %{email} gesendet. Prüfe deinen Posteingang (und den Spam-Ordner).
         test_email_failed: 'Test-E-Mail fehlgeschlagen: %{error}'
+        test_email_queued: Test-E-Mail für %{email} in die Warteschlange gestellt. Prüfe deinen Posteingang und fehlgeschlagene Zustellungen in Sidekiq.
       onboardings:
         demo_data_loaded: Demo-Daten geladen.
         demo_data_is_already_loaded: Demo-Daten sind bereits geladen.
@@ -3272,10 +3535,9 @@ de:
         failed_to_start_import_please_try_again: Importieren konnte nicht gestartet werden. Bitte versuche es erneut.
         an_error_occurred_while_starting_the_import_please_try_again: Ein Fehler ist beim Starten des Imports aufgetreten. Bitte versuche es erneut.
         please_upload_a_valid_zip_file: Bitte lade eine gültige ZIP-Datei hoch.
+        cannot_delete_yourself_or_last_admin: Du kannst dich selbst oder den letzten aktiven Administrator nicht löschen.
         cannot_remove_last_admin_role: Der letzte Admin-Benutzer kann nicht von der Admin-Rolle entfernt werden.
         cannot_disable_last_admin: Der letzte Admin-Benutzer kann nicht deaktiviert werden.
-      visits:
-        visit_detection_settings_updated: Einstellungen für die Aufenthaltserkennung wurden aktualisiert
     share_links:
       lives:
         default_name: Live-Ort
@@ -3408,6 +3670,7 @@ de:
       failed_to_delete_visits: Löschen der Aufenthalte fehlgeschlagen.
       invalid_place: Ungültiger Ort
       invalid_area: Ungültiger Bereich
+      conflicting_place_and_area: Ort und Bereich können nicht gemeinsam angegeben werden
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen.
       select_visits_to_merge: Wähle mindestens zwei Aufenthalte zum Verbinden.
       visits_must_share_day: Aufenthalte müssen am selben Tag sein.
@@ -3444,6 +3707,8 @@ de:
         subject: Willkommen bei Dawarich!
       explore_features:
         subject: Entdecke die Funktionen von Dawarich!
+      account_deletion_warning:
+        subject: "Dein Dawarich-Konto wird am %{date} gelöscht"
       archival_approaching:
         subject: Mit Pro bleibt dein vollständiger Verlauf erhalten
       oauth_account_link:
@@ -3478,6 +3743,7 @@ de:
     shared_link:
       is_required_for_this_resource_type: ist für dieses Ressourcentyp erforderlich
       must_be_blank_for_this_resource_type: muss leer sein für diesen Ressourcentyp
+      live_freshness_not_allowed: "muss 15 Minuten, 1 Stunde, 6 Stunden oder 24 Stunden sein"
       must_be_in_the_future: muss in der Zukunft liegen
       must_include_start_date_and_end_date_for_timeline_shares: muss start_date und end_date enthalten für Zeitleistenteilen
       start_date_and_end_date_must_be_parseable_as_dates: start_date und end_date müssen als Datum parsierbar sein
@@ -3516,7 +3782,7 @@ de:
         export_finished: Export beendet
         export_name_successfully_finished: Export „%{name}“ wurde erfolgreich beendet.
         export_failed: Export fehlgeschlagen
-        export_name_failed_message_stacktrace_n: 'Export „%{name}“ fehlgeschlagen: %{message}, Stapelverfolgung: %{backtrace}'
+        export_name_failed_message: "Export „%{name}“ fehlgeschlagen: %{message}"
         unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{format}'
     families:
       auto_create:
@@ -3541,8 +3807,6 @@ de:
         you_must_leave_your_current_family_before_creating_a_new: Du musst deine aktuelle Familie verlassen, bevor du eine neue erstellen kannst
         you_have_already_created_a_family_each_user_can_only: Du hast bereits eine Familie erstellt. Jeder Benutzer kann nur eine Familie erstellen
         family_feature_requires_an_active_subscription: Die Familien-Funktion erfordert ein aktives Abonnement
-        family_created: Familie erstellt
-        you_ve_successfully_created_the_family_name: Du hast die Familie '%{name}' erfolgreich erstellt
         a_family_with_this_name_already_exists_for_your_account: Eine Familie mit diesem Namen existiert bereits für dein Konto
         an_unexpected_error_occurred_while_creating_the_family_please_try: Beim Erstellen der Familie ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
         failed_to_create_family: 'Familie konnte nicht erstellt werden: %{message}'
@@ -3552,6 +3816,7 @@ de:
         safe_email_is_requesting_your_location_link: "%{email} fragt nach deinem Standort. %{link}"
         users_must_be_in_the_same_family: Benutzer müssen in derselben Familie sein
         target_user_is_already_sharing_their_location: Zielbenutzer teilt bereits seinen Standort
+        target_user_turned_family_off: "Dieses Mitglied hat die Familienfunktionen ausgeschaltet"
         request_cooldown_active_please_wait_before_requesting_again: Anfragekühlauf der Aktivität. Bitte warte, bevor du erneut anfragst.
         view_request: Anfrage ansehen
       invite:
@@ -3564,7 +3829,6 @@ de:
         user_already_in_family: Benutzer ist bereits in einer Familie
         invitation_already_sent: Einladung wurde bereits an diese E-Mail gesendet
         sent_self_hosted: Die Familieneinladung an %{email} wurde gesendet, sofern SMTP korrekt konfiguriert ist. Falls du kein SMTP verwendest, kopiere den Einladungslink von der Familienseite und teile ihn manuell.
-        sent: Familien-Einladung an %{email} gesendet
         failed_to_create: 'Einladung konnte nicht erstellt werden: %{message}'
       memberships:
         destroy:
@@ -3573,14 +3837,10 @@ de:
           only_family_owners_can_remove_other_members: Nur Familieninhaber können andere Mitglieder entfernen.
           cannot_remove_members_from_a_different_family: Man kann Mitglieder aus einer anderen Familie nicht entfernen.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Der Familieninhaber kann nicht entfernt werden. Er muss die Familie stattdessen löschen.
-          left_family: Familie verlassen
-          you_ve_left_the_family_family_name: Du hast die Familie "%{family_name}" verlassen
           family_member_left: Familienmitglied ausgetreten
           email_has_left_the_family_family_name: '%{email} hat die Familie "%{family_name}" verlassen'
           removed_from_family: Von der Familie entfernt
           you_have_been_removed_from_the_family_family_name_by: Du wurdest von %{email} aus der Familie „%{family_name}“ entfernt
-          member_removed: Mitglied entfernt
-          email_has_been_removed_from_the_family_family_name: '%{email} wurde von der Familie "%{family_name}" entfernt'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: Beim Entfernen der Mitgliedschaft ist ein unerwarteter Fehler aufgetreten. Bitte versuche es erneut
           failed_to_leave: 'Verlassen fehlgeschlagen: %{message}'
       respond_to_location_request:
@@ -3661,7 +3921,6 @@ de:
           one: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkt, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
           other: 'Deine Datei %{name} hat 0 Punkte importiert. Sie enthält eine geplante Route mit %{count} Punkten, aber keine aufgezeichnete Strecke. Dawarich importiert aufgezeichnete Strecken, keine geplanten Routen.'
         zero_points: "Deine Datei %{name} hat 0 Punkte importiert. In dieser Datei wurden keine neuen Standortpunkte gefunden."
-        import_failed_self_hosted: "Import \"%{name}\" fehlgeschlagen: %{message}, Stacktrace: %{backtrace}"
         import_failed_cloud: "Import \"%{name}\" fehlgeschlagen, bitte kontaktiere uns unter hi@dawarich.com"
       source_detector:
         amazon_order: Dies ist eine Amazon-Exportdatei, nicht Standortdaten. Dawarich importiert Standortverläufe aus Google Takeout, OwnTracks, GPX und ähnlichen Quellen.
@@ -3733,7 +3992,6 @@ de:
     stats:
       calculate_month:
         stats_update_failed: Statistikaktualisierung fehlgeschlagen
-        message_stacktrace_n: "%{message}, Stacktrace: %{backtrace}"
     users:
       settings_updater:
         enable_at_least_one_transportation_mode: Aktiviere mindestens ein Verkehrsmittel
@@ -3820,6 +4078,9 @@ de:
       import_flights_job:
         airtrail_sync_failed: AirTrail-Synchronisation fehlgeschlagen
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Deine AirTrail-Flugdatensynchronisation ist fehlgeschlagen mit Fehler: %{message}. Prüfe deine AirTrail-Einstellungen und versuche es erneut.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Deine Punkte wurden erneut mit dem GPS-Rauschfilter geprüft. Es hat sich nichts geändert, daher wurden deine Tracks, Statistiken und Zusammenfassungen nicht neu erstellt."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: GPS-Rauschprüfung abgeschlossen
@@ -3840,17 +4101,14 @@ de:
     stats:
       calculating_job:
         stats_update_failed: Statistikupdate fehlgeschlagen
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Der Monatsrückblick konnte nicht berechnet werden
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             period_label_calculation_failed: "%{period_label} Berechnung fehlgeschlagen"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
             year_end_digest: "Jahresrückblick"
       import_data_job:
         data_import_failed: Datenimport fehlgeschlagen
@@ -3864,7 +4122,6 @@ de:
           other: "%{count} Jahre"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Statistiken, Tracks und Zusammenfassungen wurden für %{year_label} berechnet.
         data_recalculation_failed: Datenberechnung fehlgeschlagen
-        message_stacktrace_n: "%{message}, Stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Aufenthalte werden bereits neu erkannt
@@ -3949,26 +4206,20 @@ de:
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
       cannot_update_recalculation_is_already_in_progress: 'Aktualisierung nicht möglich: Eine Neuberechnung läuft bereits.'
-      transportation_settings_saved: Transporteinstellungen gespeichert
-      globe_view_will_be_applied_after_page_reload: Globusansicht wird nach Neuladen der Seite angewendet
-      settings_updated_successfully: Einstellungen wurden erfolgreich aktualisiert
       reloading_map_data_with_new_settings: Kartendaten werden mit den neuen Einstellungen neu geladen...
       api_key_not_available_please_reload_the_page: API-Schlüssel nicht verfügbar; bitte die Seite neu laden.
-      could_not_queue_re_evaluation_please_try_again: Die erneute Auswertung konnte nicht gestartet werden. Bitte versuche es erneut.
-      could_not_queue_recalculation_please_try_again: Die Neuberechnung konnte nicht gestartet werden. Bitte versuche es erneut.
       click_on_the_map_to_place_a_visit_esc_to: Klicke auf die Karte, um einen Aufenthalt zu platzieren (Esc zum Abbrechen)
       visit_creation_modal_not_available: Dialog zum Erstellen eines Aufenthalts ist nicht verfügbar
       visit_creation_controller_not_available: Controller für Aufenthalt-Erstellung nicht verfügbar
-      area_drawer_controller_not_available: Controller für Flächenzeichnung nicht verfügbar
-      area_created_successfully: Fläche erfolgreich erstellt!
-      failed_to_reload_areas: Gebiete konnten nicht neu geladen werden
       family_feature_not_available: Familienfunktion nicht verfügbar
       failed_to_load_family_members: Familienmitglieder konnten nicht geladen werden
-      centered_on_family_member: Auf Familienmitglied zentriert
       failed_to_load_visit_details: Aufenthaltsdetails konnten nicht geladen werden
       failed_to_load_area_details: Gebietsdetails konnten nicht geladen werden
       point_deleted_successfully: Punkt erfolgreich gelöscht
       failed_to_delete_point: Punkt konnte nicht gelöscht werden
+      mark_point_valid: Als korrekt markieren
+      point_marked_valid: Punkt als korrekt markiert
+      failed_to_mark_point_valid: Punkt konnte nicht als korrekt markiert werden
       deleting_area: Gebiet wird gelöscht…
       area_deleted_successfully: Bereich erfolgreich gelöscht
       failed_to_delete_area: Bereich konnte nicht gelöscht werden
@@ -4091,10 +4342,14 @@ de:
       day_count: Tag %{current} von %{total}
       point_count: Punkt %{current} von %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: Keine Daten
     places:
+      move_pin: "Ortsmarkierung verschieben"
+      resize_radius: "Besuchsradius ändern"
       create_new: Neuer Ort erstellen
       edit: Ort bearbeiten
+      open: Öffnen
       confirm_delete: Möchtest du diesen Ort wirklich löschen?
       search_placeholder: Suche nach einem Ort…
       confirm_move_visit: Dieser Ort ist ~%{distance} m vom Aufenthalt entfernt. Den Aufenthalt hier verschieben?
@@ -4103,6 +4358,7 @@ de:
       filter_by_tag: FILTERN NACH ETIKETTE
       no_tags: Noch keine Etiketten erstellt
       none_found: Keine Orte gefunden
+      forward_search_unavailable: "Dein Photon-Server unterstützt nur Rückwärts-Geocoding, daher findet die Textsuche keine neuen Orte. Gespeicherte Orte werden weiterhin nach Namen gefunden."
       open_for_suggestions: Öffne den Dialog, um Vorschläge in der Nähe zu laden
       show_all: Alle Orte anzeigen
       untagged: Unbeschriftete Orte
@@ -4122,6 +4378,9 @@ de:
       creating: Deine Demo-Daten werden erstellt…
       creating_help: Ein Monat Berlin-Tracking plus eine Prager Wochenende-Reise wird gesät. Das dauert etwa eine Sekunde.
     visits:
+      place: "Ort"
+      choose_place: "Ort auswählen"
+      multiple_stays: "Mehrere Aufenthalte gefunden. Der letzte Aufenthalt wurde übernommen."
       add_new: Neuen Aufenthalt hinzufügen
       create_new: Neuen Aufenthalt erstellen
       create: Aufenthalt erstellen
@@ -4237,8 +4496,9 @@ de:
       locations_failed: Suche nach Orten fehlgeschlagen. Bitte versuche es erneut.
     settings:
       transportation_recalculation_completed: Berechnung des Verkehrsmittels abgeschlossen!
-      confirm_reset: Alle Einstellungen auf Standardwerte zurücksetzen? Die Seite wird neu geladen.
-      confirm_globe_reload: Die Globusansicht erfordert eine Neuladung der Seite, um zu wirken. Jetzt neu laden?
+      confirm_reset: "Das Erscheinungsbild der Karte auf Standardwerte zurücksetzen? Verkehrsmittel- und Filtereinstellungen bleiben erhalten. Die Seite wird neu geladen."
+      load_failed: "Die Karteneinstellungen konnten nicht geladen werden. Änderungen werden erst nach einem Neuladen der Seite gespeichert."
+      reset_failed: "Das Erscheinungsbild der Karte konnte nicht zurückgesetzt werden. Bitte versuche es erneut."
       changed_fields: 'Geändert: %{fields}'
       confirm_reapply_anomaly_filter: |-
         Dies ist zerstörerisch und dauert lange.
@@ -4350,6 +4610,7 @@ de:
       selected: 'Ausgewählt: %{items}'
       too_many_points: Zu viele Punkte (%{requested}). Bitte zeichne einen kleineren Bereich; max. %{limit} pro Löschen.
       too_many_selected_points: Zu viele Punkte ausgewählt (%{requested}). Bitte zeichne einen kleineren Bereich; max. %{limit} pro Löschen.
+      truncated: Nur die neuesten %{limit} Punkte in diesem Bereich werden angezeigt.
       visits:
         one: "%{count} Aufenthalt"
         other: "%{count} Aufenthalte"
@@ -4376,6 +4637,7 @@ de:
       location_coordinates: Standort (%{latitude}, %{longitude})
       location_data: Standortdaten
       location_point: Standortpunkt
+      overlapping_points: "Diese Markierung enthält %{count} überlappende Punkte. Sie lassen sich durch weiteres Zoomen nicht trennen."
       longitude: Länge
       meters:
         one: "%{count} Meter"
@@ -4385,6 +4647,7 @@ de:
       place: Ort
       points: Punkte
       radius: Radius
+      visit_radius: Aufenthaltsradius
       reason: Grund
       route_information: Route-Informationen
       selected_point: Ausgewählter Punkt
@@ -4419,9 +4682,6 @@ de:
       light: Hell
       white: Weiß
     family:
-      loaded_members:
-        one: "%{count} Familienmitglied geladen"
-        other: "%{count} Familienmitglieder geladen"
       member: Familienmitglied
       none_sharing: Kein Familienmitglied gibt seinen Standort frei
       sharing_since:
@@ -4540,8 +4800,10 @@ de:
     live_map:
       disabled: Live-Modus deaktiviert
       enabled: Live-Modus aktiviert
+      your_position: Dein letzter Standort
     map_panel:
       layers: Kartenlayers
+      family: "Familie"
       links: Links
       search: Suche
       settings: Einstellungen
@@ -4592,6 +4854,17 @@ de:
       visits:
         one: "%{formatted_count} Aufenthalt"
         other: "%{formatted_count} Aufenthalte"
+    ux_p3:
+      timeline:
+        filtered_count: "%{count} von %{total} Besuchen sichtbar"
+        visit_count:
+          one: "%{count} Besuch"
+          other: "%{count} Besuche"
+      video:
+        ready: Video ist bereit — MP4 · %{size} MB.
+      realtime:
+        connected: Live-Verbindung aktiv
+        disconnected: Live-Updates pausiert. Neue Positionen können verspätet sein; Verbindung wird wiederhergestellt.
   battery_statuses:
     unknown: unbekannt
     unplugged: nicht angeschlossen
@@ -4610,3 +4883,118 @@ de:
       no_invitations: Keine offenen Einladungen
       title: Familien-Einladungen
       view_invitation: Ansehen
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM
+  ux_p2:
+    exports:
+      source: 'Quelle: %{name}'
+      restored_incomplete: Dieser Export war in der Sicherung unvollständig. Erstelle unter Punkte einen neuen Export.
+      unavailable_source: Nicht verfügbare Quelle (Auswahl bleibt erhalten)
+      removed_import: Gelöschter Import (Auswahl bleibt erhalten)
+      unavailable_import: Der gewählte Import ist nicht mehr verfügbar.
+    sharing:
+      exact_expiry: Genauer Ablauf (optional)
+      exact_expiry_hint: 'Zeitzone: %{timezone}. Leer lassen für keinen Ablauf.'
+      invalid_expiry: Wähle ein gültiges Ablaufdatum.
+      no_expiry: Kein Ablauf
+      expires: Zugriff endet
+      period: Geteilter Zeitraum
+      included: Enthalten
+      excluded: Ausgeschlossen
+      edit_access: Zugriff bearbeiten
+      preview: Ansicht der Empfänger öffnen
+      url_unchanged: Änderungen gelten für diesen Link. URL, Empfänger und ausgewählte Daten bleiben gleich.
+      cancel: Abbrechen
+      save: Zugriff speichern
+      sections:
+        show_route: Routenkarte
+        show_stats: Statistiken
+        show_days: Aufschlüsselung nach Tagen
+        show_day_notes: Tagesnotizen
+        show_description: Beschreibung
+        show_photos: Fotos
+    import:
+      failed_reason_in_list: "Der Import konnte nicht abgeschlossen werden. Öffne ihn, um die Referenz und die nächsten Schritte zu sehen."
+      technical_details: Technische Details
+      failed: Import fehlgeschlagen
+      format_error: Das Dateiformat konnte nicht gelesen werden. Prüfe, ob die Datei gültig ist und ein unterstütztes Format hat.
+      failed_reason: Der Import konnte nicht abgeschlossen werden. Du kannst die Datei erneut hochladen; schlägt es wieder fehl, gib beim Melden des Problems die Referenz unten an.
+      reference: 'Import-Referenz: #%{id}. Technische Details stehen in den Server-Logs.'
+      open: Import und Wiederherstellungsoptionen öffnen
+      upload_another: Weitere Datei hochladen
+      supported_formats: Unterstützte Formate
+      notification_html: Import &quot;%{name}&quot; fehlgeschlagen. %{reason} %{link}
+    digest:
+      queued: In der Warteschlange. Dein Jahresrückblick erscheint hier automatisch.
+      calculating: Dein Jahresrückblick wird berechnet. Diese Seite aktualisiert sich automatisch.
+      failed: Erstellung fehlgeschlagen. Dein Standortverlauf ist sicher; versuche es erneut.
+      retry: Erstellung wiederholen
+      working: Rückblick wird vorbereitet
+    places:
+      add: Ort hinzufügen
+      save: Ort speichern
+      search: Orte suchen
+      tag: Tags
+      all_tags: Alle Tags
+      sort: Sortieren nach
+      sort_name: Name
+      sort_recent_visit: Letzter Besuch
+      sort_newest: Zuletzt erstellt
+      no_matches: Keine passenden Orte. Versuche eine andere Suche oder füge einen Ort hinzu.
+      pick_coordinates: "Klicke auf die Karte, um den Ort festzulegen. Du kannst die Markierung verschieben, um ihn anzupassen."
+      latitude: Breitengrad
+      longitude: Längengrad
+      name: Name
+      note: Notiz
+      back: Zurück zu den Orten
+      edit: Ort bearbeiten
+      more_actions: 'Weitere Aktionen: zusammenführen oder löschen'
+      radius: Besuchsradius (Meter)
+    points:
+      select: Punkt auswählen, aufgezeichnet am %{time}
+    insights:
+      empty_title: Deine Reisen erscheinen hier
+      empty_help: Importiere deinen Standortverlauf oder verbinde einen Tracker, um erste Distanzen, Karten und Reiseeinblicke zu erhalten.
+      import: Verlauf importieren
+      connect: Tracker verbinden
+      unresolved: Noch nicht ermittelt
+      names_pending: Länder- und Städtenamen wurden noch nicht ermittelt. Koordinaten, Karten und Distanz können trotzdem verfügbar sein.
+      configure: Geokodierung einrichten
+      ask_admin: Deine Administration kann die Geokodierung einrichten, um Länder- und Städtenamen zu ermitteln.
+    settings:
+      sections: Einstellungsbereich
+    nav:
+      notifications: Benachrichtigungen
+      previous_day: Vorheriger Tag
+      next_day: Nächster Tag
+    demo:
+      description: Erkunde einen Monat mit Standortdaten aus Berlin und eine Wochenendreise nach Prag. Demopunkte, Besuche und Orte sind markiert und können jederzeit entfernt werden.
+  ux_p3:
+    timeline:
+      filter_scope: Besuchsfilter sind aktiv. Bewegung und nicht erfasste Zeiträume bleiben sichtbar.
+    video:
+      download: Video herunterladen
+    integrations:
+      save_and_test: Speichern und testen
+      test: Ohne Speichern testen
+      save: Ohne Test speichern
+      saved_untested: Einstellungen gespeichert. Es wurde kein Verbindungstest ausgeführt.
+      tested_ok: Verbindung bestätigt. Änderungen wurden nicht gespeichert.
+      tested_failed: Verbindung fehlgeschlagen. Änderungen wurden nicht gespeichert.
+      saved_ok: Einstellungen gespeichert und Verbindung bestätigt.
+      saved_failed: Einstellungen gespeichert, aber die Verbindung ist fehlgeschlagen.
+      validation_failed: Bitte URL und Pflichtfelder prüfen. Einstellungen wurden nicht gespeichert.
+      retry: Felder prüfen und Verbindung erneut testen.
+      reasons:
+        unreachable: Dienst nicht erreichbar. Adresse, Port und Netzwerkzugriff von Dawarich prüfen.
+        certificate: TLS-Zertifikat konnte nicht bestätigt werden. Serverzertifikat prüfen.
+        credentials: Zugriff verweigert. API-Schlüssel und Berechtigungen prüfen.
+        missing_fields: Dienst-URL und Zugangsdaten eingeben.
+        check_settings: Dienst hat die Verbindung nicht akzeptiert. URL, Zugangsdaten und Berechtigungen prüfen.
+      status:
+        connected: 'Gespeicherte Verbindung: letzter Test erfolgreich.'
+        failed: 'Gespeicherte Verbindung: letzter Test fehlgeschlagen.'
+        untested: 'Gespeicherte Verbindung: nicht getestet.'

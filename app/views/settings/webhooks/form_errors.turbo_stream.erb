@@ -1,0 +1,2 @@
+<% target = @webhook.persisted? ? dom_id(@webhook, :form) : 'webhook-form' %>
+<%= turbo_stream.replace target, partial: 'settings/webhooks/form', locals: { webhook: @webhook, places: current_user.places.geofences.order(:name) } %>

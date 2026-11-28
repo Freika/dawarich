@@ -5,7 +5,7 @@ require 'rails_helper'
 # Execution verification: the navbar version-indicator renders the correct
 # state for each changelog_consent value on a real authenticated HTML page.
 RSpec.describe 'Navbar changelog indicator', type: :request do
-  let(:user) { create(:user, admin: true) }
+  let(:user) { create(:user, admin: true, settings: { 'onboarding_completed' => true }) }
 
   before do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)

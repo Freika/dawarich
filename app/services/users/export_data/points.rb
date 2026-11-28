@@ -38,11 +38,12 @@ class Users::ExportData::Points
 
     user.points.in_batches(of: BATCH_SIZE) do |batch|
       point_ids = batch.pluck(:id)
-      batch_sql = ActiveRecord::Base.sanitize_sql_array([build_batch_query, point_ids])
+      batch_sql = ActiveRecord::Base.sanitize_sql_array([points_query('p.id IN (?)'), point_ids])
       result = ActiveRecord::Base.connection.exec_query(batch_sql, 'Points Export Batch')
+      archived_raw_data = Users::ExportData::ArchivedRawData.for(result)
 
       result.each do |row|
-        point_hash = build_point_hash(row)
+        point_hash = build_point_hash(row, archived_raw_data)
         next unless point_hash # Skip points without coordinates
 
         month_key = extract_month_key(row)
@@ -96,21 +97,23 @@ class Users::ExportData::Points
   end
 
   def load_all_points
-    result = ActiveRecord::Base.connection.exec_query(build_full_query, 'Points Export', [user.id])
+    result = ActiveRecord::Base.connection.exec_query(points_query('p.user_id = $1'), 'Points Export', [user.id])
     Rails.logger.info "Processing #{result.count} points for export..."
 
-    result.filter_map { |row| build_point_hash(row) }
+    archived_raw_data = Users::ExportData::ArchivedRawData.for(result)
+    result.filter_map { |row| build_point_hash(row, archived_raw_data) }
   end
 
-  def build_full_query
+  def points_query(condition)
     <<-SQL
       SELECT
         p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
         p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
         CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
-        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
+        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data, p.raw_data_archive_id,
         p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
         p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
+        #{'p.altitude_decimal,' if Point.altitude_decimal_supported?} p.motion_data, p.anomaly_override,
         p.lonlat,
         ST_X(p.lonlat::geometry) as computed_longitude,
         ST_Y(p.lonlat::geometry) as computed_latitude,
@@ -121,50 +124,24 @@ class Users::ExportData::Points
         c.iso_a2 as country_iso_a2,
         c.iso_a3 as country_iso_a3,
         v.name as visit_name,
+        v.location_label as visit_location_label,
         v.started_at as visit_started_at,
-        v.ended_at as visit_ended_at
+        v.ended_at as visit_ended_at,
+        vp.name as visit_place_name,
+        vp.latitude as visit_place_latitude,
+        vp.longitude as visit_place_longitude
       FROM points p
       LEFT JOIN point_sources ps ON p.source_id = ps.id
-      LEFT JOIN imports i ON p.import_id = i.id
+      LEFT JOIN imports i ON p.import_id = i.id AND i.user_id = p.user_id
       LEFT JOIN countries c ON p.country_id = c.id
-      LEFT JOIN visits v ON p.visit_id = v.id
-      WHERE p.user_id = $1
+      LEFT JOIN visits v ON p.visit_id = v.id AND v.user_id = p.user_id
+      LEFT JOIN places vp ON v.place_id = vp.id
+      WHERE #{condition}
       ORDER BY p.id
     SQL
   end
 
-  def build_batch_query
-    <<-SQL
-      SELECT
-        p.id, CASE WHEN p.source_id IS NULL THEN p.battery_status ELSE ps.battery_status END AS battery_status, p.battery, p.timestamp, p.altitude, p.velocity, p.accuracy,
-        p.ping, CASE WHEN p.source_id IS NULL THEN p.tracker_id ELSE ps.tracker_id END AS tracker_id, CASE WHEN p.source_id IS NULL THEN p.topic ELSE ps.topic END AS topic, CASE WHEN p.source_id IS NULL THEN p.trigger ELSE ps.trigger END AS trigger, CASE WHEN p.source_id IS NULL THEN p.bssid ELSE ps.bssid END AS bssid, CASE WHEN p.source_id IS NULL THEN p.ssid ELSE ps.ssid END AS ssid,
-        CASE WHEN p.source_id IS NULL THEN p.connection ELSE ps.connection END AS connection,
-        p.vertical_accuracy, p.mode, CASE WHEN p.source_id IS NULL THEN p.inrids ELSE ps.inrids END AS inrids, CASE WHEN p.source_id IS NULL THEN p.in_regions ELSE ps.in_regions END AS in_regions, p.raw_data,
-        p.city, p.country, p.geodata, p.reverse_geocoded_at, p.course,
-        p.course_accuracy, p.external_track_id, p.created_at, p.updated_at,
-        p.lonlat,
-        ST_X(p.lonlat::geometry) as computed_longitude,
-        ST_Y(p.lonlat::geometry) as computed_latitude,
-        i.name as import_name,
-        i.source as import_source,
-        i.created_at as import_created_at,
-        c.name as country_name,
-        c.iso_a2 as country_iso_a2,
-        c.iso_a3 as country_iso_a3,
-        v.name as visit_name,
-        v.started_at as visit_started_at,
-        v.ended_at as visit_ended_at
-      FROM points p
-      LEFT JOIN point_sources ps ON p.source_id = ps.id
-      LEFT JOIN imports i ON p.import_id = i.id
-      LEFT JOIN countries c ON p.country_id = c.id
-      LEFT JOIN visits v ON p.visit_id = v.id
-      WHERE p.id IN (?)
-      ORDER BY p.id
-    SQL
-  end
-
-  def build_point_hash(row)
+  def build_point_hash(row, archived_raw_data)
     if row['lonlat'].blank?
       Rails.logger.debug "Skipping point without coordinates: id=#{row['id'] || 'unknown'}"
       return nil
@@ -175,6 +152,9 @@ class Users::ExportData::Points
       'battery' => row['battery'],
       'timestamp' => row['timestamp'],
       'altitude' => row['altitude'],
+      'altitude_decimal' => row['altitude_decimal'],
+      'motion_data' => row['motion_data'],
+      'anomaly_override' => row['anomaly_override'],
       'velocity' => row['velocity'],
       'accuracy' => row['accuracy'],
       'ping' => row['ping'],
@@ -188,7 +168,7 @@ class Users::ExportData::Points
       'mode' => row['mode'],
       'inrids' => row['inrids'] || [],
       'in_regions' => row['in_regions'] || [],
-      'raw_data' => row['raw_data'],
+      'raw_data' => archived_raw_data.fetch(row['id'], row['raw_data']),
       'city' => row['city'],
       'country' => row['country'],
       'geodata' => row['geodata'],
@@ -223,12 +203,24 @@ class Users::ExportData::Points
       }
     end
 
-    return unless row['visit_name']
+    return unless row['visit_started_at']
 
     point_hash['visit_reference'] = {
       'name' => row['visit_name'],
+      'location_label' => row['visit_location_label'],
       'started_at' => row['visit_started_at'],
-      'ended_at' => row['visit_ended_at']
+      'ended_at' => row['visit_ended_at'],
+      'place_reference' => visit_place_reference(row)
+    }
+  end
+
+  def visit_place_reference(row)
+    return unless row['visit_place_name']
+
+    {
+      'name' => row['visit_place_name'],
+      'latitude' => row['visit_place_latitude'].to_f,
+      'longitude' => row['visit_place_longitude'].to_f
     }
   end
 

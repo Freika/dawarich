@@ -1,0 +1,9 @@
+<% if request.env['warden']&.user&.tags&.privacy_zones&.exists? %>
+  <p class="text-xs opacity-70 mt-3 mb-4 flex items-start gap-2" data-testid="share-privacy-zones-note">
+    <%= icon 'lock', class: 'w-4 h-4 shrink-0 mt-0.5' %>
+    <span class="min-w-0">
+      <%= t('shared_links.privacy_zones_note.text') %>
+      <%= link_to t('shared_links.privacy_zones_note.manage'), tags_path, class: 'link', data: { turbo_frame: '_top' } %>
+    </span>
+  </p>
+<% end %>

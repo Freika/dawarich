@@ -1,0 +1,61 @@
+# frozen_string_literal: true
+
+class DataMigrations::BackfillMissingVelocitiesJob < ApplicationJob
+  queue_as :low_priority
+
+  SOURCES = Points::VelocityFiller::TRACK_SOURCES
+  # Imports whose speeds 1.22-1.23 derived from adjacent fixes at import time.
+  LEGACY_SOURCES = %w[kml gpx geojson].freeze
+  NOTHING_FILLED = Points::VelocityFiller::Result.new(updated: 0, flyover_timestamps: []).freeze
+
+  def perform(import_id = nil)
+    return enqueue_imports if import_id.nil?
+
+    import = Import.find_by(id: import_id)
+    user = import && find_user_or_skip(import.user_id)
+    return unless user
+
+    filled = Point.transaction(requires_new: true) do
+      fill_flyovers(import).tap do |result|
+        recalculate_months(user, result.flyover_timestamps)
+        recalculate_trips(user, result.flyover_timestamps)
+      end
+    end
+    Points::TileEpoch.bump_range(user.id, filled.first_timestamp, filled.last_timestamp) if filled.updated.positive?
+    Rails.logger.info("[DataMigrations::BackfillMissingVelocities] import_id=#{import.id} updated=#{filled.updated}")
+  end
+
+  private
+
+  def enqueue_imports
+    ids = Import.where(source: SOURCES).ids
+    ActiveJob.perform_all_later(ids.map { |id| self.class.new(id) })
+    Rails.logger.info("[DataMigrations::BackfillMissingVelocities] enqueued=#{ids.size}")
+  end
+
+  def fill_flyovers(import)
+    if LEGACY_SOURCES.include?(import.source)
+      zero_is_missing = !Points::VelocityFiller.recorded_speed?(import.id)
+      return Points::VelocityFiller.new(import.id, upgrade_flyovers: true, zero_is_missing:).call
+    end
+    return NOTHING_FILLED unless import.points.where(velocity: nil).exists?
+
+    Points::VelocityFiller.new(import.id).call
+  end
+
+  def recalculate_months(user, timestamps)
+    months = timestamps.map { |timestamp| Time.at(timestamp).in_time_zone(user.timezone_iana) }
+                       .map { |time| [time.year, time.month] }.uniq.sort
+    Stats::RecalculateMonths.new(user, months).call
+  end
+
+  def recalculate_trips(user, timestamps)
+    return if timestamps.empty?
+
+    first, last = timestamps.minmax.map { |timestamp| Time.zone.at(timestamp) }
+    user.trips.where(started_at: ..last, ended_at: first..).find_each do |trip|
+      trip.calculate_countries
+      trip.update_column(:visited_countries, trip.visited_countries)
+    end
+  end
+end

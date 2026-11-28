@@ -1,8 +1,23 @@
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit, Current.date_time_preferences.cache_key] %>
 
 <%= turbo_frame_tag "insights_details" do %>
+  <% if !@has_insight_data && !@year_locked %>
+    <%= render 'empty_state' %>
+  <% else %>
+  <% unless @all_time %>
+    <div class="mb-6">
+      <% if show_plan_data_window_alert? %>
+        <%= render 'pro_locked_card', title: t('insights.time_shares.title'), utm_content: 'time_shares' %>
+      <% else %>
+        <% cache insights_cache_key + ["time_shares"], expires_in: 24.hours do %>
+          <%= render 'time_shares' %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
   <!-- Two Column Layout -->
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
     <!-- Left Column -->
@@ -56,4 +71,5 @@
       <%= render 'movement_wellness' %>
     <% end %>
   <% end %>
+<% end %>
 <% end %>

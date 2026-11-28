@@ -6,12 +6,14 @@ class PendingImports::CleanupJob < ApplicationJob
   def perform
     expired = 0
     claimed = 0
+    failed = 0
 
     # Expired and never claimed — purge blob + destroy record
     PendingImport.expired.where(claimed_at: nil).find_each do |pi|
-      pi.file.purge if pi.file.attached?
-      pi.destroy
-      expired += 1
+      expired += 1 if purge_unclaimed(pi)
+    rescue StandardError => e
+      failed += 1
+      ExceptionReporter.call(e, "PendingImports::CleanupJob: could not purge pending import #{pi.id}")
     end
 
     # Claimed more than 7 days ago — destroy record but keep the blob while
@@ -27,8 +29,24 @@ class PendingImports::CleanupJob < ApplicationJob
     end
 
     Rails.logger.info(
-      "PendingImports::CleanupJob: purged #{expired} expired unclaimed, #{claimed} claimed >7d; " \
+      "PendingImports::CleanupJob: purged #{expired} expired unclaimed, #{claimed} claimed >7d, " \
+      "#{failed} failed; " \
       "#{PendingImport.where(claimed_at: nil).count} unclaimed remain"
     )
+  end
+
+  private
+
+  def purge_unclaimed(pending_import)
+    pending_import.with_lock do
+      next false if pending_import.claimed_at? || pending_import.expires_at > Time.current
+      next pending_import.destroy unless pending_import.file.attached?
+
+      blob = pending_import.file.blob
+      blob.delete
+      pending_import.file.detach
+      blob.destroy!
+      pending_import.destroy!
+    end
   end
 end

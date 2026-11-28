@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
 
 const read = (path) =>
   readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
@@ -11,11 +12,6 @@ const cleanup = await read("maps_maplibre/utils/cleanup_helper.js")
 const { TimelineSegmentHover, segmentCoordinates } = await import(
   url(
     `${cleanup}\n${strip(await read("maps_maplibre/managers/timeline_segment_hover.js"))}`,
-  )
-)
-const { TracksLayer } = await import(
-  url(
-    `${await read("maps_maplibre/layers/base_layer.js")}\n${strip(await read("maps_maplibre/layers/tracks_layer.js"))}`,
   )
 )
 globalThis.requestAnimationFrame = () => 1
@@ -124,16 +120,55 @@ function setup(fetcher = async () => full) {
 test("hover animates the exact segment and restores the full track, colors and opacity", async () => {
   const h = setup()
   await h.manager.hover(h.event())
-  assert.deepEqual(h.map.source.data.features[0].geometry.coordinates, [
-    [1, 1],
-    [2, 2],
-  ])
+  const drawn = h.map.source.data.features[0].geometry.coordinates
+  assert.deepEqual(
+    [drawn[0], drawn.at(-1)],
+    [
+      [1, 1],
+      [2, 2],
+    ],
+  )
   assert.equal(h.layer.flowTrackColor, "green")
   assert.equal(h.layer.animationActive, true)
   h.manager.leave()
-  assert.equal(h.map.source.data.features[0], full)
+  const restored = h.map.source.data.features[0].geometry.coordinates
+  assert.equal(h.layer.selectedFeature, full)
+  assert.deepEqual(
+    [restored[0], restored.at(-1)],
+    [full.geometry.coordinates[0], full.geometry.coordinates.at(-1)],
+  )
   assert.equal(h.layer.segmentsActive, true)
   assert.equal(h.map.opacity, 0.6)
+  h.manager.destroy()
+})
+test("a segment cut at a privacy zone is drawn as separate pieces", async () => {
+  const cut = {
+    ...full,
+    properties: {
+      ...full.properties,
+      segments: [
+        {
+          id: 10,
+          coordinates: [
+            [
+              [1, 1],
+              [1.5, 1.5],
+            ],
+            [
+              [4, 4],
+              [4.5, 4.5],
+            ],
+          ],
+        },
+      ],
+    },
+  }
+  const h = setup(async () => cut)
+  await h.manager.hover(h.event())
+  assert.deepEqual(h.map.source.data.features[0].geometry, {
+    type: "MultiLineString",
+    coordinates: cut.properties.segments[0].coordinates,
+  })
   h.manager.destroy()
 })
 test("rapid segment changes share one in-flight request and only the latest wins", async () => {

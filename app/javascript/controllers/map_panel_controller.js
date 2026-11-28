@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
+import { syncSidebarLayout } from "maps_maplibre/utils/sidebar_layout"
 
 // Module-level flag so the document-level keyboard shortcuts and tab-change
 // mirror listeners are only bound once, even when multiple map-panel
@@ -19,6 +20,7 @@ export default class extends Controller {
   static titleKeys = {
     search: "map_panel.search",
     layers: "map_panel.layers",
+    family: "map_panel.family",
     "timeline-feed": "map_panel.timeline",
     tools: "map_panel.tools",
     links: "map_panel.links",
@@ -69,15 +71,30 @@ export default class extends Controller {
       ) {
         return
       }
+      // "?" needs Shift on most layouts, so it is checked before the guard
+      // below that leaves every modified key to the browser.
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const shortcuts = document.getElementById("keyboard-shortcuts")
+        if (shortcuts && !shortcuts.open) {
+          e.preventDefault()
+          shortcuts.showModal()
+        }
+        return
+      }
       // Don't hijack modified combos — Cmd+Shift+C (DevTools picker),
       // Ctrl+L (address bar), etc. must stay with the browser.
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+      // "/" needs Shift on German, French and Spanish layouts, so it is let
+      // through like "?".
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.shiftKey && e.key !== "/") return
 
       const keyToTab = {
         t: "timeline-feed",
         T: "timeline-feed",
         l: "layers",
         L: "layers",
+        f: "family",
+        F: "family",
         "/": "search",
         c: "tools",
         C: "tools",
@@ -85,7 +102,7 @@ export default class extends Controller {
         S: "settings",
       }
       const tab = keyToTab[e.key]
-      if (tab) {
+      if (tab && document.querySelector(`[data-tab-content="${tab}"]`)) {
         e.preventDefault()
         this.requestTab(tab)
         return
@@ -274,16 +291,6 @@ export default class extends Controller {
   }
 
   /**
-   * Switch to a different tab
-   */
-  switchTab(event) {
-    const button = event.currentTarget
-    const tabName = button.dataset.tab
-
-    this.activateTab(tabName)
-  }
-
-  /**
    * Programmatically switch to a tab by name
    */
   switchToTab(tabName) {
@@ -345,9 +352,7 @@ export default class extends Controller {
     if (panel) {
       panel.classList.toggle("timeline-expanded", expanding)
     }
-    if (container) {
-      container.classList.toggle("panel-timeline-expanded", expanding)
-    }
+    syncSidebarLayout(panel, container)
 
     if (!panel) return
 

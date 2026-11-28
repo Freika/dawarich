@@ -25,10 +25,14 @@ async function boundTargetNames() {
 }
 
 async function declaredTargetNames() {
-  const source = await readFile(controllerUrl, "utf8")
-  const block = source.match(/static targets = \[([\s\S]*?)\]/)
-  assert.ok(block, "maplibre_controller.js declares no static targets block")
-  return new Set([...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]))
+  const names = new Set()
+  for (const url of [controllerUrl]) {
+    const source = await readFile(url, "utf8")
+    const block = source.match(/static targets = \[([\s\S]*?)\]/)
+    assert.ok(block, `${url.pathname} declares no static targets block`)
+    for (const m of block[1].matchAll(/"([^"]+)"/g)) names.add(m[1])
+  }
+  return names
 }
 
 test("every target bound in the Map v2 views is declared by the controller", async () => {

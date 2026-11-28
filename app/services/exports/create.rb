@@ -23,6 +23,7 @@ class Exports::Create
   rescue StandardError => e
     export.update!(status: :failed, error_message: e.message)
 
+    report_failure(e)
     notify_export_failed(e)
   ensure
     safe_close = ->(t) { t.close! if t && !t.closed? }
@@ -35,11 +36,15 @@ class Exports::Create
   attr_reader :user, :export, :start_at, :end_at, :file_format
 
   def time_framed_points
+    return user.points.none if export.import_scope_unavailable?
+
     points = user.points.where(timestamp: start_at.to_i..end_at.to_i)
+    points = points.where(import_id: export.import_id) if export.import_id.present?
 
     case file_format.to_sym
     when :gpx
-      points.select(:id, :lonlat, :altitude, :altitude_decimal, :velocity, :timestamp, :course)
+      columns = %w[id lonlat altitude altitude_decimal velocity timestamp course] & Point.column_names
+      points.select(*columns)
     when :json
       # The point serializer reads the device combo through each point's
       # source; GPX never touches it, and its narrow select carries no
@@ -64,9 +69,18 @@ class Exports::Create
         user:,
         kind: :info,
         title: I18n.t('services.exports.create.export_finished'),
-        content: I18n.t('services.exports.create.export_name_successfully_finished', name: export.name)
+        content: I18n.t('services.exports.create.export_name_successfully_finished', name: export.name),
+        action_path: Notifications.paths.exports_path
       ).call
     end
+  end
+
+  # The rescue above swallows the error, so this is the only place its stack
+  # trace is kept: the log on self-hosted, the error tracker on Cloud.
+  def report_failure(error)
+    message = "Export #{export.id} failed"
+    Rails.logger.error("#{message}: #{error.class}: #{error.message}\n#{error.backtrace&.first(20)&.join("\n")}")
+    ExceptionReporter.call(error, message)
   end
 
   def notify_export_failed(error)
@@ -75,8 +89,9 @@ class Exports::Create
         user:,
         kind: :error,
         title: I18n.t('services.exports.create.export_failed'),
-        content: I18n.t('services.exports.create.export_name_failed_message_stacktrace_n', name: export.name,
-                        message: error.message, backtrace: error.backtrace.join("\n"))
+        content: I18n.t('services.exports.create.export_name_failed_message', name: export.name,
+                                                                              message: error.message),
+        action_path: Notifications.paths.exports_path
       ).call
     end
   end

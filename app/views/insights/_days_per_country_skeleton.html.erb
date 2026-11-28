@@ -1,10 +1,7 @@
-<%# Placeholder while the lazy days-per-country frame loads. Mirrors the
-    countries-left / heatmap-right split of the loaded content. %>
-<div class="flex flex-col lg:flex-row gap-6">
-  <div class="w-full lg:w-1/4 mb-6">
-    <%= render 'shared/skeleton_card', lines: 3 %>
-  </div>
-  <div class="w-full lg:w-3/4 mb-6">
-    <%= render 'shared/skeleton_card', lines: 4 %>
-  </div>
+<%# Placeholder while the lazy calendar, country timeline and race load. Mirrors
+    the calendar card and the timeline/race row below it, so the page does not jump. %>
+<div class="mb-6"><%= render 'shared/skeleton_card', lines: 6 %></div>
+<div class="mb-6 grid gap-6 lg:grid-cols-2">
+  <%= render 'shared/skeleton_card', lines: 3 %>
+  <%= render 'shared/skeleton_card', lines: 3 %>
 </div>

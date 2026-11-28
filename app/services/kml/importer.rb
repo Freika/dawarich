@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rexml/document'
+require 'nokogiri'
 require 'zip'
 
 class Kml::Importer
@@ -17,50 +17,49 @@ class Kml::Importer
     @file_path = file_path
   end
 
+  BATCH_SIZE = 1000
+
   def call
-    doc = load_and_parse_kml_document
-    points_data = extract_all_points(doc)
+    xml = escape_raw_ampersands(load_kml_content)
 
-    return if points_data.empty?
-
-    save_points_in_batches(points_data)
+    # A DOM of the whole file amplifies memory enormously, so a small compressed
+    # KML that expands to the disk cap OOM-kills the worker. Stream the document
+    # one element at a time and insert in batches, keeping peak memory bounded.
+    # Placemarks first, then gx:Tracks, to preserve the point order (and
+    # therefore the batching) of the former whole-document parse.
+    stream_insert(xml, 'Placemark') { |node| parse_placemark(node) }
+    stream_insert(xml, 'gx:Track') { |node| parse_gx_track(node) }
   end
 
   private
 
-  def load_and_parse_kml_document
-    file_content = load_kml_content
-    REXML::Document.new(escape_raw_ampersands(file_content))
-  end
+  def stream_insert(xml, element_name)
+    inserted = 0
+    buffer = []
+    reader = Nokogiri::XML::Reader(xml)
+    reader.each do |node|
+      next unless node.node_type == Nokogiri::XML::Reader::TYPE_ELEMENT && node.name == element_name
 
-  def extract_all_points(doc)
-    points_data = []
-    points_data.concat(extract_points_from_placemarks(doc))
-    points_data.concat(extract_points_from_gx_tracks(doc))
-    points_data.compact
-  end
-
-  def save_points_in_batches(points_data)
-    points_data.each_slice(1000) do |batch|
-      inserted = bulk_insert_points(batch)
-      broadcast_import_progress(import, inserted)
+      buffer.concat(yield(fragment_root(node)).compact)
+      inserted += flush(buffer.shift(BATCH_SIZE)) while buffer.size >= BATCH_SIZE
     end
+    inserted += flush(buffer) if buffer.any?
+    inserted
   end
 
-  def extract_points_from_placemarks(doc)
-    points = []
-    REXML::XPath.each(doc, '//Placemark') do |placemark|
-      points.concat(parse_placemark(placemark))
-    end
-    points
+  # Parse one element's subtree with the C parser (fast) and drop namespaces so
+  # the unprefixed XPaths below match inside the KML default namespace, the way
+  # the old REXML lookups did.
+  def fragment_root(reader_node)
+    doc = Nokogiri::XML(reader_node.outer_xml)
+    doc.remove_namespaces!
+    doc.root
   end
 
-  def extract_points_from_gx_tracks(doc)
-    points = []
-    REXML::XPath.each(doc, '//gx:Track') do |track|
-      points.concat(parse_gx_track(track))
-    end
-    points
+  def flush(batch)
+    inserted = bulk_insert_points(batch)
+    broadcast_import_progress(import, inserted)
+    inserted
   end
 
   def load_kml_content
@@ -71,6 +70,7 @@ class Kml::Importer
 
   def read_file_content
     if file_path && File.exist?(file_path)
+      enforce_kml_parse_limit!(File.size(file_path))
       File.binread(file_path)
     else
       download_and_read_content
@@ -79,7 +79,14 @@ class Kml::Importer
 
   def download_and_read_content
     downloader_content = Imports::SecureFileDownloader.new(import.file).download_with_verification
-    downloader_content.is_a?(StringIO) ? downloader_content.read : downloader_content
+    content = downloader_content.is_a?(StringIO) ? downloader_content.read : downloader_content
+    enforce_kml_parse_limit!(content.bytesize)
+    content
+  end
+
+  def enforce_kml_parse_limit!(bytes)
+    # A 100 MiB KML peaks near 2.7 GiB in memory, so it has its own, lower cap.
+    enforce_parse_limit!(bytes, :kml_max_file_size_mb)
   end
 
   def ensure_binary_encoding(content)
@@ -106,13 +113,31 @@ class Kml::Importer
     Zip::File.open_buffer(StringIO.new(kmz_content)) do |zip|
       zip.each do |entry|
         if kml_entry?(entry)
-          kml_content = entry.get_input_stream.read
+          kml_content = read_capped(entry)
           break
         end
       end
     end
 
     kml_content
+  end
+
+  # Bound the inner .kml inflate so a KMZ (which can skip the dispatcher's
+  # zip-magic check and reach this path) cannot expand unbounded into memory.
+  # The KML limit applies to the inflated KML, not to the small archive.
+  def read_capped(entry)
+    max = ENV.fetch('ZIP_MAX_EXTRACTED_SIZE', 2.gigabytes).to_i
+    kml_max = InstanceSettings::Resolver.value(:kml_max_file_size_mb).megabytes
+    buffer = +''
+    entry.get_input_stream do |stream|
+      while (chunk = stream.read(8192))
+        buffer << chunk
+        raise "KMZ inner entry too large (max #{max} bytes)" if buffer.bytesize > max
+
+        enforce_kml_parse_limit!(buffer.bytesize) if buffer.bytesize > kml_max
+      end
+    end
+    buffer
   end
 
   def kml_entry?(entry)
@@ -133,7 +158,7 @@ class Kml::Importer
   end
 
   def extract_point_geometry(placemark, timestamp)
-    point_node = REXML::XPath.first(placemark, './/Point/coordinates')
+    point_node = placemark.at_xpath('.//Point/coordinates')
     return [] unless point_node
 
     coords = parse_coordinates(point_node.text)
@@ -141,17 +166,18 @@ class Kml::Importer
   end
 
   def extract_linestring_geometry(placemark, timestamp_range)
-    linestring_node = REXML::XPath.first(placemark, './/LineString/coordinates')
+    linestring_node = placemark.at_xpath('.//LineString/coordinates')
     return [] unless linestring_node
 
     coords = parse_coordinates(linestring_node.text)
     timestamps = interpolate_timestamps(timestamp_range, coords.size)
-    coords.zip(timestamps).map { |coord, timestamp| build_point(coord, timestamp, placemark) }
+    coords.zip(timestamps).filter_map { |coord, timestamp| build_point(coord, timestamp, placemark) }
+          .each { |point| point[:velocity] ||= 0.0 }
   end
 
   def extract_multigeometry(placemark, timestamp)
     points = []
-    REXML::XPath.each(placemark, './/MultiGeometry//coordinates') do |coords_node|
+    placemark.xpath('.//MultiGeometry//coordinates').each do |coords_node|
       coords = parse_coordinates(coords_node.text)
       coords.each do |coord|
         points << build_point(coord, timestamp, placemark)
@@ -169,7 +195,7 @@ class Kml::Importer
 
   def extract_gx_timestamps(track)
     timestamps = []
-    REXML::XPath.each(track, './/when') do |when_node|
+    track.xpath('.//when').each do |when_node|
       timestamps << when_node.text.strip
     end
     timestamps
@@ -177,7 +203,8 @@ class Kml::Importer
 
   def extract_gx_coordinates(track)
     coordinates = []
-    REXML::XPath.each(track, './/gx:coord') do |coord_node|
+    # remove_namespaces! has stripped the gx: prefix, so match the local name.
+    track.xpath('.//coord').each do |coord_node|
       coordinates << coord_node.text.strip
     end
     coordinates
@@ -207,7 +234,7 @@ class Kml::Importer
       altitude: alt,
       timestamp: time,
       import_id: import.id,
-      velocity: 0.0,
+      velocity: nil,
       user_id: user_id,
       created_at: Time.current,
       updated_at: Time.current
@@ -250,7 +277,7 @@ class Kml::Importer
   end
 
   def extract_named_timestamp_range(placemark)
-    name = REXML::XPath.first(placemark, './name')&.text&.strip
+    name = placemark.at_xpath('./name')&.text&.strip
     match = name&.match(/\A(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) - (\d{4}-\d{2}-\d{2} \d{2}:\d{2})\z/)
     return unless match
 
@@ -279,9 +306,9 @@ class Kml::Importer
   end
 
   def find_timestamp_node(placemark)
-    REXML::XPath.first(placemark, './/TimeStamp/when') ||
-      REXML::XPath.first(placemark, './/TimeSpan/begin') ||
-      REXML::XPath.first(placemark, './/TimeSpan/end')
+    placemark.at_xpath('.//TimeStamp/when') ||
+      placemark.at_xpath('.//TimeSpan/begin') ||
+      placemark.at_xpath('.//TimeSpan/end')
   end
 
   def build_point(coord, timestamp, placemark)
@@ -313,15 +340,17 @@ class Kml::Importer
 
   def extract_velocity(placemark)
     speed_node = find_speed_node(placemark)
-    speed_node ? speed_node.text.to_f.round(1) : 0.0
+    return unless speed_node
+
+    speed_node.text.to_f.round(1)
   rescue StandardError
-    0.0
+    nil
   end
 
   def find_speed_node(placemark)
-    REXML::XPath.first(placemark, ".//Data[@name='speed']/value") ||
-      REXML::XPath.first(placemark, ".//Data[@name='Speed']/value") ||
-      REXML::XPath.first(placemark, ".//Data[@name='velocity']/value")
+    placemark.at_xpath(".//Data[@name='speed']/value") ||
+      placemark.at_xpath(".//Data[@name='Speed']/value") ||
+      placemark.at_xpath(".//Data[@name='velocity']/value")
   end
 
   def importer_name

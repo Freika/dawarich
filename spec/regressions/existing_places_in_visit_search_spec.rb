@@ -58,7 +58,7 @@ RSpec.describe 'Existing places in visit search', type: :request do
       { id: nil, name: 'Coffee Shop', latitude: latitude, longitude: longitude, source: 'photon' },
       { id: nil, name: 'Coffee Shop', latitude: latitude + 0.001, longitude: longitude, source: 'photon' }
     ]
-    search = instance_double(Places::Search, call: results)
+    search = instance_double(Places::Search, call: results, throttled?: false)
     allow(Places::Search).to receive(:new).and_return(search)
 
     get '/api/v1/places/search',
@@ -80,7 +80,7 @@ RSpec.describe 'Existing places in visit search', type: :request do
     results = [
       { id: nil, name: 'Office', latitude: latitude, longitude: longitude, source: 'photon' }
     ]
-    search = instance_double(Places::Search, call: results)
+    search = instance_double(Places::Search, call: results, throttled?: false)
     allow(Places::Search).to receive(:new).and_return(search)
 
     get '/api/v1/places/search',
@@ -113,7 +113,7 @@ RSpec.describe 'Existing places in visit search', type: :request do
     results = [
       { id: nil, name: 'Park Cafe', latitude: latitude + 0.005, longitude: longitude, source: 'photon' }
     ]
-    search = instance_double(Places::Search, call: results)
+    search = instance_double(Places::Search, call: results, throttled?: false)
     allow(Places::Search).to receive(:new).and_return(search)
 
     get '/api/v1/places/search',
@@ -137,7 +137,7 @@ RSpec.describe 'Existing places in visit search', type: :request do
     results = [
       { id: nil, name: 'Cafe', latitude: latitude, longitude: longitude, source: 'photon' }
     ]
-    search = instance_double(Places::Search, call: results)
+    search = instance_double(Places::Search, call: results, throttled?: false)
     allow(Places::Search).to receive(:new).and_return(search)
 
     get '/api/v1/places/search',

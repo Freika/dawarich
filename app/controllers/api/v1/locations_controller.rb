@@ -6,7 +6,8 @@ class Api::V1::LocationsController < ApiController
 
   def index
     if coordinate_search?
-      search_results = LocationSearch::PointFinder.new(current_api_user, search_params).call
+      search_results = LocationSearch::PointFinder.new(current_api_user, search_params,
+                                                       privacy_zone_masker: map_read_masker).call
 
       render json: Api::LocationSearchResultSerializer.new(search_results).call
     else

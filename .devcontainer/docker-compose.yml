@@ -30,7 +30,7 @@ services:
       APPLICATION_PROTOCOL: http
       PROMETHEUS_EXPORTER_ENABLED: false
   dawarich_redis:
-    image: redis:7.4-alpine
+    image: redis:8-alpine
     container_name: dawarich_redis
     command: redis-server
     networks:

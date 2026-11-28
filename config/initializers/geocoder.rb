@@ -32,3 +32,9 @@ elsif LOCATIONIQ_API_KEY.present?
 end
 
 Geocoder.configure(settings)
+
+Geocoder::Lookup::Base.class_eval do
+  private
+
+  def log_request(_message = nil); end
+end

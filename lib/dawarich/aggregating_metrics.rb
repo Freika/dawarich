@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'net/http'
+require 'timeout'
 require 'uri'
 
 module Dawarich
@@ -9,29 +10,34 @@ module Dawarich
   # Sidekiq container's WEBrick exporter). The combined response is served from a
   # single external URL — used when the remote endpoint cannot be exposed publicly.
   #
-  # Failure mode: if the remote fetch fails (network error, non-200), the middleware
-  # logs a warning and returns local metrics only. Prometheus sees a momentary gap
-  # in remote metrics rather than a scrape failure.
+  # Failure mode: if the remote fetch fails (network error, non-200, or slower than
+  # `deadline`), the middleware logs a warning and returns local metrics only.
+  # Prometheus sees a momentary gap in remote metrics rather than a scrape failure.
+  # Net::HTTP's read_timeout bounds each socket read, not the whole response, so a
+  # slow worker exporter could otherwise outlast Prometheus' 10s scrape timeout.
   class AggregatingMetrics
     HELP_PREFIX = '# HELP '
     TYPE_PREFIX = '# TYPE '
     LOCAL_PROCESS = 'web'
     REMOTE_PROCESS = 'sidekiq'
     PROCESS_LABEL = 'process'
-    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{.*?\})?(\s+.*)\z/
+    SAMPLE_LINE = /\A([a-zA-Z_:][a-zA-Z0-9_:]*)(\{(?:[^"{}]|"(?:\\.|[^"\\])*")*\})?(\s+.*)\z/
+    LABEL_PAIR = /([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*"((?:\\.|[^"\\])*)"/
     PROCESS_LABEL_PRESENT = /[{,]process="/
 
-    def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 5)
+    def initialize(local_app, remote_url:, remote_user:, remote_password:, timeout: 2, deadline: 3)
       @local_app = local_app
       @remote_url = URI(remote_url)
       @remote_user = remote_user
       @remote_password = remote_password
       @timeout = timeout
+      @deadline = deadline
     end
 
     def call(env)
       status, headers, body = @local_app.call(env)
       return [status, headers, body] unless status == 200
+      return [status, headers, body] if EmbeddedSidekiq.enabled? && ENV['SIDEKIQ_METRICS_URL'].blank?
 
       local = read_body(body)
       remote = fetch_remote_metrics
@@ -41,6 +47,14 @@ module Dawarich
     private
 
     def fetch_remote_metrics
+      Timeout.timeout(@deadline) { request_remote_metrics }
+    rescue StandardError => e
+      reason = e.is_a?(Timeout::Error) ? "exceeded the #{@deadline}s deadline" : e.message
+      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{reason}") if defined?(Rails.logger)
+      ''
+    end
+
+    def request_remote_metrics
       Net::HTTP.start(@remote_url.host, @remote_url.port,
                       open_timeout: @timeout, read_timeout: @timeout) do |http|
         req = Net::HTTP::Get.new(@remote_url.request_uri)
@@ -51,9 +65,6 @@ module Dawarich
         Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics returned #{res.code}") if defined?(Rails.logger)
         ''
       end
-    rescue StandardError => e
-      Rails.logger.warn("[AggregatingMetrics] sidekiq /metrics fetch failed: #{e.message}") if defined?(Rails.logger)
-      ''
     end
 
     # Concatenates local and remote bodies. Deduplicates `# HELP <name> ...` and
@@ -61,8 +72,8 @@ module Dawarich
     # metadata.
     #
     # Both processes register some collectors independently, so the same metric
-    # name and label set can arrive from each with a different value — which
-    # OpenMetrics forbids and strict ingesters reject. Those samples, and only
+    # name and label set can arrive from each with a different value, producing
+    # duplicate samples that strict ingesters reject. Those samples, and only
     # those, get a `process` label naming where they came from, so the series
     # stay distinct without renaming anything that isn't ambiguous.
     def merge(local, remote)
@@ -103,10 +114,11 @@ module Dawarich
       match = SAMPLE_LINE.match(line.strip)
       return if match.nil?
 
-      labels = match[2]
-      labels = nil if labels == '{}'
-
-      "#{match[1]}#{labels}"
+      # prometheus-client emits canonical escapes. Consume quoted values whole,
+      # then compare label hashes independently of order. Prometheus treats an
+      # empty-valued label as absent; normalize only the comparison identity.
+      labels = match[2].to_s.scan(LABEL_PAIR).to_h.reject { |_name, value| value.empty? }
+      [match[1], labels]
     end
 
     def disambiguate(line, process, collisions)

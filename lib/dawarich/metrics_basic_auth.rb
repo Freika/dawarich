@@ -20,6 +20,10 @@ module Dawarich
     private
 
     def authorized?(username, password)
+      # Fail closed: when either credential is unset/blank the endpoint must not be
+      # world-readable (empty Basic credentials would otherwise compare equal).
+      return false if METRICS_USERNAME.to_s.empty? || METRICS_PASSWORD.to_s.empty?
+
       ActiveSupport::SecurityUtils.secure_compare(username.to_s, METRICS_USERNAME.to_s) &
         ActiveSupport::SecurityUtils.secure_compare(password.to_s, METRICS_PASSWORD.to_s)
     end

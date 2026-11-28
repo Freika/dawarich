@@ -30,6 +30,7 @@ en:
           komoot_warning: "photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance."
           https_locked: "HTTPS is always on for this host."
           legacy_user_settings: "Some users set up their own geocoding before it moved here. Their settings were not carried over because not every user had one, or they differed. Set up a provider below to turn geocoding back on for everyone."
+          paused: "Lookups are paused for %{minutes} min because the provider refused them as over its limit."
         providers:
           photon: "Open-source geocoder. Use a hosted server or run your own."
           geoapify: "Hosted service. Needs an API key."
@@ -37,10 +38,13 @@ en:
           locationiq: "Hosted service. Needs an API key."
         points:
           title: "Points"
+        imports:
+          title: "Imports"
         fields:
           photon_api_host: "Host"
           photon_api_key: "API key"
           photon_api_use_https: "Use HTTPS"
+          photon_api_language: "Language"
           nominatim_api_host: "Host"
           nominatim_api_key: "API key"
           nominatim_api_use_https: "Use HTTPS"
@@ -50,12 +54,18 @@ en:
           store_geodata: "Geocode new points immediately"
           host_hint: "Bare hostname with optional port, e.g. photon.example.com:2322"
           rps_hint: "Leave blank for no limit. Set this to whatever your server or plan allows."
+          photon_api_language_hint: "Two-letter language code for place names, or default for names in the local language. Your Photon index must include this language. A change applies only to new lookups, and a city may then appear twice in statistics."
           api_key_keep_hint: "Leave blank to keep the saved key."
           store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
+          import_max_file_size_mb: "Largest file read in one piece (MB)"
+          kml_max_file_size_mb: "Largest KML file (MB)"
+          import_max_file_size_mb_hint: "JSON, GeoJSON, TCX and similar files are read into memory whole and take about three times their size there. Raise this only if the import worker has the memory for it. Default: 512."
+          kml_max_file_size_mb_hint: "A KML file takes far more memory than its size while it is read. Default: 64."
       update:
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
         host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."
+        language_invalid: "The language must be a two-letter code such as en or nl, or default."
         chibigeo_key_required: "ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com."
       test_geocoding:
         not_configured: "No geocoding provider is configured. Save a provider first."
@@ -63,6 +73,7 @@ en:
         empty: "The provider responded but returned no results for the test coordinates."
         failure: "Test failed: %{error}"
         rate_limited: "The provider's rate limit is busy right now — try again in a moment."
+        paused: "The provider refused lookups as over its limit. They stay paused for %{seconds} s more, so no test was sent."
   activerecord:
     errors:
       models:
@@ -93,12 +104,6 @@ en:
         confirm_account_linking: Confirm account linking
         link_provider_and_sign_in: Link %{provider} and sign in
   devise:
-    confirmations:
-      new:
-        resend_confirmation: Resend confirmation
-        enter_your_email_address_and_we_ll_resend_the_confirmation: Enter your email address and we'll resend the confirmation instructions.
-        email: Email
-        resend_confirmation_instructions: Resend confirmation instructions
     mailer:
       confirmation_instructions:
         welcome: Welcome
@@ -127,7 +132,6 @@ en:
         change_your_password: Change your password
         enter_your_new_password_below: Enter your new password below.
         new_password: New password
-        characters_minimum: characters minimum)
         confirm_new_password: Confirm new password
         change_my_password: Change my password
       new:
@@ -165,7 +169,7 @@ en:
         current_password: Current password
         required_to_confirm_your_changes: "(required to confirm your changes)"
         import_your_data: Import your data
-        upload_a_zip_file_containing_your_exported_dawarich_data_to: Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings.
+        upload_a_zip_file_containing_your_exported_dawarich_data_to: "Upload a ZIP file containing your exported Dawarich data to restore your points, trips, and settings. Integration connections (Immich, Photoprism, AirTrail, TeslaMate) are not restored; reconnect them in Settings → Integrations."
         select_zip_archive: Select ZIP archive
         file_will_be_uploaded_directly_to_storage_please_be_patient: File will be uploaded directly to storage. Please be patient during upload.
         cancel: Cancel
@@ -201,17 +205,24 @@ en:
         importing: Importing...
         delete_my_account: Delete my account
         email_me_the_confirmation_link: Email me the confirmation link
+        first_name: First name
+        last_name: Last name
       new:
         join_family: Join %{family}!
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_create_your_account_to_accept_the: to join their family. Create your account to accept the invitation and start sharing location data.
-        almost_there: Almost there!
-        only_a_few_steps_left_until_you_get_control_over: Only a few steps left until you get control over your location data!
-        create_your_account: Create your account
-        configure_your_mobile_app: Configure your mobile app
-        start_tracking_your_location_data_securely: Start tracking your location data securely
-        ellipsis: "…"
-        you_re_beautiful: You're beautiful!
+        almost_there: "Almost there"
+        only_a_few_steps_left_until_you_get_control_over: "Only a few steps left until you get control over your location data."
+        steps:
+          account:
+            title: "Create your account"
+            body: "Use the form on this page."
+          mobile_app:
+            title: "Configure your mobile app"
+            body: "Record new locations with the Dawarich app or OwnTracks."
+          import:
+            title: "Import your history"
+            body: "Add your Google Timeline export and older GPX or GeoJSON files."
         invitation_email_notice: Your email (%{email}) will be used for this account
         email: Email
         password: Password
@@ -228,8 +239,21 @@ en:
         you_ve_been_invited_by: You've been invited by
         to_join_their_family_sign_in_to_your_account_to: to join their family. Sign in to your account to accept the invitation.
         don_t_have_an_account_yet: Don't have an account yet?
-        login_now: Login now
-        and_take_control_over_your_location_data: and take control over your location data.
+        login_now: Log in to your location history
+        and_take_control_over_your_location_data: Take control of your location data
+        benefits:
+          map:
+            title: "Your whole history on one map"
+            body: "See every point, route and visit on an interactive map."
+          import:
+            title: "Bring your data with you"
+            body: "Import from Google Timeline, OwnTracks, GPX, GeoJSON and more."
+          stats:
+            title: "See where you've been"
+            body: "Countries, cities and distance, broken down by year and month."
+          privacy:
+            title: "Your data stays yours"
+            body: "No ads, and your location history is never sold."
         email: Email
         password: Password
         remember_me: Remember me
@@ -249,7 +273,6 @@ en:
         log_in: Log in
         register: Register
         forgot_your_password: Forgot your password?
-        didn_t_receive_confirmation_instructions: Didn't receive confirmation instructions?
         didn_t_receive_unlock_instructions: Didn't receive unlock instructions?
     unlocks:
       new:
@@ -424,6 +447,7 @@ en:
         create_account_join_family: Create Account & Join Family →
         already_have_an_account: Already have an account?
         sign_in_to_accept_invitation: Sign in to accept invitation
+        open_in_the_dawarich_app: "Open in the Dawarich app"
         not_interested_you_can_simply_close_this_page: Not interested? You can simply close this page.
       index:
         invited: Invited
@@ -535,24 +559,6 @@ en:
       stay_connected_with_your_growing_family_2: "• Stay connected with your growing family"
       manage_family_members_and_settings_from_your_family_page_2: "• Manage family members and settings from your family page"
       tip_you_can_manage_your_family_members_and_privacy_settings: 'TIP: You can manage your family members and privacy settings at any time from your family dashboard.'
-  home:
-    index:
-      dawarich: Dawarich
-      the_only_location_history_tracker_you_ll_ever_need: The only location history tracker you'll ever need.
-      or: or
-      location_history_visualisation: Location history visualisation
-      effortlessly_import_your_location_history_from_google_maps_timeline_and: Effortlessly import your location history from Google Maps Timeline and Owntracks. View your journeys on an interactive map, complete with customizable layers like heatmaps, points, and connecting lines to visualize your travels.
-      comprehensive_travel_statistics: Comprehensive Travel Statistics
-      gain_insights_into_your_travel_patterns_with_detailed_statistics_track: Gain insights into your travel patterns with detailed statistics. Track the number of countries and cities visited and total distance traveled. Split your data by years and months for a clear overview of your journeys.
-      self_hosted_and_private: Self-Hosted and Private
-      maintain_complete_control_over_your_data_with_our_self_hosted: Maintain complete control over your data with our self-hosted solution. Dawarich ensures your location history remains private and secure, giving you peace of mind while enjoying the full functionality of a robust tracking system.
-      find_more_on: Find more on
-      the_website: the website
-      or_check_out_the: ", or check out the"
-      source_code: source code
-      on_github: on GitHub.
-      sign_up: Sign up
-      sign_in: Sign in
   imports:
     extraction_card:
       additional_data: Additional data
@@ -591,7 +597,11 @@ en:
       remove_extracted_data: Remove extracted data
       remove_the_visits_places_and_tracks_this_extraction_created_your: Remove the visits, places and tracks this extraction created? Your imported GPS points are kept.
     form:
-      supported_import_formats: Supported Import Formats
+      drop_files_here: "Drop files here or click to choose"
+      each_file_becomes_its_own_import: "Each file becomes its own import. The format is detected automatically."
+      where_do_i_get_my_data: "Where do I get my data?"
+      how_to_export: "How to export"
+      all_supported_formats: "All supported formats"
       google_maps: 'Google Maps:'
       records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
       google_photos: 'Google Photos:'
@@ -614,9 +624,10 @@ en:
       dawarich_mobile_app_export_json: Dawarich mobile app export (.json)
       polarsteps: 'Polarsteps:'
       locations_json_json: locations.json (.json)
+      swarm: 'Foursquare Swarm:'
+      swarm_checkins_json: 'Data export (checkins*.json, .zip)'
       zip: 'ZIP:'
       archives_containing_any_of_the_above_zip: Archives containing any of the above (.zip)
-      file_format_is_automatically_detected_during_upload: File format is automatically detected during upload.
       for_files_larger_than_200mb_consider_compressing_them_into_a: For files larger than 200MB, consider compressing them into a ZIP archive before uploading. This significantly reduces upload time and avoids connection timeouts.
       trial_limitations_max_5_imports_10mb_per_file: 'Trial limitations: Max 5 imports, 10MB per file.'
       current_imports: 'Current imports:'
@@ -672,8 +683,26 @@ en:
       back_to_imports: Back to imports
       import: Import
   insights:
+    time_shares:
+      title: "Where your time went"
+      days_title: "Where the days went"
+      hours_title: "Where the hours went"
+      modes_title: "How you moved"
+      home: "Home"
+      out: "Out and about"
+      trip: "On a trip"
+      untracked: "Untracked"
+      places: "Other places"
+      moving: "Moving"
+      no_data: "No data"
+      by_time: "by time"
+      note: "Days and hours come from your visits, tracks, trips and the places you lived."
+      other: "Other"
+      day_count:
+        one: "%{count} day"
+        other: "%{count} days"
     activity_breakdown:
-      activity_breakdown: Activity Breakdown
+      activity_breakdown: Activity breakdown
       no_activity_data_available_for_this_period: No activity data available for this period
       driving: Driving
       walking: Walking
@@ -686,7 +715,7 @@ en:
       boat: Boat
       motorcycle: Motorcycle
     activity_heatmap:
-      activity_overview: Activity Overview
+      activity_overview: Activity overview
       active_days: active days
       less: Less
       more: More
@@ -694,20 +723,41 @@ en:
       wed: Wed
       fri: Fri
     activity_streak:
-      activity_streak: Activity Streak
+      activity_streak: Activity streak
       current: current
       day:
         one: day
         other: days
-      longest_streak: Longest Streak
+      longest_streak: Longest streak
+    distance_race:
+      title: "%{year} vs %{previous}"
+      title_single: "Distance through %{year}"
+      aria: "Cumulative distance in %{year} compared with %{previous}"
+      so_far: "So far in %{year}"
+      by_date: "by %{date}"
+      same_day: "Same day in %{year}"
+      ended_at: "%{year} ended at %{distance}"
+      ahead: "Ahead by %{distance}"
+      behind: "Behind by %{distance}"
+      no_previous: "No data for %{year} to compare with."
+    country_ribbon:
+      title: "Where you spent %{year}"
+      today: "Today"
+      segment:
+        one: "%{country}, %{from} – %{to}, %{count} day"
+        other: "%{country}, %{from} – %{to}, %{count} days"
+      more_countries:
+        one: "+%{count} more country"
+        other: "+%{count} more countries"
     header:
+      period: "Period"
       insights: Insights
       your_personal_movement_analytics_and_travel_patterns: Your personal movement analytics and travel patterns
-      by_year: By Year
+      by_year: By year
       overview: Overview
-      all_time: All Time
+      all_time: All time
     location_clusters:
-      top_visited_locations: Top Visited Locations
+      top_visited_locations: Top visited locations
       total_time: total time
       visit_count:
         one: visit
@@ -715,32 +765,34 @@ en:
       no_visit_data_available_for_this_period: No visit data available for this period.
       confirmed_visits_will_appear_here: Confirmed visits will appear here.
     monthly_digest:
-      total_distance: Total Distance
-      active_days: Active Days
+      total_distance: Total distance
+      active_days: Active days
       countries: Countries
       cities: Cities
-      weekly_pattern: WEEKLY PATTERN
-      top_locations: TOP LOCATIONS
+      weekly_pattern: Weekly pattern
+      top_locations: Top locations
       no_location_data: No location data
-      first_visits: FIRST VISITS
+      first_visits: First visits
       country: Country
       city: City
       no_new_places_this_month: No new places this month
-      vs_previous_month: VS PREVIOUS MONTH
+      vs_previous_month: Compared with last month
       distance: distance
       countries_2: countries
-      monthly_digest: Monthly Digest
+      monthly_digest: Monthly digest
       select_a_month_to_view_its_digest: 'Select a month to view its digest:'
+    months:
+      title: "Distance by month"
     movement_wellness:
-      movement_wellness: Movement & Wellness
-      active_time: ACTIVE TIME
+      movement_wellness: Movement and wellness
+      active_time: Active time
       walking: Walking
       total: total
       running: Running
       cycling: Cycling
       driving: Driving
       no_activity_data_available_for_this_period: No activity data available for this period
-      sedentary_vs_active: SEDENTARY VS ACTIVE
+      sedentary_vs_active: Sedentary vs active
       in_transport: In transport
       stationary: Stationary
       active_movement: Active movement
@@ -752,20 +804,20 @@ en:
       available_on_pro: Available on Pro
       upgrade_to_pro: Upgrade to Pro
     stats_row:
-      total_distance: TOTAL DISTANCE
+      total_distance: Total distance
       all_tracked_history: All tracked history
       vs: vs
       in: in
       this_year: This year
-      countries: COUNTRIES
+      countries: Countries
       new_vs: new vs
-      cities: CITIES
-      days_traveling: DAYS TRAVELING
+      cities: Cities
+      days_traveling: Days traveling
       active_days_this_year: Active days this year
       no_stats_data_available: No stats data available
       stats_are_calculated_from_your_tracked_points: ". Stats are calculated from your tracked points."
     top_visited_locations:
-      top_visited_locations: Top Visited Locations
+      top_visited_locations: Top visited locations
       total_time: total time
       visit_count:
         one: visit
@@ -773,10 +825,10 @@ en:
       no_visit_data_available_for_this_period: No visit data available for this period.
       confirmed_visits_will_appear_here: Confirmed visits will appear here.
     travel_patterns:
-      when_do_you_travel: When Do You Travel?
-      time_of_day_distribution: TIME OF DAY DISTRIBUTION
-      day_of_week: DAY OF WEEK
-      seasonality: SEASONALITY
+      when_do_you_travel: When you travel
+      time_of_day_distribution: Time of day distribution
+      day_of_week: Day of week
+      seasonality: Seasonality
       insight: Insight
     travel_story:
       your_travel_story: Your Travel Story
@@ -828,36 +880,45 @@ en:
       rome_rarr_amalfi: Rome → Amalfi
       favorites_marked: Favorites marked
       places: places
+    year_cards:
+      flown: "including %{distance} flown"
+      title: "Years"
+    year_calendar:
+      mode: "Calendar view"
+      mode_both: "Countries + distance"
+      mode_distance: "Distance"
+      mode_countries: "Countries"
+      no_data: "No data"
+      timezone_note: "Countries are counted per UTC day, distances per day in your time zone (%{zone}), so a day near midnight can show one day's country next to another day's distance."
     year_comparison:
-      your_journey: 'Your Journey:'
+      your_journey: 'Your journey:'
       vs: vs
-      distance: DISTANCE
-      countries: COUNTRIES
-      days_traveling: DAYS TRAVELING
+      distance: Distance
+      countries: Countries
+      days_traveling: Days traveling
       days: days (
       days_2: days
-      biggest_month: BIGGEST MONTH
+      biggest_month: Biggest month
     details:
-      year_comparison: Year Comparison
-      activity_breakdown: Activity Breakdown
-      location_clusters: Location Clusters
-      monthly_digest: Monthly Digest
-      travel_patterns: Travel Patterns
-      movement_wellness: Movement & Wellness
+      year_comparison: Year comparison
+      activity_breakdown: Activity breakdown
+      location_clusters: Location clusters
+      monthly_digest: Monthly digest
+      travel_patterns: Travel patterns
+      movement_wellness: Movement and wellness
     index:
-      geodata_insights_bull_powered_by_your_location_history: Geodata Insights • Powered by your location history
-      total_distance: Total Distance
+      total_distance: Total distance
       countries: Countries
       cities: Cities
-      days_traveling: Days Traveling
-      activity_heatmap: Activity Heatmap
-      activity_streak: Activity Streak
-      year_comparison: Year Comparison
-      activity_breakdown: Activity Breakdown
-      location_clusters: Location Clusters
-      monthly_digest: Monthly Digest
-      travel_patterns: Travel Patterns
-      movement_wellness: Movement & Wellness
+      days_traveling: Days traveling
+      activity_heatmap: Activity heatmap
+      activity_streak: Activity streak
+      year_comparison: Year comparison
+      activity_breakdown: Activity breakdown
+      location_clusters: Location clusters
+      monthly_digest: Monthly digest
+      travel_patterns: Travel patterns
+      movement_wellness: Movement and wellness
       insights: Insights
   kaminari:
     first_page:
@@ -887,7 +948,21 @@ en:
       shared_on_dawarich: Shared on Dawarich
       dawarich_logo: Dawarich logo
   map:
+    keyboard_shortcuts:
+      title: "Keyboard shortcuts"
+      open_timeline: "Open the Timeline"
+      open_layers: "Open Layers"
+      search_places: "Search places"
+      open_family: "Open Family"
+      open_tools: "Open Tools"
+      open_settings: "Open map settings"
+      toggle_replay: "Start or stop Replay"
+      previous_next_day: "Previous or next day, while the Timeline is open"
+      show_shortcuts: "Show this list"
+      close: "Close"
     onboarding_modal:
+      not_sure_where_your_app_keeps_its_export: "Not sure where your app keeps its export?"
+      step_by_step_export_guides: "Step-by-step export guides"
       invite_your_family: "Invite your family"
       add_your_family_and_see_each_other_on_the_map: "Add your family and see each other on the map."
       welcome_to_dawarich: Welcome to Dawarich!
@@ -902,16 +977,6 @@ en:
       skip_for_now: Skip for now
       import_your_data: Import your data
       supported_formats: Supported formats
-      google_maps: 'Google Maps:'
-      records_json_semantic_history_phone_takeout_json: Records.json, Semantic History, Phone Takeout (.json)
-      gpx: 'GPX:'
-      track_files_gpx: Track files (.gpx)
-      geojson: 'GeoJSON:'
-      feature_collections_json: Feature collections (.json)
-      owntracks: 'OwnTracks:'
-      recorder_files_rec: Recorder files (.rec)
-      kml: 'KML:'
-      kml_files_kml_kmz: KML files (.kml, .kmz)
       file_format_is_automatically_detected_during_upload: File format is automatically detected during upload.
       trial_limitations_max_5_imports_10mb_per_file_current_imports: 'Trial limitations: Max 5 imports, 10MB per file. Current imports:'
       select_one_or_multiple_files: Select one or multiple files
@@ -931,26 +996,18 @@ en:
       settings: Settings
       setup_guide: setup guide
     maplibre:
-      area_creation_modal:
-        create_new_area: Create New Area
-        area_name: Area Name *
-        radius: Radius
-        meters: meters
-        cancel: Cancel
-        e_g_home_office_gym: e.g. Home, Office, Gym...
-        radius_in_meters: Radius in meters
-        create_area: Create Area
-        creating: Creating...
       button_cluster:
         map_controls: Map controls
         timeline: Timeline
         timeline_t: Timeline (T)
         layers: Layers
         layers_l: Layers (L)
+        family: "Family"
+        family_f: "Family (F)"
         search: Search
         search_2: Search (/)
-        create: Create
-        create_c: Create (C)
+        tools: "Tools"
+        tools_c: "Tools (C)"
         replay: Replay
         replay_points_for_the_current_date_range_r: Replay points for the current date range (R)
         poster_studio: Poster Studio
@@ -959,13 +1016,16 @@ en:
         settings_s: Settings (S)
         links: Links
       settings_panel:
+        data_processing_link: "Track, GPS noise, city and transportation settings are in Settings → Data processing"
+        speed_colored_tracks: Color tracks by speed
+        edit_speed_colors: Edit speed colors
         close_panel: Close panel
         layers: Layers
         search_for_a_place: Search for a place
         enter_name_of_a_place: Enter name of a place
         search_for_a_location_to_find_places_you_visited: Search for a location to find places you visited
         points: Points
-        show_individual_location_points: Show individual location points
+        show_individual_location_points: "Every location fix your devices recorded, one dot each."
         edit_points: Edit points
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
         editing_points_is_a_pro_feature_this_stays_on_for: Editing points is available on the Pro plan.
@@ -977,36 +1037,37 @@ en:
         anomalies: Anomalies
         show_filtered_gps_noise_points: Show filtered GPS noise points
         tracks: Tracks
-        show_backend_calculated_tracks: Show backend-calculated tracks
+        show_backend_calculated_tracks: "Your points joined into the paths you traveled."
         flights: Flights
-        show_airtrail_flights_as_arcs_hides_overlapping_gps: Show AirTrail flights as arcs (hides overlapping GPS)
+        show_airtrail_flights_as_arcs_hides_overlapping_gps: "Your AirTrail flights as arcs. They hide the GPS points they overlap."
         heatmap: Heatmap
-        show_density_heatmap: Show density heatmap
+        show_density_heatmap: "Glows brighter where you have more points."
         hexagons: Hexagons
-        show_point_density_as_hexagonal_cells: Show point density as hexagonal cells
+        show_point_density_as_hexagonal_cells: "Counts your points per hexagonal cell for a coarser overview."
         visits: Visits
-        show_detected_area_visits: Show detected area visits
+        show_detected_area_visits: "Visits Dawarich detected: times you stayed in one spot."
         filter_by_name: Filter by name...
         all_visits: All Visits
         confirmed_only: Confirmed Only
         suggested_only: Suggested Only
         places: Places
-        show_your_saved_places: Show your saved places
+        show_your_saved_places: "Named locations you saved. Visits are matched to them."
         enable_all_tags: Enable All Tags
-        filter_by_tags: Filter by Tags
+        show_place_boundaries: Show place boundaries
         untagged: "\U0001F3F7️ Untagged"
         click_tags_to_filter_places: Click tags to filter places
         photos: Photos
-        show_geotagged_photos: Show geotagged photos
+        show_geotagged_photos: "Your geotagged photos, pinned where they were taken."
         areas: Areas
         show_defined_areas: Show defined areas
         fog_of_war: Fog of War
-        show_explored_areas: Show explored areas
+        show_explored_areas: "Darkens the map except where you have been."
         per_point: Per point
         per_hexagon: Per hexagon
         scratch_map: Visited Countries
-        show_scratched_countries: Highlight countries visited in the selected range
+        show_scratched_countries: "Countries you visited in the selected period, filled in."
         family_members: Family Members
+        manage_family: "Manage family"
         show_family_member_locations: Show family member locations
         click_to_center_on_member: Click to center on member
         appearance: Appearance
@@ -1039,7 +1100,6 @@ en:
         points_of_interest: Points of Interest
         choose_which_poi_categories_appear_on_the_map: Choose which POI categories appear on the map.
         distance_threshold_for_route_splitting: Distance threshold for route splitting
-        min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
@@ -1053,19 +1113,23 @@ en:
         gps_noise_filtering: GPS Noise Filtering
         track_generation: Track generation
         track_split_distance: Distance gap between Tracks
-        track_split_distance_hint: Start a new Track when consecutive points are farther apart.
+        track_split_distance_unit: m
+        track_split_distance_hint: "Tracks from different devices are joined when one ends within this distance of where the next starts. Distance between points does not start a new Track."
         track_split_time: Time gap between Tracks
+        track_split_time_unit: min
         track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
+        split_tracks_at_midnight: "Split Tracks at midnight"
+        split_tracks_at_midnight_hint: "End each Track at midnight in the timezone from your general settings, so no Track spans two days. To apply it to past Tracks, press “Apply Settings”, then “Recalculate tracks & stats” below."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
+        hide_inaccurate_points: "Hide inaccurate points"
+        hide_inaccurate_points_hint: "Also hide points whose reported accuracy is worse than the threshold below. Helps with phone tracking that adds sideways noise; keep it off for Google Timeline imports, whose coarse points still sit on the road. To apply it to your history, press “Apply Settings” first, then “Re-evaluate past data”."
+        accuracy_threshold: "Accuracy threshold"
         re_evaluate_past_data: Re-evaluate past data
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.
         recalculate_tracks_stats: Recalculate tracks & stats
         rebuild_tracks_stats_and_digests_from_your_current_points_without: Save these thresholds first. New Tracks use them automatically; choose Recalculate tracks & stats to apply them to existing history.
         city_statistics: City Statistics
         min_minutes_in_city: Min Minutes in City
-        min_5: 60 min
-        min_6: 5min
-        min_7: 120min
         how_long_you_must_stay_for_a_city_to_count: How long you must stay for a city to count in statistics
         min_12: 720min
         live_mode: Live Mode
@@ -1073,7 +1137,6 @@ en:
         apply_settings: Apply Settings
         reset_to_defaults_2: Reset to Defaults
         transportation_mode_detection: Transportation Mode Detection
-        checking_status: Checking status...
         settings_are_locked_while_recalculation_is_in_progress: Settings are locked while recalculation is in progress.
         note: 'Note:'
         changing_these_thresholds_will_trigger_a_recalculation_of_transportation: Changing these thresholds will trigger a recalculation of transportation modes for all your tracks. This may take some time depending on how many tracks you have.
@@ -1104,7 +1167,6 @@ en:
         sec_2: 180 sec
         min_flight_distance: Min flight distance
         km: 100 km
-        make_changes_to_enable_the_apply_button: Make changes to enable the Apply button
         re_runs_auto_classification_across_all_your_tracks_manually_corrected: Re-runs auto-classification across all your tracks. Manually-corrected segments are kept. May take several minutes.
         loading_calendar: Loading calendar…
         less: less
@@ -1114,11 +1176,10 @@ en:
         suggested: Suggested
         search_visits_places: Search visits, places…
         tags: Tags
-        pick_a_day_in_the_calendar_to_see_visits: Pick a day in the calendar to see visits.
         create_visit: Create Visit
         create_place: Create Place
-        select_area: Select Area
-        create_area: Create Area
+        select_data_on_map: Select data on map
+        select_data_all_time: Select data from all time
         replay: Replay
         enrich_photos: Enrich Photos
         close: Close
@@ -1216,6 +1277,10 @@ en:
       index:
         loading: Loading...
         pick_a_day: Pick a day
+        no_data_in_period: "No location data in this period"
+        jump_to_latest_data: "Jump to your latest data"
+        nothing_recorded_yet: "Nothing has been recorded or imported yet."
+        get_started: "Get started"
         map: Map
     residency:
       show:
@@ -1254,6 +1319,16 @@ en:
         previous_day: Previous day
         next_day: Next day
       feed:
+        latest_days_only:
+          one: "The latest %{count} day of a longer period"
+          other: "The latest %{count} days of a longer period"
+        all_days: All days
+        day_count:
+          one: "%{count} day"
+          other: "%{count} days"
+        note_count:
+          one: "%{count} note"
+          other: "%{count} notes"
         no_visits_tracked_this_day: No visits tracked this day.
         visits_are_auto_detected_daily_from_your_location_data: Visits are auto-detected daily from your location data.
       gap_entry:
@@ -1300,31 +1375,84 @@ en:
       and: and
       dawarich_sidekiq: dawarich_sidekiq
       docker_containers_thank_you: docker containers. Thank you!
+      contact_support_html: "If this keeps happening, write to us at %{email}."
     index:
       notifications: Notifications
       mark_all_as_read: Mark all as read
       delete_all: Delete all
       are_you_sure_you_want_to_delete_all_notifications: Are you sure you want to delete all notifications?
+      read_are_deleted: "Read notifications are deleted after %{days} days."
     show:
       back_to_notifications: Back to notifications
       destroy_this_notification: Destroy this notification
       are_you_sure: Are you sure?
+      open: Open
   places:
+    management:
+      create: "Create place"
+      duplicates: "Possible duplicates"
+      search: "Search names"
+      sort: "Sort by"
+      last_visit: "Last visit"
+      active_visits: "Active visits"
+      status: "Status"
+      apply: "Apply"
+      tags: "Tags"
+      tag: "Tag"
+      source: "Source"
+      badges: "Protection"
+      geofence: "Geofence"
+      privacy: "Privacy zone"
+      selected: "Selected places"
+      add_tag: "Add tag"
+      remove_tag: "Remove tag"
+      survivor: "Keep this place"
+      include_in_merge: "Merge into the kept place"
+      merge: "Merge places"
+      delete: "Delete places"
+      select_all: "Select all places on this page"
+      select_place: "Select %{name}"
+      no_results: "No places match these filters."
+      duplicates_description: "Places whose visit-radius circles overlap are grouped below. Review each group and choose the place to keep. Nothing is merged automatically."
+      no_duplicates: "No possible duplicates found."
+      cluster: "Group %{number}"
+      distance_reference: "Distances from the recommended place: %{name}"
+      distance: "Distance"
+      meters: "%{distance} m"
+      bulk_success: "Places updated: %{count}"
+      invalid_selection: "Select places and a valid tag or survivor from your selection."
+      merge_confirmation: "Merge these places into the chosen survivor? Their visits, tags and notes will move to it. This cannot be undone."
+      delete_confirmation: "Delete these places? Places: %{places}. Active visits that will lose their place: %{visits}; their location labels are kept. Places with geofences: %{geofences}; Geofence events are kept with the place name; webhook subscriptions are removed. Places with privacy-zone tags: %{privacy}; nearby data may become visible, including in shared links. This cannot be undone."
+      sources:
+        manual: "Manual"
+        photon: "Discovered"
+        gpx_waypoint: "GPX waypoint"
+    edit_on_map: "Edit on map"
+    drag_to_edit: "Drag the pin to move the place and the handle to resize its Visit Radius."
+    cancel_edit: "Cancel"
+    place_details: "Place details"
+    close_panel: "Close place details"
     drawer:
+      delete_consequences: "Delete this place?\nActive visits: %{visits}. They keep a location label.\nPrivacy-zone tags: %{privacy_tags}.\nWebhooks that will drop this place: %{webhooks}.\nGeofence events are kept with the place name. This cannot be undone."
       source: 'Source:'
       total_hours: total hours
       avg_dwell: avg dwell
       no_tags: No tags
+      edit_details: "Edit details"
       recent_visits: Recent visits
       rarr: "→"
       'on': 'on'
       no_visits_yet: No visits yet
-      rename: Rename
       merge: Merge
+      select_place_to_merge: Select duplicate place
+      no_matching_places: No matching places found
+      search_places: Search places
+      search: Search
+      merge_confirmation: Merge the selected place into "%{survivor}"? Visits, tags, and notes will be moved here.
       notes: Notes
       save: Save
       delete: Delete
-      delete_this_place_this_cannot_be_undone: Delete this place? This cannot be undone.
+      delete_this_place_this_cannot_be_undone: Delete this place? Its visits will be kept without an attached place.
       manual_name_title: You named this place, so automatic naming will not change it. Rename it to "%{default_name}" to hand it back to automatic naming.
       visit_count:
         one: "%{count} visit"
@@ -1333,6 +1461,9 @@ en:
       no_nearby_places_found: No nearby places found
       load_more_search_up_to_distance_m: Load More (search up to %{distance}m)
     index:
+      filters: Place filters
+      all_places: All places
+      unconfirmed_places: Unconfirmed
       hello_there: Hello there!
       here_you_ll_find_your_places_created_by_visits_suggestion: Here you'll find your places, created by Visits suggestion process. But now there are none.
       name: Name
@@ -1342,7 +1473,7 @@ en:
       timeline: Timeline
       places: Places
       delete: Delete
-      are_you_sure_deleting_a_place_will_result_in_deleting: Are you sure? Deleting a place will result in deleting all visits for this place.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Delete this place? Its visits will be kept without an attached place.
   points:
     address:
       address: 'Address:'
@@ -1434,6 +1565,7 @@ en:
       subtitle: Subtitle
       germany: Germany
       coordinates_line: Coordinates line
+      trip_stats: Trip stats
       font: Font
       layers: Layers
       track_opacity: Track opacity
@@ -1469,6 +1601,7 @@ en:
       buildings: Buildings
       railways: Railways
       boundaries: Boundaries
+      detail_layers_zoom_hint: "Buildings and railways appear only when you zoom in to city level."
       theme_aria_label: "%{theme} theme"
       background: Background
       motorway_roads: Motorway roads
@@ -1478,31 +1611,67 @@ en:
       residential_roads: Residential roads
       track: Track
   settings:
+    data_processing:
+      show:
+        title: "Data processing"
+        intro: "How Dawarich turns your points into tracks, which readings it treats as GPS noise, and how long a stay counts toward a city. Changes here can rebuild data you already have; map colours and layers stay in the map's own settings."
+        existing_data: "Apply to data you already have"
+        existing_data_hint: "Changes above apply to new points. To apply them to your history, rebuild it. Both run in the background and can take a while on a large account."
+        rebuilds_need_pro: "Rebuilding past data is part of Dawarich Pro."
+        rebuild_what: "What to rebuild"
+        rebuild_all: "Everything"
+        rebuild_tracks: "Tracks only"
+        rebuild_stats: "Stats and digests only"
+        rebuild_year: "Year"
+        all_years: "All years"
+        find_trips: "Find trips in my history"
+        find_trips_hint: "Looks through your whole history for overnight trips away from home. It also runs every night and after imports."
+        find_trips_off: "Turn on “Find trips automatically” in General first."
+        these_settings_control_how_the_app_groups_your_gps_points: These settings control how the app groups your GPS points into visits to places.
+        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. A stay within it also ends a Track (at least 100 m). Default 100.
+        lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
+        skip_stops_shorter_than_this_raise_to_ignore_short_drive: "Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5. A stop this long also ends a Track if it lasts at least 5 minutes."
+        visit_detection: Visit detection
+        visit_radius_meters: Visit radius (meters)
+        minimum_points_to_count_as_a_visit: Minimum points to count as a visit
+        minimum_visit_duration_minutes: Minimum visit duration (minutes)
+      detect_trips:
+        trip_detection_queued: "Trip detection started. New trips appear on the Trips page within a few minutes."
+        trip_detection_is_off: "Trip detection is off. Turn it on in Settings → General."
+      visit_redetection:
+        re_run_detection_on_full_history: Re-run detection on full history
+        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Replaces all suggested visits across your entire history with fresh detections using the settings above. Confirmed visits and the places you've named are preserved. Small accounts usually finish in a few minutes; multi-year histories can take 30–60 minutes and will temporarily increase server load.
+        on_the_lite_plan_re_detection_covers_your_visible_12: On the Lite plan, re-detection covers your visible 12-month window only.
+        available_again_at: Available again at
+        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Replace all suggested visits across your full history. Confirmed visits stay. Continue?
+    geofencing_paused_while_archived: paused while archived
     navigation:
+      data_processing: "Data processing"
       general: General
       integrations: Integrations
       map: Map
-      visits: Visits
-      two_factor_authentication: Two-Factor Authentication
+      two_factor_authentication: Two-factor authentication
       users: Users
       instance: "Instance"
-      background_jobs: Background Jobs
+      background_jobs: Background jobs
     background_jobs:
       index:
         spamming_many_new_jobs_at_once_is_a_bad_idea: Spamming many new jobs at once is a bad idea. Let them work or clear the queue beforehand.
         gps_noise_detection_changed_in_this_release_so_your_existing: GPS noise detection changed in this release, so your existing points are queued for a one-time re-check. Your tracks, stats and digests are rebuilt from the result, which can take a while on a large history — some points may appear or disappear on the map when it finishes. No points are deleted, and the pass runs on the lowest-priority queue so everything else stays ahead of it.
-        start_reverse_geocoding: Start Reverse Geocoding
+        start_reverse_geocoding: Start reverse geocoding
         this_job_will_re_run_reverse_geocoding_process_for_all: This job will re-run reverse geocoding process for all the points in your database. Might take a few days or even weeks based on the amount of points you have!
-        continue_reverse_geocoding: Continue Reverse Geocoding
+        continue_reverse_geocoding: Continue reverse geocoding
         this_job_will_process_reverse_geocoding_for_all_points_that: This job will process reverse geocoding for all points that don't have geocoding data yet.
-        background_jobs_dashboard: Background Jobs Dashboard
+        background_jobs_dashboard: Background jobs dashboard
         this_will_open_the_background_jobs_dashboard_in_a_new: This will open the background jobs dashboard in a new tab.
         visits_suggestions: Visits suggestions
-        enable_or_disable_visits_suggestions_it_s_a_background_task: Enable or disable visits suggestions. It's a background task that runs every day at midnight. Disabling it might be useful if you don't want to receive visits suggestions or if you're using the Dawarich iOS app, which has its own visits suggestions.
+        enable_or_disable_visits_suggestions_it_s_a_background_task: Visits are suggested automatically shortly after new points arrive and re-checked every night. Disabling them stops all automatic visit detection, including after imports. The Dawarich iOS app has its own visit suggestions.
+        enabled: Enabled
+        disabled: Disabled
         background_jobs: Background jobs
-        start_job: Start Job
+        start_job: Start job
         are_you_sure: Are you sure?
-        open_dashboard: Open Dashboard
+        open_dashboard: Open dashboard
         disable: Disable
         enable: Enable
     general:
@@ -1514,7 +1683,7 @@ en:
         turn_off_notices: Turn off notices
         turn_on_notices: Turn on notices
       supporter_status:
-        supporter_status: Supporter Status
+        supporter_status: Supporter status
         thank_you_for_supporting_dawarich: Thank you for supporting Dawarich
         email_used_for_patreon_github_ko_fi: Email used for Patreon/GitHub/Ko-fi
         github_username_for_github_sponsors_with_a_private_email: GitHub username (for GitHub Sponsors with a private email)
@@ -1537,10 +1706,10 @@ en:
         language: Language
         your_language: Your language
         the_interface_emails_and_notifications_will_use_this_language: The interface, emails and notifications will use this language.
-        email_preferences: Email Preferences
-        monthly_digest_emails: Monthly Digest Emails
+        email_preferences: Email preferences
+        monthly_digest_emails: Monthly digest emails
         summary_of_your_last_month_sent_on_the_2nd: Summary of your last month, sent on the 2nd.
-        year_end_digest_emails: Year-End Digest Emails
+        year_end_digest_emails: Year-end digest emails
         receive_an_annual_summary_on_january_2nd_with_your_year: Receive an annual summary on January 2nd with your year in review.
         news_updates: News & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Receive occasional emails about new features and important updates
@@ -1549,11 +1718,28 @@ en:
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
-        supporter_badge: Supporter Badge
+        date_and_time: "Date and time"
+        date_format: "Date format"
+        time_format: "Time format"
+        first_day_of_week: "First day of the week"
+        format_auto: "Automatic (%{example})"
+        time_format_12h: "12-hour (%{example})"
+        time_format_24h: "24-hour (%{example})"
+        date_and_time_hint: "Applies to dates and times across the app, in emails and on the map."
+        supporter_badge: Supporter badge
         show_supporter_badge_in_navbar: Show supporter badge in navbar
         display_a_gem_icon_next_to_your_profile_to_show: Display a gem icon next to your profile to show your supporter status
         general_settings: General settings
         save_changes: Save changes
+        test_email_worker_hint: Queues a test message through the same background worker as system emails
+        features: "Features"
+        features_hint: "Turn off the parts of Dawarich you don't use. They disappear from the interface and their background processing stops."
+        family_feature: "Family"
+        family_feature_hint: "Location sharing with family members. Turning it off stops sharing your location and family-only trip links; you stay a member. When you turn it back on, location sharing starts off."
+        achievements_feature: "Achievements"
+        achievements_feature_hint: "Explored regions and badges. Turning it off stops progress calculation and disables your public achievement links."
+        trip_detection_feature: "Find trips automatically"
+        trip_detection_feature_hint: "Finds trips in your location history and adds them to your trips. Turning it off stops the search and keeps the trips already found. Turning it back on searches again right away."
     integrations:
       index:
         services_nav: Integration services
@@ -1571,10 +1757,10 @@ en:
         immich_photoprism_integrations: Immich & Photoprism Integrations
         connect_your_photo_management_tools_to_see_your_photos_on: Connect your photo management tools to see your photos on the map. Immich and Photoprism integrations are available on the Pro plan.
         upgrade_to_pro: Upgrade to Pro
-        immich_integration: Immich Integration
+        immich_integration: Immich integration
         immich_url: Immich URL
         the_base_url_of_your_immich_instance: The base URL of your Immich instance
-        immich_api_key: Immich API Key
+        immich_api_key: Immich API key
         found_in_your_immich_admin_panel_under_api_settings_required: 'Found in your Immich admin panel under API settings. Required permissions:'
         asset_read: asset.read
         asset_view: asset.view
@@ -1585,17 +1771,18 @@ en:
         security_warning: 'Security Warning:'
         disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in: Disabling SSL verification makes your connection vulnerable to man-in-the-middle attacks. Only enable this for self-signed certificates you trust on your local network.
         clears_cached_photo_metadata_and_thumbnails_for_all_integrations: Clears cached photo metadata and thumbnails for all integrations.
-        photoprism_integration: Photoprism Integration
+        photoprism_integration: Photoprism integration
         photoprism_url: Photoprism URL
         the_base_url_of_your_photoprism_instance: The base URL of your Photoprism instance
-        photoprism_api_key: Photoprism API Key
+        photoprism_api_key: Photoprism API key
         found_in_your_photoprism_settings_under_library: Found in your Photoprism settings under Library
-        airtrail_integration: AirTrail Integration
+        airtrail_integration: AirTrail integration
         airtrail_url: AirTrail URL
-        the_base_url_of_your_airtrail_instance_your_flights_are: The base URL of your AirTrail instance. Your flights are shown as arcs on the map.
-        airtrail_api_key: AirTrail API Key
+        the_base_url_of_your_airtrail_instance_your_flights_are: 'The base URL of your AirTrail instance. Your flights are shown on the map.'
+        airtrail_api_key: AirTrail API key
         create_an_api_key_in_airtrail_under_settings_rarr_security: Create an API key in AirTrail under Settings → Security.
-        teslamate_integration: TeslaMateApi Integration
+        airtrail_recorded_flight_tracks_need_airtrail_3_13: 'Flights with a recorded track in AirTrail are drawn along that track, others as arcs. Tracks need AirTrail 3.13 or later and an API key with the tracks.read scope.'
+        teslamate_integration: TeslaMateApi integration
         teslamate_url: TeslaMateApi URL
         the_base_url_of_your_teslamateapi_instance: The base URL of your TeslaMateApi instance.
         teslamate_setup_guide: Setup guide (TeslaMateApi v1.25.0 or newer)
@@ -1606,11 +1793,11 @@ en:
         sync_teslamate_drives: Sync TeslaMateApi drives
         teslamate_sync_help: Completed drives sync automatically once a day. Current drives and parked positions are not available through TeslaMateApi.
         last_synced: 'Last synced:'
-        connected_accounts: Connected Accounts
+        connected_accounts: Connected accounts
         you_ve_connected_your_account_using_the_following_oauth_provider: 'You''ve connected your account using the following OAuth provider:'
         sync_airtrail_flights: Sync AirTrail flights
         flights_also_sync_automatically_once_a_day: Flights also sync automatically once a day.
-        user_settings: User Settings
+        user_settings: User settings
         xxxxxxxxxxxxxx: xxxxxxxxxxxxxx
         refresh_photo_cache: Refresh photo cache
         save_test_connection: Save & Test Connection
@@ -1632,6 +1819,7 @@ en:
         sync_now: Sync now
         disconnect: Disconnect
         disconnect_confirmation: Disconnect TREK? Managed trips and their recorded data stay in Dawarich, but stop syncing.
+        ssl_verification_off: SSL verification off
     trek_sources:
       select_trips:
         title: Choose TREK trips
@@ -1665,9 +1853,9 @@ en:
       backup_codes:
         save_your_backup_codes: Save your backup codes
         store_these_codes_in_a_safe_place_each_code_can: Store these codes in a safe place. Each code can only be used once. If you lose access to your authenticator app, you can use these codes to sign in.
-        two_factor_authentication_enabled: Two-Factor Authentication Enabled
+        two_factor_authentication_enabled: Two-factor authentication enabled
         done: Done
-        backup_codes: Backup Codes
+        backup_codes: Backup codes
       show:
         fa_is_enabled: 2FA is enabled
         your_account_is_protected_with_two_factor_authentication: Your account is protected with two-factor authentication.
@@ -1677,7 +1865,7 @@ en:
         fa_is_not_enabled: 2FA is not enabled
         add_an_extra_layer_of_security_to_your_account: Add an extra layer of security to your account.
         two_factor_authentication_adds_an_extra_layer_of_security_by: Two-factor authentication adds an extra layer of security by requiring a code from your authenticator app (Google Authenticator, Authy, etc.) when you sign in.
-        two_factor_authentication: Two-Factor Authentication
+        two_factor_authentication: Two-factor authentication
         disable_2fa: Disable 2FA
         enable_2fa: Enable 2FA
       verify:
@@ -1741,7 +1929,7 @@ en:
         tracks: Tracks
         imports: Imports
         exports: Exports
-        areas: Areas
+        places: Places
         sign_in_history: Sign-in history
         total_sign_ins: Total sign-ins
         last_sign_in: Last sign-in
@@ -1759,30 +1947,12 @@ en:
         send_password_reset_email: Send password reset email
         edit_user: Edit user
         user_email: 'User: %{email}'
-    visits:
-      redetect_panel:
-        re_run_detection_on_full_history: Re-run detection on full history
-        replaces_all_suggested_visits_across_your_entire_history_with_fresh: Replaces all suggested visits across your entire history with fresh detections using the settings above. Confirmed visits and the places you've named are preserved. Small accounts usually finish in a few minutes; multi-year histories can take 30–60 minutes and will temporarily increase server load.
-        on_the_lite_plan_re_detection_covers_your_visible_12: On the Lite plan, re-detection covers your visible 12-month window only.
-        available_again_at: Available again at
-        replace_all_suggested_visits_across_your_full_history_confirmed_visits: Replace all suggested visits across your full history. Confirmed visits stay. Continue?
-      show:
-        tune_how_dawarich_decides_where_you_actually_were: Tune how Dawarich decides where you actually were
-        these_settings_control_how_the_app_groups_your_gps_points: These settings control how the app groups your GPS points into visits to places.
-        points_within_this_radius_are_treated_as_the_same_visit: Points within this radius are treated as the same visit. Default 100.
-        lower_more_visits_suggested_including_brief_stops_default_3: Lower = more visits suggested, including brief stops. Default 3.
-        skip_stops_shorter_than_this_raise_to_ignore_short_drive: Skip stops shorter than this. Raise to ignore short drive-bys; lower to catch brief errands. Default 5.
-        visit_detection: Visit detection
-        visit_radius_meters: Visit radius (meters)
-        minimum_points_to_count_as_a_visit: Minimum points to count as a visit
-        minimum_visit_duration_minutes: Minimum visit duration (minutes)
-        save_settings: Save settings
   share_links:
     hubs:
       body:
         live_location: Live location
         time_period: Time period
-        make_something: Make something
+        make_something: "Video & poster"
         make_something_intro: A link keeps sharing your data. These make a file you post once and nothing stays shared.
         make_video: Route video
         make_video_hint: An animated replay of this period, as an MP4.
@@ -1859,6 +2029,8 @@ en:
         no_thanks: No thanks
         yes_notify_me: Yes, notify me
       help_links:
+        documentation: "Documentation"
+        keyboard_shortcuts: "Keyboard shortcuts"
         need_help_ping_us: Need help? Ping us!
         x_twitter: X (Twitter)
         mastodon: Mastodon
@@ -1899,6 +2071,8 @@ en:
     place_creation_modal:
       create_new_place: Create New Place
       place_name: Place Name *
+      visit_radius: Visit Radius (meters) *
+      visit_radius_hint: Visits whose center falls inside this radius can be matched to the place. This does not affect privacy.
       note: Note
       optional_add_any_notes_or_details_about_this_place: Optional - Add any notes or details about this place
       tags: Tags
@@ -1950,6 +2124,7 @@ en:
       done: Done
     links:
       live:
+        last_known: "Last known"
         live: "● Live"
         connecting: Connecting…
       missing_resource:
@@ -1970,7 +2145,7 @@ en:
         publicly_shared: Publicly shared
         public: Public
         ndash: "–"
-        trip_notes: Trip Notes
+        trip_notes: Trip notes
         replay: Replay
       trip_day_header:
         middot: "·"
@@ -1993,6 +2168,8 @@ en:
         shared_from_dawarich: Shared from Dawarich
     map:
       date_navigation_v2:
+        note_days: "a day with notes"
+        choose_period: Choose the period
         share: Share
         start_date_and_time: Start date and time
         end_date_and_time: End date and time
@@ -2007,6 +2184,17 @@ en:
         upgrade_to_pro: Upgrade to Pro
         dismiss: Dismiss
   shared_links:
+    privacy_zones_note:
+      text: "Your privacy zones stay hidden on this link. Each hidden area is shifted off-centre, so viewers can't tell where the place is."
+      manage: "Privacy zones"
+    live_freshness_field:
+      label: "Keep the last known location visible for"
+      hint: "After your device stops reporting, anyone opening the link can still see your last known location for this long."
+      windows:
+        s900: "15 minutes"
+        s3600: "1 hour"
+        s21600: "6 hours"
+        s86400: "24 hours"
     expires_field:
       expires_optional: Expires (optional)
       stays_active_through_the_end_of_the_day_before_the: Stays active through the end of the day before the selected date.
@@ -2036,7 +2224,7 @@ en:
         one: "%{count} view"
         other: "%{count} views"
     modal_live_create_form:
-      current_location_in_real_time: current location in real time
+      latest_known_location: "latest known location"
       this_shares_your_location_with_anyone_html: This shares your %{location} with anyone who has the link, until it expires or you revoke it.
       magic_phrase_optional: Magic phrase (optional)
       leave_blank_to_share_without_a_phrase_or_use_the: Leave blank to share without a phrase, or use the auto-generated one.
@@ -2071,13 +2259,30 @@ en:
       photos_on_map: Photos on map
       route_map: Route map
       trip_description: Trip description
+    family:
+      audience: Who can view this trip?
+      public_link: Anyone with the link
+      only: Family members only
+      label: Family
+      link: Family link
+      shared_trip: '%{trip} is shared with your family.'
+      trips: Trips shared with your family
+      hint: Family trips appear in your family's trip list. Members must sign in. The magic phrase is only used for public links.
+      choose_audience: Choose who can view this trip and which details to include.
+      sections: What to include on the shared page
+      unavailable: Join an active family before sharing a trip with family members.
+      back_to_trips: Back to trips
+      your_map: Your map for these dates
+    timeline_scope:
+      only_import: Only points from %{name} in the selected period will be shared. Photos are excluded.
+      unavailable: The selected import is no longer available.
   stats:
     locked_year_card:
       available_on_pro: Available on Pro
       upgrade_to_pro: Upgrade to Pro
     month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       share: Share
       distance_traveled: Distance traveled
@@ -2109,7 +2314,6 @@ en:
       cities_visited: Cities visited
     stat:
       total_distance: Total distance
-      year_month: "%{year}/%{month}"
     year:
       map: "[Map]"
       days: Days
@@ -2130,7 +2334,7 @@ en:
       countries_count_countries_cities_count_cities: "%{countries_count} countries, %{cities_count} cities"
     public_month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       distance_traveled: Distance traveled
       total_distance_for_this_month: Total distance for this month
@@ -2155,14 +2359,27 @@ en:
     show:
       statistics_for_year_year: Statistics for %{year} year
   tags:
+    confirm_delete:
+      title: "Delete privacy-zone tag"
+      covered_places: "This privacy zone covers %{count} of your places."
+      visibility: "Data around these places becomes visible again on the map, in trips and in stats."
+      shared_links:
+        one: "This also applies to your %{count} active shared link."
+        other: "This also applies to every active shared link you own (%{count})."
+    places:
+      title: "Places with this tag"
+      empty: "No places have this tag yet."
+      visits:
+        one: "%{count} visit"
+        other: "%{count} visits"
     form:
       prohibited_this_tag_from_being_saved: 'prohibited this tag from being saved:'
       click_to_select_an_emoji: Click to select an emoji
       custom: 'Custom:'
       choose_from_swatches_or_pick_a_custom_color: Choose from swatches or pick a custom color
-      privacy_zone: Privacy Zone
+      privacy_zone: Privacy zone
       hide_map_data_around_places_with_this_tag: Hide map data around places with this tag
-      data_within_this_radius_will_be_hidden_from_the_map: Data within this radius will be hidden from the map
+      hidden_area_hint: "Everything within this radius is always hidden. The hidden circle is up to 1.6× larger and shifted off-centre by a fixed amount, so nobody can find the place from where your data stops."
       home_work_restaurant: Home, Work, Restaurant...
       privacy_radius: Privacy Radius
       cancel: Cancel
@@ -2173,7 +2390,7 @@ en:
       edit_tag: Edit Tag
       update_your_tag_details: Update your tag details
     index:
-      new_tag: New Tag
+      new_tag: New tag
       icon: Icon
       name: Name
       color: Color
@@ -2181,13 +2398,14 @@ en:
       actions: Actions
       no_tags_yet: No tags yet
       create_tags_to_organize_your_places_and_add_privacy_zones: Create tags to organize your places and add privacy zones.
+      privacy_zone_badge_hint: "Hidden area is shifted off-centre and up to 1.6× this radius"
       create_your_first_tag: Create your first tag
       tags: Tags
       edit_tag: Edit tag
       delete_tag: Delete tag
       are_you_sure: Are you sure?
     new:
-      new_tag: New Tag
+      new_tag: New tag
       create_a_new_tag_to_organize_your_places: Create a new tag to organize your places
   tracks:
     segments:
@@ -2282,12 +2500,33 @@ en:
         other: "%{count} days"
     edit:
       editing_trip: Editing trip
+    filters:
+      search: "Search"
+      search_placeholder: "Name, description, places or notes"
+      sort: "Sort"
+      sorts:
+        newest: "Newest first"
+        oldest: "Oldest first"
+        name: "Name (A–Z)"
+        distance: "Longest distance"
+      year: "Year"
+      all_years: "All years"
+      month: "Month"
+      all_months: "All months"
+      choose_year_first: "Choose a year first"
+      country: "Country"
+      all_countries: "All countries"
+      apply: "Apply"
+      reset: "Reset"
     index:
       new_trip: New trip
       no_trips_yet: No trips yet
       create_your_first_trip_to_see_your_journeys_visualized_with: Create your first trip to see your journeys visualized with maps, photos, and stats.
       create_your_first_trip: Create your first trip
       trips: Trips
+      no_matching_trips: "No trips match these filters"
+      try_other_filters: "Try a different search, year or country."
+      show_all_trips: "Show all trips"
     new:
       new_trip: New trip
     notes:
@@ -2333,7 +2572,7 @@ en:
       middot: "·"
       text: "< 1"
       no_data: No data
-      trip_notes: Trip Notes
+      trip_notes: Trip notes
       more_on: More on
       gpx: GPX
       geojson: GeoJSON
@@ -2347,6 +2586,7 @@ en:
       video_unavailable: Available once the trip route is calculated
       create_video: Create a replay video of this trip
       more_on_source: More on %{source}
+      open_in_map: Open in Map
     share_links:
       new:
         share_trip: Share %{trip}
@@ -2442,7 +2682,7 @@ en:
           other: "%{count} cities"
     digests_mailer:
       monthly_digest:
-        flights: Flights
+        flights: Incl. flights
         your: Your
         in_review: in review
         here_s_what_your_location_history_looked_like_last_month: Here's what your location history looked like last month.
@@ -2512,6 +2752,19 @@ en:
       we_received_a_request_to_delete_your_dawarich_account_this_2: We received a request to delete your Dawarich account. This is your last chance to stop the deletion. Once confirmed, all your location history, tracks, areas, visits, trips, and family memberships will be permanently removed.
       permanently_delete_my_account_2: 'Permanently delete my account:'
       didn_t_request_this_ignore_this_email_the_link_expires_2: Didn't request this? Ignore this email — the link expires in 1 hour and your account remains untouched. If you keep getting these emails, change your password immediately.
+    account_deletion_warning:
+      title: "Your Dawarich account will be deleted"
+      greeting: "Hi %{email},"
+      deletion_notice: "Your Dawarich account and all its data — location history, imports, trips and places — will be permanently deleted on %{date}."
+      reason: "Your account has no active Dawarich subscription. Our Privacy Policy keeps the data of inactive accounts for at most 12 months."
+      keep_account: "To keep your account, resubscribe before %{date}:"
+      resubscribe: "Resubscribe"
+      keep_copy: "To keep a copy of your data, sign in and export it:"
+      export: "Export my data"
+      nothing_to_do: "If you no longer need the account, you don't have to do anything."
+      policy: "Privacy Policy:"
+      questions: "Questions? Reply to this email or write to hi@dawarich.app."
+      signoff: "Evgenii from Dawarich"
     archival_approaching:
       your_data_history_is_filling_up: Your data history is filling up
       hi: Hi
@@ -2648,10 +2901,10 @@ en:
   time:
     formats:
       hour_minute: "%H:%M"
-      long_with_time: "%B %d, %Y at %I:%M %p"
+      long_with_time: "%B %d, %Y at %H:%M"
       human: "%e %b %Y, %H:%M"
       human_with_seconds: "%e %b %Y, %H:%M:%S"
-      short_with_time: "%b %d at %I:%M %p"
+      short_with_time: "%b %d at %H:%M"
   common:
     app_name: Dawarich
     not_available: N/A
@@ -2684,6 +2937,7 @@ en:
         tcx: TCX
         fit: FIT
         polarsteps: Polarsteps
+        swarm: Foursquare Swarm
         google_photos: Google Photos
         mobile_photo_library: Mobile photo library
     place:
@@ -2701,6 +2955,7 @@ en:
     immich: Immich
     photoprism: PhotoPrism
   supporter_platforms:
+    app_store: Dawarich app
     github: GitHub
     patreon: Patreon
     ko_fi: Ko-fi
@@ -2743,11 +2998,13 @@ en:
       pro_badge: " Pro"
     timeline:
       unnamed: Unnamed
+      local_time: "%{time} local"
+      local_time_on_date: "%{date}, %{time} local"
     datetime_formatting:
       expires_on: Expires on %{date}
     insights:
-      monthly_digest: Monthly Digest
-      monthly_digest_title: "%{month} %{year} Digest"
+      monthly_digest: Monthly digest
+      monthly_digest_title: "%{month} %{year} digest"
       minute_count:
         one: "%{count} min"
         other: "%{count} min"
@@ -3015,6 +3272,7 @@ en:
             visit_not_found: Visit not found
           invalid_place: Invalid place
           invalid_area: Invalid area
+          conflicting_place_and_area: place_id and area_id cannot be specified together
           at_least_2_visits_must_be_selected_for_merging: At least 2 visits must be selected for merging
           one_or_more_visits_not_found: One or more visits not found
           count_visits_updated_successfully: "%{count} visits updated successfully"
@@ -3041,6 +3299,7 @@ en:
       your_account_has_been_deleted: Your account has been deleted.
       you_are_not_authorized_to_perform_this_action: You are not authorized to perform this action.
       family_plan_required: This feature requires a Family plan.
+      feature_disabled_in_settings: "This feature is turned off in your settings."
     areas:
       created: Area created successfully!
       updated: Area updated successfully!
@@ -3094,6 +3353,7 @@ en:
         this_invitation_is_no_longer_valid: This invitation is no longer valid.
         invitation_sent_successfully: Invitation sent successfully!
         invitation_cancelled: Invitation cancelled
+        too_many_invitations: "Too many invitations, try again later."
         failed_to_cancel_invitation_please_try_again: Failed to cancel invitation. Please try again
         an_unexpected_error_occurred_while_cancelling_the_invitation: An unexpected error occurred while cancelling the invitation
         you_are_not_in_a_family: You are not in a family
@@ -3141,6 +3401,8 @@ en:
       place_was_successfully_destroyed: Place was successfully destroyed.
       created: Place created successfully!
       updated: Place updated successfully!
+      merged: 'Merged "%{duplicate}" into "%{survivor}".'
+      merge_visit_conflict: "These places cannot be merged because Visit #%{first_id} and Visit #%{second_id} both start at %{started_at}. Resolve those visits first."
     points:
       no_points_selected: No points selected.
       points_were_successfully_destroyed: Points were successfully destroyed.
@@ -3171,6 +3433,7 @@ en:
         smtp_not_configured_link: self-hosted SMTP settings
         test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
         test_email_failed: 'Test email failed: %{error}'
+        test_email_queued: Test email queued for %{email}. Delivery will be checked by the background worker; check your inbox and Sidekiq for failures.
       onboardings:
         demo_data_loaded: Demo data loaded.
         demo_data_is_already_loaded: Demo data is already loaded.
@@ -3200,10 +3463,9 @@ en:
         failed_to_start_import_please_try_again: Failed to start import. Please try again.
         an_error_occurred_while_starting_the_import_please_try_again: An error occurred while starting the import. Please try again.
         please_upload_a_valid_zip_file: Please upload a valid ZIP file.
+        cannot_delete_yourself_or_last_admin: Cannot delete yourself or the last active administrator.
         cannot_remove_last_admin_role: Cannot remove admin role from the last admin user.
         cannot_disable_last_admin: Cannot disable the last admin user.
-      visits:
-        visit_detection_settings_updated: Visit detection settings updated
     share_links:
       lives:
         default_name: Live location
@@ -3334,6 +3596,7 @@ en:
       failed_to_delete_visits: Failed to delete visits.
       invalid_place: Invalid place
       invalid_area: Invalid area
+      conflicting_place_and_area: Place and Area cannot be specified together
       failed_to_update_visit: Failed to update visit.
       select_visits_to_merge: Select at least 2 visits to merge.
       visits_must_share_day: Visits must be on the same day.
@@ -3370,6 +3633,8 @@ en:
         subject: Welcome to Dawarich!
       explore_features:
         subject: Explore Dawarich features!
+      account_deletion_warning:
+        subject: "Your Dawarich account will be deleted on %{date}"
       archival_approaching:
         subject: Keep your full history — upgrade to Pro
       oauth_account_link:
@@ -3404,6 +3669,7 @@ en:
     shared_link:
       is_required_for_this_resource_type: is required for this resource type
       must_be_blank_for_this_resource_type: must be blank for this resource type
+      live_freshness_not_allowed: "must be 15 minutes, 1 hour, 6 hours or 24 hours"
       must_be_in_the_future: must be in the future
       must_include_start_date_and_end_date_for_timeline_shares: must include start_date and end_date for timeline shares
       start_date_and_end_date_must_be_parseable_as_dates: start_date and end_date must be parseable as dates
@@ -3442,7 +3708,7 @@ en:
         export_finished: Export finished
         export_name_successfully_finished: Export "%{name}" successfully finished.
         export_failed: Export failed
-        export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
+        export_name_failed_message: "Export \"%{name}\" failed: %{message}"
         unsupported_file_format: 'Unsupported file format: %{format}'
     families:
       auto_create:
@@ -3467,8 +3733,6 @@ en:
         you_must_leave_your_current_family_before_creating_a_new: You must leave your current family before creating a new one
         you_have_already_created_a_family_each_user_can_only: You have already created a family. Each user can only create one family
         family_feature_requires_an_active_subscription: Family feature requires an active subscription
-        family_created: Family Created
-        you_ve_successfully_created_the_family_name: You've successfully created the family '%{name}'
         a_family_with_this_name_already_exists_for_your_account: A family with this name already exists for your account
         an_unexpected_error_occurred_while_creating_the_family_please_try: An unexpected error occurred while creating the family. Please try again
         failed_to_create_family: 'Failed to create family: %{message}'
@@ -3478,6 +3742,7 @@ en:
         safe_email_is_requesting_your_location_link: "%{email} is requesting your location. %{link}"
         users_must_be_in_the_same_family: Users must be in the same family
         target_user_is_already_sharing_their_location: Target user is already sharing their location
+        target_user_turned_family_off: "This member has turned family features off"
         request_cooldown_active_please_wait_before_requesting_again: Request cooldown active. Please wait before requesting again.
         view_request: View Request
       invite:
@@ -3490,7 +3755,6 @@ en:
         user_already_in_family: User is already in a family
         invitation_already_sent: Invitation already sent to this email
         sent_self_hosted: Family invitation sent to %{email} if SMTP is configured properly. If you're not using SMTP, copy the invitation link from the family page and share it manually.
-        sent: Family invitation sent to %{email}
         failed_to_create: 'Failed to create invitation: %{message}'
       memberships:
         destroy:
@@ -3499,14 +3763,10 @@ en:
           only_family_owners_can_remove_other_members: Only family owners can remove other members.
           cannot_remove_members_from_a_different_family: Cannot remove members from a different family.
           cannot_remove_the_family_owner_the_owner_must_delete_the: Cannot remove the family owner. The owner must delete the family or leave on their own.
-          left_family: Left Family
-          you_ve_left_the_family_family_name: You've left the family "%{family_name}"
           family_member_left: Family Member Left
           email_has_left_the_family_family_name: '%{email} has left the family "%{family_name}"'
           removed_from_family: Removed from Family
           you_have_been_removed_from_the_family_family_name_by: You have been removed from the family "%{family_name}" by %{email}
-          member_removed: Member Removed
-          email_has_been_removed_from_the_family_family_name: '%{email} has been removed from the family "%{family_name}"'
           an_unexpected_error_occurred_while_removing_the_membership_please_try: An unexpected error occurred while removing the membership. Please try again
           failed_to_leave: 'Failed to leave family: %{message}'
       respond_to_location_request:
@@ -3582,7 +3842,6 @@ en:
           one: 'Your file %{name} imported 0 points. It contains a planned route with %{count} point, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
           other: 'Your file %{name} imported 0 points. It contains a planned route with %{count} points, but no recorded track. Dawarich imports recorded tracks, not planned routes.'
         zero_points: Your file %{name} imported 0 points. No new location points were found in this file.
-        import_failed_self_hosted: 'Import "%{name}" failed: %{message}, stacktrace: %{backtrace}'
         import_failed_cloud: 'Import "%{name}" failed, please contact us at hi@dawarich.com'
         your_import_name_finished_and_all_points_were_saved_but: Your import "%{name}" finished and all points were saved, but the %{step} step failed. Statistics, tracks or visit suggestions may be missing or outdated. You can trigger a recalculation from Settings.
         your_file_name_contained_raw_points_points_all_of_which: Your file %{name} contained %{raw_points} points, all of which already exist in your timeline at the same coordinates and timestamps. Nothing was imported. If this was unexpected, delete the existing points for that date range and re-import.
@@ -3659,7 +3918,6 @@ en:
     stats:
       calculate_month:
         stats_update_failed: Stats update failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       destroy:
         cannot_delete_user_who_owns_a_family_with_other_members: Cannot delete user who owns a family with other members
@@ -3746,6 +4004,9 @@ en:
       import_flights_job:
         airtrail_sync_failed: AirTrail sync failed
         your_airtrail_flight_sync_failed_with_error_message_check_your: 'Your AirTrail flight sync failed with error: %{message}. Check your AirTrail settings and try again.'
+    points:
+      anomaly_backfill_user_job:
+        nothing_changed: "Your points were re-checked against the GPS noise filter. Nothing changed, so your tracks, stats and digests were left as they were."
     data_migrations:
       recalculate_anomalies_user_job:
         gps_noise_re_check_finished: GPS noise re-check finished
@@ -3766,18 +4027,15 @@ en:
     stats:
       calculating_job:
         stats_update_failed: Stats update failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     users:
       digests:
         monthly:
           calculating_job:
             monthly_digest_calculation_failed: Monthly Digest calculation failed
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
         yearly:
           calculating_job:
             year_end_digest: Year-End Digest
             period_label_calculation_failed: "%{period_label} calculation failed"
-            message_stacktrace_backtrace: "%{message}, stacktrace: %{backtrace}"
       import_data_job:
         data_import_failed: Data import failed
         your_data_import_failed_with_error_message_please_check_the: 'Your data import failed with error: %{message}. Please check the archive format and try again.'
@@ -3789,11 +4047,7 @@ en:
           one: "%{count} year"
           other: "%{count} years"
         stats_tracks_and_digests_have_been_recalculated_for_year_label: Stats, tracks, and digests have been recalculated for %{year_label}.
-        year_count:
-          one: "%{count} year"
-          other: "%{count} years"
         data_recalculation_failed: Data recalculation failed
-        message_stacktrace_n: "%{message}, stacktrace: %{backtrace}"
     visits:
       full_history_redetect_job:
         visit_re_detection_busy: Visit re-detection busy
@@ -3888,26 +4142,20 @@ en:
       failed_to_load_flights: Failed to load flights
       failed_to_load_anomalies: Failed to load anomalies
       cannot_update_recalculation_is_already_in_progress: 'Cannot update: recalculation is already in progress'
-      transportation_settings_saved: Transportation settings saved
-      globe_view_will_be_applied_after_page_reload: Globe view will be applied after page reload
-      settings_updated_successfully: Settings updated successfully
       reloading_map_data_with_new_settings: Reloading map data with new settings...
       api_key_not_available_please_reload_the_page: API key not available; please reload the page.
-      could_not_queue_re_evaluation_please_try_again: Could not queue re-evaluation. Please try again.
-      could_not_queue_recalculation_please_try_again: Could not queue recalculation. Please try again.
       click_on_the_map_to_place_a_visit_esc_to: Click on the map to place a visit (Esc to cancel)
       visit_creation_modal_not_available: Visit creation modal not available
       visit_creation_controller_not_available: Visit creation controller not available
-      area_drawer_controller_not_available: Area drawer controller not available
-      area_created_successfully: Area created successfully!
-      failed_to_reload_areas: Failed to reload areas
       family_feature_not_available: Family feature not available
       failed_to_load_family_members: Failed to load family members
-      centered_on_family_member: Centered on family member
       failed_to_load_visit_details: Failed to load visit details
       failed_to_load_area_details: Failed to load area details
       point_deleted_successfully: Point deleted successfully
       failed_to_delete_point: Failed to delete point
+      mark_point_valid: Mark as correct
+      point_marked_valid: Point marked as correct
+      failed_to_mark_point_valid: Failed to mark point as correct
       deleting_area: Deleting area...
       area_deleted_successfully: Area deleted successfully
       failed_to_delete_area: Failed to delete area
@@ -4030,10 +4278,14 @@ en:
       day_count: Day %{current} of %{total}
       point_count: Point %{current} of %{total}
       speed: "%{speed} km/h"
+      speed_mph: "%{speed} mph"
       no_data: No data
     places:
+      move_pin: "Move place pin"
+      resize_radius: "Resize Visit Radius"
       create_new: Create New Place
       edit: Edit Place
+      open: Open
       confirm_delete: Are you sure you want to delete this place?
       search_placeholder: Search for a place…
       confirm_move_visit: This place is ~%{distance} m from the visit. Move the visit here?
@@ -4042,6 +4294,7 @@ en:
       filter_by_tag: FILTER BY TAG
       no_tags: No tags created yet
       none_found: No places found
+      forward_search_unavailable: "Your Photon server only supports reverse geocoding, so text search can't find new places. Saved places still match by name."
       open_for_suggestions: Open modal to load nearby suggestions
       show_all: Show All Places
       untagged: Untagged Places
@@ -4059,8 +4312,11 @@ en:
 
         Your real data — anything you've imported, edited, confirmed, or created yourself — will NOT be touched.
       creating: Creating your demo data…
-      creating_help: Seeding a month of Berlin tracking plus a Prague weekend trip. Takes about a second.
+      creating_help: Adding a month of Berlin tracking and a Prague weekend trip. Please wait while points, visits and places are prepared.
     visits:
+      place: "Place"
+      choose_place: "Choose a Place"
+      multiple_stays: "Several stays were found. The latest stay has been used."
       add_new: Add New Visit
       create_new: Create New Visit
       create: Create Visit
@@ -4176,8 +4432,9 @@ en:
       locations_failed: Failed to search locations. Please try again.
     settings:
       transportation_recalculation_completed: Transportation mode recalculation completed!
-      confirm_reset: Reset all settings to defaults? This will reload the page.
-      confirm_globe_reload: Globe view requires a page reload to take effect. Reload now?
+      confirm_reset: "Reset the map appearance to defaults? Transportation and filtering settings stay as they are. This will reload the page."
+      load_failed: "Map settings could not be loaded. Changes will not be saved until you reload the page."
+      reset_failed: "Could not reset the map appearance. Please try again."
       changed_fields: 'Changed: %{fields}'
       confirm_reapply_anomaly_filter: |-
         This is destructive and long-running.
@@ -4289,6 +4546,7 @@ en:
       selected: Selected %{items}
       too_many_points: Too many points (%{requested}). Please draw a smaller area; max %{limit} per delete.
       too_many_selected_points: Too many points selected (%{requested}). Please draw a smaller area; max %{limit} per delete.
+      truncated: Only the most recent %{limit} points in this area are shown.
       visits:
         one: "%{count} visit"
         other: "%{count} visits"
@@ -4315,6 +4573,7 @@ en:
       location_coordinates: Location (%{latitude}, %{longitude})
       location_data: Location Data
       location_point: Location Point
+      overlapping_points: "This marker contains %{count} overlapping points. Zooming cannot separate them, so no point can be selected here."
       longitude: Longitude
       meters:
         one: "%{count} meter"
@@ -4324,6 +4583,7 @@ en:
       place: Place
       points: Points
       radius: Radius
+      visit_radius: Visit Radius
       reason: Reason
       route_information: Route Information
       selected_point: Selected Point
@@ -4358,9 +4618,6 @@ en:
       light: Light
       white: White
     family:
-      loaded_members:
-        one: Loaded %{count} family member
-        other: Loaded %{count} family members
       member: Family Member
       none_sharing: No family members sharing location
       sharing_since:
@@ -4500,8 +4757,10 @@ en:
     live_map:
       disabled: Live mode disabled
       enabled: Live mode enabled
+      your_position: Your latest point
     map_panel:
       layers: Map Layers
+      family: "Family"
       links: Links
       search: Search
       settings: Settings
@@ -4521,6 +4780,17 @@ en:
       hours_short: "%{count}h"
       invalid_date: Invalid Date
       minutes_short: "%{count}min"
+    ux_p3:
+      timeline:
+        filtered_count: Showing %{count} of %{total} visits
+        visit_count:
+          one: "%{count} visit"
+          other: "%{count} visits"
+      video:
+        ready: Your video is ready — MP4 · %{size} MB.
+      realtime:
+        connected: Live updates connected
+        disconnected: Live updates paused. New positions may be delayed; reconnecting automatically.
   battery_statuses:
     unknown: unknown
     unplugged: unplugged
@@ -4539,3 +4809,118 @@ en:
       no_invitations: No pending invitations
       title: Family Invitations
       view_invitation: View
+  date_time_preferences:
+    clock_12h: "%{time} %{meridiem}"
+    meridiem:
+      am: AM
+      pm: PM
+  ux_p2:
+    exports:
+      source: 'Source: %{name}'
+      restored_incomplete: This export was unfinished in the backup. Create a new export from Points.
+      unavailable_source: Unavailable source (scope preserved)
+      removed_import: Removed import (scope preserved)
+      unavailable_import: The selected import is no longer available.
+    sharing:
+      exact_expiry: Exact expiration (optional)
+      exact_expiry_hint: 'Time zone: %{timezone}. Leave blank for no expiration.'
+      invalid_expiry: Choose a valid expiration date.
+      no_expiry: No expiration
+      expires: Access ends
+      period: Shared period
+      included: Included
+      excluded: Excluded
+      edit_access: Edit access
+      preview: Open recipient view
+      url_unchanged: Changes apply to this link. Its URL, audience and selected data stay the same.
+      cancel: Cancel
+      save: Save access
+      sections:
+        show_route: Route map
+        show_stats: Statistics
+        show_days: Day-by-day breakdown
+        show_day_notes: Day notes
+        show_description: Description
+        show_photos: Photos
+    import:
+      failed_reason_in_list: "The import could not finish. Open it to see the reference and what to do next."
+      technical_details: Technical details
+      failed: Import failed
+      format_error: The file format could not be read. Check that the file is valid and uses a supported format.
+      failed_reason: The import could not finish. You can upload the file again; if it fails again, use the reference below when reporting the problem.
+      reference: 'Import reference: #%{id}. Technical details are available in the server logs.'
+      open: Open import and recovery options
+      upload_another: Upload another file
+      supported_formats: Supported formats
+      notification_html: Import &quot;%{name}&quot; failed. %{reason} %{link}
+    demo:
+      description: Explore a month of Berlin tracking and a Prague weekend trip. Demo points, visits and places are marked and can be removed anytime.
+    digest:
+      queued: Queued. Your year-end digest will appear here automatically.
+      calculating: Calculating your year-end digest. This page updates automatically.
+      failed: Generation failed. Your location history is safe; try again.
+      retry: Retry generation
+      working: Preparing digest
+    places:
+      add: Add place
+      edit: Edit place
+      save: Save place
+      back: Back to places
+      more_actions: 'More actions: merge or delete'
+      search: Search places
+      tag: Tags
+      all_tags: All tags
+      sort: Sort by
+      sort_name: Name
+      sort_recent_visit: Most recent visit
+      sort_newest: Recently created
+      no_matches: No matching places. Try another search or add a place.
+      pick_coordinates: "Click the map to choose this place. You can drag the marker to adjust it."
+      latitude: Latitude
+      longitude: Longitude
+      name: Name
+      radius: Visit radius (meters)
+      note: Note
+    settings:
+      sections: Settings section
+    points:
+      select: Select point recorded at %{time}
+    nav:
+      notifications: Notifications
+      previous_day: Previous day
+      next_day: Next day
+    insights:
+      empty_title: Your journeys will appear here
+      empty_help: Import location history or connect a tracker to get your first distances, maps and travel insights.
+      import: Import history
+      connect: Connect a tracker
+      unresolved: Not yet identified
+      names_pending: Country and city names have not been identified yet. Coordinates, maps and distance can still be available.
+      configure: Configure geocoding
+      ask_admin: Your administrator can configure geocoding to identify country and city names.
+  ux_p3:
+    timeline:
+      filter_scope: Visit filters are active. Movement and untracked intervals stay visible.
+    video:
+      download: Download video
+    integrations:
+      save_and_test: Save & test connection
+      test: Test without saving
+      save: Save without testing
+      saved_untested: Settings saved. No connection test was run.
+      tested_ok: Connection verified. Changes have not been saved.
+      tested_failed: Connection failed. Changes have not been saved.
+      saved_ok: Settings saved and connection verified.
+      saved_failed: Settings saved, but the connection failed.
+      validation_failed: Settings could not be used. Check the URL and required fields.
+      retry: Check the fields below, then test the connection again.
+      reasons:
+        unreachable: The service could not be reached. Check its address, port and network access from Dawarich.
+        certificate: The TLS certificate could not be verified. Check the server certificate.
+        credentials: Access was denied. Check the API key and its permissions.
+        missing_fields: Enter the service URL and required credentials.
+        check_settings: The service did not accept the connection. Check the URL, credentials and required permissions.
+      status:
+        connected: 'Saved connection: last test succeeded.'
+        failed: 'Saved connection: last test failed.'
+        untested: 'Saved connection: not tested.'

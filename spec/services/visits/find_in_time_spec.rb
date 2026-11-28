@@ -66,8 +66,8 @@ RSpec.describe Visits::FindInTime do
     context 'when given a time range' do
       let(:params) do
         {
-          start_at: reference_time.to_s,
-          end_at: (reference_time + 4.hours).to_s
+          start_at: reference_time.iso8601,
+          end_at: (reference_time + 4.hours).iso8601
         }
       end
 
@@ -116,8 +116,8 @@ RSpec.describe Visits::FindInTime do
 
       let(:params) do
         {
-          start_at: reference_time.to_s,
-          end_at: (reference_time + 4.hours).to_s
+          start_at: reference_time.iso8601,
+          end_at: (reference_time + 4.hours).iso8601
         }
       end
 
@@ -132,7 +132,41 @@ RSpec.describe Visits::FindInTime do
       let(:params) do
         {
           start_at: 'invalid-date',
-          end_at: (reference_time + 4.hours).to_s
+          end_at: (reference_time + 4.hours).iso8601
+        }
+      end
+
+      it 'raises Visits::InvalidTimeRange' do
+        expect { described_class.new(user, params).call }.to raise_error(Visits::InvalidTimeRange)
+      end
+    end
+
+    context 'when the time range is reversed' do
+      let(:params) do
+        {
+          start_at: (reference_time + 4.hours).iso8601,
+          end_at: reference_time.iso8601
+        }
+      end
+
+      it 'raises Visits::InvalidTimeRange' do
+        expect { described_class.new(user, params).call }.to raise_error(Visits::InvalidTimeRange)
+      end
+    end
+
+    context 'when times come in a non-ISO format the API accepted before' do
+      let(:params) { { start_at: '2026-01-15 09:00:00 UTC', end_at: '2026-01-15 16:00:00 +0100' } }
+
+      it 'accepts them' do
+        expect { described_class.new(user, params).call }.not_to raise_error
+      end
+    end
+
+    context 'when a calendar timestamp is impossible' do
+      let(:params) do
+        {
+          start_at: '2025-02-30T12:00:00Z',
+          end_at: '2026-01-15T16:00:00Z'
         }
       end
 

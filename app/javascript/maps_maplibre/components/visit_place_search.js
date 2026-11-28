@@ -3,15 +3,18 @@ import { translate } from "i18n"
 const DEBOUNCE_MS = 250
 const DEFAULT_RADIUS_KM = 1.0
 const MOVE_THRESHOLD_M = 100
+const THROTTLED_RETRY_MS = 1200
 
 export class VisitPlaceSearch {
-  constructor(visitId, lat, lon, mountEl, apiKey = null) {
+  constructor(visitId, lat, lon, mountEl, apiKey = null, options = {}) {
+    this.onSelect = options.onSelect
     this.visitId = visitId
     this.lat = parseFloat(lat)
     this.lon = parseFloat(lon)
     this.mount = mountEl
     this.apiKey = apiKey
     this.debounceTimer = null
+    this.retryTimer = null
     this.abortController = null
     this.open = false
   }
@@ -30,6 +33,9 @@ export class VisitPlaceSearch {
     this.input = this.mount.querySelector("[data-search-input]")
     this.list = this.mount.querySelector("[data-search-results]")
     this.input.addEventListener("input", () => this.onInput())
+    this.input.addEventListener("keydown", (event) => {
+      if (this.onSelect && event.key === "Enter") event.preventDefault()
+    })
     this.input.focus()
     this.fetchResults("")
   }
@@ -37,19 +43,22 @@ export class VisitPlaceSearch {
   close() {
     this.open = false
     clearTimeout(this.debounceTimer)
+    clearTimeout(this.retryTimer)
     if (this.abortController) this.abortController.abort()
     this.mount.innerHTML = ""
   }
 
   onInput() {
     clearTimeout(this.debounceTimer)
+    clearTimeout(this.retryTimer)
     this.debounceTimer = setTimeout(
       () => this.fetchResults(this.input.value.trim()),
       DEBOUNCE_MS,
     )
   }
 
-  async fetchResults(query) {
+  async fetchResults(query, retried = false) {
+    clearTimeout(this.retryTimer)
     if (this.abortController) this.abortController.abort()
     this.abortController = new AbortController()
     this.renderLoading()
@@ -67,42 +76,50 @@ export class VisitPlaceSearch {
         signal: this.abortController.signal,
       })
       const data = await res.json()
-      this.render(data.places || [], data.areas || [], query)
+      if (data.throttled && !retried) {
+        if (!this.open || this.input.value.trim() !== query) return
+        this.retryTimer = setTimeout(
+          () => this.fetchResults(query, true),
+          THROTTLED_RETRY_MS,
+        )
+        return
+      }
+      this.render(data.places || [], query, data.forward_search_unavailable)
     } catch (err) {
       if (err.name === "AbortError") return
       this.renderError()
     }
   }
 
-  render(places, areas, query) {
+  render(places, query, forwardSearchUnavailable = false) {
+    if (this.onSelect) places = places.filter((place) => place.id)
     const hasExact = places.some(
       (p) => (p.name || "").toLowerCase() === query.toLowerCase(),
     )
     const rows = []
 
-    areas.forEach((a, i) => {
-      rows.push(this.areaRow(a, i))
-    })
     places.forEach((p, i) => {
       rows.push(this.placeRow(p, i))
     })
-    if (query.length >= 2 && !hasExact) rows.push(this.createRow(query))
+    if (!this.onSelect && query.length >= 2 && !hasExact)
+      rows.push(this.createRow(query))
+
+    if (forwardSearchUnavailable)
+      rows.unshift(
+        `<li class="px-3 py-2 text-xs text-warning">${translate("places.forward_search_unavailable")}</li>`,
+      )
 
     this.list.innerHTML = rows.length
       ? rows.join("")
       : `<li class="px-3 py-2 text-xs text-base-content/60">${translate("places.none_found")}</li>`
 
-    this.bindRows(places, areas, query)
+    this.bindRows(places, query)
   }
 
-  bindRows(places, areas, query) {
+  bindRows(places, query) {
     this.list.querySelectorAll("[data-select-place]").forEach((el) => {
       const place = places[parseInt(el.dataset.selectPlace, 10)]
       el.addEventListener("click", () => this.selectPlace(place))
-    })
-    this.list.querySelectorAll("[data-select-area]").forEach((el) => {
-      const area = areas[parseInt(el.dataset.selectArea, 10)]
-      el.addEventListener("click", () => this.selectArea(area))
     })
     const createEl = this.list.querySelector("[data-create-place]")
     if (createEl)
@@ -110,6 +127,11 @@ export class VisitPlaceSearch {
   }
 
   async selectPlace(place) {
+    if (this.onSelect) {
+      this.onSelect(place)
+      this.close()
+      return
+    }
     const distance = this.distanceMeters(place.latitude, place.longitude)
     try {
       if (distance > MOVE_THRESHOLD_M) {
@@ -135,34 +157,18 @@ export class VisitPlaceSearch {
     }
   }
 
-  async selectArea(area) {
-    try {
-      await this.patchVisit({ area_id: area.id, status: "confirmed" })
-      this.done()
-    } catch (_e) {
-      this.renderError()
-    }
-  }
-
-  async createPlace(query) {
-    try {
-      const created = await this.postJson("/api/v1/places", {
-        place: {
-          name: query,
+  createPlace(query) {
+    document.dispatchEvent(
+      new CustomEvent("place:create", {
+        detail: {
           latitude: this.lat,
           longitude: this.lon,
-          source: "manual",
+          visitId: this.visitId,
+          name: query,
         },
-      })
-      await this.patchVisit({
-        place_id: created.id,
-        name: created.name,
-        status: "confirmed",
-      })
-      this.done()
-    } catch (_e) {
-      this.renderError()
-    }
+      }),
+    )
+    this.close()
   }
 
   patchVisit(visitAttrs) {
@@ -238,15 +244,6 @@ export class VisitPlaceSearch {
     return `<li class="w-full"><a data-select-place="${idx}" onclick="event.stopPropagation()" class="${this.rowClass()}">
       <span class="block truncate">${this.escape(place.name)}</span>
       ${meta ? `<span class="block text-xs opacity-60 truncate">${this.escape(meta)}</span>` : ""}</a></li>`
-  }
-
-  areaRow(area, idx) {
-    const dist = this.formatDistance(
-      this.distanceMeters(area.latitude, area.longitude),
-    )
-    return `<li class="w-full"><a data-select-area="${idx}" onclick="event.stopPropagation()" class="${this.rowClass()}">
-      <span class="block truncate"><span class="badge badge-xs badge-secondary mr-1">${translate("map_info.area")}</span>${this.escape(area.name)}</span>
-      ${dist ? `<span class="block text-xs opacity-60 truncate">${this.escape(dist)}</span>` : ""}</a></li>`
   }
 
   placeKind(place) {

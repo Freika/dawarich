@@ -1,0 +1,8 @@
+de:
+  javascript:
+    range_statistics:
+      scope: "Deine Punkte im ausgewählten Zeitraum; ohne Privatzonen und Familienverlauf."
+      unavailable: "Statistik nicht verfügbar"
+      summary:
+        one: "%{points} Punkt · %{distance} %{unit}"
+        other: "%{points} Punkte · %{distance} %{unit}"

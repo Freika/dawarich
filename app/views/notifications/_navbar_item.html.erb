@@ -1,7 +1,11 @@
 <li class="notification-item" id="<%= dom_id(notification, :navbar) %>">
   <div class="divider p-0 m-0"></div>
-  <%= link_to notification do %>
-    <%= notification.title %>
-    <div class="badge badge-xs justify-self-end badge-<%= notification.kind %>"></div>
+  <%= link_to open_notification_path(notification), class: 'flex items-start gap-2 whitespace-normal' do %>
+    <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">
+      <span class="block font-medium"><%= notification.title %></span>
+      <span class="block text-xs opacity-70 line-clamp-2"><%= notification_snippet(notification) %></span>
+      <span class="block text-xs opacity-50"><%= t('common.time_ago', time: relative_distance_in_words(notification.created_at)) %></span>
+    </span>
+    <span class="badge badge-xs badge-<%= notification.kind %> mt-1.5 shrink-0"></span>
   <% end %>
 </li>

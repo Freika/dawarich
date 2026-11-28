@@ -1,0 +1,25 @@
+<%# locals: (note:) %>
+<%# The note opened outside the map: the spot on the left, the note on the
+    right, as on a Trip page. A new note's spot is picked on this map. %>
+<% content_for :title, t('map.maplibre.note_modal.map_note') %>
+<% located = note.latitude.present? && note.longitude.present? %>
+<div class="w-full my-5">
+  <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]"
+       data-controller="place-location"
+       data-place-location-editable-value="<%= !note.persisted? %>"
+       data-place-location-latitude-value="<%= located ? note.latitude : 0 %>"
+       data-place-location-longitude-value="<%= located ? note.longitude : 0 %>"
+       data-place-location-tiles-url-value="<%= current_user.safe_settings.maps_maplibre_tiles_url %>"
+       data-place-location-tiles-fallback-value="<%= current_user.safe_settings.maps_maplibre_tiles_fallback? %>">
+    <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0 rounded-xl overflow-hidden" data-place-location-target="map"></div>
+    <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto min-w-0 lg:pr-1">
+      <h1 class="text-3xl font-bold mb-2"><%= t('map.maplibre.note_modal.map_note') %></h1>
+      <%# The spot of the note; a new note's spot follows clicks on the map. %>
+      <p class="flex items-center gap-1.5 text-sm text-base-content/70 mb-4 tabular-nums">
+        <%= icon 'map-pin', class: 'w-4 h-4 shrink-0' %>
+        <span data-place-location-target="coordinates" data-testid="note-coordinates"><%= located ? "#{note.latitude.to_f.round(5)}, #{note.longitude.to_f.round(5)}" : t('notes.flash.pick_a_point_on_the_map') %></span>
+      </p>
+      <%= render 'form', note: note, standalone: true %>
+    </div>
+  </div>
+</div>

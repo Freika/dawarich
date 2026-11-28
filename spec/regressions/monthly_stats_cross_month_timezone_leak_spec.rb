@@ -262,7 +262,7 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
 
     it 'includes the UTC-Feb point in March bounds when local time is March 1' do
       stat = create(:stat, user: user, year: 2026, month: 3)
-      bounds = stat.calculate_data_bounds
+      bounds = stat.calculate_data_bounds(privacy_zone_masker: Maps::PrivacyZoneMasker.none)
 
       expect(bounds[:point_count]).to eq(2)
       expect(bounds[:min_lat]).to eq(52.5)

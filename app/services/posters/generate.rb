@@ -24,7 +24,8 @@ module Posters
       return fail_with(I18n.t('services.posters.generate.track_outside_area')) unless track_intersects_area?(track)
 
       render_natively(track)
-      @poster.update!(status: :completed)
+    rescue ActiveRecord::RecordNotFound
+      nil
     rescue StandardError => e
       ExceptionReporter.call(e, "Poster render failed for poster #{@poster.id}")
       fail_with(I18n.t('services.posters.generate.failed'))
@@ -52,8 +53,24 @@ module Posters
         route_width: route_width,
         subtitle: subtitle
       ).call
-      attach_image(result[:png])
-      attach_print_pdf(result[:pdf])
+
+      blobs = []
+      create_blob(blobs, result[:png], "poster_#{@poster.id}.png", 'image/png')
+      create_blob(blobs, result[:pdf], "poster_#{@poster.id}.pdf", 'application/pdf')
+      attached = false
+
+      Poster.transaction do
+        current_poster = Poster.lock.find_by(id: @poster.id)
+        return unless current_poster
+
+        @poster = current_poster
+        @poster.image.attach(blobs.first)
+        @poster.print_pdf.attach(blobs.second)
+        @poster.update!(status: :completed)
+      end
+      attached = true
+    ensure
+      blobs&.each { |blob| blob.purge if !attached && blob.persisted? }
     end
 
     def route_opacity
@@ -130,23 +147,22 @@ module Posters
       "#{I18n.l(start_at.to_date, format: :medium)} – #{I18n.l(end_at.to_date, format: :medium)}"
     end
 
-    def attach_image(image)
-      @poster.image.attach(
-        io: StringIO.new(image),
-        filename: "poster_#{@poster.id}.png",
-        content_type: 'image/png'
+    def create_blob(blobs, content, filename, content_type)
+      io = StringIO.new(content)
+      blob = ActiveStorage::Blob.create_after_unfurling!(
+        io: io,
+        filename: filename,
+        content_type: content_type
       )
-    end
-
-    def attach_print_pdf(pdf)
-      @poster.print_pdf.attach(
-        io: StringIO.new(pdf),
-        filename: "poster_#{@poster.id}.pdf",
-        content_type: 'application/pdf'
-      )
+      blobs << blob
+      blob.upload_without_unfurling(io)
     end
 
     def fail_with(message)
+      current_poster = Poster.find_by(id: @poster.id)
+      return unless current_poster
+
+      @poster = current_poster
       @poster.update!(status: :failed, settings: @poster.settings.merge('error' => message))
     end
 

@@ -46,8 +46,7 @@ RSpec.describe 'Multi-day GPX import stays partitioned in bulk segmentation' do
       user.id,
       day_one_ts - 3600,
       day_two_ts + 3600,
-      30,
-      500
+      30
     )
 
     tracker_ids = segments.map { |seg| seg[:tracker_id] }.sort_by(&:to_s)

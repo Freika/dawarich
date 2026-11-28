@@ -117,17 +117,6 @@ export class ReplayMarkerLayer extends BaseLayer {
     }
   }
 
-  /**
-   * Get current emoji being displayed
-   * @returns {string|null}
-   */
-  getCurrentEmoji() {
-    return this._currentEmoji
-  }
-
-  /**
-   * Hide the marker
-   */
   hideMarker() {
     this._removeEmojiMarker()
     this.hide()

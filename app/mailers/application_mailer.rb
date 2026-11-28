@@ -13,10 +13,12 @@ class ApplicationMailer < ActionMailer::Base
   private
 
   def use_recipient_locale(&action)
-    I18n.with_locale(params&.[](:user)&.preferred_locale || I18n.locale, &action)
+    with_user_locale(params&.[](:user), &action)
   end
 
   def with_user_locale(user, &action)
-    I18n.with_locale(user&.preferred_locale || I18n.locale, &action)
+    I18n.with_locale(user&.preferred_locale || I18n.locale) do
+      Users::DateTimePreferences.with(user, &action)
+    end
   end
 end

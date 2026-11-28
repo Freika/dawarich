@@ -36,6 +36,15 @@ RSpec.describe Timeline::MonthSummary do
       expect(Date.parse(first_cell[:date]).wday).to eq(1) # Monday
     end
 
+    it "starts weeks on the user's first day of week" do
+      user.update!(settings: user.settings.merge('first_day_of_week' => 'sunday'))
+
+      october = described_class.new(user: user, month: '2026-10').call
+
+      expect(october[:weeks].first.first[:date]).to eq('2026-09-27')
+      expect(october[:weeks].flatten.map { |cell| Date.parse(cell[:date]).wday }.first(7)).to eq([0, 1, 2, 3, 4, 5, 6])
+    end
+
     context 'with visits and tracks' do
       let(:place) { create(:place, :with_geodata) }
 
@@ -309,6 +318,17 @@ RSpec.describe Timeline::MonthSummary do
 
       user_queries = queries.reject { |q| q =~ /SCHEMA|TRANSACTION|BEGIN|COMMIT|SAVEPOINT/ }
       expect(user_queries).to be_empty
+    end
+
+    it 'serves the cached month with the grid of the current week start' do
+      monday_grid = described_class.new(user: user, month: '2026-04').call
+
+      user.update!(settings: user.settings.merge('first_day_of_week' => 'sunday'))
+      sunday_grid = described_class.new(user: user.reload, month: '2026-04').call
+
+      expect(monday_grid[:weeks].first.first[:date]).to eq('2026-03-30')
+      expect(sunday_grid[:weeks].first.first[:date]).to eq('2026-03-29')
+      expect(sunday_grid[:days]).to eq(monday_grid[:days])
     end
   end
 end

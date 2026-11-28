@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ApiController < ApplicationController
+  include DefaultDateTimePreferences
+
   skip_before_action :verify_authenticity_token
   before_action :set_version_header
   before_action :authenticate_api_key
@@ -18,15 +20,8 @@ class ApiController < ApplicationController
     I18n.with_locale(I18n.default_locale, &block)
   end
 
-  def set_user_time_zone(&block)
-    if current_api_user
-      timezone = current_api_user.timezone
-      Time.use_zone(timezone, &block)
-    else
-      yield
-    end
-  rescue ArgumentError
-    yield
+  def time_zone_owner
+    current_api_user
   end
 
   def record_not_found
@@ -63,7 +58,7 @@ class ApiController < ApplicationController
 
   def require_pro_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.entitlements.pro_api?
+    return if current_api_user.full_access?
 
     render json: {
       error: 'pro_plan_required',
@@ -74,7 +69,7 @@ class ApiController < ApplicationController
 
   def require_write_api!
     return unless current_api_user # auth already handled by authenticate_api_key
-    return if current_api_user.entitlements.write_api?
+    return if current_api_user.full_access?
 
     render json: {
       error: 'write_api_restricted',
@@ -89,6 +84,13 @@ class ApiController < ApplicationController
     return unless current_api_user # auth already handled by authenticate_api_key
     return if DawarichSettings.family_feature_available_for?(current_api_user)
 
+    unless current_api_user.feature_enabled?(:family)
+      return render json: {
+        error: 'feature_disabled',
+        message: I18n.t('controllers.application.feature_disabled_in_settings')
+      }, status: :forbidden
+    end
+
     render json: {
       error: 'family_plan_required',
       message: I18n.t('controllers.application.family_plan_required'),
@@ -96,19 +98,34 @@ class ApiController < ApplicationController
     }, status: :forbidden
   end
 
-  # Returns points scoped to the user's plan data window.
-  # Delegates to PlanScopable concern on User model.
-  def scoped_points(user = current_api_user)
-    user.scoped_points
+  def distance_unit
+    params[:distance_unit].presence || current_api_user.safe_settings.distance_unit || 'km'
+  end
+
+  def set_pagination_headers(collection, with_total: false)
+    response.set_header('X-Current-Page', collection.current_page.to_s)
+    response.set_header('X-Total-Pages', collection.total_pages.to_s)
+    response.set_header('X-Total-Count', collection.total_count.to_s) if with_total
   end
 
   # Applies the 12-month plan window to any point relation.
   # Use this when scoping points that don't start from user.points (e.g. track.points).
   def apply_plan_scope(relation, user = current_api_user)
-    window_start = user&.entitlements&.data_window_start
+    window_start = user&.data_window_start
     return relation unless window_start
 
     relation.where('timestamp >= ?', window_start.to_i)
+  end
+
+  # Map reads mask Privacy Zones when the client asks; endpoints that always
+  # mask override this.
+  def map_read_masked?
+    ActiveModel::Type::Boolean.new.cast(params[:mask_privacy_zones]) == true
+  end
+
+  def map_read_masker
+    @map_read_masker ||=
+      map_read_masked? ? Maps::PrivacyZoneMasker.new(current_api_user) : Maps::PrivacyZoneMasker.none
   end
 
   def upgrade_url_for(user)
@@ -125,19 +142,16 @@ class ApiController < ApplicationController
       return false
     end
 
-    if current_api_user.inactive?
-      render json: { error: I18n.t('controllers.api.user_account_is_not_active') }, status: :unauthorized
+    return true if current_api_user.in_good_standing?
 
-      return false
-    end
+    error = if current_api_user.inactive?
+              I18n.t('controllers.api.user_account_is_not_active')
+            else
+              I18n.t('controllers.api.user_subscription_is_not_active')
+            end
+    render json: { error: error }, status: :unauthorized
 
-    if current_api_user.active_until&.past?
-      render json: { error: I18n.t('controllers.api.user_subscription_is_not_active') }, status: :unauthorized
-
-      return false
-    end
-
-    true
+    false
   end
 
   def current_api_user

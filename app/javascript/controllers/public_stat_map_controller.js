@@ -1,6 +1,11 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { collapsedAttributionControl } from "maps_maplibre/utils/collapsed_attribution"
 import { buildHexagonPopup } from "maps_maplibre/utils/hexagon_popup"
+import {
+  finishMapLoadingOn,
+  startMapLoading,
+} from "maps_maplibre/utils/map_loading"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 import BaseController from "./base_controller"
@@ -30,6 +35,7 @@ export default class extends BaseController {
 
   async initializeMap() {
     try {
+      startMapLoading(this.element)
       const style = await getMapStyle(getCurrentTheme())
       if (this.disconnected) return
 
@@ -38,7 +44,10 @@ export default class extends BaseController {
         style,
         center: [-100.0, 40.0],
         zoom: 9,
+        attributionControl: false,
       })
+      finishMapLoadingOn(this.map)
+      this.map.addControl(collapsedAttributionControl())
       this.map.addControl(
         new maplibregl.NavigationControl({ showCompass: false }),
         "top-right",

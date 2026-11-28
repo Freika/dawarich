@@ -1,0 +1,32 @@
+<% w_scope = 'settings.webhooks.webhook' %>
+<details id="<%= dom_id(webhook) %>" data-testid="webhook" class="group">
+  <summary class="-mx-2 flex cursor-pointer list-none items-start gap-3 rounded-btn px-2 py-3 transition-colors duration-150 hover:bg-base-content/[0.04] [&::-webkit-details-marker]:hidden">
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span data-testid="webhook-name" class="font-semibold"><%= webhook.name %></span>
+        <%= webhook_health_badge(webhook, scope: w_scope) %>
+      </div>
+      <div class="mt-0.5 text-sm text-base-content/60 [overflow-wrap:anywhere]"><%= webhook.url %></div>
+      <div class="mt-1 text-xs text-base-content/60">
+        <%= webhook.place_ids.empty? ? t("#{w_scope}.every_place") : t("#{w_scope}.places_count", count: webhook.place_ids.size) %>
+        ·
+        <%= webhook_last_delivery(webhook, scope: w_scope) %>
+      </div>
+    </div>
+    <span class="sr-only"><%= t("#{w_scope}.edit") %></span>
+    <%= icon 'chevron-down', class: 'mt-0.5 w-4 h-4 shrink-0 text-base-content/50 transition-transform duration-200 group-open:rotate-180' %>
+  </summary>
+
+  <div class="pb-4 pt-1">
+    <div class="mb-4 flex flex-wrap items-center gap-1.5">
+      <%= button_to t("#{w_scope}.test"), test_settings_webhook_path(webhook), class: 'btn btn-xs' %>
+      <%= link_to t("#{w_scope}.deliveries"), settings_webhook_path(webhook), class: 'btn btn-xs', data: { turbo_frame: '_top' } %>
+      <%= button_to t("#{w_scope}.regenerate"), regenerate_secret_settings_webhook_path(webhook),
+                    class: 'btn btn-ghost btn-xs', form: { data: { turbo_confirm: t("#{w_scope}.confirm_regenerate") } } %>
+      <%= button_to t("#{w_scope}.delete"), settings_webhook_path(webhook), method: :delete,
+                    class: 'btn btn-ghost btn-xs hover:text-error focus-visible:text-error',
+                    form: { class: 'ml-auto', data: { turbo_confirm: t("#{w_scope}.confirm_delete") } } %>
+    </div>
+    <%= render 'settings/webhooks/form', webhook:, places: %>
+  </div>
+</details>

@@ -25,9 +25,20 @@ RSpec.describe Tracks::VectorTileQuery do
     create(:track, user:, original_path: linestring_wkt(meter_pairs), **attrs)
   end
 
-  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil) # rubocop:disable Naming/MethodParameterName
-    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:).feature_rows
+  def link_points(track, positions_at)
+    positions_at.each do |(east, north), timestamp|
+      lon, lat = lonlat_at(east, north)
+      create(:point, user:, track:, longitude: lon, latitude: lat, timestamp: timestamp.to_i)
+    end
   end
+
+  # rubocop:disable Naming/MethodParameterName
+  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
+                   clip_start_at: nil, clip_end_at: nil)
+    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:,
+                        clip_start_at:, clip_end_at:, privacy_zone_masker: Maps::PrivacyZoneMasker.none).feature_rows
+  end
+  # rubocop:enable Naming/MethodParameterName
 
   def npoints(geom)
     ActiveRecord::Base.connection.select_value(
@@ -138,15 +149,77 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(rows.map { |r| r['id'].to_i }).to eq([spanning.id])
       expect(rows.map { |r| r['id'].to_i }).not_to include(old.id)
     end
+
+    it 'clips a boundary-spanning track to Points inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      range_end = range_start.end_of_day
+      track = create_track_at(
+        [[10, 10], [500, 500], [2_000, 2_000], [3_000, 3_000]],
+        start_at: Time.utc(2024, 9, 14), end_at: range_start + 11.hours
+      )
+      link_points(track, [
+                    [[10, 10], Time.utc(2024, 9, 14)],
+                    [[500, 500], Time.utc(2024, 9, 15)],
+                    [[2_000, 2_000], range_start + 10.hours],
+                    [[3_000, 3_000], range_start + 11.hours]
+                  ])
+      scope = user.tracks.where('end_at >= ? AND start_at <= ?', range_start, range_end)
+
+      row = feature_rows(z: 10, x: 512, y: 511, scope:, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_end).sole
+      xmin = ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_XMin(?::geometry)', row['geom']])
+      ).to_f
+
+      expect(xmin).to be > 150
+      expect(row['start_timestamp'].to_i).to eq((range_start + 10.hours).to_i)
+      expect(row['end_timestamp'].to_i).to eq((range_start + 11.hours).to_i)
+    end
+
+    it 'keeps the stored path and stats of a track entirely inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start + 1.hour,
+                                                          end_at: range_start + 2.hours, distance: 12_345)
+      link_points(track, [[[10, 10], range_start + 1.hour], [[3_000, 3_000], range_start + 2.hours]])
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+      expect(row['distance'].to_f).to eq(12_345)
+    end
+
+    it 'falls back to the stored path of a boundary-spanning track without linked Points' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+    end
+
+    it 'hides a boundary-spanning track with fewer than two linked Points inside the window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+      link_points(track, [[[10, 10], range_start - 2.days], [[3_000, 3_000], range_start + 1.hour]])
+
+      rows = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                          clip_start_at: range_start, clip_end_at: range_start.end_of_day)
+
+      expect(rows).to be_empty
+    end
   end
 
   describe 'coordinate validation and timeout' do
     it 'raises on invalid tile coordinates' do
-      expect { described_class.new(scope: user.tracks, z: -1, x: 0, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: -1, x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
-      expect { described_class.new(scope: user.tracks, z: 2, x: 4, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: 2, x: 4, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
-      expect { described_class.new(scope: user.tracks, z: 'abc', x: 0, y: 0).call }
+      expect { described_class.new(scope: user.tracks, z: 'abc', x: 0, y: 0, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call }
         .to raise_error(Tracks::VectorTileQuery::InvalidTileCoordinatesError)
     end
 
@@ -157,7 +230,7 @@ RSpec.describe Tracks::VectorTileQuery do
       slow_scope = user.tracks.where('(SELECT pg_sleep(0.3)) IS NOT NULL')
 
       expect do
-        described_class.new(scope: slow_scope, z: 10, x: 512, y: 511).call
+        described_class.new(scope: slow_scope, z: 10, x: 512, y: 511, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
       end.to raise_error(ActiveRecord::QueryCanceled)
     end
   end
@@ -170,7 +243,7 @@ RSpec.describe Tracks::VectorTileQuery do
       rows = feature_rows(z: 2, x: 2, y: 1)
       coords = ActiveRecord::Base.connection.select_one(
         Track.sanitize_sql_array(
-          ['SELECT ST_X(ST_PointN(?::geometry, 2)) AS x, ST_Y(ST_PointN(?::geometry, 2)) AS y',
+          ['SELECT ST_X(ST_EndPoint(?::geometry)) AS x, ST_Y(ST_EndPoint(?::geometry)) AS y',
            rows.first['geom'], rows.first['geom']]
         )
       )
@@ -180,29 +253,10 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(coords['y'].to_f).to be_within(2).of(2048)
     end
 
-    it 'pins classic parity for a seam-crossing track: the raw planar line spans the world band' do
+    it 'omits the central-Europe tile for a flight across the date line' do
       create(:track, user:, original_path: 'LINESTRING(139.7 35.7, -118.2 34.05)')
 
-      rows = feature_rows(z: 2, x: 2, y: 1)
-
-      # The planar line from Tokyo to LA crosses the central-Europe tile —
-      # exactly what classic GeoJSON rendering draws today. Documented artifact.
-      expect(rows.size).to eq(1)
-
-      # Vertex VALUES, not mere presence: a future wrapped-branch attempt that
-      # translated the geometry would change these coordinates without changing
-      # the count. The clipped segment must run west-to-east across the whole
-      # tile at a roughly constant MVT y (the planar chord is near-horizontal).
-      coords = ActiveRecord::Base.connection.select_one(
-        Track.sanitize_sql_array(
-          ['SELECT ST_XMin(?::geometry) AS xmin, ST_XMax(?::geometry) AS xmax,
-                   ST_YMin(?::geometry) AS ymin, ST_YMax(?::geometry) AS ymax',
-           rows.first['geom'], rows.first['geom'], rows.first['geom'], rows.first['geom']]
-        )
-      )
-      expect(coords['xmin'].to_f).to be <= 0
-      expect(coords['xmax'].to_f).to be >= 4096
-      expect(coords['ymin'].to_f).to be_between(0, 4096)
+      expect(feature_rows(z: 2, x: 2, y: 1)).to be_empty
     end
   end
 
@@ -231,7 +285,7 @@ RSpec.describe Tracks::VectorTileQuery do
     it 'reports feature_count and an unreachable limit' do
       create_track_at([[10, 10], [500, 500]])
 
-      result = described_class.new(scope: user.tracks, z: 10, x: 512, y: 511).call
+      result = described_class.new(scope: user.tracks, z: 10, x: 512, y: 511, privacy_zone_masker: Maps::PrivacyZoneMasker.none).call
 
       expect(result.feature_count).to eq(1)
       expect(result.limit).to eq(Tracks::VectorTileQuery::TRACKS_PER_TILE_LIMIT)

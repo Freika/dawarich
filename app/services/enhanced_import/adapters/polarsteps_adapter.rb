@@ -8,25 +8,17 @@ module EnhancedImport
       def translate
         return enum_for(:translate) unless block_given?
 
-        steps(load_json_data).each do |step|
-          next unless step.is_a?(Hash)
+        stream_file do |io|
+          Imports::JsonStream.new(io.path, keys: ['steps'], root_array: true).each do |step|
+            next unless step.is_a?(Hash)
 
-          visit = build_visit(step)
-          yield visit if visit
+            visit = build_visit(step)
+            yield visit if visit
+          end
         end
       end
 
       private
-
-      # Polarsteps exports either a {"locations": [...]} GPS trail, which carries
-      # no visit metadata at all, or a bare array of steps with arrival and
-      # departure times. Only the latter describes visits.
-      def steps(json)
-        return json if json.is_a?(Array)
-        return Array(json['steps']) if json.is_a?(Hash) && json['steps'].is_a?(Array)
-
-        []
-      end
 
       def build_visit(step)
         location = step['location']

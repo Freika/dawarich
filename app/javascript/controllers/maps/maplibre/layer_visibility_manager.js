@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { anomaliesVisible } from "maps_maplibre/utils/layer_dependencies"
 import { gatedToggle } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
@@ -16,6 +17,19 @@ export class LayerVisibilityManager {
     this._anomaliesFetchId = 0
   }
 
+  _previewedForLite({ layer, layerName = layer, toggle, showFn, hideFn }) {
+    return gatedToggle({
+      layer,
+      gatedLayers: this.controller.gatedLayersValue,
+      layerName,
+      userPlan: this.controller.userPlanValue,
+      toggle,
+      showFn,
+      hideFn,
+      upgradeUrl: this.controller.upgradeUrlValue,
+    })
+  }
+
   /**
    * Toggle heatmap visibility
    */
@@ -30,15 +44,15 @@ export class LayerVisibilityManager {
       this.applyHeatmapRenderer(false)
     }
 
-    const intercepted = gatedToggle({
-      layerName: "Heatmap",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showHeatmap,
-      hideFn: hideHeatmap,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Heatmap",
+        toggle,
+        showFn: showHeatmap,
+        hideFn: hideHeatmap,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("heatmapEnabled", enabled)
@@ -57,15 +71,15 @@ export class LayerVisibilityManager {
   async toggleHexagons(event) {
     const toggle = event.target
 
-    const intercepted = gatedToggle({
-      layerName: "Hexagons",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: () => this._showHexagons(),
-      hideFn: () => this._hideHexagons(),
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Hexagons",
+        toggle,
+        showFn: () => this._showHexagons(),
+        hideFn: () => this._hideHexagons(),
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("hexagonsEnabled", enabled)
@@ -103,28 +117,22 @@ export class LayerVisibilityManager {
     const fogLayer = this.layerManager.getLayer("fog")
 
     const showFog = async () => {
-      if (fogLayer?.mode === "hexagons") {
-        fogLayer.toggle(true)
-        return
-      }
-      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(true)
-      if (fogLayer) fogLayer.toggle(true)
+      fogLayer?.toggle(true)
     }
 
     const hideFog = () => {
-      if (fogLayer) fogLayer.toggle(false)
-      this.layerManager.getLayer("points-mvt")?.setSourceKeepAlive(false)
+      fogLayer?.toggle(false)
     }
 
-    const intercepted = gatedToggle({
-      layerName: "Fog of War",
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showFog,
-      hideFn: hideFog,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Fog of War",
+        toggle,
+        showFn: showFog,
+        hideFn: hideFog,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("fogEnabled", enabled)
@@ -191,15 +199,16 @@ export class LayerVisibilityManager {
       if (scratchLayer) scratchLayer.hide()
     }
 
-    const intercepted = gatedToggle({
-      layerName: translate("layers.scratch_map"),
-      userPlan: this.controller.userPlanValue,
-      toggle,
-      showFn: showScratch,
-      hideFn: hideScratch,
-      upgradeUrl: this.controller.upgradeUrlValue,
-    })
-    if (intercepted) return
+    if (
+      this._previewedForLite({
+        layer: "Scratch map",
+        layerName: translate("layers.scratch_map"),
+        toggle,
+        showFn: showScratch,
+        hideFn: hideScratch,
+      })
+    )
+      return
 
     const enabled = toggle.checked
     SettingsManager.updateSetting("scratchEnabled", enabled)
@@ -237,31 +246,16 @@ export class LayerVisibilityManager {
           photosLayer.show()
         } else {
           // Fetch photos from backend
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { photos: 0 },
-            isComplete: false,
-          })
+          this.controller.loadingBadge.start("photos")
 
-          const api = this.controller.api
           const dataLoader = this.controller.dataLoader
-          const startDate = this.controller.startDateValue
-          const endDate = this.controller.endDateValue
-
-          const photosPromise = api.fetchPhotos({
-            start_at: startDate,
-            end_at: endDate,
-          })
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("Photo fetch timeout")), 15000),
+          const photos = await dataLoader.fetchPhotosWithTimeout(
+            this.controller.startDateValue,
+            this.controller.endDateValue,
           )
-          const photos = await Promise.race([photosPromise, timeoutPromise])
           const photosGeoJSON = dataLoader.photosToGeoJSON(photos)
 
-          this.controller.updateLoadingCounts({
-            counts: { photos: photos.length },
-            isComplete: true,
-          })
+          this.controller.loadingBadge.finish("photos", photos.length)
 
           await this.layerManager._addPhotosLayer(photosGeoJSON)
 
@@ -278,47 +272,6 @@ export class LayerVisibilityManager {
     } catch (error) {
       console.error("Failed to toggle photos layer:", error)
       Toast.error(translate("messages.failed_to_load_photos"))
-    }
-  }
-
-  /**
-   * Toggle areas layer
-   * Fetches areas from backend on first enable (lazy-load pattern)
-   */
-  async toggleAreas(event) {
-    const enabled = event.target.checked
-    SettingsManager.updateSetting("areasEnabled", enabled)
-
-    try {
-      const areasLayer = this.layerManager.getLayer("areas")
-      if (!areasLayer) return
-
-      if (enabled) {
-        if (areasLayer.data?.features?.length > 0) {
-          areasLayer.show()
-        } else {
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { areas: 0 },
-            isComplete: false,
-          })
-
-          const areas = await this.controller.api.fetchAreas()
-
-          this.controller.updateLoadingCounts({
-            counts: { areas: areas.length },
-            isComplete: true,
-          })
-
-          areasLayer.update(this.controller.dataLoader.areasToGeoJSON(areas))
-          areasLayer.show()
-        }
-      } else {
-        areasLayer.hide()
-      }
-    } catch (error) {
-      console.error("Failed to toggle areas layer:", error)
-      Toast.error(translate("messages.failed_to_load_areas"))
     }
   }
 
@@ -383,6 +336,9 @@ export class LayerVisibilityManager {
     SettingsManager.updateSetting("pointsVisible", event.currentTarget.checked)
 
     await this.reapplyPointsRenderer()
+    await this.refreshAnomalies({
+      enabled: anomaliesVisible(SettingsManager.getSettings()),
+    })
   }
 
   async reapplyPointsRenderer() {
@@ -396,11 +352,6 @@ export class LayerVisibilityManager {
     this.layerManager
       .getLayer("tracks-mvt")
       ?.setEnabled(settings.tracksEnabled === true)
-    const fogTiled = (settings.fogOfWarMode || "points") !== "hexagons"
-    this.layerManager.getLayer("fog")?.setTiledSource(fogTiled)
-    this.layerManager
-      .getLayer("points-mvt")
-      ?.setSourceKeepAlive(fogTiled && Boolean(settings.fogEnabled))
     this.controller.settingsController?.syncPointsEditAvailability()
   }
 
@@ -411,7 +362,9 @@ export class LayerVisibilityManager {
   async toggleAnomalies(event) {
     const enabled = event.target.checked
     SettingsManager.updateSetting("anomaliesEnabled", enabled)
-    await this.refreshAnomalies({ enabled })
+    await this.refreshAnomalies({
+      enabled: anomaliesVisible(SettingsManager.getSettings()),
+    })
   }
 
   async refreshAnomalies({ enabled }) {
@@ -424,11 +377,7 @@ export class LayerVisibilityManager {
     }
 
     const fetchId = ++this._anomaliesFetchId
-    this.controller.showProgress()
-    this.controller.updateLoadingCounts({
-      counts: { anomalies: 0 },
-      isComplete: false,
-    })
+    this.controller.loadingBadge.start("anomalies")
 
     try {
       const startDate = this.controller.startDateValue
@@ -440,20 +389,14 @@ export class LayerVisibilityManager {
 
       if (fetchId !== this._anomaliesFetchId) return
 
-      this.controller.updateLoadingCounts({
-        counts: { anomalies: geoJSON.features.length },
-        isComplete: true,
-      })
+      this.controller.loadingBadge.finish("anomalies", geoJSON.features.length)
 
       anomaliesLayer.update(geoJSON)
       anomaliesLayer.show()
     } catch (error) {
       if (fetchId !== this._anomaliesFetchId) return
       console.error("Failed to refresh anomalies layer:", error)
-      this.controller.updateLoadingCounts({
-        counts: { anomalies: 0 },
-        isComplete: true,
-      })
+      this.controller.loadingBadge.finish("anomalies", 0)
       Toast.error(translate("messages.failed_to_load_anomalies"))
     }
   }
