@@ -24,7 +24,7 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
     else mkdir /out; fi
 
 # Shared by the build and runtime stages so both agree on paths and settings.
-FROM ruby:4.0.9-slim AS base
+FROM ruby:4.0.10-slim AS base
 
 ARG RAILS_ENV=production
 
