@@ -4012,6 +4012,9 @@ es:
         weekday_preference: Viajas más en días laborables que en fines de semana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    enhanced_import:
+      extract_job:
+        invalid_json: el archivo no es un JSON válido. Exporta tus datos de nuevo e importa el archivo nuevo.
     tesla_mate:
       sync_job:
         teslamate_sync_failed: Sincronización de TeslaMateApi fallida

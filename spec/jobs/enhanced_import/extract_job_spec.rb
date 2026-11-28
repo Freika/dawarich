@@ -22,11 +22,45 @@ RSpec.describe EnhancedImport::ExtractJob do
 
     it 'marks the import as failed and re-raises when the translator blows up' do
       allow_any_instance_of(EnhancedImport::Translator).to receive(:translate).and_raise('boom')
+      allow(ExceptionReporter).to receive(:call)
 
       expect { described_class.new.perform(import.id) }.to raise_error(/boom/)
 
       expect(import.reload.additional_data_extraction_status).to eq('failed')
       expect(import.extraction_error_message).to eq('boom')
+      expect(ExceptionReporter).to have_received(:call).with(instance_of(RuntimeError))
+    end
+
+    {
+      google_phone_takeout: '{"semanticSegments": [{"startTime": "2024-01-01T00:00:00Z"},',
+      google_semantic_history: '{"timelineObjects": [{"placeVisit": {}},'
+    }.each do |source, truncated_json|
+      it "marks a malformed #{source} file as failed without reporting, retrying or echoing the file" do
+        malformed_import = create(:import, user: user, source: source)
+        malformed_import.file.attach(
+          io: StringIO.new(truncated_json),
+          filename: 'Timeline.json',
+          content_type: 'application/json'
+        )
+        allow(ExceptionReporter).to receive(:call)
+
+        expect { described_class.new.perform(malformed_import.id) }.not_to raise_error
+
+        expect(malformed_import.reload.additional_data_extraction_status).to eq('failed')
+        expect(malformed_import.extraction_error_message)
+          .to eq(I18n.t('jobs.enhanced_import.extract_job.invalid_json'))
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    it 'stores the invalid JSON message in the user locale' do
+      user.update!(settings: user.settings.merge('locale' => 'de'))
+      import.file.attach(io: StringIO.new('{"semanticSegments": ['), filename: 'Timeline.json')
+
+      described_class.new.perform(import.id)
+
+      expect(import.reload.extraction_error_message)
+        .to eq(I18n.t('jobs.enhanced_import.extract_job.invalid_json', locale: :de))
     end
 
     it 'retries transient deadlocks without failing the import or reporting the first attempt' do
